@@ -1,41 +1,40 @@
 import { faker } from '@faker-js/faker';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 
-import { ConfigTestModule, createPersonPermissionsMock, DoFactory } from '../../../../test/utils/index.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { DoFactory, ConfigTestModule, createPersonPermissionsMock } from '../../../../test/utils/index.js';
 import { Paged } from '../../../shared/paging/paged.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp, Traegerschaft } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationService } from '../domain/organisation.service.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
-import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
-import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationController } from './organisation.controller.js';
-import { OrganisationResponse } from './organisation.response.js';
 import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
-import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
+import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
+import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { Organisation } from '../domain/organisation.js';
+import { OrganisationResponse } from './organisation.response.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
+import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { OrganisationService } from '../domain/organisation.service.js';
 
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
-import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
-import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update.body.params.js';
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-import { ParentsTreeResponse } from './parents-tree.response.js';
+import { RollenSystemRechtEnum, RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
+import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update.body.params.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
     const params: OrganisationByIdParams = new OrganisationByIdParams();
@@ -652,30 +651,6 @@ describe('OrganisationController', () => {
             });
             await expect(organisationController.getRootOrganisation()).rejects.toBeInstanceOf(EntityNotFoundError);
             expect(organisationServiceMock.findOrganisationById).toHaveBeenCalledTimes(1);
-        });
-    });
-
-    describe('getParentsTree', () => {
-        it('should return the parents tree', async () => {
-            const rootOrg: Organisation<true> = DoFactory.createOrganisation(true, {
-                typ: OrganisationsTyp.ROOT,
-                id: faker.string.uuid(),
-            });
-            const childOrg: Organisation<true> = DoFactory.createOrganisation(true, {
-                typ: OrganisationsTyp.SCHULE,
-                id: faker.string.uuid(),
-                zugehoerigZu: rootOrg.id,
-                administriertVon: rootOrg.id,
-            });
-            const organisationen: Array<Organisation<true>> = [rootOrg, childOrg];
-            organisationRepositoryMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue(organisationen);
-
-            const result: ParentsTreeResponse = await organisationController.getParentsTree({
-                organisationId: childOrg.id,
-            });
-
-            expect(result).toBeInstanceOf(ParentsTreeResponse);
-            expect(result.parentsTree.length).toBe(organisationen.length);
         });
     });
 

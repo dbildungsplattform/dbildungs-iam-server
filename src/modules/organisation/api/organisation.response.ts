@@ -41,9 +41,6 @@ export class OrganisationResponse {
     @ApiProperty()
     public version: number;
 
-    @ApiProperty()
-    public readonly emailAdress?: string;
-
     public constructor(organisation: Organisation<true>) {
         this.id = organisation.id;
         this.administriertVon = organisation.administriertVon;
@@ -56,6 +53,5 @@ export class OrganisationResponse {
         this.traegerschaft = organisation.traegerschaft;
         this.itslearningEnabled = organisation.itslearningEnabled;
         this.version = organisation.version;
-        this.emailAdress = organisation.emailAdress;
     }
 }

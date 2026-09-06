@@ -14,7 +14,6 @@ import {
     UseFilters,
     UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
@@ -31,35 +30,35 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Paged, PagingHeadersObject } from '../../../shared/paging/index.js';
 import { PagedResponse } from '../../../shared/paging/paged.response.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
+import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { OrganisationByIdParams } from './organisation-by-id.params.js';
+import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
+import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
+import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { Organisation } from '../domain/organisation.js';
+import { OrganisationResponse } from './organisation.response.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
+import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { DbiamOrganisationError } from './dbiam-organisation.error.js';
+import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
+import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { ConfigService } from '@nestjs/config';
+import { ServerConfig } from '../../../shared/config/server.config.js';
+import { OrganisationService } from '../domain/organisation.service.js';
+import { DataConfig } from '../../../shared/config/data.config.js';
+import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
+import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
+import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
+import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationService } from '../domain/organisation.service.js';
 import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
-import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
-import { DbiamOrganisationError } from './dbiam-organisation.error.js';
-import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
-import { OrganisationByIdParams } from './organisation-by-id.params.js';
-import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
-import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
-import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
-import { ParentOrganisationenResponse } from './organisation.parents.response.js';
-import { OrganisationResponse } from './organisation.response.js';
-import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
-import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
-import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
-import { ParentsTreeResponse } from './parents-tree.response.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 @UseFilters(new OrganisationExceptionFilter())
 @ApiTags('organisationen')
@@ -231,20 +230,6 @@ export class OrganisationController {
             body.organisationIds,
         );
         return new ParentOrganisationenResponse(organisationen);
-    }
-
-    @Get(':organisationId/parents-tree')
-    @ApiOkResponse({
-        description: 'The parent organizations tree was successfully pulled.',
-        type: ParentsTreeResponse,
-    })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to get the organizations.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permissions to get the organizations.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting the organization.' })
-    public async getParentsTree(@Param() params: OrganisationByIdParams): Promise<ParentsTreeResponse> {
-        const organisationen: Organisation<true>[] =
-            await this.organisationRepository.findParentOrgasForIdSortedByDepthAsc(params.organisationId);
-        return new ParentsTreeResponse(organisationen);
     }
 
     @Get(':organisationId')
