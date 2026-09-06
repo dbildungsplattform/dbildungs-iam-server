@@ -42,10 +42,12 @@ import {
     ManageableServiceProviderWithReferencedObjects,
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from '../domain/types.js';
+import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderApiModule } from '../service-provider-api.module.js';
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
 import { CreateServiceProviderResponse } from './create-service-provider.response.js';
+import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
 import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
 import { ManageableServiceProvidersForOrganisationParams } from './manageable-service-providers-for-organisation.params.js';
@@ -541,7 +543,7 @@ describe('Provider Controller Test', () => {
         });
     });
 
-    describe('getAvailableServiceProviders', () => {
+    describe('getMyServiceProviders', () => {
         let pk: Personenkontext<true>;
         let rolleId: string;
         let spId: string;
@@ -581,6 +583,95 @@ describe('Provider Controller Test', () => {
                 expect(serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen).toHaveBeenCalledWith([
                     { organisationId: pk.organisationId, rolleId: pk.rolleId },
                 ]);
+            });
+        });
+    });
+
+    describe('getAvailableServiceProviders', () => {
+        describe('when organisationId and systemrecht match', () => {
+            beforeEach(() => {
+                vi.clearAllMocks();
+            });
+
+            it('should call the special rollenerweiterung provider lookup', async () => {
+                const organisationId: string = faker.string.uuid();
+                const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+                Object.assign(queryParams, {
+                    organisationId,
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                    offset: 3,
+                    limit: 25,
+                });
+
+                serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([
+                    [serviceProvider],
+                    1,
+                ]);
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
+                    organisationId,
+                    personPermissionsMock,
+                );
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(1);
+                expect(result.offset).toBe(3);
+                expect(result.limit).toBe(25);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0]).toBeInstanceOf(ServiceProviderResponse);
+                expect(result.items[0]?.id).toBe(serviceProvider.id);
+            });
+        });
+
+        describe('when organisationId is missing', () => {
+            beforeEach(() => {
+                vi.clearAllMocks();
+            });
+
+            it('should not use the organisation-scoped rollenerweiterung lookup', async () => {
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+                Object.assign(queryParams, {
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                    offset: 4,
+                    limit: 12,
+                });
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(
+                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
+                ).not.toHaveBeenCalled();
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(0);
+                expect(result.offset).toBe(4);
+                expect(result.limit).toBe(12);
+                expect(result.items).toHaveLength(0);
+            });
+        });
+
+        describe('when systemrechte are missing', () => {
+            beforeEach(() => {
+                vi.clearAllMocks();
+            });
+
+            it('should not use the organisation-scoped rollenerweiterung lookup and should apply default paging', async () => {
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(
+                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
+                ).not.toHaveBeenCalled();
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(0);
+                expect(result.offset).toBe(0);
+                expect(result.limit).toBe(0);
+                expect(result.items).toHaveLength(0);
             });
         });
     });

@@ -81,7 +81,7 @@ import { ServiceProviderErrorFilter } from './service-provider-exception.filter.
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
 import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
-import { Paged, PagedResponse } from '../../../shared/paging/index.js';
+import { Paged } from '../../../shared/paging/index.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 
 @UseFilters(ServiceProviderErrorFilter)
@@ -137,9 +137,8 @@ export class ProviderController {
 
     @Get()
     @ApiOperation({ description: 'Get service-providers.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(ServiceProviderResponse, {
         description: 'The service-providers were successfully returned.',
-        type: [ServiceProviderResponse],
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available service providers.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers.' })
@@ -147,7 +146,7 @@ export class ProviderController {
     public async getAvailableServiceProviders(
         @Query() queryParams: FindAngeboteQueryParams,
         @Permissions() permissions: PersonPermissions,
-    ): Promise<PagedResponse<ServiceProviderResponse>> {
+    ): Promise<RawPagedResponse<ServiceProviderResponse>> {
         let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
 
         if (
@@ -174,7 +173,7 @@ export class ProviderController {
             items: serviceProviderResponses,
         };
 
-        return new PagedResponse(pagedResponse);
+        return new RawPagedResponse(pagedResponse);
     }
 
     @Get('my-providers')
