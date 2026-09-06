@@ -42,7 +42,7 @@ export class OrganisationResponse {
     public version: number;
 
     @ApiProperty()
-    public readonly emailAdresse?: string;
+    public readonly emailAdress?: string;
 
     public constructor(organisation: Organisation<true>) {
         this.id = organisation.id;
@@ -56,6 +56,6 @@ export class OrganisationResponse {
         this.traegerschaft = organisation.traegerschaft;
         this.itslearningEnabled = organisation.itslearningEnabled;
         this.version = organisation.version;
-        this.emailAdresse = organisation.emailAdress;
+        this.emailAdress = organisation.emailAdress;
     }
 }
