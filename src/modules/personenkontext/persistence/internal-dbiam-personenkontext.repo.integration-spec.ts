@@ -258,7 +258,9 @@ describe('dbiam Personenkontext Repo', () => {
                     organisationId: organisation.id,
                 });
                 const savedPersonenkontext: Personenkontext<true> = await sut.save(personenkontext);
-                await expect(sut.delete(savedPersonenkontext)).resolves.not.toThrow();
+
+                await sut.delete(savedPersonenkontext);
+
                 expect(await em.count(PersonenkontextEntity, { id: savedPersonenkontext.id })).toBe(0);
             });
         });

@@ -71,7 +71,8 @@ describe('OrganisationServiceProviderRepo', () => {
             const persistedOrganisation: Organisation<true> = await organisationRepo.save(organisation);
             const persistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
 
-            await expect(sut.save(persistedOrganisation, persistedServiceProvider)).resolves.not.toThrow();
+            await sut.save(persistedOrganisation, persistedServiceProvider);
+
             const count: number = await em.count(OrganisationServiceProviderEntity, {
                 organisation: persistedOrganisation.id,
                 serviceProvider: persistedServiceProvider.id,
