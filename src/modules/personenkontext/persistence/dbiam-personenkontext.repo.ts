@@ -160,7 +160,9 @@ export class DBiamPersonenkontextRepo {
                 permissions.hasSystemrechtAtOrganisation(organisationId, systemrecht),
             ),
         );
-        const hasAccessAtAnyKontext: boolean = (await Promise.all(accessChecks)).some((hasAccess: boolean) => hasAccess);
+        const hasAccessAtAnyKontext: boolean = (await Promise.all(accessChecks)).some(
+            (hasAccess: boolean) => hasAccess,
+        );
 
         if (!hasAccessAtAnyKontext) {
             return {
