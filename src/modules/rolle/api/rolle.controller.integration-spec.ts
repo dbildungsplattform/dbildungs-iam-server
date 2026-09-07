@@ -1177,7 +1177,7 @@ describe('Rolle API', () => {
                 response.body as PagedResponse<RolleWithServiceProvidersResponse>;
 
             expect(pagedResponse.items).toHaveLength(0);
-            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+            expect(permissionsMock.getOrgIdsWithSystemrecht).not.toHaveBeenCalledWith(
                 [RollenSystemRecht.IMPORT_DURCHFUEHREN],
                 true,
                 false,
