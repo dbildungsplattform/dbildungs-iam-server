@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import {
     OrganisationID,
     PersonID,
@@ -18,18 +19,17 @@ import { EntityAggregateMapper } from '../../person/mapper/entity-aggregate.mapp
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
 import { RolleEntity } from '../../rolle/entity/rolle.entity.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { mapEntityToAggregate as mapSPEntityToAggregate } from '../../service-provider/repo/service-provider-entity-mapper.js';
 import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
 import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { PersonenkontextErweitertVirtualEntity } from './personenkontext-erweitert.virtual.entity.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
 import { PersonenkontextScope } from './personenkontext.scope.js';
-import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { mapEntityToAggregate as mapSPEntityToAggregate } from '../../service-provider/repo/service-provider-entity-mapper.js';
 
 export type RollenCount = { rollenart: string; count: string };
 
@@ -163,6 +163,39 @@ export class DBiamPersonenkontextRepo {
         ).some((hasReadAccess: boolean) => hasReadAccess);
 
         if (!hasReadAccessAtAnyKontext) {
+            return {
+                ok: false,
+                error: new MissingPermissionsError('Access denied'),
+            };
+        }
+
+        return { ok: true, value: true };
+    }
+
+    public async hasPersonAnyManageableKontext(
+        personId: PersonID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<boolean, DomainError>> {
+        const personenKontexte: PersonenkontextEntity[] = await this.em.find(PersonenkontextEntity, {
+            personId,
+        });
+
+        if (personenKontexte.length === 0) {
+            return { ok: true, value: false };
+        }
+
+        const organisationIds: OrganisationID[] = [
+            ...new Set(personenKontexte.map((pk: PersonenkontextEntity) => pk.organisationId.id)),
+        ];
+        const hasManageAccessAtAnyKontext: boolean = (
+            await Promise.all(
+                organisationIds.map((organisationId: OrganisationID) =>
+                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.PERSONEN_VERWALTEN),
+                ),
+            )
+        ).includes(true);
+
+        if (!hasManageAccessAtAnyKontext) {
             return {
                 ok: false,
                 error: new MissingPermissionsError('Access denied'),

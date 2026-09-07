@@ -12,6 +12,8 @@ import { PersonPermissions } from '../../authentication/domain/person-permission
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
@@ -44,6 +46,7 @@ describe('ServiceProviderService', () => {
     let rollenerweiterungRepo: DeepMocked<RollenerweiterungRepo>;
     let serviceProviderRepo: DeepMocked<ServiceProviderRepo>;
     let organisationRepo: DeepMocked<OrganisationRepository>;
+    let dBiamPersonenkontextRepo: DeepMocked<DBiamPersonenkontextRepo>;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -54,6 +57,7 @@ describe('ServiceProviderService', () => {
                 { provide: RollenerweiterungRepo, useValue: createMock(RollenerweiterungRepo) },
                 { provide: ServiceProviderRepo, useValue: createMock(ServiceProviderRepo) },
                 { provide: OrganisationRepository, useValue: createMock(OrganisationRepository) },
+                { provide: DBiamPersonenkontextRepo, useValue: createMock(DBiamPersonenkontextRepo) },
                 { provide: VidisApiAdapter, useValue: createMock(VidisApiAdapter) },
                 { provide: OrganisationServiceProviderRepo, useValue: createMock(OrganisationServiceProviderRepo) },
             ],
@@ -63,6 +67,7 @@ describe('ServiceProviderService', () => {
         rollenerweiterungRepo = module.get<DeepMocked<RollenerweiterungRepo>>(RollenerweiterungRepo);
         serviceProviderRepo = module.get<DeepMocked<ServiceProviderRepo>>(ServiceProviderRepo);
         organisationRepo = module.get<DeepMocked<OrganisationRepository>>(OrganisationRepository);
+        dBiamPersonenkontextRepo = module.get<DeepMocked<DBiamPersonenkontextRepo>>(DBiamPersonenkontextRepo);
     });
 
     describe('getServiceProvidersByRolleIds', () => {
@@ -181,6 +186,56 @@ describe('ServiceProviderService', () => {
                     haveRollenerweiterungen ? organisations.length + serviceProviders.length : serviceProviders.length,
                 );
             });
+        });
+    });
+
+    describe('getServiceProvidersByPersonIdAuthorized', () => {
+        let personId: string;
+        let permissions: DeepMocked<PersonPermissions>;
+
+        beforeEach(() => {
+            personId = faker.string.uuid();
+            permissions = createMock(PersonPermissions);
+        });
+
+        it('returns the assigned service providers when the person is manageable', async () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderIds: [serviceProvider.id] });
+            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                personId,
+                rolleId: rolle.id,
+            });
+
+            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({ ok: true, value: true });
+            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
+            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
+            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
+            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
+
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonIdAuthorized(
+                personId,
+                permissions,
+            );
+
+            expectOkResult(result);
+            expect(result.value).toHaveLength(1);
+            expect(result.value[0]?.id).toBe(serviceProvider.id);
+            expect(dBiamPersonenkontextRepo.findByPerson).toHaveBeenCalledWith(personId);
+        });
+
+        it('returns the error when the person is not manageable', async () => {
+            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
+                ok: false,
+                error: new MissingPermissionsError('Access denied'),
+            });
+
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonIdAuthorized(
+                personId,
+                permissions,
+            );
+
+            expectErrResult(result);
+            expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
         });
     });
 

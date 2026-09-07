@@ -78,6 +78,7 @@ import { ManageableServiceProvidersForOrganisationParams } from './manageable-se
 import { ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
 import { RollenerweiterungByServiceProvidersIdPathParams } from './rollenerweiterung-by-service-provider-id.pathparams.js';
 import { RollenerweiterungByServiceProvidersIdQueryParams } from './rollenerweiterung-by-service-provider-id.queryparams.js';
+import { ServiceProviderByPersonIdParams } from './service-provider-by-person-id.params.js';
 import { ServiceProviderErrorFilter } from './service-provider-exception.filter.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
@@ -414,6 +415,31 @@ export class ProviderController {
             serviceProviderWithOrganisationRollenAndErweiterungen.rollen,
             serviceProviderWithOrganisationRollenAndErweiterungen.rollenerweiterungen.length > 0,
             serviceProviderWithOrganisationRollenAndErweiterungen.relevantSystemrechte,
+        );
+    }
+
+    // Declared after the static ':param'-less routes so it does not shadow them (e.g. 'manageable').
+    @Get(':personId')
+    @ApiOperation({ description: 'Get service-providers assigned to a given person.' })
+    @ApiOkResponse({
+        description: 'The service-providers were successfully returned.',
+        type: [ServiceProviderResponse],
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get service providers for the person.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers for the person.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting the service-providers.' })
+    public async getServiceProvidersByPersonId(
+        @Permissions() permissions: PersonPermissions,
+        @Param() params: ServiceProviderByPersonIdParams,
+    ): Promise<ServiceProviderResponse[]> {
+        const result: Result<ServiceProvider<true>[], DomainError> =
+            await this.serviceProviderService.getServiceProvidersByPersonIdAuthorized(params.personId, permissions);
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return result.value.map(
+            (serviceProvider: ServiceProvider<true>) => new ServiceProviderResponse(serviceProvider),
         );
     }
 
