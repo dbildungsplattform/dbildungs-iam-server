@@ -448,22 +448,7 @@ export class RolleFindService {
         if (selectedOrgas && selectedOrgas.length > 0) {
             return this.resolveOrganisationBoundsWithSelection(permittedOrgas, selectedOrgas);
         } else {
-            if (permittedOrgas.all) {
-                return { kind: OrganisationBoundsKind.UNBOUNDED };
-            }
-
-            const selectedOrgasWithParents: OrganisationID[] = await this.getOrganisationIdsWithParents(
-                permittedOrgas.orgaIds,
-            );
-            if (selectedOrgasWithParents.length === 0) {
-                return { kind: OrganisationBoundsKind.EMPTY };
-            }
-
-            return {
-                selectedAndPermittedOrgas: permittedOrgas.orgaIds,
-                selectedAndPermittedOrgasWithParents: selectedOrgasWithParents,
-                kind: OrganisationBoundsKind.BOUNDED,
-            };
+            return this.resolveOrganisationBoundsWithoutSelection(permittedOrgas);
         }
     }
 
@@ -483,6 +468,27 @@ export class RolleFindService {
 
         return {
             selectedAndPermittedOrgas: narrowedSelection,
+            selectedAndPermittedOrgasWithParents: selectedOrgasWithParents,
+            kind: OrganisationBoundsKind.BOUNDED,
+        };
+    }
+
+    private async resolveOrganisationBoundsWithoutSelection(
+        permittedOrgas: PermittedOrgas,
+    ): Promise<OrganisationBounds> {
+        if (permittedOrgas.all) {
+            return { kind: OrganisationBoundsKind.UNBOUNDED };
+        }
+
+        const selectedOrgasWithParents: OrganisationID[] = await this.getOrganisationIdsWithParents(
+            permittedOrgas.orgaIds,
+        );
+        if (selectedOrgasWithParents.length === 0) {
+            return { kind: OrganisationBoundsKind.EMPTY };
+        }
+
+        return {
+            selectedAndPermittedOrgas: permittedOrgas.orgaIds,
             selectedAndPermittedOrgasWithParents: selectedOrgasWithParents,
             kind: OrganisationBoundsKind.BOUNDED,
         };
