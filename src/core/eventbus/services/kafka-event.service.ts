@@ -17,6 +17,8 @@ import { ConfigService } from '@nestjs/config';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
+import { EventHandlerFailedError } from '../error/handler-failed.error.js';
+import { EventHandlerTimeoutError } from '../error/handler-timeout.error.js';
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
@@ -163,7 +165,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                         this.logger.logUnknownAsError(`Handler failed for event ${eventClass.name}`, err);
                         return {
                             ok: false,
-                            error: new Error('Unexpected handler error'),
+                            error: new EventHandlerFailedError(eventClass.name)
                         } satisfies Result<Error>;
                     }
                 },
@@ -270,7 +272,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                     );
                     resolve({
                         ok: false,
-                        error: new Error(`Handler timed out after ${timeoutMs}ms`),
+                        error: new EventHandlerTimeoutError<Event>(event, timeoutMs)
                     } satisfies Result<Error>);
                 }
             };
