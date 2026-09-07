@@ -836,6 +836,46 @@ describe('Rolle API', () => {
             );
         });
 
+        it('should return no rollen for import personenkontext if systemrecht is IMPORT_DURCHFUEHREN without orga ID', async () => {
+            const schule: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart: RollenArt.LEHR,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart: RollenArt.SYSADMIN,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle?systemrechte=IMPORT_DURCHFUEHREN`)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+
+            expect(pagedResponse.items).toHaveLength(0);
+            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
+                true,
+                false,
+            );
+        });
+
         it('should return rollen filtered by multiple systemrechte', async () => {
             const rolleA: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
             const rolleB: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
@@ -1889,9 +1929,7 @@ describe('Rolle API', () => {
                 }),
             );
 
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: true,
-            });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
@@ -1899,6 +1937,10 @@ describe('Rolle API', () => {
                 .send();
 
             expect(response.status).toBe(200);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                organisation.id,
+                RollenSystemRecht.ROLLEN_ERWEITERN,
+            );
             const serviceProviderResponse: ServiceProviderResponse[] = response.body as ServiceProviderResponse[];
             expect(serviceProviderResponse).toHaveLength(2);
         });
@@ -1917,10 +1959,7 @@ describe('Rolle API', () => {
                 throw Error();
             }
 
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [organisation.id],
-            });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
@@ -1932,42 +1971,15 @@ describe('Rolle API', () => {
             expect(serviceProviderResponse).toHaveLength(0);
         });
 
-        it('should return when no organisationId is provided', async () => {
-            const organisation: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: organisation.id,
-                    rollenart: RollenArt.LEHR,
-                }),
-            );
-            if (rolle instanceof DomainError) {
-                throw Error();
-            }
-
-            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            await rollenerweiterungRepo.create(
-                DoFactory.createRollenerweiterung(false, {
-                    organisationId: organisation.id,
-                    rolleId: rolle.id,
-                    serviceProviderId: serviceProvider.id,
-                }),
-            );
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [organisation.id],
-            });
+        it('should return 400 when no organisationId is provided', async () => {
+            const rolleId: string = faker.string.uuid();
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
+                .get(`/rolle/${rolleId}/angebote-via-rollenerweiterungen`)
                 .send();
 
-            expect(response.status).toBe(200);
-            const serviceProviderResponse: ServiceProviderResponse[] = response.body as ServiceProviderResponse[];
-            expect(serviceProviderResponse).toHaveLength(1);
+            expect(response.status).toBe(400);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
         });
 
         it('should return 404 if rolle does not exist', async () => {
@@ -1975,10 +1987,7 @@ describe('Rolle API', () => {
                 DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
             );
 
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
-                all: false,
-                orgaIds: [organisation.id],
-            });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/${faker.string.uuid()}/angebote-via-rollenerweiterungen`)
@@ -2001,10 +2010,7 @@ describe('Rolle API', () => {
             if (rolle instanceof DomainError) {
                 throw Error();
             }
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [],
-            });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
@@ -2014,7 +2020,7 @@ describe('Rolle API', () => {
             expect(response.status).toBe(404);
         });
 
-        it('should filter out rollenerweiterungen from organisations without permission', async () => {
+        it('should return 404 when user only has permission for another organisation', async () => {
             const organisation1: Organisation<true> = await organisationRepo.save(
                 DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
             );
@@ -2030,30 +2036,16 @@ describe('Rolle API', () => {
             if (rolle instanceof DomainError) {
                 throw Error();
             }
-            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            await rollenerweiterungRepo.create(
-                DoFactory.createRollenerweiterung(false, {
-                    organisationId: organisation2.id,
-                    rolleId: rolle.id,
-                    serviceProviderId: serviceProvider.id,
-                }),
+            permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
+                (organisationId: string): Promise<boolean> => Promise.resolve(organisationId === organisation1.id),
             );
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [organisation1.id],
-            });
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
+                .query({ organisationId: organisation2.id })
                 .send();
 
-            expect(response.status).toBe(200);
-
-            const serviceProviderResponse: ServiceProviderResponse[] = response.body as ServiceProviderResponse[];
-
-            expect(serviceProviderResponse).toHaveLength(0);
+            expect(response.status).toBe(404);
         });
     });
 

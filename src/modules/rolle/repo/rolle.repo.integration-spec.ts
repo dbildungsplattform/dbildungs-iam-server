@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { EntityManager, ForeignKeyConstraintViolationException, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
@@ -15,7 +15,7 @@ import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationID, ServiceProviderID } from '../../../shared/types/index.js';
+import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
@@ -26,6 +26,7 @@ import { ServiceProviderModule } from '../../service-provider/service-provider.m
 import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing-space.error.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
+import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
@@ -268,6 +269,46 @@ describe('RolleRepo', () => {
             const rolleResult: Option<Rolle<true>> = await sut.findById(rolle.id);
             expect(rolleResult).toBeNull();
         });
+
+        it('should return technische rolle when includeTechnical is true', async () => {
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, { istTechnisch: true }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const rolleResult: Option<Rolle<true>> = await sut.findById(rolle.id, true);
+            expect(rolleResult).toBeDefined();
+            expect(rolleResult).toBeInstanceOf(Rolle);
+            expect(rolleResult?.id).toBe(rolle.id);
+        });
+    });
+
+    describe('findByIds', () => {
+        it('should return a map with all found rollen and skip missing ids', async () => {
+            const rolleA: Rolle<true> | DomainError = await sut.save(DoFactory.createRolle(false));
+            const rolleB: Rolle<true> | DomainError = await sut.save(DoFactory.createRolle(false));
+            if (rolleA instanceof DomainError || rolleB instanceof DomainError) {
+                throw Error();
+            }
+
+            const missingId: RolleID = faker.string.uuid();
+            const result: Map<string, Rolle<true>> = await sut.findByIds([rolleA.id, rolleB.id, missingId]);
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(2);
+            expect(result.has(rolleA.id)).toBe(true);
+            expect(result.has(rolleB.id)).toBe(true);
+            expect(result.has(missingId)).toBe(false);
+        });
+
+        it('should return an empty map for an empty id array', async () => {
+            const result: Map<string, Rolle<true>> = await sut.findByIds([]);
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
     });
 
     describe('findByIdAuthorized', () => {
@@ -422,6 +463,78 @@ describe('RolleRepo', () => {
 
             expect(rolleResult?.length).toBe(0);
             expect(total).toBe(0);
+        });
+
+        it('should fallback to ROLLEN_VERWALTEN when systemrechte are not provided', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            await sut.save(DoFactory.createRolle(false, { administeredBySchulstrukturknoten: organisationId }));
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
+                permissions,
+                undefined,
+                false,
+                undefined,
+                10,
+                0,
+            );
+
+            expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                [RollenSystemRecht.ROLLEN_VERWALTEN],
+                false,
+            );
+            expect(rolleResult).toHaveLength(1);
+            expect(total).toBe(1);
+        });
+
+        it('should restrict result to requested organisationIds', async () => {
+            const requestedOrganisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false),
+            );
+            const otherOrganisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false),
+            );
+
+            const requestedRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: requestedOrganisation.id,
+                    istTechnisch: false,
+                }),
+            );
+            const otherRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: otherOrganisation.id,
+                    istTechnisch: false,
+                }),
+            );
+
+            if (requestedRolle instanceof DomainError || otherRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
+                all: false,
+                orgaIds: [requestedOrganisation.id, otherOrganisation.id],
+            });
+
+            const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
+                permissions,
+                [],
+                false,
+                undefined,
+                10,
+                0,
+                [requestedOrganisation.id],
+            );
+
+            expect(total).toBe(1);
+            expect(rolleResult).toHaveLength(1);
+            expect(rolleResult[0]?.id).toBe(requestedRolle.id);
+            expect(rolleResult?.map((rolle: Rolle<true>) => rolle.id)).not.toContain(otherRolle.id);
         });
 
         it('should return the rollen when authorized on organisation', async () => {
@@ -1622,6 +1735,17 @@ describe('RolleRepo', () => {
             it('should rethrow unknown db exception', async () => {
                 vi.spyOn(em, 'flush').mockRejectedValueOnce(new Error('Unknown DB error'));
                 await expect(sut.deleteAuthorized(rolle.id, permissions)).rejects.toThrow('Unknown DB error');
+            });
+
+            it('should return RolleHatPersonenkontexteError on foreign key violations', async () => {
+                const foreignKeyError: ForeignKeyConstraintViolationException =
+                    new ForeignKeyConstraintViolationException(new Error('Foreign key violation'));
+                vi.spyOn(em, 'flush').mockRejectedValueOnce(foreignKeyError);
+
+                const result: Option<DomainError> = await sut.deleteAuthorized(rolle.id, permissions);
+
+                expect(result).toBeInstanceOf(RolleHatPersonenkontexteError);
+                await expect(sut.exists(rolle.id)).resolves.toBe(true);
             });
         });
 
