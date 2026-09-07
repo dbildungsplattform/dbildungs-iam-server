@@ -139,9 +139,10 @@ export class DBiamPersonenkontextRepo {
         return { ok: true, value: mapEntityToAggregate(personenkontext, this.personenkontextFactory) };
     }
 
-    public async hasPersonAnyReadableKontext(
+    private async hasAccessToAnyKontextOfPerson(
         personId: PersonID,
         permissions: IPersonPermissions,
+        systemrechte: RollenSystemRecht[],
     ): Promise<Result<boolean, DomainError>> {
         const personenKontexte: PersonenkontextEntity[] = await this.em.find(PersonenkontextEntity, {
             personId,
@@ -154,15 +155,14 @@ export class DBiamPersonenkontextRepo {
         const organisationIds: OrganisationID[] = [
             ...new Set(personenKontexte.map((pk: PersonenkontextEntity) => pk.organisationId.id)),
         ];
-        const hasReadAccessAtAnyKontext: boolean = (
-            await Promise.all(
-                organisationIds.map((organisationId: OrganisationID) =>
-                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.PERSONEN_LESEN),
-                ),
-            )
-        ).some((hasReadAccess: boolean) => hasReadAccess);
+        const accessChecks: Promise<boolean>[] = organisationIds.flatMap((organisationId: OrganisationID) =>
+            systemrechte.map((systemrecht: RollenSystemRecht) =>
+                permissions.hasSystemrechtAtOrganisation(organisationId, systemrecht),
+            ),
+        );
+        const hasAccessAtAnyKontext: boolean = (await Promise.all(accessChecks)).some((hasAccess: boolean) => hasAccess);
 
-        if (!hasReadAccessAtAnyKontext) {
+        if (!hasAccessAtAnyKontext) {
             return {
                 ok: false,
                 error: new MissingPermissionsError('Access denied'),
@@ -172,37 +172,18 @@ export class DBiamPersonenkontextRepo {
         return { ok: true, value: true };
     }
 
-    public async hasPersonAnyManageableKontext(
+    public hasPersonAnyReadableKontext(
         personId: PersonID,
         permissions: IPersonPermissions,
     ): Promise<Result<boolean, DomainError>> {
-        const personenKontexte: PersonenkontextEntity[] = await this.em.find(PersonenkontextEntity, {
-            personId,
-        });
+        return this.hasAccessToAnyKontextOfPerson(personId, permissions, [RollenSystemRecht.PERSONEN_LESEN]);
+    }
 
-        if (personenKontexte.length === 0) {
-            return { ok: true, value: false };
-        }
-
-        const organisationIds: OrganisationID[] = [
-            ...new Set(personenKontexte.map((pk: PersonenkontextEntity) => pk.organisationId.id)),
-        ];
-        const hasManageAccessAtAnyKontext: boolean = (
-            await Promise.all(
-                organisationIds.map((organisationId: OrganisationID) =>
-                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.PERSONEN_VERWALTEN),
-                ),
-            )
-        ).includes(true);
-
-        if (!hasManageAccessAtAnyKontext) {
-            return {
-                ok: false,
-                error: new MissingPermissionsError('Access denied'),
-            };
-        }
-
-        return { ok: true, value: true };
+    public hasPersonAnyManageableKontext(
+        personId: PersonID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<boolean, DomainError>> {
+        return this.hasAccessToAnyKontextOfPerson(personId, permissions, [RollenSystemRecht.PERSONEN_VERWALTEN]);
     }
 
     public async findByPerson(personId: PersonID): Promise<Personenkontext<true>[]> {
