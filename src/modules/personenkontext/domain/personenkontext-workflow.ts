@@ -232,12 +232,7 @@ export class PersonenkontextWorkflowAggregate {
             permissions,
             personalnummer,
         );
-        const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError = await pkUpdate.update();
-
-        if (updateResult instanceof PersonenkontexteUpdateError) {
-            return updateResult;
-        }
-        return updateResult;
+        return pkUpdate.update();
     }
 
     // Checks if the rolle can be assigned to the target organisation
@@ -288,8 +283,7 @@ export class PersonenkontextWorkflowAggregate {
         if (!hasVerwaltenPermissionAtOrga) {
             return new MissingPermissionsError('Unauthorized to manage persons at the organisation');
         }
-
-        return;
+        return undefined;
     }
 
     private async checkCreatePermissions(
@@ -333,7 +327,7 @@ export class PersonenkontextWorkflowAggregate {
             return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
         }
 
-        return;
+        return undefined;
     }
 
     private areRollenAllowedForLimitedCreation(
