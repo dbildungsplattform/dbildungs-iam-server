@@ -144,6 +144,25 @@ export class RollenerweiterungRepo {
         return rollenerweiterungen.map((entity: Loaded<RollenerweiterungEntity>) => this.mapEntityToAggregate(entity));
     }
 
+    public async findManyByOrganisationAndRolleAuthorized(
+        organisationId: OrganisationID,
+        rolleId: RolleID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Rollenerweiterung<true>[], MissingPermissionsError>> {
+        const isAuthorized: boolean = await permissions.hasSystemrechtAtOrganisation(
+            organisationId,
+            RollenSystemRecht.ROLLEN_ERWEITERN,
+        );
+        if (!isAuthorized) {
+            return Err(new MissingPermissionsError(`Missing systemrecht ${RollenSystemRecht.ROLLEN_ERWEITERN.name}.`));
+        }
+
+        const rollenerweiterungen: Rollenerweiterung<true>[] = await this.findManyByOrganisationAndRolle([
+            { organisationId, rolleId },
+        ]);
+        return Ok(rollenerweiterungen);
+    }
+
     public async findManyByRolleId(rolleId: RolleID): Promise<Array<Rollenerweiterung<true>>> {
         const rollenerweiterungEntities: Loaded<RollenerweiterungEntity>[] = await this.em.find(
             RollenerweiterungEntity,

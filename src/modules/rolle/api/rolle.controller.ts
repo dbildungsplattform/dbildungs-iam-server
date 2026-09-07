@@ -38,7 +38,6 @@ import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js'
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { Public } from '../../authentication/api/public.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
@@ -460,31 +459,23 @@ export class RolleController {
         @Query() queryParams: FindRollenerweiterungQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<ServiceProviderResponse[]> {
-        const rolleResult: Result<Rolle<true>> = await this.rolleRepo.findByIdAuthorized(params.rolleId, permissions);
-        if (!rolleResult.ok) {
-            throw new EntityNotFoundError('Rolle', params.rolleId);
-        }
-        const permittedOrgaIds: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht([
-            RollenSystemRecht.getByName(RollenSystemRechtEnum.ROLLEN_ERWEITERN),
-            RollenSystemRecht.getByName(RollenSystemRechtEnum.ROLLEN_VERWALTEN),
-        ]);
-
-        let rollenerweiterungen: Rollenerweiterung<true>[];
-        if (!queryParams.organisationId) {
-            rollenerweiterungen = await this.rollenerweiterungRepo.findManyByRolleId(params.rolleId);
-        } else {
-            rollenerweiterungen = await this.rollenerweiterungRepo.findManyByOrganisationAndRolle([
-                { organisationId: queryParams.organisationId, rolleId: params.rolleId },
-            ]);
-        }
-        if (!permittedOrgaIds.all) {
-            rollenerweiterungen = rollenerweiterungen.filter((re: Rollenerweiterung<true>) =>
-                permittedOrgaIds.orgaIds.includes(re.organisationId),
+        const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
+            await this.rollenerweiterungRepo.findManyByOrganisationAndRolleAuthorized(
+                queryParams.organisationId,
+                params.rolleId,
+                permissions,
             );
+        if (!rollenerweiterungenResult.ok) {
+            throw rollenerweiterungenResult.error;
+        }
+
+        const rolle: Rolle<true> | null | undefined = await this.rolleRepo.findById(params.rolleId);
+        if (!rolle) {
+            throw new EntityNotFoundError('Rolle', params.rolleId);
         }
 
         const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
-            rollenerweiterungen.map((re: Rollenerweiterung<true>) => re.serviceProviderId),
+            rollenerweiterungenResult.value.map((re: Rollenerweiterung<true>) => re.serviceProviderId),
         );
 
         return Array.from(serviceProviders.values()).map(
@@ -507,11 +498,6 @@ export class RolleController {
         @Body() body: ApplyRollenerweiterungChangesBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<void> {
-        const rolleResult: Result<Rolle<true>> = await this.rolleRepo.findByIdAuthorized(params.rolleId, permissions);
-        if (!rolleResult.ok) {
-            throw new EntityNotFoundError('Rolle', params.rolleId);
-        }
-
         const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
             await this.applyRollenerweiterungService.applyRollenerweiterungChangesForRolle(
                 params.organisationId,
