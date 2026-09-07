@@ -22,6 +22,7 @@ import { LdapSearchError } from './error/ldap-search.error.js';
 import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEntityType, LdapPersonEntry } from './ldap.types.js';
+import { LdapBindError } from './error/ldap-bind.error.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -295,7 +296,7 @@ export class LdapAdapter {
         } catch (err) {
             this.logger.logUnknownAsError(`Could not connect to LDAP`, err);
 
-            return { ok: false, error: new Error('LDAP bind FAILED') };
+            return { ok: false, error: new LdapBindError() };
         }
     }
 
