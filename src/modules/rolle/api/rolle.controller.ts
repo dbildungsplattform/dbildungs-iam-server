@@ -128,15 +128,15 @@ export class RolleController {
                 });
             }
         } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN)) {
-            rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized(
+            rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized({
                 permissions,
-                false,
-                queryParams.searchStr,
-                queryParams.limit,
-                queryParams.offset,
-                queryParams.organisationenForFilter,
-                queryParams.rolleIds,
-            );
+                includeTechnische: false,
+                searchStr: queryParams.searchStr,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+                organisationIds: queryParams.organisationenForFilter,
+                rolleIds: queryParams.rolleIds,
+            });
         } else if (
             // covers plain [ROLLEN_ERWEITERN], and the combo [ROLLEN_ERWEITERN, MPT_ROLLEN_VERWALTEN]
             systemrechteSet.has(RollenSystemRechtEnum.ROLLEN_ERWEITERN) &&

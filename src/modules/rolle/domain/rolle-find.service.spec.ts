@@ -458,15 +458,14 @@ describe('RolleFindService', () => {
 
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized(
-                permissionsMock,
+            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+                permissions: permissionsMock,
                 includeTechnische,
                 searchStr,
                 limit,
                 offset,
-                undefined,
                 rolleIds,
-            );
+            });
 
             expect(result[1]).toEqual(1);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
@@ -489,15 +488,15 @@ describe('RolleFindService', () => {
                 orgaIds: ['orga-1'],
             });
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized(
-                permissionsMock,
+            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+                permissions: permissionsMock,
                 includeTechnische,
                 searchStr,
                 limit,
                 offset,
-                ['orga-2'],
+                organisationIds: ['orga-2'],
                 rolleIds,
-            );
+            });
 
             expect(result).toEqual([[], 0]);
             expect(organisationRepoMock.findParentOrgasForIds).not.toHaveBeenCalled();
@@ -517,15 +516,14 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized(
-                permissionsMock,
+            await rolleFindService.findMptRollenAuthorized({
+                permissions: permissionsMock,
                 includeTechnische,
                 searchStr,
                 limit,
                 offset,
-                undefined,
                 rolleIds,
-            );
+            });
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
@@ -562,15 +560,15 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized(
-                permissionsMock,
+            await rolleFindService.findMptRollenAuthorized({
+                permissions: permissionsMock,
                 includeTechnische,
                 searchStr,
                 limit,
                 offset,
-                [],
+                organisationIds: [],
                 rolleIds,
-            );
+            });
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
@@ -607,15 +605,15 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized(
-                permissionsMock,
+            await rolleFindService.findMptRollenAuthorized({
+                permissions: permissionsMock,
                 includeTechnische,
                 searchStr,
                 limit,
                 offset,
-                ['orga-2', 'orga-3'],
+                organisationIds: ['orga-2', 'orga-3'],
                 rolleIds,
-            );
+            });
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-2']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({

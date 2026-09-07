@@ -39,6 +39,16 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
     offset?: number;
 }
 
+export interface FindMptRollenAuthorizedParams {
+    permissions: IPersonPermissions;
+    includeTechnische: boolean;
+    searchStr?: string;
+    limit?: number;
+    offset?: number;
+    organisationIds?: OrganisationID[];
+    rolleIds?: RolleID[];
+}
+
 enum OrganisationBoundsKind {
     EMPTY = 'EMPTY',
     BOUNDED = 'BOUNDED',
@@ -60,6 +70,12 @@ type UnboundedOrganisationBounds = {
 };
 
 type OrganisationBounds = EmptyOrganisationBounds | BoundedOrganisationBounds | UnboundedOrganisationBounds;
+
+enum MptPolicy {
+    INCLUDE = 'INCLUDE',
+    EXCLUDE = 'EXCLUDE',
+    REQUIRE = 'REQUIRE',
+}
 
 interface FindRollenForPersonenImportParams {
     permissions: IPersonPermissions;
@@ -107,7 +123,7 @@ export class RolleFindService {
                         organisationBounds.selectedAndPermittedOrgas,
                         params.rollenArten,
                     );
-                    const shouldExcludeMptRollen: boolean = await this.shouldExcludeMptRollen(
+                    const mptPolicy: MptPolicy = await this.resolveMptPolicy(
                         params.permissions,
                         params.requestedSystemrechte,
                         organisationBounds.selectedAndPermittedOrgas,
@@ -118,13 +134,13 @@ export class RolleFindService {
                             allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
                             rollenArten,
                         },
-                        shouldExcludeMptRollen,
+                        mptPolicy,
                     );
                 }
                 break;
             case OrganisationBoundsKind.UNBOUNDED:
                 {
-                    const shouldExcludeMptRollen: boolean = await this.shouldExcludeMptRollen(
+                    const mptPolicy: MptPolicy = await this.resolveMptPolicy(
                         params.permissions,
                         params.requestedSystemrechte,
                     );
@@ -134,7 +150,7 @@ export class RolleFindService {
                             allowedOrganisationIds: undefined,
                             rollenArten: params.rollenArten,
                         },
-                        shouldExcludeMptRollen,
+                        mptPolicy,
                     );
                 }
                 break;
@@ -176,7 +192,7 @@ export class RolleFindService {
                 allowedOrganisationIds,
                 rollenArten,
             },
-            true,
+            MptPolicy.EXCLUDE,
         );
 
         return this.rolleRepo.findBy(rolleFindByParams);
@@ -243,12 +259,12 @@ export class RolleFindService {
 
         let rollenArten: RollenArt[] | undefined;
         let allowedOrganisationIds: OrganisationID[] | undefined;
-        let shouldExcludeMptRollen: boolean;
+        let mptPolicy: MptPolicy;
         switch (organisationBounds.kind) {
             case OrganisationBoundsKind.BOUNDED:
                 rollenArten = await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas);
                 allowedOrganisationIds = organisationBounds.selectedAndPermittedOrgasWithParents;
-                shouldExcludeMptRollen = await this.shouldExcludeMptRollen(
+                mptPolicy = await this.resolveMptPolicy(
                     params.permissions,
                     params.requestedSystemrechte,
                     organisationBounds.selectedAndPermittedOrgas,
@@ -257,10 +273,7 @@ export class RolleFindService {
             case OrganisationBoundsKind.UNBOUNDED:
                 rollenArten = undefined;
                 allowedOrganisationIds = undefined;
-                shouldExcludeMptRollen = await this.shouldExcludeMptRollen(
-                    params.permissions,
-                    params.requestedSystemrechte,
-                );
+                mptPolicy = await this.resolveMptPolicy(params.permissions, params.requestedSystemrechte);
                 break;
             case OrganisationBoundsKind.EMPTY:
                 return [[], 0];
@@ -269,42 +282,32 @@ export class RolleFindService {
         const rolleFindByParams: RolleFindByParameters = this.createRolleFindByParams(
             params,
             { allowedOrganisationIds, rollenArten },
-            shouldExcludeMptRollen,
+            mptPolicy,
         );
 
         return this.rolleRepo.findBy(rolleFindByParams);
     }
 
-    public async findMptRollenAuthorized(
-        permissions: IPersonPermissions,
-        includeTechnische: boolean,
-        searchStr?: string,
-        limit?: number,
-        offset?: number,
-        organisationIds?: OrganisationID[],
-        rolleIds?: RolleID[],
-    ): Promise<Counted<Rolle<true>>> {
-        const orgIdsWithRecht: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
+    public async findMptRollenAuthorized(params: FindMptRollenAuthorizedParams): Promise<Counted<Rolle<true>>> {
+        const orgIdsWithRecht: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
             true,
         );
         const organisationBounds: OrganisationBounds = await this.resolveOrganisationBounds(
             orgIdsWithRecht,
-            organisationIds,
+            params.organisationIds,
         );
 
         const sharedParams: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'> =
             {
-                includeTechnische,
-                searchStr,
-                limit,
-                offset,
-                rolleIds,
+                includeTechnische: params.includeTechnische,
+                searchStr: params.searchStr,
+                limit: params.limit,
+                offset: params.offset,
+                rolleIds: params.rolleIds,
                 requireMerkmale: [RollenMerkmal.MPT_ROLLE],
                 orderBy: 'artAndName',
             };
-        const shouldExcludeMptRollen: boolean = false;
-
         let rolleFindByParams: RolleFindByParameters;
         switch (organisationBounds.kind) {
             case OrganisationBoundsKind.EMPTY:
@@ -316,7 +319,7 @@ export class RolleFindService {
                         allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
                         rollenArten: await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas),
                     },
-                    shouldExcludeMptRollen,
+                    MptPolicy.REQUIRE,
                 );
                 break;
             case OrganisationBoundsKind.UNBOUNDED:
@@ -326,7 +329,7 @@ export class RolleFindService {
                         allowedOrganisationIds: undefined,
                         rollenArten: undefined,
                     },
-                    shouldExcludeMptRollen,
+                    MptPolicy.REQUIRE,
                 );
         }
 
@@ -345,7 +348,7 @@ export class RolleFindService {
             merkmale,
         }: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'>,
         { allowedOrganisationIds, rollenArten }: Pick<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten'>,
-        shouldExcludeMptRollen: boolean = true,
+        mptPolicy: MptPolicy = MptPolicy.EXCLUDE,
     ): RolleFindByParameters {
         const params: RolleFindByParameters = {
             includeTechnische,
@@ -359,23 +362,30 @@ export class RolleFindService {
             allowedOrganisationIds,
             rollenArten,
         };
-        if (shouldExcludeMptRollen) {
-            params.excludeMerkmale = [RollenMerkmal.MPT_ROLLE];
+        switch (mptPolicy) {
+            case MptPolicy.INCLUDE:
+                break;
+            case MptPolicy.EXCLUDE:
+                params.excludeMerkmale = [RollenMerkmal.MPT_ROLLE];
+                break;
+            case MptPolicy.REQUIRE:
+                params.requireMerkmale = [RollenMerkmal.MPT_ROLLE];
+                break;
         }
         return params;
     }
 
-    private async shouldExcludeMptRollen(
+    private async resolveMptPolicy(
         permissions: IPersonPermissions,
         requestedSystemrechte?: RollenSystemRecht[],
         selectedAndPermittedOrgas?: Array<OrganisationID>,
-    ): Promise<boolean> {
-        const shouldIncludeMPTRollen: boolean = await this.shouldIncludeMptRollen(
+    ): Promise<MptPolicy> {
+        const shouldIncludeMptRollen: boolean = await this.shouldIncludeMptRollen(
             permissions,
             requestedSystemrechte,
             selectedAndPermittedOrgas,
         );
-        return !shouldIncludeMPTRollen;
+        return shouldIncludeMptRollen ? MptPolicy.INCLUDE : MptPolicy.EXCLUDE;
     }
 
     private async shouldIncludeMptRollen(
