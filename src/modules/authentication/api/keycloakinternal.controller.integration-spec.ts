@@ -591,6 +591,7 @@ describe('KeycloakInternalController', () => {
             expect(result.personenkontexte).toEqual([
                 { dienststellennr: pkExternalData[0]?.kennung, rolleId: pkExternalData[0]?.rolleId },
             ]);
+            expect(result.dienststellenNummern).toEqual([pkExternalData[0]?.kennung]);
             expect(result.emailAdresse).toBeUndefined();
             expect(result.oxLoginId).toBeUndefined();
         });
