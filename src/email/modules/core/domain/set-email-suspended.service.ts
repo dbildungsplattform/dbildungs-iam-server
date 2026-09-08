@@ -52,18 +52,24 @@ export class SetEmailSuspendedService {
         });
         await Promise.all(eligibleAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.save(a)));
 
-        // Remove user from OX groups if we have an OX id
-        const oxUserCounter: string | undefined = eligibleAddresses.find(
-            (a: EmailAddress<true>) => a.oxUserCounter,
-        )?.oxUserCounter;
+        if (this.oxAdapter.useOx()) {
+            // Remove user from OX groups if we have an OX id
+            const oxUserCounter: string | undefined = eligibleAddresses.find(
+                (a: EmailAddress<true>) => a.oxUserCounter,
+            )?.oxUserCounter;
 
-        if (oxUserCounter) {
-            this.logger.info(`Removing user ${params.spshPersonId} from all OX groups.`);
-            const result: Result<void> = await this.oxAdapter.setUserOxGroups(oxUserCounter, []);
+            if (oxUserCounter) {
+                this.logger.info(`Removing user ${params.spshPersonId} from all OX groups.`);
+                const result: Result<void> = await this.oxAdapter.setUserOxGroups(oxUserCounter, []);
 
-            if (!result.ok) {
-                this.logger.logUnknownAsError('Error while removing user from OX groups.', result.error);
+                if (!result.ok) {
+                    this.logger.logUnknownAsError('Error while removing user from OX groups.', result.error);
+                }
             }
+        } else {
+            this.logger.info(
+                `Ox is disabled -> skip removing OX groups from user - spshPersonId=${params.spshPersonId}`,
+            );
         }
 
         // Webhook update

@@ -208,6 +208,7 @@ describe('SetEmailSuspendedService', () => {
                     undefined,
                     oxUserCounter,
                 );
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
 
                 await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
@@ -225,6 +226,7 @@ describe('SetEmailSuspendedService', () => {
                     undefined,
                     undefined,
                 );
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
 
                 await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
@@ -243,6 +245,7 @@ describe('SetEmailSuspendedService', () => {
                     faker.string.numeric(6),
                 );
 
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
                 const error: OxError = new OxError('Could not set groups');
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Err(error));
 
@@ -253,6 +256,25 @@ describe('SetEmailSuspendedService', () => {
                     'Error while removing user from OX groups.',
                     error,
                 );
+            });
+
+            it('should not set OX-groups if OX is disabled', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    faker.string.numeric(6),
+                );
+                oxAdapterMock.useOx.mockReturnValueOnce(false);
+                oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
+
+                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+
+                expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
+                expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('Ox is disabled'));
             });
         });
     });
