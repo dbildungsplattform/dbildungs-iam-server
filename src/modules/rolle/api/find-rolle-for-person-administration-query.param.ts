@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsArray, IsEnum, IsIn, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
+import { PagedQueryParams } from '../../../shared/paging/paged.query.params.js';
 
-export class FindRolleForPersonAdministrationQueryParams {
+export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParams {
     @IsOptional()
     @IsString()
     @ApiProperty({
@@ -12,22 +13,6 @@ export class FindRolleForPersonAdministrationQueryParams {
         required: false,
     })
     public readonly searchStr?: string;
-
-    @IsOptional()
-    @IsNumber()
-    @ApiProperty({
-        description: 'The limit of items for the request.',
-        required: false,
-    })
-    public readonly limit?: number;
-
-    @IsOptional()
-    @IsNumber()
-    @ApiProperty({
-        description: 'The offset of items for the request.',
-        required: false,
-    })
-    public readonly offset?: number;
 
     @IsOptional()
     @IsArray()
