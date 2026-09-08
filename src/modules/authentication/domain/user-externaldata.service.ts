@@ -36,7 +36,7 @@ export type UserExternalData = OptionalEmailData & {
     personId: string;
     vorname: string;
     nachname: string;
-    rollenart: RollenArt;
+    rollenart?: RollenArt;
     personenkontexte: Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[];
 };
 
@@ -73,7 +73,7 @@ export class UserExternaldataService {
             return permissionCheckResult;
         }
 
-        const rollenartResult: Result<RollenArt, MultipleRollenartenError> =
+        const rollenartResult: Result<RollenArt | undefined, MultipleRollenartenError> =
             this.getSingleRollenart(permittedPersonenkontexte);
         if (!rollenartResult.ok) {
             return rollenartResult;
@@ -193,7 +193,7 @@ export class UserExternaldataService {
 
     private getSingleRollenart(
         permittedPersonenkontexte: PermittedPersonenkontext[],
-    ): Result<RollenArt, MultipleRollenartenError> {
+    ): Result<RollenArt | undefined, MultipleRollenartenError> {
         const uniqueRollenarten: RollenArt[] = uniq(
             permittedPersonenkontexte.map((pk: PermittedPersonenkontext) => pk.rollenart),
         );
@@ -201,8 +201,9 @@ export class UserExternaldataService {
             return Err(new MultipleRollenartenError(uniqueRollenarten));
         }
 
-        // safe: permittedPersonenkontexte is non-empty here, so uniqueRollenarten has exactly one entry
-        return Ok(uniqueRollenarten[0] as RollenArt);
+        const singleRollenArt: RollenArt | undefined = uniqueRollenarten[0];
+
+        return Ok(singleRollenArt);
     }
 
     private async resolveEmailData(
@@ -213,10 +214,6 @@ export class UserExternaldataService {
             return Ok({});
         }
 
-        return this.resolveEmailDataFromMicroservice(personId);
-    }
-
-    private async resolveEmailDataFromMicroservice(personId: string): Promise<Result<OptionalEmailData, DomainError>> {
         const response: Result<EmailAddressResponse | undefined, DomainError> =
             await this.emailResolverService.findEmailBySpshPersonAsEmailAddressResponse(personId);
         if (!response.ok) {
