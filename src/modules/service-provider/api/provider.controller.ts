@@ -428,7 +428,7 @@ export class ProviderController {
     @ApiUnauthorizedResponse({ description: 'Not authorized to get service providers for the person.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers for the person.' })
     @ApiInternalServerErrorResponse({ description: 'Internal server error while getting the service-providers.' })
-    public async getServiceProvidersByPersonId(
+    public async getAssignedServiceProvidersByPersonId(
         @Permissions() permissions: PersonPermissions,
         @Param() params: ServiceProviderByPersonIdParams,
     ): Promise<ServiceProviderResponse[]> {

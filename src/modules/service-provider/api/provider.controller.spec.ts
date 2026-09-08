@@ -607,7 +607,7 @@ describe('Provider Controller Test', () => {
             });
 
             it('should return list of responses', async () => {
-                const spResponse: ServiceProviderResponse[] = await providerController.getServiceProvidersByPersonId(
+                const spResponse: ServiceProviderResponse[] = await providerController.getAssignedServiceProvidersByPersonId(
                     personPermissions,
                     { personId },
                 );
@@ -627,7 +627,7 @@ describe('Provider Controller Test', () => {
             );
 
             await expect(
-                providerController.getServiceProvidersByPersonId(personPermissions, { personId }),
+                providerController.getAssignedServiceProvidersByPersonId(personPermissions, { personId }),
             ).rejects.toBeInstanceOf(MissingPermissionsError);
         });
     });
