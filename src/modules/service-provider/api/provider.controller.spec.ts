@@ -616,6 +616,7 @@ describe('Provider Controller Test', () => {
                 expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
                     organisationId,
                     personPermissionsMock,
+                    queryParams.rollenArten,
                 );
                 expect(result).toBeInstanceOf(RawPagedResponse);
                 expect(result.total).toBe(1);
