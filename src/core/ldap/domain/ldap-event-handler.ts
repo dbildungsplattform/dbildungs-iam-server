@@ -50,6 +50,7 @@ import { EscalatedPersonPermissions } from '../../../modules/permission/escalate
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
 import { LdapEventInvalidEmailDomainError } from './error/ldap-event-invalid-email-domain.error.js';
+import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
 
 @Injectable()
 export class LdapEventHandler {
@@ -314,7 +315,7 @@ export class LdapEventHandler {
         );
 
         if (failureReasons.length > 0) {
-            return { ok: false, error: new Error(failureReasons.join(', ')) };
+            return { ok: false, error: new LdapEventAccumulatedFailuresError(failureReasons) };
         }
 
         return { ok: true, value: null };
