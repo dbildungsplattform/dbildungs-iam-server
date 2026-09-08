@@ -13,9 +13,9 @@ import { RolleModule } from '../rolle/rolle.module.js';
 import { AuthenticationController } from './api/authentication.controller.js';
 import { CsrfProtectionGuard } from './api/csrf-token.guard.js';
 import { KeycloakInternalController } from './api/keycloakinternal.controller.js';
+import { AuthenticationModule } from './authentication.module.js';
 import { PersonPermissionsRepo } from './domain/person-permission.repo.js';
 import { UserExternaldataWorkflowFactory } from './domain/user-extenaldata.factory.js';
-import { UserExternaldataService } from './domain/user-externaldata.service.js';
 import { InternalCommunicationApiKeyStrategy } from './passport/internalcommunicationapikey.strategy.js';
 import { JwtStrategy } from './passport/jwt.strategy.js';
 import { OpenIdConnectStrategy } from './passport/oidc.strategy.js';
@@ -35,6 +35,7 @@ import { SessionAccessTokenMiddleware } from './services/session-access-token.mi
         KeycloakAdministrationModule,
         EmailMicroserviceModule,
         EmailPersistenceModule,
+        AuthenticationModule,
     ],
     providers: [
         OpenIdConnectStrategy,
@@ -45,7 +46,6 @@ import { SessionAccessTokenMiddleware } from './services/session-access-token.mi
         PersonPermissionsRepo,
         SessionAccessTokenMiddleware,
         UserExternaldataWorkflowFactory,
-        UserExternaldataService,
         ExternalDataCacheInterceptor,
         CsrfTokenService,
         {
