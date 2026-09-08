@@ -149,7 +149,7 @@ describe('VidisSyncService', () => {
             vidisAngebotId,
             [],
             [],
-            undefined,
+            vidisKeycloakClientId,
         );
 
     const decodeVidisLogo = (offerLogo: string): DecodedVidisLogoResult =>
