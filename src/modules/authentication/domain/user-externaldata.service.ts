@@ -64,12 +64,13 @@ export class UserExternaldataService {
             person.id,
             keycloakClient,
         );
-        if (permittedPersonenkontexte.length === 0) {
-            return Err(
-                new MissingPermissionsError(
-                    `Person ${person.id} has no permission for Angebot with keycloakClient ${keycloakClient}`,
-                ),
-            );
+        const permissionCheckResult: Result<void, MissingPermissionsError> = this.checkPermission(
+            permittedPersonenkontexte,
+            person.id,
+            keycloakClient,
+        );
+        if (!permissionCheckResult.ok) {
+            return permissionCheckResult;
         }
 
         const rollenartResult: Result<RollenArt, MultipleRollenartenError> =
@@ -96,6 +97,22 @@ export class UserExternaldataService {
         };
 
         return Ok(userExternalData);
+    }
+
+    private checkPermission(
+        permittedPersonenkontexte: PermittedPersonenkontext[],
+        personId: PersonID,
+        keycloakClient: string,
+    ): Result<void, MissingPermissionsError> {
+        if (permittedPersonenkontexte.length === 0) {
+            return Err(
+                new MissingPermissionsError(
+                    `Person ${personId} has no permission for Angebot with keycloakClient ${keycloakClient}`,
+                ),
+            );
+        }
+
+        return Ok(undefined);
     }
 
     private mapToPersonenkontexte(
