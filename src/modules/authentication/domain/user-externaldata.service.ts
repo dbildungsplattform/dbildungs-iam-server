@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { uniq } from 'lodash-es';
-import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
+// invalid import
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
@@ -18,6 +18,12 @@ import {
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+
+interface EmailAddressInfo {
+    status: EmailAddressStatusEnum;
+    address: string;
+    oxLoginId: string;
+}
 
 type PermittedPersonenkontext = {
     dienststellennr: string;
@@ -214,7 +220,7 @@ export class UserExternaldataService {
             return Ok({});
         }
 
-        const response: Result<EmailAddressResponse | undefined, DomainError> =
+        const response: Result<EmailAddressInfo | undefined, DomainError> =
             await this.emailResolverService.findEmailBySpshPersonAsEmailAddressResponse(personId);
         if (!response.ok) {
             return response;
@@ -236,11 +242,11 @@ export class UserExternaldataService {
         });
     }
 
-    private isActiveEmail(response: EmailAddressResponse): boolean {
+    private isActiveEmail(response: EmailAddressInfo): boolean {
         return response.status === EmailAddressStatusEnum.ACTIVE;
     }
 
-    private isNotSuspendedEmail(response: EmailAddressResponse): boolean {
+    private isNotSuspendedEmail(response: EmailAddressInfo): boolean {
         return response.status !== EmailAddressStatusEnum.SUSPENDED;
     }
 }
