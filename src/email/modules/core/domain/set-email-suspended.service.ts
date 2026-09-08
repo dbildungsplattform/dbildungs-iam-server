@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
+import { EmailAppConfig } from '../../../../shared/config/email-app.config.js';
+import { OxAdapter } from '../../ox/adapter/domain/ox.adapter.js';
+import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailAddress } from './email-address.js';
-import { EmailAppConfig } from '../../../../shared/config/email-app.config.js';
-import { WebhookService } from '../../webhook/domain/webhook.service.js';
 
 @Injectable()
 export class SetEmailSuspendedService {
@@ -13,6 +14,7 @@ export class SetEmailSuspendedService {
 
     public constructor(
         private readonly emailAddressRepo: EmailAddressRepo,
+        private readonly oxAdapter: OxAdapter,
         private readonly logger: ClassLogger,
         private readonly webhookService: WebhookService,
         config: EmailAppConfig,
@@ -33,6 +35,7 @@ export class SetEmailSuspendedService {
             );
             return;
         }
+
         const eligibleAddresses: EmailAddress<true>[] = addresses.filter((a: EmailAddress<true>) => {
             if (a.priority > 1) {
                 this.logger.info(`Priority of email address ${a.address} is not 0 or 1. Skipping setting suspended`);
@@ -40,6 +43,7 @@ export class SetEmailSuspendedService {
             }
             return true;
         });
+
         eligibleAddresses.forEach((a: EmailAddress<true>) => {
             a.setStatus(EmailAddressStatusEnum.SUSPENDED);
             a.markedForCron ??= new Date(
@@ -47,6 +51,20 @@ export class SetEmailSuspendedService {
             );
         });
         await Promise.all(eligibleAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.save(a)));
+
+        // Remove user from OX groups if we have an OX id
+        const oxUserCounter: string | undefined = eligibleAddresses.find(
+            (a: EmailAddress<true>) => a.oxUserCounter,
+        )?.oxUserCounter;
+
+        if (oxUserCounter) {
+            this.logger.info(`Removing user ${params.spshPersonId} from all OX groups.`);
+            const result: Result<void> = await this.oxAdapter.setUserOxGroups(oxUserCounter, []);
+
+            if (!result.ok) {
+                this.logger.logUnknownAsError('Error while removing user from OX groups.', result.error);
+            }
+        }
 
         // Webhook update
         const previousPrimaryEmail: string | undefined = eligibleAddresses.find(

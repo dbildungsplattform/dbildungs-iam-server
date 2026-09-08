@@ -60,8 +60,14 @@ export abstract class OxBaseAction<ResponseBodyType, ResultType> {
     protected readonly xmlParser: XMLParser = new XMLParser({
         ignoreAttributes: false,
         removeNSPrefix: true,
+        jPath: true,
         isArray: (tagName: string, jPathOrMatcher: string | MatcherView, isLeafNode: boolean, isAttribute: boolean) =>
-            this.isArrayOverride(tagName, jPathOrMatcher, isLeafNode, isAttribute),
+            this.isArrayOverride(
+                tagName,
+                jPathOrMatcher as string, // Guaranteed to be string because we pass "jPath: true" above
+                isLeafNode,
+                isAttribute,
+            ),
     });
 
     public abstract action: string;
@@ -71,12 +77,7 @@ export abstract class OxBaseAction<ResponseBodyType, ResultType> {
     public abstract buildRequest(): object;
 
     // Customize parsing behaviour, see X2jOptions.isArray
-    public isArrayOverride(
-        _tagName: string,
-        _jPathOrMatcher: string | MatcherView,
-        _isLeafNode: boolean,
-        _isAttribute: boolean,
-    ): boolean {
+    public isArrayOverride(_tagName: string, _jPath: string, _isLeafNode: boolean, _isAttribute: boolean): boolean {
         return false;
     }
 
