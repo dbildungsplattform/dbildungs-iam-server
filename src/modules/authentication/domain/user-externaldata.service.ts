@@ -223,14 +223,24 @@ export class UserExternaldataService {
             return Ok({});
         }
 
-        const emailAdresse: string | undefined =
-            response.value.status === EmailAddressStatusEnum.ACTIVE ? response.value.address : undefined;
-        const oxLoginId: string | undefined =
-            response.value.status !== EmailAddressStatusEnum.SUSPENDED ? response.value.oxLoginId : undefined;
+        const emailAdresse: string | undefined = this.isActiveEmail(response.value)
+            ? response.value.address
+            : undefined;
+        const oxLoginId: string | undefined = this.isNotSuspendedEmail(response.value)
+            ? response.value.oxLoginId
+            : undefined;
 
         return Ok({
             emailAdresse: emailAdresse,
             oxLoginId: oxLoginId,
         });
+    }
+
+    private isActiveEmail(response: EmailAddressResponse): boolean {
+        return response.status === EmailAddressStatusEnum.ACTIVE;
+    }
+
+    private isNotSuspendedEmail(response: EmailAddressResponse): boolean {
+        return response.status !== EmailAddressStatusEnum.SUSPENDED;
     }
 }
