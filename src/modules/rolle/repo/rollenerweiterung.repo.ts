@@ -139,10 +139,12 @@ export class RollenerweiterungRepo {
             return [];
         }
         const rollenerweiterungen: Loaded<RollenerweiterungEntity>[] = await this.em.find(RollenerweiterungEntity, {
-            $or: query.map(({ organisationId, rolleId }: Pick<Rollenerweiterung<boolean>, 'organisationId' | 'rolleId'>) => ({
-                organisationId,
-                rolleId,
-            })),
+            $or: query.map(
+                ({ organisationId, rolleId }: Pick<Rollenerweiterung<boolean>, 'organisationId' | 'rolleId'>) => ({
+                    organisationId,
+                    rolleId,
+                }),
+            ),
         });
         return rollenerweiterungen.map((entity: Loaded<RollenerweiterungEntity>) => this.mapEntityToAggregate(entity));
     }
