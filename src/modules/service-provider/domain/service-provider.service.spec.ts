@@ -212,7 +212,7 @@ describe('ServiceProviderService', () => {
             rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
             serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
 
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonIdAuthorized(
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
                 personId,
                 permissions,
             );
@@ -229,7 +229,7 @@ describe('ServiceProviderService', () => {
                 error: new MissingPermissionsError('Access denied'),
             });
 
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonIdAuthorized(
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
                 personId,
                 permissions,
             );

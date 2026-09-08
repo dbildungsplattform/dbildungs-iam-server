@@ -541,50 +541,6 @@ describe('Provider Controller Test', () => {
         });
     });
 
-    describe('getAvailableServiceProviders', () => {
-        let pk: Personenkontext<true>;
-        let rolleId: string;
-        let spId: string;
-        let sp: ServiceProvider<true>;
-        let personPermissions: DeepMocked<PersonPermissions>;
-
-        beforeEach(() => {
-            rolleId = faker.string.uuid();
-            spId = faker.string.uuid();
-            sp = DoFactory.createServiceProvider(true, { id: spId });
-            pk = DoFactory.createPersonenkontext(true, { rolleId });
-            personPermissions = createMock(PersonPermissions);
-            personPermissions.getPersonenkontextIds.mockResolvedValueOnce([
-                { organisationId: pk.organisationId, rolleId: pk.rolleId },
-            ]);
-        });
-
-        describe.each([
-            ['found', true],
-            ['not found', false],
-        ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
-            beforeEach(() => {
-                serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen.mockResolvedValueOnce(
-                    hasFoundServiceProviders ? [sp] : [],
-                );
-            });
-            it('should return list of responses', async () => {
-                const spResponse: ServiceProviderResponse[] =
-                    await providerController.getAvailableServiceProviders(personPermissions);
-                expect(spResponse).toBeDefined();
-                expect(spResponse).toBeInstanceOf(Array);
-                if (hasFoundServiceProviders) {
-                    expect(spResponse).toHaveLength(1);
-                } else {
-                    expect(spResponse).toHaveLength(0);
-                }
-                expect(serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen).toHaveBeenCalledWith([
-                    { organisationId: pk.organisationId, rolleId: pk.rolleId },
-                ]);
-            });
-        });
-    });
-
     describe('getServiceProvidersByPersonId', () => {
         let personId: string;
         let sp: ServiceProvider<true>;
@@ -596,39 +552,81 @@ describe('Provider Controller Test', () => {
             personPermissions = createMock(PersonPermissions);
         });
 
-        describe.each([
-            ['found', true],
-            ['not found', false],
-        ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
+        describe('when requesting the own service-providers', () => {
+            let pk: Personenkontext<true>;
+
             beforeEach(() => {
-                serviceProviderServiceMock.getServiceProvidersByPersonIdAuthorized.mockResolvedValueOnce(
-                    Ok(hasFoundServiceProviders ? [sp] : []),
-                );
+                pk = DoFactory.createPersonenkontext(true);
+                Object.defineProperty(personPermissions, 'personFields', {
+                    get: () => ({ id: personId }),
+                    configurable: true,
+                });
             });
 
-            it('should return list of responses', async () => {
-                const spResponse: ServiceProviderResponse[] = await providerController.getAssignedServiceProvidersByPersonId(
-                    personPermissions,
-                    { personId },
-                );
+            describe.each([
+                ['found', true],
+                ['not found', false],
+            ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
+                beforeEach(() => {
+                    serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen.mockResolvedValueOnce(
+                        hasFoundServiceProviders ? [sp] : [],
+                    );
+                });
 
-                expect(spResponse).toBeInstanceOf(Array);
-                expect(spResponse).toHaveLength(hasFoundServiceProviders ? 1 : 0);
-                expect(serviceProviderServiceMock.getServiceProvidersByPersonIdAuthorized).toHaveBeenCalledWith(
-                    personId,
-                    personPermissions,
-                );
+                it('should return the available service-providers of the logged-in user', async () => {
+                    const spResponse: ServiceProviderResponse[] =
+                        await providerController.getServiceProvidersByPersonId(personPermissions, { personId });
+
+                    expect(spResponse).toBeInstanceOf(Array);
+                    expect(spResponse).toHaveLength(hasFoundServiceProviders ? 1 : 0);
+                    expect(
+                        serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen,
+                    ).toHaveBeenCalledWith([{ organisationId: pk.organisationId, rolleId: pk.rolleId }]);
+                    expect(serviceProviderServiceMock.getServiceProvidersByPersonId).not.toHaveBeenCalled();
+                });
             });
         });
 
-        it('should throw error when the service returns an error', async () => {
-            serviceProviderServiceMock.getServiceProvidersByPersonIdAuthorized.mockResolvedValueOnce(
-                Err(new MissingPermissionsError('Access denied')),
-            );
+        describe('when requesting the service-providers of another person', () => {
+            beforeEach(() => {
+                Object.defineProperty(personPermissions, 'personFields', {
+                    get: () => ({ id: faker.string.uuid() }),
+                    configurable: true,
+                });
+            });
 
-            await expect(
-                providerController.getAssignedServiceProvidersByPersonId(personPermissions, { personId }),
-            ).rejects.toBeInstanceOf(MissingPermissionsError);
+            describe.each([
+                ['found', true],
+                ['not found', false],
+            ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
+                beforeEach(() => {
+                    serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(
+                        Ok(hasFoundServiceProviders ? [sp] : []),
+                    );
+                });
+
+                it('should return list of responses', async () => {
+                    const spResponse: ServiceProviderResponse[] =
+                        await providerController.getServiceProvidersByPersonId(personPermissions, { personId });
+
+                    expect(spResponse).toBeInstanceOf(Array);
+                    expect(spResponse).toHaveLength(hasFoundServiceProviders ? 1 : 0);
+                    expect(serviceProviderServiceMock.getServiceProvidersByPersonId).toHaveBeenCalledWith(
+                        personId,
+                        personPermissions,
+                    );
+                });
+            });
+
+            it('should throw error when the service returns an error', async () => {
+                serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(
+                    Err(new MissingPermissionsError('Access denied')),
+                );
+
+                await expect(
+                    providerController.getServiceProvidersByPersonId(personPermissions, { personId }),
+                ).rejects.toBeInstanceOf(MissingPermissionsError);
+            });
         });
     });
 

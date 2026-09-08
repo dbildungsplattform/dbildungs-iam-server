@@ -58,46 +58,21 @@ export class ServiceProviderService {
         return Array.from(serviceProviders.values());
     }
 
-    public async getServiceProvidersByOrganisationenAndRollen(
-        ids: Array<{ organisationId: string; rolleId: string }>,
-    ): Promise<ServiceProvider<true>[]> {
-        const uniqueRollenIds: RolleID[] = uniq(
-            ids.map((idTuple: { organisationId: string; rolleId: string }) => idTuple.rolleId),
-        );
-        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
-        const serviceProviderIds: Set<ServiceProviderID> = new Set();
-        for (const rolle of rollen.values()) {
-            for (const id of rolle.serviceProviderIds) {
-                serviceProviderIds.add(id);
-            }
-        }
-
-        if (this.isFeatureRolleErweiternEnabled) {
-            const rollenerweiterungen: Array<Rollenerweiterung<true>> =
-                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids);
-            for (const rollenerweiterung of rollenerweiterungen) {
-                serviceProviderIds.add(rollenerweiterung.serviceProviderId);
-            }
-        }
-
-        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
-            Array.from(serviceProviderIds),
-        );
-
-        return Array.from(serviceProviders.values());
-    }
-
-    public async getServiceProvidersByPersonIdAuthorized(
+    public async getServiceProvidersByPersonId(
         personId: PersonID,
         permissions: IPersonPermissions,
     ): Promise<Result<ServiceProvider<true>[], DomainError>> {
-        const readableResult: Result<boolean, DomainError> =
-            await this.dBiamPersonenkontextRepo.hasPersonAnyManageableKontext(personId, permissions);
-        if (!readableResult.ok) {
-            return Err(readableResult.error);
+        if (personId !== permissions.personFields.id) {
+            // Requesting another person's service-providers (admin): authorized fetch.
+            const readableResult: Result<boolean, DomainError> =
+                await this.dBiamPersonenkontextRepo.hasPersonAnyManageableKontext(personId, permissions);
+            if (!readableResult.ok) {
+                return Err(readableResult.error);
+            }
         }
 
-        const personenkontexte: Personenkontext<true>[] = await this.dBiamPersonenkontextRepo.findByPerson(personId);
+        const personenkontexte: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
+            await this.dBiamPersonenkontextRepo.findByPerson(personId);
         const serviceProviders: ServiceProvider<true>[] =
             await this.getServiceProvidersByOrganisationenAndRollen(personenkontexte);
 
@@ -390,5 +365,34 @@ export class ServiceProviderService {
             organisation: organisationen.get(rollenerweiterung.organisationId)!,
             rolle: rollen.get(rollenerweiterung.rolleId)!,
         }));
+    }
+
+    private async getServiceProvidersByOrganisationenAndRollen(
+        ids: Array<{ organisationId: string; rolleId: string }>,
+    ): Promise<ServiceProvider<true>[]> {
+        const uniqueRollenIds: RolleID[] = uniq(
+            ids.map((idTuple: { organisationId: string; rolleId: string }) => idTuple.rolleId),
+        );
+        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
+        const serviceProviderIds: Set<ServiceProviderID> = new Set();
+        for (const rolle of rollen.values()) {
+            for (const id of rolle.serviceProviderIds) {
+                serviceProviderIds.add(id);
+            }
+        }
+
+        if (this.isFeatureRolleErweiternEnabled) {
+            const rollenerweiterungen: Array<Rollenerweiterung<true>> =
+                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids);
+            for (const rollenerweiterung of rollenerweiterungen) {
+                serviceProviderIds.add(rollenerweiterung.serviceProviderId);
+            }
+        }
+
+        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
+            Array.from(serviceProviderIds),
+        );
+
+        return Array.from(serviceProviders.values());
     }
 }
