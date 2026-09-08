@@ -3,12 +3,14 @@ import { uniq } from 'lodash-es';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { MultipleRollenartenError } from '../../../shared/error/multiple-rollenarten.error.js';
 import { PersonID, RolleID } from '../../../shared/types/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
     ErweiterterServiceProviderForPK,
@@ -42,16 +44,22 @@ export type UserExternalData = OptionalEmailData & {
 export class UserExternaldataService {
     public constructor(
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
+        private readonly personRepository: PersonRepository,
         private readonly emailResolverService: EmailResolverService,
     ) {}
 
     // Decorator an controller um MissingPermissionsError auf 403 zu mappend
 
     public async getExternalData(
-        person: Person<true>,
+        keycloakSub: string,
         keycloakClient: string,
         includeEmailAddress: boolean,
     ): Promise<Result<UserExternalData, DomainError>> {
+        const person: Option<Person<true>> = await this.personRepository.findByKeycloakUserId(keycloakSub);
+        if (!person) {
+            return Err(new EntityNotFoundError('Person', keycloakSub));
+        }
+
         const permittedPersonenkontexte: PermittedPersonenkontext[] = await this.findPermittedPersonenkontexte(
             person.id,
             keycloakClient,

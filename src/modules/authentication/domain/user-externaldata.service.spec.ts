@@ -4,11 +4,17 @@ import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddress } from '../../../email/modules/core/domain/email-address.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
-import { DomainError, MissingPermissionsError, MultipleRollenartenError } from '../../../shared/error/index.js';
+import {
+    DomainError,
+    EntityNotFoundError,
+    MissingPermissionsError,
+    MultipleRollenartenError,
+} from '../../../shared/error/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressNotFoundError } from '../../email/error/email-address-not-found.error.js';
 import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
     ExternalPkData,
@@ -20,6 +26,7 @@ import { UserExternalData, UserExternaldataService } from './user-externaldata.s
 describe('UserExternaldataService', () => {
     let sut: UserExternaldataService;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
+    let personRepositoryMock: DeepMocked<PersonRepository>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
 
     const oxContextId: string = 'test-context-id';
@@ -34,15 +41,26 @@ describe('UserExternaldataService', () => {
         ...props,
     });
 
+    const callGetExternalData = (
+        person: Person<true>,
+        client: string,
+        includeEmailAddress: boolean,
+    ): Promise<Result<UserExternalData, DomainError>> => {
+        personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+
+        return sut.getExternalData(person.keycloakUserId, client, includeEmailAddress);
+    };
+
     beforeEach(() => {
         vi.resetAllMocks();
 
         personenkontextRepoMock = createMock<DBiamPersonenkontextRepo>(DBiamPersonenkontextRepo);
+        personRepositoryMock = createMock<PersonRepository>(PersonRepository);
         emailResolverServiceMock = createMock<EmailResolverService>(EmailResolverService);
 
         personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
 
-        sut = new UserExternaldataService(personenkontextRepoMock, emailResolverServiceMock);
+        sut = new UserExternaldataService(personenkontextRepoMock, personRepositoryMock, emailResolverServiceMock);
     });
 
     it('should be defined', () => {
@@ -50,6 +68,22 @@ describe('UserExternaldataService', () => {
     });
 
     describe('getExternalData', () => {
+        it('should return EntityNotFoundError when no person is found for the given keycloak sub', async () => {
+            personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(undefined);
+
+            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                faker.string.uuid(),
+                keycloakClient,
+                false,
+            );
+
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error).toBeInstanceOf(EntityNotFoundError);
+            }
+            expect(personenkontextRepoMock.findExternalPkData).not.toHaveBeenCalled();
+        });
+
         it('should return MissingPermissionsError when no Personenkontext grants permission for the Angebot', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
@@ -58,7 +92,7 @@ describe('UserExternaldataService', () => {
                 }),
             ]);
 
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
                 keycloakClient,
                 false,
@@ -83,7 +117,7 @@ describe('UserExternaldataService', () => {
                 }),
             ]);
 
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
                 keycloakClient,
                 false,
@@ -109,7 +143,7 @@ describe('UserExternaldataService', () => {
 
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
 
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
                 keycloakClient,
                 false,
@@ -144,7 +178,7 @@ describe('UserExternaldataService', () => {
                 },
             ]);
 
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
                 keycloakClient,
                 false,
@@ -166,7 +200,7 @@ describe('UserExternaldataService', () => {
                 }),
             ]);
 
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
                 keycloakClient,
                 false,
@@ -187,7 +221,7 @@ describe('UserExternaldataService', () => {
                     }),
                 ]);
 
-                await sut.getExternalData(person, keycloakClient, false);
+                await callGetExternalData(person, keycloakClient, false);
 
                 expect(emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse).not.toHaveBeenCalled();
             });
@@ -220,7 +254,7 @@ describe('UserExternaldataService', () => {
                     Ok(response),
                 );
 
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
                     keycloakClient,
                     true,
@@ -249,7 +283,7 @@ describe('UserExternaldataService', () => {
                     Ok(response),
                 );
 
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
                     keycloakClient,
                     true,
@@ -280,7 +314,7 @@ describe('UserExternaldataService', () => {
                     Ok(response),
                 );
 
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
                     keycloakClient,
                     true,
@@ -300,7 +334,7 @@ describe('UserExternaldataService', () => {
                     Ok(undefined),
                 );
 
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
                     keycloakClient,
                     true,
@@ -319,7 +353,7 @@ describe('UserExternaldataService', () => {
                 const error: EmailAddressNotFoundError = new EmailAddressNotFoundError();
                 emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Err(error));
 
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
                     keycloakClient,
                     true,

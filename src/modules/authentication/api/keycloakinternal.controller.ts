@@ -93,11 +93,8 @@ export class KeycloakInternalController {
         type: UserExternalDataV2Response,
     })
     public async getExternalDataV2(@Body() params: UserExternalDataV2BodyParams): Promise<UserExternalDataV2Response> {
-        const person: Option<Person<true>> = await this.personRepository.findByKeycloakUserId(params.sub);
-        this.checkPerson(person, params.sub);
-
         const result: Result<UserExternalData, DomainError> = await this.userExternaldataService.getExternalData(
-            person,
+            params.sub,
             params.keycloakClient,
             params.includeEmailAddress ?? false,
         );
