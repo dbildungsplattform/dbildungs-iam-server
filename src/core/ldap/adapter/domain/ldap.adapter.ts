@@ -28,6 +28,7 @@ import { LdapUpdateGroupError } from './error/ldap-update-group.error.js';
 import { LdapUserNotFoundError } from './error/ldap-user-not-found.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
 import { LdapExecuteWithRetryError } from './error/ldap-execute-with-retry.error.js';
+import { LdapGroupNotFound } from './error/ldap-group-not-found.error.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -832,7 +833,7 @@ export class LdapAdapter {
             if (!groupEntries) {
                 const errMsg: string = `LDAP: Fetching groups failed, personId:${personId}, username:${username}`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new LdapFetchGroupsError(personId, username) };
+                return { ok: false, error: new LdapFetchGroupsError(username, personId) };
             }
 
             if (groupEntries.length === 0) {
@@ -870,7 +871,7 @@ export class LdapAdapter {
         if (!groupEntries) {
             const errMsg: string = `LDAP: Error while searching for groups for person: ${oldUsername}`;
             this.logger.error(errMsg);
-            return { ok: false, error: new Error(errMsg) };
+            return { ok: false, error: new LdapFetchGroupsError(oldUsername) };
         }
 
         if (groupEntries.length === 0) {
@@ -1297,7 +1298,7 @@ export class LdapAdapter {
             if (!searchResultOrgUnit.searchEntries[0]) {
                 const errMsg: string = `LDAP: Group ${groupId} not found`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new Error(errMsg) };
+                return { ok: false, error: new LdapGroupNotFound(groupId) };
             }
 
             if (!this.isPersonInSearchResult(searchResultOrgUnit.searchEntries[0], lehrerUid)) {

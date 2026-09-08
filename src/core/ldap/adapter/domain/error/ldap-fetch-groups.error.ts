@@ -3,12 +3,15 @@ import { PersonID, PersonUsername } from '../../../../../shared/types/aggregate-
 
 export class LdapFetchGroupsError extends DomainError {
     public constructor(
-        personId: PersonID | undefined,
         username: PersonUsername,
+        personId?: PersonID,
         details?: unknown[] | Record<string, unknown>,
     ) {
+        const message: string = personId
+            ? `LDAP: Fetching groups failed, personId:${personId}, username:${username}`
+            : `LDAP: Error while searching for groups for person: ${username}`
         super(
-            `LDAP: Fetching groups failed, personId:${personId}, username:${username}`,
+            message,
             'LDAP_FETCH_GROUPS_ERROR',
             details,
         );
