@@ -323,29 +323,6 @@ export class OrganisationService {
         return { ok: false, error: new EntityNotFoundError('Organization', id) };
     }
 
-    public async findAllOrganizations(
-        organisationDo: Partial<Organisation<false>>,
-        offset?: number,
-        limit?: number,
-    ): Promise<Paged<Organisation<true>>> {
-        const scope: OrganisationScope = new OrganisationScope()
-            .findBy({
-                kennung: organisationDo.kennung,
-                name: organisationDo.name,
-                typ: organisationDo.typ,
-            })
-            .paged(offset, limit);
-        const [organisations, total]: Counted<Organisation<true>> = await this.organisationRepo.findBy(scope);
-
-        return {
-            total,
-            offset: offset ?? 0,
-            limit: limit ?? total,
-            items: organisations,
-            pageTotal: organisations.length,
-        };
-    }
-
     public async setZugehoerigZu(
         parentId: string,
         childId: string,
