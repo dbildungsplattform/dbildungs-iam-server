@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { Attribute, Change, Client, SearchResult } from 'ldapts';
-import { LdapPersonEntry } from './ldap.types.js';
-import { LdapClient } from '../technical/ldap-client.js';
 import { Mutex } from 'async-mutex';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { Attribute, Change, Client, SearchResult } from 'ldapts';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { PersonExternalID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
-import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
+import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapRenamePersonError } from './error/ldap-rename-person.error.js';
+import { LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -119,6 +120,17 @@ export class LdapClientAdapter {
 
     public async isPersonExisting(uid: string, domain: string): Promise<Result<boolean>> {
         return this.executeWithRetry(() => this.isPersonExistingInternal(uid, domain), this.getNrOfRetries());
+    }
+
+    public async renamePerson(
+        oldExternalId: PersonExternalID,
+        newExternalId: PersonExternalID,
+        domain: string,
+    ): Promise<Result<void>> {
+        return this.executeWithRetry(
+            () => this.renamePersonInternal(oldExternalId, newExternalId, domain),
+            this.getNrOfRetries(),
+        );
     }
     //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
 
@@ -433,6 +445,41 @@ export class LdapClientAdapter {
                 return { ok: true, value: true };
             }
             return { ok: true, value: false };
+        });
+    }
+
+    // uid is the entry's RDN, so renaming it requires a modifyDN, not an attribute replace
+    private async renamePersonInternal(
+        oldExternalId: PersonExternalID,
+        newExternalId: PersonExternalID,
+        domain: string,
+    ): Promise<Result<void>> {
+        const rootName: Result<string> = this.getRootNameOrError(domain);
+        if (!rootName.ok) {
+            return rootName;
+        }
+
+        const oldPersonUid: string = this.getPersonUid(oldExternalId, rootName.value);
+        const newRdn: string = `${LdapClientAdapter.UID}=${newExternalId}`;
+
+        return this.mutex.runExclusive(async () => {
+            this.logger.info(`LDAP: renamePerson from uid:${oldPersonUid} to ${newRdn}`);
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+
+            try {
+                await client.modifyDN(oldPersonUid, newRdn);
+                this.logger.info(`LDAP: Renaming person succeeded, from:${oldPersonUid}, to:${newRdn}`);
+
+                return { ok: true, value: undefined };
+            } catch (err) {
+                this.logger.logUnknownAsError(`LDAP: Renaming person FAILED, from:${oldPersonUid}, to:${newRdn}`, err);
+
+                return { ok: false, error: new LdapRenamePersonError() };
+            }
         });
     }
 

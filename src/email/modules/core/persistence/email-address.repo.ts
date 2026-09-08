@@ -1,14 +1,14 @@
 import { EntityManager, Loaded } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
-import { EmailAddrEntity } from './email-address.entity.js';
-import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
-import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
+import { uniq } from 'lodash-es';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { EmailAddressStatusEntity, EmailAddressStatusEnum } from './email-address-status.entity.js';
+import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
 import { PersonID } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
+import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
 import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
-import { uniq } from 'lodash-es';
+import { EmailAddressStatusEntity, EmailAddressStatusEnum } from './email-address-status.entity.js';
+import { EmailAddrEntity } from './email-address.entity.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -282,5 +282,9 @@ export class EmailAddressRepo {
 
     public async delete(emailAddress: EmailAddress<true>): Promise<void> {
         await this.em.nativeDelete(EmailAddrEntity, emailAddress.id);
+    }
+
+    public async updateExternalIdForSpshPerson(spshPersonId: string, newExternalId: string): Promise<void> {
+        await this.em.nativeUpdate(EmailAddrEntity, { spshPersonId }, { externalId: newExternalId });
     }
 }

@@ -1,17 +1,19 @@
 import { Body, Controller, Delete, Param, Post, UseFilters, UseGuards } from '@nestjs/common';
 import { ApiInternalServerErrorResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { SetEmailAddressForSpshPersonBodyParams } from '../dtos/params/set-email-address-for-spsh-person.bodyparams.js';
-import { SetEmailAddressForSpshPersonService } from '../../domain/set-email-address-for-spsh-person.service.js';
-import { Public } from '../../decorator/public.decorator.js';
+import { AuthGuard } from '@nestjs/passport';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { Public } from '../../decorator/public.decorator.js';
+import { DeleteEmailsAddressesForSpshPersonService } from '../../domain/delete-email-adresses-for-spsh-person.service.js';
+import { MigrateExternalIdForSpshPersonService } from '../../domain/migrate-external-id-for-spsh-person.service.js';
+import { SetEmailAddressForSpshPersonService } from '../../domain/set-email-address-for-spsh-person.service.js';
+import { SetEmailSuspendedService } from '../../domain/set-email-suspended.service.js';
 import { EmailExceptionFilter } from '../../error/email-exception-filter.js';
 import { DeleteEmailAddressesForSpshPersonPathParams } from '../dtos/params/delete-email-addresses-for-spsh-person.pathparams.js';
-import { DeleteEmailsAddressesForSpshPersonService } from '../../domain/delete-email-adresses-for-spsh-person.service.js';
+import { MigrateExternalIdForSpshPersonPathParams } from '../dtos/params/migrate-external-id-for-spsh-person.pathparams.js';
+import { SetEmailAddressForSpshPersonBodyParams } from '../dtos/params/set-email-address-for-spsh-person.bodyparams.js';
 import { SetEmailAddressForSpshPersonPathParams } from '../dtos/params/set-email-address-for-spsh-person.pathparams.js';
 import { SetEmailAddressesSuspendedPathParams } from '../dtos/params/set-email-addresses-suspended.pathparams.js';
-import { SetEmailSuspendedService } from '../../domain/set-email-suspended.service.js';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('email')
 @Controller({ path: 'write' })
@@ -22,6 +24,7 @@ export class EmailWriteController {
         private readonly setEmailAddressForSpshPersonService: SetEmailAddressForSpshPersonService,
         private readonly deleteEmailsAddressesForSpshPersonService: DeleteEmailsAddressesForSpshPersonService,
         private readonly setEmailSuspendedService: SetEmailSuspendedService,
+        private readonly migrateExternalIdForSpshPersonService: MigrateExternalIdForSpshPersonService,
         private readonly logger: ClassLogger,
     ) {}
 
@@ -83,5 +86,20 @@ export class EmailWriteController {
             .catch((err: Error) => {
                 this.logger.error(`Error in background email processing: ${err.message}`);
             });
+    }
+
+    @Post(':spshPersonId/migrate-external-id')
+    @ApiOperation({
+        description:
+            'Migrates a person externalId (used as OX username / LDAP uid) to their spshPersonId. Not intended for regular use.',
+    })
+    @ApiOkResponse({
+        description: 'The externalId for the corresponding person was successfully migrated to their spshPersonId.',
+    })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while migrating externalId for person.',
+    })
+    public async migrateExternalIdForPerson(@Param() params: MigrateExternalIdForSpshPersonPathParams): Promise<void> {
+        await this.migrateExternalIdForSpshPersonService.migrateExternalId({ spshPersonId: params.spshPersonId });
     }
 }
