@@ -30,7 +30,7 @@ import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { MockedObject } from 'vitest';
 import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflow.mocks.js';
-import { Ok } from '../../../shared/util/result.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 
@@ -119,6 +119,7 @@ describe('PersonenkontextCreationService', () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
+        personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValue(Ok());
     });
 
     it('should be defined', () => {
@@ -150,7 +151,7 @@ describe('PersonenkontextCreationService', () => {
 
         it('should return EntityNotFoundError if Organisation is not found', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
-            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(new EntityNotFoundError());
+            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(Err(new EntityNotFoundError()));
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
                 personpermissionsMock,
@@ -171,7 +172,7 @@ describe('PersonenkontextCreationService', () => {
 
         it('should return EntityNotFoundError if Rolle is not found', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
-            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(new EntityNotFoundError());
+            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(Err(new EntityNotFoundError()));
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
                 personpermissionsMock,
@@ -192,7 +193,7 @@ describe('PersonenkontextCreationService', () => {
 
         it('should return EntityNotFoundError if Rolle can NOT be assigned to organisation', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
-            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(new EntityNotFoundError());
+            personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(Err(new EntityNotFoundError()));
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
                 personpermissionsMock,
@@ -214,7 +215,7 @@ describe('PersonenkontextCreationService', () => {
         it('should return RolleNurAnPassendeOrganisationError if Rolle does NOT match organisation', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
             personenkontextWorkflowSharedKernel.checkReferences.mockResolvedValueOnce(
-                new RolleNurAnPassendeOrganisationError(),
+                Err(new RolleNurAnPassendeOrganisationError()),
             );
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(

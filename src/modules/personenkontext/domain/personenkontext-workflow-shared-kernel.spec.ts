@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
@@ -48,9 +49,10 @@ describe('PersonenkontextWorkflowSharedKernel', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(undefined);
             rolleRepoMock.findById.mockResolvedValueOnce(rolle);
 
-            const result: Option<DomainError> = await sut.checkReferences(orga.id, rolle.id);
+            const result: Result<void, DomainError> = await sut.checkReferences(orga.id, rolle.id);
 
-            expect(result).toEqual(new EntityNotFoundError('Organisation', orga.id));
+            expectErrResult(result);
+            expect(result.error).toEqual(new EntityNotFoundError('Organisation', orga.id));
         });
 
         it('should return error if rolle could not be found', async () => {
@@ -59,9 +61,10 @@ describe('PersonenkontextWorkflowSharedKernel', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(orga);
             rolleRepoMock.findById.mockResolvedValueOnce(undefined);
 
-            const result: Option<DomainError> = await sut.checkReferences(orga.id, rolle.id);
+            const result: Result<void, DomainError> = await sut.checkReferences(orga.id, rolle.id);
 
-            expect(result).toEqual(new EntityNotFoundError('Rolle', rolle.id));
+            expectErrResult(result);
+            expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolle.id));
         });
 
         it('should return error if rolle can not be assigned', async () => {
@@ -72,9 +75,10 @@ describe('PersonenkontextWorkflowSharedKernel', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(orga);
             rolleRepoMock.findById.mockResolvedValueOnce(rolle);
 
-            const result: Option<DomainError> = await sut.checkReferences(orga.id, rolle.id);
+            const result: Result<void, DomainError> = await sut.checkReferences(orga.id, rolle.id);
 
-            expect(result).toEqual(new EntityNotFoundError('Rolle', rolle.id));
+            expectErrResult(result);
+            expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolle.id));
         });
 
         it('should return error if rollenart does not match organisation', async () => {
@@ -86,9 +90,10 @@ describe('PersonenkontextWorkflowSharedKernel', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(orga);
             rolleRepoMock.findById.mockResolvedValueOnce(rolle);
 
-            const result: Option<DomainError> = await sut.checkReferences(orga.id, rolle.id);
+            const result: Result<void, DomainError> = await sut.checkReferences(orga.id, rolle.id);
 
-            expect(result).toEqual(new RolleNurAnPassendeOrganisationError());
+            expectErrResult(result);
+            expect(result.error).toEqual(new RolleNurAnPassendeOrganisationError());
         });
 
         it('should return no error if everything is okay', async () => {
@@ -100,9 +105,9 @@ describe('PersonenkontextWorkflowSharedKernel', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(orga);
             rolleRepoMock.findById.mockResolvedValueOnce(rolle);
 
-            const result: Option<DomainError> = await sut.checkReferences(orga.id, rolle.id);
+            const result: Result<void, DomainError> = await sut.checkReferences(orga.id, rolle.id);
 
-            expect(result).toBeUndefined();
+            expectOkResult(result);
         });
     });
 });

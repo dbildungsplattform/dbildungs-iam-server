@@ -32,7 +32,7 @@ import {
     RolleFindService,
 } from '../../rolle/domain/rolle-find.service.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { Err } from '../../../shared/util/result.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { Person } from '../../person/domain/person.js';
 
 describe('DbiamPersonenkontextWorkflowController Test', () => {
@@ -206,7 +206,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     });
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([]);
                     rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValue([[rolle], 0]);
-                    personenkontextWorkflowMock.canCommit.mockResolvedValue(true);
+                    personenkontextWorkflowMock.canCommit.mockResolvedValue(Ok(undefined));
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValue(personenkontextWorkflowMock);
 
                     const response: PersonenkontextWorkflowResponse = await sut.processStep(params, personpermissions);
