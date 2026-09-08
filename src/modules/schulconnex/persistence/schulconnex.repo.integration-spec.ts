@@ -1,37 +1,37 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CommonTestModule, DatabaseTestModule, DoFactory } from '../../../../test/utils/index.js';
-import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
-import { PersonFactory } from '../../person/domain/person.factory.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { Person } from '../../person/domain/person.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { RolleModule } from '../../rolle/rolle.module.js';
-import { OrganisationModule } from '../../organisation/organisation.module.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { KeycloakUserService, User } from '../../keycloak-administration/index.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { CommonTestModule, DatabaseTestModule, DoFactory } from '../../../../test/utils/index.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
-import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
+import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
+import { KeycloakUserService, User } from '../../keycloak-administration/index.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationModule } from '../../organisation/organisation.module.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { PersonFactory } from '../../person/domain/person.factory.js';
+import { Person } from '../../person/domain/person.js';
+import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
 import { EntityAggregateMapper } from '../../person/mapper/entity-aggregate.mapper.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { SchulconnexRepo } from './schulconnex.repo.js';
+import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { SchulconnexModule } from '../schulconnex.module.js';
+import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { RolleModule } from '../../rolle/rolle.module.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { SchulconnexModule } from '../schulconnex.module.js';
+import { SchulconnexRepo } from './schulconnex.repo.js';
 
 describe('Schulconnex Repo', () => {
     let module: TestingModule;
@@ -149,7 +149,6 @@ describe('Schulconnex Repo', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

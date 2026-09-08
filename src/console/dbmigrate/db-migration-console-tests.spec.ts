@@ -66,6 +66,8 @@ describe('DbMigrateConsole', () => {
     });
 
     describe('DbApplyMigrationConsole', () => {
+        type Params = Parameters<IMigrator['up']>[0];
+
         beforeEach(() => {
             vi.spyOn(migrator, 'up').mockResolvedValueOnce([]);
         });
@@ -74,21 +76,38 @@ describe('DbMigrateConsole', () => {
             const migrations: MigrationInfo[] = [{ name: '20210101_initialS' }, { name: '20210202_dataD' }];
             vi.spyOn(migrator, 'getPending').mockResolvedValueOnce(migrations);
             await dbMigrationApply.run([]);
-            expect(migrator.up).toHaveBeenCalledWith(migrations.map((m: MigrationInfo) => m.name));
+            expect(migrator.up).toHaveBeenCalledWith(
+                expect.objectContaining<Params>({
+                    migrations: ['20210101_initialS'],
+                }),
+            );
+            expect(migrator.up).toHaveBeenLastCalledWith(
+                expect.objectContaining<Params>({
+                    migrations: ['20210202_dataD'],
+                }),
+            );
         });
 
         it('should filter and apply only structural migrations', async () => {
             const migrations: MigrationInfo[] = [{ name: '20210101_initialS' }, { name: '20210202_dataD' }];
             vi.spyOn(migrator, 'getPending').mockResolvedValueOnce(migrations);
-            await dbMigrationApply.run([], { migration: 'structural' });
-            expect(migrator.up).toHaveBeenCalledWith(['20210101_initialS']);
+            await dbMigrationApply.run([], { migration: MigrationType.STRUCTURAL });
+            expect(migrator.up).toHaveBeenCalledWith(
+                expect.objectContaining<Params>({
+                    migrations: ['20210101_initialS'],
+                }),
+            );
         });
 
         it('should filter and apply only data migrations', async () => {
             const migrations: MigrationInfo[] = [{ name: '20210101_initialS' }, { name: '20210202_dataD' }];
             vi.spyOn(migrator, 'getPending').mockResolvedValueOnce(migrations);
-            await dbMigrationApply.run([], { migration: 'data' });
-            expect(migrator.up).toHaveBeenCalledWith(['20210202_dataD']);
+            await dbMigrationApply.run([], { migration: MigrationType.DATA });
+            expect(migrator.up).toHaveBeenCalledWith(
+                expect.objectContaining<Params>({
+                    migrations: ['20210202_dataD'],
+                }),
+            );
         });
 
         it('should throw an error if any migration does not end with S or D', async () => {

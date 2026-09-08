@@ -55,6 +55,7 @@ import { AttachedRollenerweiterungenError } from '../domain/errors/attached-roll
 import { InvalidLogoCombinationError } from '../domain/errors/invalid-logo-combination.error.js';
 import { VidisServiceProviderImmutableError } from '../domain/errors/vidis-service-provider-immutable.error.js';
 import { ServiceProviderFindService } from '../domain/service-provider-find.service.js';
+import { ServiceProviderModificationService } from '../domain/service-provider-modification.service.js';
 import { ServiceProviderSystem, ServiceProviderTarget } from '../domain/service-provider.enum.js';
 import { ServiceProviderFactory } from '../domain/service-provider.factory.js';
 import { ServiceProvider } from '../domain/service-provider.js';
@@ -69,7 +70,9 @@ import { AngebotByIdParams } from './angebot-by.id.params.js';
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
 import { CreateServiceProviderResponse } from './create-service-provider.response.js';
 import { FindServiceProviderForRolleQueryParams } from './find-service-provider-for-rolle-query.params.js';
+import { ManageableLandRootServiceProvidersQueryParams } from './manageable-land-root-service-providers-query.params.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
+import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
 import { ManageableServiceProviderResponse } from './manageable-service-provider.response.js';
 import { ManageableServiceProvidersForOrganisationParams } from './manageable-service-providers-for-organisation.params.js';
 import { ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
@@ -78,7 +81,6 @@ import { RollenerweiterungByServiceProvidersIdQueryParams } from './rollenerweit
 import { ServiceProviderErrorFilter } from './service-provider-exception.filter.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
-import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
 
 @UseFilters(ServiceProviderErrorFilter)
 @ApiTags('provider')
@@ -95,6 +97,7 @@ export class ProviderController {
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
         private readonly rolleRepo: RolleRepo,
         private readonly organisationRepo: OrganisationRepository,
+        private readonly serviceProviderModificationService: ServiceProviderModificationService,
         private readonly logger: ClassLogger,
     ) {}
 
@@ -277,7 +280,12 @@ export class ProviderController {
             enrichedServiceProviders,
             total,
         ]: Counted<ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount> =
-            await this.serviceProviderService.findAuthorized(permissions, params.limit, params.offset);
+            await this.serviceProviderService.findAuthorized(permissions, {
+                kategorien: params.kategorien,
+                searchFilter: params.searchFilter,
+                limit: params.limit,
+                offset: params.offset,
+            });
 
         return new RawPagedResponse({
             offset: params.offset ?? 0,
@@ -291,6 +299,45 @@ export class ProviderController {
                         manageableServiceProviderWithReferencedObjects,
                     ),
             ),
+        });
+    }
+
+    @Get('manageable-land-root')
+    @UseGuards(StepUpGuard)
+    @ApiOperation({
+        description: 'Get service-providers provided at LAND or ROOT level. Requires root-level ANGEBOTE_VERWALTEN.',
+    })
+    @ApiOkResponsePaginated(ServiceProviderResponse, {
+        description: 'The service providers were successfully returned.',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get service providers.' })
+    @ApiNotFoundResponse({ description: 'Root-level ANGEBOTE_VERWALTEN permission required.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting service providers.' })
+    public async getManageableLandRootServiceProviders(
+        @Permissions() permissions: IPersonPermissions,
+        @Query() params: ManageableLandRootServiceProvidersQueryParams,
+    ): Promise<RawPagedResponse<ServiceProviderResponse>> {
+        const result: Result<
+            Counted<ServiceProvider<true>>,
+            MissingPermissionsError
+        > = await this.serviceProviderService.findManageableLandRoot(
+            permissions,
+            params.searchStr,
+            params.limit,
+            params.offset,
+        );
+
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        const [serviceProviders, total]: Counted<ServiceProvider<true>> = result.value;
+
+        return new RawPagedResponse({
+            offset: params.offset ?? 0,
+            limit: params.limit ?? total,
+            total,
+            items: serviceProviders.map((sp: ServiceProvider<true>) => new ServiceProviderResponse(sp)),
         });
     }
 
@@ -407,12 +454,13 @@ export class ProviderController {
             body.requires2fa,
             undefined, // vidisAngebotId
             body.merkmale,
+            body.rollenartenWhitelist ?? [],
         );
         if (!serviceProvider.ok) {
             throw serviceProvider.error;
         }
 
-        const result: Result<ServiceProvider<true>, DomainError> = await this.serviceProviderRepo.create(
+        const result: Result<ServiceProvider<true>, DomainError> = await this.serviceProviderModificationService.create(
             permissions,
             serviceProvider.value,
         );
@@ -439,10 +487,30 @@ export class ProviderController {
         @Param('angebotId') angebotId: ServiceProviderID,
         @Body() body: UpdateServiceProviderBodyParams,
     ): Promise<ServiceProviderResponse> {
-        const result: Result<
-            ServiceProvider<true>,
-            DomainError
-        > = await this.serviceProviderService.updateServiceProvider(permissions, angebotId, body);
+        const existingServiceProvider: Option<ServiceProvider<true>> = await this.serviceProviderRepo.findById(
+            angebotId,
+            { withLogo: true },
+        );
+        if (!existingServiceProvider) {
+            throw new EntityNotFoundError();
+        }
+
+        if (existingServiceProvider.vidisAngebotId) {
+            throw new VidisServiceProviderImmutableError(
+                'ServiceProvider linked to VIDIS cannot be updated or deleted',
+                existingServiceProvider.id,
+            );
+        }
+
+        const updateError: Option<InvalidLogoCombinationError> = existingServiceProvider.update(body);
+        if (updateError) {
+            throw updateError;
+        }
+
+        const result: Result<ServiceProvider<true>, DomainError> = await this.serviceProviderModificationService.update(
+            permissions,
+            existingServiceProvider,
+        );
 
         if (!result.ok) {
             throw result.error;
@@ -476,7 +544,7 @@ export class ProviderController {
             | AttachedRollenError
             | AttachedRollenerweiterungenError
             | VidisServiceProviderImmutableError
-        > = await this.serviceProviderService.deleteByIdAuthorized(permissions, params.angebotId);
+        > = await this.serviceProviderModificationService.deleteByIdAuthorized(permissions, params.angebotId);
 
         if (!result.ok) {
             throw result.error;

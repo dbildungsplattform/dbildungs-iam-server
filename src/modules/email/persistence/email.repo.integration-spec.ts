@@ -1,5 +1,8 @@
 import { faker } from '@faker-js/faker';
+import { EntityManager, MikroORM, NotFoundError, RequiredEntityData } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import assert from 'node:assert';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     CommonTestModule,
     DatabaseTestModule,
@@ -7,38 +10,35 @@ import {
     DoFactory,
     expectOkResult,
 } from '../../../../test/utils/index.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { DomainError } from '../../../shared/error/index.js';
+import { SortOrder } from '../../../shared/persistence/repository.enums.js';
+import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { generatePassword } from '../../../shared/util/password-generator.js';
+import { KeycloakUserService } from '../../keycloak-administration/index.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { PersonEmailResponse } from '../../person/api/person-email-response.js';
+import { PersonFactory } from '../../person/domain/person.factory.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
+import { EmailFactory } from '../domain/email.factory.js';
+import { EmailInstanceConfig } from '../email-instance-config.js';
+import { EmailModule } from '../email.module.js';
+import { EmailAddressDeletionError } from '../error/email-address-deletion.error.js';
+import { EmailAddressMissingOxUserIdError } from '../error/email-address-missing-ox-user-id.error.js';
+import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
+import { PersonAlreadyHasEnabledEmailAddressError } from '../error/person-already-has-enabled-email-address.error.js';
+import { EmailAddressEntity } from './email-address.entity.js';
 import {
     compareEmailAddressesByUpdatedAt,
     compareEmailAddressesByUpdatedAtDesc,
     EmailRepo,
     mapAggregateToData,
 } from './email.repo.js';
-import { EmailFactory } from '../domain/email.factory.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { PersonFactory } from '../../person/domain/person.factory.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { KeycloakUserService } from '../../keycloak-administration/index.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
-import { EmailAddressEntity } from './email-address.entity.js';
-import { Person } from '../../person/domain/person.js';
-import { DomainError } from '../../../shared/error/index.js';
-import { EntityManager, MikroORM, NotFoundError, RequiredEntityData } from '@mikro-orm/core';
-import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { PersonAlreadyHasEnabledEmailAddressError } from '../error/person-already-has-enabled-email-address.error.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { generatePassword } from '../../../shared/util/password-generator.js';
-import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import assert from 'assert';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { EmailAddressDeletionError } from '../error/email-address-deletion.error.js';
-import { OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { EmailAddressMissingOxUserIdError } from '../error/email-address-missing-ox-user-id.error.js';
-import { EmailModule } from '../email.module.js';
-import { EmailInstanceConfig } from '../email-instance-config.js';
-import { SortOrder } from '../../../shared/persistence/repository.enums.js';
 
 describe('EmailRepo', () => {
     let module: TestingModule;
@@ -152,6 +152,8 @@ describe('EmailRepo', () => {
             case EmailAddressStatus.REQUESTED:
                 email.value.request();
                 break;
+            default:
+                break;
         }
         const savedEmail: EmailAddress<true> | DomainError = await sut.save(email.value);
         assert(savedEmail instanceof EmailAddress);
@@ -198,7 +200,6 @@ describe('EmailRepo', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

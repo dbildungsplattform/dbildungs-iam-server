@@ -1,27 +1,27 @@
 import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
 import {
     CommonTestModule,
     DatabaseTestModule,
     EmailConfigTestModule,
     KeycloakConfigTestModule,
 } from '../../../test/utils/index.js';
-import { DbSeedService } from './domain/db-seed.service.js';
-import { DbSeedConsole } from './db-seed.console.js';
-import { UsernameGeneratorService } from '../../modules/person/domain/username-generator.service.js';
+import { ClassLogger } from '../../core/logging/class-logger.js';
 import { KeycloakAdministrationModule } from '../../modules/keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../modules/keycloak-administration/keycloak-config.module.js';
 import { OrganisationModule } from '../../modules/organisation/organisation.module.js';
-import { DBiamPersonenkontextRepo } from '../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { UsernameGeneratorService } from '../../modules/person/domain/username-generator.service.js';
+import { EntityAggregateMapper } from '../../modules/person/mapper/entity-aggregate.mapper.js';
+import { OxUserBlacklistRepo } from '../../modules/person/persistence/ox-user-blacklist.repo.js';
 import { PersonModule } from '../../modules/person/person.module.js';
+import { DBiamPersonenkontextRepo } from '../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { PersonenKontextModule } from '../../modules/personenkontext/personenkontext.module.js';
 import { RolleModule } from '../../modules/rolle/rolle.module.js';
 import { ServiceProviderModule } from '../../modules/service-provider/service-provider.module.js';
+import { DbSeedConsole } from './db-seed.console.js';
 import { DbSeedModule } from './db-seed.module.js';
-import { PersonenKontextModule } from '../../modules/personenkontext/personenkontext.module.js';
-import { OxUserBlacklistRepo } from '../../modules/person/persistence/ox-user-blacklist.repo.js';
-import { EntityAggregateMapper } from '../../modules/person/mapper/entity-aggregate.mapper.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
-import { ClassLogger } from '../../core/logging/class-logger.js';
+import { DbSeedService } from './domain/db-seed.service.js';
 
 describe('DbSeedConsoleIntegration', () => {
     let module: TestingModule;
@@ -64,7 +64,6 @@ describe('DbSeedConsoleIntegration', () => {
     });
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

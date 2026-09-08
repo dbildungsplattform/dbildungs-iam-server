@@ -9,21 +9,21 @@ import {
     DoFactory,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
-import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
-import { PersonenkontextEntity } from './personenkontext.entity.js';
-import { PersonenkontextScope } from './personenkontext.scope.js';
-import { PersonEntity } from '../../person/persistence/person.entity.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
+import { createAndPersistPersonenkontext } from '../../../../test/utils/personenkontext-test-helper.js';
 import { EventModule } from '../../../core/eventbus/event.module.js';
-import { mapAggregateToData } from '../../person/persistence/person.repository.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { createAndPersistPersonenkontext } from '../../../../test/utils/personenkontext-test-helper.js';
+import { PersonEntity } from '../../person/persistence/person.entity.js';
+import { mapAggregateToData } from '../../person/persistence/person.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
+import { PersonenkontextEntity } from './personenkontext.entity.js';
+import { PersonenkontextScope } from './personenkontext.scope.js';
 
 describe('PersonenkontextScope', () => {
     let module: TestingModule;
@@ -58,7 +58,6 @@ describe('PersonenkontextScope', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

@@ -194,6 +194,7 @@ export class DBiamPersonenkontextRepo {
                     'rolleId.systemrechte',
                     'rolleId.serviceProvider',
                     'rolleId.serviceProvider.serviceProvider.merkmale',
+                    'rolleId.serviceProvider.serviceProvider.rollenartenWhitelist',
                 ],
             },
         );
@@ -285,6 +286,7 @@ export class DBiamPersonenkontextRepo {
                     'rolleId.systemrechte',
                     'rolleId.serviceProvider',
                     'rolleId.serviceProvider.serviceProvider.merkmale',
+                    'rolleId.serviceProvider.serviceProvider.rollenartenWhitelist',
                 ],
             },
         );
@@ -430,6 +432,7 @@ export class DBiamPersonenkontextRepo {
                 populate: [
                     'rolleId.serviceProvider.serviceProvider',
                     'rolleId.serviceProvider.serviceProvider.merkmale',
+                    'rolleId.serviceProvider.serviceProvider.rollenartenWhitelist',
                     'organisationId',
                 ],
                 exclude: [
@@ -632,7 +635,7 @@ export class DBiamPersonenkontextRepo {
                 { id: { $in: spIds } },
 
                 {
-                    populate: ['merkmale'],
+                    populate: ['merkmale', 'rollenartenWhitelist'],
                     exclude: ['logo', 'logoMimeType'],
                 },
             ),

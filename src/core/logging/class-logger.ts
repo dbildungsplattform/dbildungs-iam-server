@@ -105,7 +105,7 @@ export class ClassLogger extends Logger {
      * @param trace
      */
     public infoWithDetails(message: string, details: object, trace?: unknown): void {
-        this.info(message + ' - ' + inspect(details, false, 2, false), trace);
+        this.info(message + ' - ' + inspect(details, { depth: 2, compact: Infinity, breakLength: Infinity }), trace);
     }
 
     /**
@@ -119,7 +119,10 @@ export class ClassLogger extends Logger {
         if (this.instanceOfError(error, warnWhenErrorIsUndefined)) {
             this.warning(message + ' - ' + error.message, error.stack);
         } else {
-            this.warning(message + ' - ' + inspect(error, false, 2, false), undefined);
+            this.warning(
+                message + ' - ' + inspect(error, { depth: 2, compact: Infinity, breakLength: Infinity }),
+                undefined,
+            );
         }
     }
 
@@ -132,9 +135,23 @@ export class ClassLogger extends Logger {
      */
     public logUnknownAsError(message: string, error: unknown, warnWhenErrorIsUndefined: boolean = true): void {
         if (this.instanceOfError(error, warnWhenErrorIsUndefined)) {
-            this.error(message + ` - ${error.name}: ${error.message}`, error.stack);
+            if (error.cause !== undefined) {
+                let cause: string | undefined = undefined;
+                if (this.instanceOfError(error.cause, false)) {
+                    cause = `${error.cause.name}: ${error.cause.message}`;
+                } else {
+                    // remove this in case the log is spammed with long causes, but for now we want to see what is in there
+                    cause = inspect(error.cause, { depth: 2, compact: Infinity, breakLength: Infinity });
+                }
+                this.error(message + ` - ${error.name}: ${error.message}, cause: (${cause})`, error.stack);
+            } else {
+                this.error(message + ` - ${error.name}: ${error.message}`, error.stack);
+            }
         } else {
-            this.error(message + ' - ' + inspect(error, false, 2, false), undefined);
+            this.error(
+                message + ' - ' + inspect(error, { depth: 2, compact: Infinity, breakLength: Infinity }),
+                undefined,
+            );
         }
     }
 

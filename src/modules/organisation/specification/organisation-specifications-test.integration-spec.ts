@@ -1,3 +1,5 @@
+import { MikroORM } from '@mikro-orm/core';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
@@ -6,21 +8,19 @@ import {
     DoFactory,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
-import { MikroORM } from '@mikro-orm/core';
+import { EventModule } from '../../../core/eventbus/index.js';
+import { DataConfig } from '../../../shared/config/data.config.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { NurKlasseKursUnterSchule } from './nur-klasse-kurs-unter-schule.js';
-import { SchuleUnterTraeger } from './schule-unter-traeger.js';
-import { ZyklusInOrganisationen } from './zyklus-in-organisationen.js';
+import { Organisation } from '../domain/organisation.js';
+import { OrganisationEntity } from '../persistence/organisation.entity.js';
+import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KlasseNurVonSchuleAdministriert } from './klasse-nur-von-schule-administriert.js';
 import { KlassenNameAnSchuleEindeutig } from './klassen-name-an-schule-eindeutig.js';
-import { EventModule } from '../../../core/eventbus/index.js';
-import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
-import { Organisation } from '../domain/organisation.js';
+import { NurKlasseKursUnterSchule } from './nur-klasse-kurs-unter-schule.js';
 import { OrganisationsOnSameSubtree } from './organisations-on-same-subtree.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { OrganisationEntity } from '../persistence/organisation.entity.js';
+import { SchuleUnterTraeger } from './schule-unter-traeger.js';
+import { ZyklusInOrganisationen } from './zyklus-in-organisationen.js';
 
 describe('OrganisationSpecificationTests', () => {
     let module: TestingModule;
@@ -60,7 +60,6 @@ describe('OrganisationSpecificationTests', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     }, 100000);
 

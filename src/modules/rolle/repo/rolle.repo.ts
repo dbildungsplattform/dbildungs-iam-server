@@ -9,6 +9,7 @@ import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updat
 import { RolleUpdatedEvent } from '../../../shared/events/rolle-updated.event.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
+import { Err, UnionToResult } from '../../../shared/util/result.js';
 import { intersectPermittedAndRequestedOrgas, PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { mapEntityToAggregate as mapServiceProviderEntityToAggregate } from '../../service-provider/repo/service-provider-entity-mapper.js';
@@ -29,7 +30,6 @@ import { RolleNameNotUniqueOnSskError } from '../specification/error/rolle-name-
 import { ServiceProviderNichtNachtraeglichZuweisbarError } from '../specification/error/service-provider-nicht-nachtraeglich-zuweisbar.error.js';
 import { NurNachtraeglichZuweisbareServiceProvider } from '../specification/only-assignable-service-providers.specification.js';
 import { RolleNameUniqueOnSsk } from '../specification/rolle-name-unique-on-ssk.js';
-import { Err, UnionToResult } from '../../../shared/util/result.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -104,7 +104,9 @@ export type RolleFindByParameters = {
     searchStr?: string;
     allowedOrganisationIds?: OrganisationID[];
     rollenArten?: RollenArt[];
+    merkmale?: RollenMerkmal[];
     rolleIds?: RolleID[];
+    serviceProviderIds?: ServiceProviderID[];
     limit?: number;
     offset?: number;
 };
@@ -133,6 +135,7 @@ export class RolleRepo {
                 'systemrechte',
                 'serviceProvider.serviceProvider',
                 'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
             ] as const,
             exclude: ['serviceProvider.serviceProvider.logo'] as const,
         });
@@ -179,6 +182,7 @@ export class RolleRepo {
                     'systemrechte',
                     'serviceProvider.serviceProvider',
                     'serviceProvider.serviceProvider.merkmale',
+                    'serviceProvider.serviceProvider.rollenartenWhitelist',
                 ] as const,
                 exclude: ['serviceProvider.serviceProvider.logo'] as const,
             },
@@ -213,6 +217,7 @@ export class RolleRepo {
                     'systemrechte',
                     'serviceProvider.serviceProvider',
                     'serviceProvider.serviceProvider.merkmale',
+                    'serviceProvider.serviceProvider.rollenartenWhitelist',
                 ] as const,
                 exclude: ['serviceProvider.serviceProvider.logo'] as const,
                 limit: limit,
@@ -238,6 +243,7 @@ export class RolleRepo {
                 'systemrechte',
                 'serviceProvider.serviceProvider',
                 'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
             ] as const,
             exclude: ['serviceProvider.serviceProvider.logo'] as const,
             where: { ...technischeQuery, ...rollenartQuery },
@@ -262,6 +268,12 @@ export class RolleRepo {
         if (params.searchStr) {
             queries.push({ name: { $ilike: '%' + params.searchStr + '%' } });
         }
+        if (params.merkmale) {
+            queries.push({ merkmale: { merkmal: { $in: params.merkmale } } });
+        }
+        if (params.serviceProviderIds && params.serviceProviderIds.length > 0) {
+            queries.push({ serviceProvider: { serviceProvider: { id: { $in: params.serviceProviderIds } } } });
+        }
 
         const baseQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
 
@@ -275,6 +287,7 @@ export class RolleRepo {
                 'systemrechte',
                 'serviceProvider.serviceProvider',
                 'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
             ] as const,
             exclude: ['serviceProvider.serviceProvider.logo'] as const,
             limit: params.limit,
@@ -293,6 +306,9 @@ export class RolleRepo {
         offset?: number,
         organisationIds?: OrganisationID[],
         rolleIds?: RolleID[],
+        merkmale?: RollenMerkmal[],
+        rollenArten?: RollenArt[],
+        serviceProviderIds?: ServiceProviderID[],
     ): Promise<[Rolle<true>[], number]> {
         // Fallback to ROLLEN_VERWALTEN if no systemrechte are provided (this is the default behavior expected from the frontend)
         const orgIdsWithRecht: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
@@ -317,6 +333,9 @@ export class RolleRepo {
             offset,
             allowedOrganisationIds,
             rolleIds,
+            merkmale,
+            rollenArten,
+            serviceProviderIds,
         });
     }
 
@@ -331,6 +350,7 @@ export class RolleRepo {
                         'systemrechte',
                         'serviceProvider.serviceProvider',
                         'serviceProvider.serviceProvider.merkmale',
+                        'serviceProvider.serviceProvider.rollenartenWhitelist',
                     ] as const,
                     exclude: ['serviceProvider.serviceProvider.logo'] as const,
                 },
@@ -385,6 +405,29 @@ export class RolleRepo {
         }
 
         return rollenMap;
+    }
+
+    public async existsForServiceProviderId(
+        serviceProviderId: ServiceProviderID,
+        rollenarten?: RollenArt[],
+    ): Promise<boolean> {
+        const rollenartQuery: Record<string, unknown> =
+            rollenarten && rollenarten.length > 0 ? { rollenart: { $in: rollenarten } } : {};
+
+        const rolle: Option<Loaded<RolleEntity, never, 'id', never>> = await this.em.findOne(
+            RolleEntity,
+            {
+                ...rollenartQuery,
+                serviceProvider: {
+                    serviceProvider: {
+                        id: serviceProviderId,
+                    },
+                },
+            },
+            { fields: ['id'] as const },
+        );
+
+        return !!rolle;
     }
 
     public async exists(id: RolleID): Promise<boolean> {
@@ -519,9 +562,17 @@ export class RolleRepo {
         await this.em.persist(rolleEntity).flush();
 
         // Populate the service providers so the data can be mapped even on newly created rollen
-        await this.em.populate(rolleEntity, ['serviceProvider.serviceProvider'] as const, {
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
-        });
+        await this.em.populate(
+            rolleEntity,
+            [
+                'serviceProvider.serviceProvider',
+                'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
+            ] as const,
+            {
+                exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            },
+        );
 
         return mapRolleEntityToAggregate(rolleEntity, this.rolleFactory);
     }
@@ -533,6 +584,7 @@ export class RolleRepo {
                 'systemrechte',
                 'serviceProvider.serviceProvider',
                 'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
             ] as const,
             exclude: ['serviceProvider.serviceProvider.logo'] as const,
         });

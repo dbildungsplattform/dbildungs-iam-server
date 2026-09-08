@@ -21,6 +21,7 @@ describe('ManageableServiceProviderSimpleListEntryResponse', () => {
                 );
 
             expect(response.administrationsebene.name).toBe('');
+            expect(response.rollenartenWhitelist).toEqual(serviceProvider.rollenartenWhitelist);
         });
     });
 });

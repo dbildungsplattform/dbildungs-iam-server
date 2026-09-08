@@ -1,18 +1,23 @@
-import { Mock, vi } from 'vitest';
 import { faker } from '@faker-js/faker';
 import { Collection, EntityManager, EntityName, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Mock, vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import {
     createAndPersistOrganisation,
     createAndPersistRootOrganisation,
 } from '../../../../test/utils/organisation-test-helper.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, PersonenkontextID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -28,9 +33,17 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenerweiterungFactory } from '../../rolle/domain/rollenerweiterung.factory.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { ServiceProviderMerkmalEntity } from '../../service-provider/repo/service-provider-merkmal.entity.js';
+import { ServiceProviderRollenartWhitelistEntity } from '../../service-provider/repo/service-provider-rollenart-whitelist.entity.js';
+import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
+import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
 import { mapAggregateToPartial, Personenkontext } from '../domain/personenkontext.js';
 import {
@@ -41,20 +54,8 @@ import {
     RollenCount,
 } from './dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from './internal-dbiam-personenkontext.repo.js';
-import { PersonenkontextScope } from './personenkontext.scope.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
-import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
-import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { RollenerweiterungFactory } from '../../rolle/domain/rollenerweiterung.factory.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { ServiceProviderMerkmalEntity } from '../../service-provider/repo/service-provider-merkmal.entity.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { PersonenkontextScope } from './personenkontext.scope.js';
 
 describe('dbiam Personenkontext Repo', () => {
     let module: TestingModule;
@@ -189,7 +190,6 @@ describe('dbiam Personenkontext Repo', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -317,6 +317,9 @@ describe('dbiam Personenkontext Repo', () => {
             mockServiceProvider.name = 'Mocked Service Provider';
             mockServiceProvider.vidisAngebotId = faker.string.uuid();
             mockServiceProvider.merkmale = mockMerkmale;
+            mockServiceProvider.rollenartenWhitelist = createMock<Collection<ServiceProviderRollenartWhitelistEntity>>(
+                Collection<ServiceProviderRollenartWhitelistEntity>,
+            );
             const mockRolleServiceProviderEntity: RolleServiceProviderEntity =
                 createMock<RolleServiceProviderEntity>(RolleServiceProviderEntity);
             mockRolleServiceProviderEntity.serviceProvider = mockServiceProvider;

@@ -55,7 +55,7 @@
         "@nestjs/config": "^4.0.3",
         "@nestjs/core": "^11.1.27",
         "@nestjs/passport": "^11.0.5",
-        "@nestjs/platform-express": "^11.1.16",
+        "@nestjs/platform-express": "^11.1.28",
         "@nestjs/swagger": "^11.2.6",
         "@nestjs/terminus": "^11.1.1",
         "@s3pweb/keycloak-admin-client-cjs": "^26.6.2",

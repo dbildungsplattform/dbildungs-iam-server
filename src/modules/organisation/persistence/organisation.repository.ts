@@ -1,8 +1,8 @@
 import {
     EntityDictionary,
     EntityManager,
-    Loaded,
     FilterQuery,
+    Loaded,
     QueryBuilder,
     RawQueryFragment,
     RequiredEntityData,
@@ -26,6 +26,7 @@ import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { SchuleCreatedEvent } from '../../../shared/events/schule-created.event.js';
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
@@ -36,7 +37,6 @@ import { Organisation } from '../domain/organisation.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
 import { OrganisationScope } from './organisation.scope.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 export function mapOrgaAggregateToData(organisation: Organisation<boolean>): RequiredEntityData<OrganisationEntity> {
     return {
@@ -733,5 +733,20 @@ export class OrganisationRepository {
             .where({ id: { $in: organisationIds }, typ: { $ne: null } })
             .execute();
         return result.map((r: Pick<Required<OrganisationEntity>, 'typ'>) => r.typ);
+    }
+
+    public async findIdsByTypen(typen: OrganisationsTyp[]): Promise<OrganisationID[]> {
+        if (typen.length === 0) {
+            return [];
+        }
+
+        const entities: Loaded<OrganisationEntity, never, 'id', never>[] = await this.em.find(
+            OrganisationEntity,
+            { typ: { $in: typen } },
+            { fields: ['id'] as const },
+        );
+        const ids: OrganisationID[] = entities.map((e: Loaded<OrganisationEntity, never, 'id', never>) => e.id);
+
+        return ids;
     }
 }

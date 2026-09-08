@@ -1,3 +1,6 @@
+import { faker } from '@faker-js/faker';
+import { MikroORM } from '@mikro-orm/core';
+import { EntityManager } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
@@ -5,16 +8,13 @@ import {
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DoFactory,
 } from '../../../../test/utils/index.js';
-import { UserLockRepository } from './user-lock.repository.js';
-import { MikroORM } from '@mikro-orm/core';
-import { faker } from '@faker-js/faker';
-import { UserLock } from '../domain/user-lock.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { PersonLockOccasion } from '../../person/domain/person.enums.js';
 import { PersonEntity } from '../../person/persistence/person.entity.js';
 import { mapAggregateToData } from '../../person/persistence/person.repository.js';
-import { EntityManager } from '@mikro-orm/postgresql';
-import { PersonLockOccasion } from '../../person/domain/person.enums.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { UserLock } from '../domain/user-lock.js';
+import { UserLockRepository } from './user-lock.repository.js';
 
 describe('UserLockRepository', () => {
     let sut: UserLockRepository;
@@ -41,7 +41,6 @@ describe('UserLockRepository', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

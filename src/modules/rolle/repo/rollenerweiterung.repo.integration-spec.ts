@@ -2,16 +2,27 @@ import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { faker } from '@faker-js/faker';
+import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
+import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
+import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { expectErrResult, expectOkResult } from '../../../../test/utils/index.js';
+import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { OrganisationID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
+import { RollenArt } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
@@ -21,16 +32,6 @@ import { NoRedundantRollenerweiterungError } from '../specification/error/no-red
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { RolleRepo } from './rolle.repo.js';
 import { RollenerweiterungRepo } from './rollenerweiterung.repo.js';
-import { OrganisationID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
-import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
-import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
-import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
-import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
-import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { expectErrResult } from '../../../../test/utils/index.js';
-import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 
 function makeN<T>(fn: () => T, n: number): Array<T> {
     return Array.from({ length: n }, fn);
@@ -77,7 +78,6 @@ describe('RollenerweiterungRepo', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -534,6 +534,75 @@ describe('RollenerweiterungRepo', () => {
             expect(deletedSecond).toHaveLength(0);
             expect(keptForOrganisation).toHaveLength(1);
             expect(keptForOtherOrganisation).toHaveLength(1);
+        });
+    });
+
+    describe('deleteByServiceProviderIdAndRollenarten', () => {
+        let organisation: Organisation<true>;
+        let rolle: Rolle<true>;
+        let serviceProvider: ServiceProvider<true>;
+
+        beforeEach(async () => {
+            organisation = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const rolleOrError: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (rolleOrError instanceof DomainError) {
+                throw new Error('Failed to create Rolle');
+            }
+            rolle = rolleOrError;
+            serviceProvider = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+            const entity: RollenerweiterungEntity = em.create(RollenerweiterungEntity, {
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+                serviceProviderId: serviceProvider.id,
+            });
+            await em.persist(entity).flush();
+        });
+
+        it('should delete rollenerweiterungen for given serviceProviderId', async () => {
+            const result: Result<null, DomainError> = await sut.deleteByServiceProviderIdAndRollenarten(
+                serviceProvider.id,
+            );
+            expectOkResult(result);
+            const count: number = await em.count(RollenerweiterungEntity, {
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+                serviceProviderId: serviceProvider.id,
+            });
+            expect(count).toBe(0);
+        });
+
+        it('should delete rollenerweiterungen for given serviceProviderId and rollenarten', async () => {
+            const result: Result<null, DomainError> = await sut.deleteByServiceProviderIdAndRollenarten(
+                serviceProvider.id,
+                [rolle.rollenart, RollenArt.SORGBER],
+            );
+            expectOkResult(result);
+            const count: number = await em.count(RollenerweiterungEntity, {
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+                serviceProviderId: serviceProvider.id,
+            });
+            expect(count).toBe(0);
+        });
+
+        it('should not delete rollenerweiterungen if rollenart does not match', async () => {
+            const result: Result<null, DomainError> = await sut.deleteByServiceProviderIdAndRollenarten(
+                serviceProvider.id,
+                [RollenArt.SORGBER],
+            );
+            expectOkResult(result);
+            const count: number = await em.count(RollenerweiterungEntity, {
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+                serviceProviderId: serviceProvider.id,
+            });
+            expect(count).toBe(1);
         });
     });
 

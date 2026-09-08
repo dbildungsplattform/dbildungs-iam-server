@@ -10,8 +10,8 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
-import { ServiceProvider } from './service-provider.js';
 import { ServiceProviderFindService } from './service-provider-find.service.js';
+import { ServiceProvider } from './service-provider.js';
 
 describe('ServiceProviderFindService', () => {
     let sut: ServiceProviderFindService;

@@ -1,4 +1,4 @@
-import { SharedDomainError } from './index.js';
+import { SharedDomainError } from './shared-domain.error.js';
 
 export class KeycloakClientError extends SharedDomainError {
     public constructor(message: string, details?: unknown[] | Record<string, unknown>) {

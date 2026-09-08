@@ -1,4 +1,5 @@
 import { MikroORM } from '@mikro-orm/core';
+import { EntityManager } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
@@ -8,13 +9,12 @@ import {
     EventSystemTestModule,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
-import { OrganisationScope } from './organisation.scope.js';
-import { OrganisationEntity } from './organisation.entity.js';
-import { EntityManager } from '@mikro-orm/postgresql';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { OrganisationRepository } from './organisation.repository.js';
 import { Organisation } from '../domain/organisation.js';
+import { OrganisationEntity } from './organisation.entity.js';
+import { OrganisationRepository } from './organisation.repository.js';
+import { OrganisationScope } from './organisation.scope.js';
 
 describe('OrganisationScope', () => {
     let module: TestingModule;
@@ -42,7 +42,6 @@ describe('OrganisationScope', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

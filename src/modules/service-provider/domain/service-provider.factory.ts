@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -29,6 +30,7 @@ export class ServiceProviderFactory {
         requires2fa: boolean,
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
+        rollenartenWhitelist: RollenArt[],
     ): Result<ServiceProvider<true>, InvalidLogoCombinationError> {
         if (!ServiceProvider.isValidLogoCombination(logoId, logo, logoMimeType)) {
             return Err(new InvalidLogoCombinationError('Cannot construct ServiceProvider with both logoId and logo'));
@@ -52,6 +54,7 @@ export class ServiceProviderFactory {
                 requires2fa,
                 vidisAngebotId,
                 merkmale,
+                rollenartenWhitelist,
             ),
         );
     }
@@ -71,6 +74,7 @@ export class ServiceProviderFactory {
         requires2fa: boolean,
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
+        rollenartenWhitelist: RollenArt[],
     ): Result<ServiceProvider<false>, InvalidLogoCombinationError> {
         if (!ServiceProvider.isValidLogoCombination(logoId, logo, logoMimeType)) {
             return Err(new InvalidLogoCombinationError('Cannot construct ServiceProvider with both logoId and logo'));
@@ -91,6 +95,7 @@ export class ServiceProviderFactory {
                 requires2fa,
                 vidisAngebotId,
                 merkmale,
+                rollenartenWhitelist,
             ),
         );
     }

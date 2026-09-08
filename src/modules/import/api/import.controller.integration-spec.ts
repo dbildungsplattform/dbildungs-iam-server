@@ -1,11 +1,14 @@
 import { faker } from '@faker-js/faker';
-import * as fs from 'fs';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Request } from 'express';
+import * as fs from 'node:fs';
+import { Observable } from 'rxjs';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -14,44 +17,41 @@ import {
     KeycloakConfigTestModule,
 } from '../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
-import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
-import { Observable } from 'rxjs';
-import { Request } from 'express';
+import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
 
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
-import { KeycloakUserService } from '../../keycloak-administration/domain/keycloak-user.service.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { ImportApiModule } from '../import-api.module.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import path from 'path';
-import { ImportDataRepository } from '../persistence/import-data.repository.js';
-import { ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
-import { ImportDataItem } from '../domain/import-data-item.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
-import { ImportVorgang } from '../domain/import-vorgang.js';
-import { PagedResponse } from '../../../shared/paging/paged.response.js';
-import { ImportVorgangResponse } from './importvorgang.response.js';
-import { ImportStatus } from '../domain/import.enums.js';
-import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { KeycloakAdministrationService } from '../../keycloak-administration/domain/keycloak-admin-client.service.js';
-import { PersonEntity } from '../../person/persistence/person.entity.js';
-import { mapAggregateToData, PersonRepository } from '../../person/persistence/person.repository.js';
-import { ImportResultResponse } from './import-result.response.js';
-import { ImportDataItemStatus } from '../domain/importDataItem.enum.js';
 import { KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
-import { PassportUser } from '../../authentication/types/user.js';
-import { Person } from '../../person/domain/person.js';
+import path from 'node:path';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
+import { PagedResponse } from '../../../shared/paging/paged.response.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { PassportUser } from '../../authentication/types/user.js';
+import { KeycloakAdministrationService } from '../../keycloak-administration/domain/keycloak-admin-client.service.js';
+import { KeycloakUserService } from '../../keycloak-administration/domain/keycloak-user.service.js';
+import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonEntity } from '../../person/persistence/person.entity.js';
+import { mapAggregateToData, PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { ImportDataItem } from '../domain/import-data-item.js';
+import { ImportVorgang } from '../domain/import-vorgang.js';
+import { ImportStatus } from '../domain/import.enums.js';
+import { ImportDataItemStatus } from '../domain/importDataItem.enum.js';
+import { ImportApiModule } from '../import-api.module.js';
+import { ImportDataRepository } from '../persistence/import-data.repository.js';
+import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
+import { ImportResultResponse } from './import-result.response.js';
+import { ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
+import { ImportVorgangResponse } from './importvorgang.response.js';
 
 describe('Import API', () => {
     let app: INestApplication;
@@ -134,7 +134,6 @@ describe('Import API', () => {
     }, 10000000);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

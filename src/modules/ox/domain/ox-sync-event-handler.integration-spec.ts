@@ -1,33 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { OxSendService } from '../adapter/technical/ox.send-service.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { faker } from '@faker-js/faker';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
-import { Person } from '../../person/domain/person.js';
-import { OxSyncEventHandler } from './ox-sync-event-handler.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
+import { MikroORM } from '@mikro-orm/core';
+import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import assert from 'node:assert';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { PersonIdentifier } from '../../../core/logging/person-identifier.js';
+import { OxError } from '../../../shared/error/ox.error.js';
+import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
+import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
+import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { INestApplication } from '@nestjs/common';
-import { MikroORM } from '@mikro-orm/core';
-import { OxError } from '../../../shared/error/ox.error.js';
-import { OXUserID } from '../../../shared/types/ox-ids.types.js';
-import assert from 'assert';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OxAdapter } from '../adapter/domain/ox.adapter.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { OxSendService } from '../adapter/technical/ox.send-service.js';
+import { OxSyncEventHandler } from './ox-sync-event-handler.js';
 
 describe('OxSyncEventHandler', () => {
     let app: INestApplication;
@@ -250,7 +250,6 @@ describe('OxSyncEventHandler', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

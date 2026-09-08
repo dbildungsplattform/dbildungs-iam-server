@@ -1,6 +1,6 @@
-import { resolve } from 'path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { readFileSync } from 'fs';
 
 try {
     readFileSync(resolve(__dirname, './.env'), 'utf-8')
@@ -75,6 +75,8 @@ export default defineConfig({
                     maxWorkers: '50%', // limit the workers to leave CPU threads for test containers
                     hookTimeout: 300000, // 5 minutes for setup/teardown
                     testTimeout: 90000, // 1.5 minutes for integration tests
+                    // Scoped to this project only: a root-level globalSetup also runs for a phantom no-file context, tearing the shared container down early.
+                    globalSetup: './test/vitest.global-setup.ts',
                     sequence: {
                         groupOrder: 1,
                     },

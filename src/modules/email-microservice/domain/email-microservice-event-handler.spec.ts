@@ -861,7 +861,7 @@ describe('EmailMicroserviceEventHandler', () => {
             expect(emailResolverServiceMock.setEmailForSpshPerson).not.toHaveBeenCalled();
         });
 
-        it('should call deleteEmailsForSpshPerson if no email service provider found', async () => {
+        it('should call setEmailsSuspendedForSpshPerson if no email service provider found', async () => {
             const personId: string = faker.string.uuid();
             const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(personId);
             const mockPerson: Person<true> = DoFactory.createPerson(true);
@@ -888,7 +888,9 @@ describe('EmailMicroserviceEventHandler', () => {
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining('No email service provider found for personId:'),
             );
-            expect(emailResolverServiceMock.deleteEmailsForSpshPerson).toHaveBeenCalledWith({ spshPersonId: personId });
+            expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).toHaveBeenCalledWith({
+                spshPersonId: personId,
+            });
         });
     });
 });

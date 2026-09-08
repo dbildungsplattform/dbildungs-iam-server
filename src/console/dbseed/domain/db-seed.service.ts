@@ -258,6 +258,7 @@ export class DbSeedService {
                 file.requires2fa,
                 file.vidisAngebotId,
                 file.merkmale ?? [],
+                file.rollenartenWhitelist ?? [],
             );
             if (!serviceProvider.ok) {
                 throw serviceProvider.error;

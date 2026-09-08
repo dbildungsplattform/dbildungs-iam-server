@@ -1,26 +1,29 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { DatabaseTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
+import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
 import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/personenkontext.factory.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
 import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
 import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
 import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
-import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
@@ -32,13 +35,10 @@ import { GlobalValidationPipe } from '../../../shared/validation/global-validati
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
-import { LdapModule } from '../ldap.module.js';
 import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
-import { LdapEventHandler } from './ldap-event-handler.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { Person } from '../../../modules/person/domain/person.js';
-import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { LdapModule } from '../ldap.module.js';
+import { LdapEventHandler } from './ldap-event-handler.js';
 
 describe('LdapEventHandler', () => {
     let app: INestApplication;
@@ -96,7 +96,6 @@ describe('LdapEventHandler', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

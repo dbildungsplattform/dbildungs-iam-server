@@ -42,14 +42,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 httpAdapter.reply(ctx.getResponse(), DB_ERROR, DB_ERROR.code);
             } else {
                 this.logger.crit(
-                    `UNEXPECTED EXCEPTION - no instance of known Error: ${util.inspect(exception)}`,
+                    `UNEXPECTED EXCEPTION - no instance of known Error: ${util.inspect(exception, { depth: 2, compact: Infinity, breakLength: Infinity })}`,
                     exception.stack,
                 );
 
                 httpAdapter.reply(ctx.getResponse(), UNKNOWN_ERROR, UNKNOWN_ERROR.code);
             }
         } else {
-            this.logger.crit(`UNEXPECTED EXCEPTION - no instance of Error: ${util.inspect(exception)}`);
+            this.logger.crit(
+                `UNEXPECTED EXCEPTION - no instance of Error: ${util.inspect(exception, { depth: 2, compact: Infinity, breakLength: Infinity })}`,
+            );
 
             httpAdapter.reply(ctx.getResponse(), UNKNOWN_ERROR, UNKNOWN_ERROR.code);
         }

@@ -1,18 +1,18 @@
 import { faker } from '@faker-js/faker';
+import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createMock } from '../../../../../test/utils/createMock.js';
-import { MikroORM } from '@mikro-orm/core';
-import { EmailAddressRepo } from './email-address.repo.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     EmailConfigTestModule,
 } from '../../../../../test/utils/index.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { EmailDomainRepo } from './email-domain.repo.js';
-import { EmailCoreModule } from '../email-core.module.js';
+import { DomainError } from '../../../../shared/error/domain.error.js';
 import { EmailDomain } from '../domain/email-domain.js';
+import { EmailCoreModule } from '../email-core.module.js';
+import { EmailAddressRepo } from './email-address.repo.js';
+import { EmailDomainRepo } from './email-domain.repo.js';
 
 describe('EmailDomainRepo', () => {
     let module: TestingModule;
@@ -35,7 +35,6 @@ describe('EmailDomainRepo', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

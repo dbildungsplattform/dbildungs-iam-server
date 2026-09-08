@@ -299,6 +299,40 @@ describe('ClassLogger', () => {
                     ),
                 );
             });
+
+            it('should log cause Error if present', () => {
+                const causeError: Error = new Error('Cause error message');
+                const resultingError: Error = new Error('Resulting error message', { cause: causeError });
+
+                sut.logUnknownAsError(errorMessage, resultingError);
+
+                expect(loggerMock.log).toHaveBeenCalledWith(
+                    'error',
+                    createTestMessage(
+                        errorMessage +
+                            ' - ' +
+                            `${resultingError.name}: ${resultingError.message}, cause: (${causeError.name}: ${causeError.message})`,
+                        resultingError.stack,
+                    ),
+                );
+            });
+
+            it('should log cause Object if present', () => {
+                const causeError: string = 'Cause error message';
+                const resultingError: Error = new Error('Resulting error message', { cause: causeError });
+
+                sut.logUnknownAsError(errorMessage, resultingError);
+
+                expect(loggerMock.log).toHaveBeenCalledWith(
+                    'error',
+                    createTestMessage(
+                        errorMessage +
+                            ' - ' +
+                            `${resultingError.name}: ${resultingError.message}, cause: ('${causeError}')`,
+                        resultingError.stack,
+                    ),
+                );
+            });
         });
     });
 

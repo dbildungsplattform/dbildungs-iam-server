@@ -1,19 +1,19 @@
-import { vi } from 'vitest';
 import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Client } from 'ldapts';
+import { vi } from 'vitest';
+import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     LdapTestModule,
 } from '../../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
-import { LdapConfigModule } from './ldap-config.module.js';
 import { LdapModule } from '../../ldap.module.js';
 import { LdapClient } from './ldap-client.js';
-import { Client } from 'ldapts';
-import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
+import { LdapConfigModule } from './ldap-config.module.js';
 
 describe('LDAP Client', () => {
     let app: INestApplication;
@@ -47,7 +47,6 @@ describe('LDAP Client', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

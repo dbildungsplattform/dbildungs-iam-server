@@ -5,6 +5,7 @@ import { KeycloakAdministrationModule } from '../keycloak-administration/keycloa
 import { RolleModule } from '../rolle/rolle.module.js';
 import { ServiceProviderFactory } from './domain/service-provider.factory.js';
 import { ServiceProviderFindService } from './domain/service-provider-find.service.js';
+import { ServiceProviderModificationService } from './domain/service-provider-modification.service.js';
 import { ServiceProviderService } from './domain/service-provider.service.js';
 import { CreateGroupAndRoleHandler } from './repo/service-provider-event-handler.js';
 import { ServiceProviderRepo } from './repo/service-provider.repo.js';
@@ -25,10 +26,17 @@ import { OrganisationModule } from '../organisation/organisation.module.js';
         ServiceProviderInternalRepo,
         ServiceProviderFactory,
         ServiceProviderFindService,
+        ServiceProviderModificationService,
         ServiceProviderService,
         CreateGroupAndRoleHandler,
         OrganisationServiceProviderRepo,
     ],
-    exports: [ServiceProviderRepo, ServiceProviderFactory, ServiceProviderFindService, ServiceProviderService],
+    exports: [
+        ServiceProviderRepo,
+        ServiceProviderFactory,
+        ServiceProviderFindService,
+        ServiceProviderModificationService,
+        ServiceProviderService,
+    ],
 })
 export class ServiceProviderModule {}

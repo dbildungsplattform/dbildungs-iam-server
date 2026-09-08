@@ -1,11 +1,14 @@
-import { Dictionary, FilterQuery, Loaded, PopulatePath, RequiredEntityData } from '@mikro-orm/core';
-import { Injectable } from '@nestjs/common';
+import { Dictionary, FilterQuery, Loaded, PopulatePath, RequiredEntityData, Subquery } from '@mikro-orm/core';
 import { EntityManager, QueryBuilder } from '@mikro-orm/postgresql';
+import { Injectable } from '@nestjs/common';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
+import { RollenArt } from '../domain/rolle.enums.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
@@ -14,8 +17,6 @@ import { NoRedundantRollenerweiterungError } from '../specification/error/no-red
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { NoRedundantRollenerweiterung } from '../specification/no-redundant-rollenerweiterung.specification.js';
 import { ServiceProviderVerfuegbarFuerRollenerweiterung } from '../specification/service-provider-verfuegbar-fuer-rollenerweiterung.specification.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 type RollenerweiterungIds = {
     organisationId: OrganisationID;
@@ -219,6 +220,29 @@ export class RollenerweiterungRepo {
                 $in: serviceProviderIds,
             },
         });
+
+        return Ok(null);
+    }
+
+    public async deleteByServiceProviderIdAndRollenarten(
+        serviceProviderId: ServiceProviderID,
+        rollenarten?: RollenArt[],
+    ): Promise<Result<null, DomainError>> {
+        const where: FilterQuery<RollenerweiterungEntity> = {
+            serviceProviderId,
+        };
+        if (rollenarten && rollenarten.length > 0) {
+            const rollenSubquery: Subquery = this.em
+                .createQueryBuilder(RollenerweiterungEntity, 're')
+                .select('re.rolleId')
+                .innerJoin('re.rolleId', 'r')
+                .where({
+                    're.serviceProviderId': serviceProviderId,
+                    'r.rollenart': { $in: rollenarten },
+                });
+            where.rolleId = { $in: rollenSubquery };
+        }
+        await this.em.nativeDelete(RollenerweiterungEntity, where);
 
         return Ok(null);
     }

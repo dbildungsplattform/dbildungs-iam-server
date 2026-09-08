@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
@@ -8,6 +7,8 @@ import { Request } from 'express';
 import { Observable } from 'rxjs';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -15,6 +16,7 @@ import {
     DoFactory,
     KeycloakConfigTestModule,
 } from '../../../../test/utils/index.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
@@ -28,17 +30,15 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
+import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
 import { Organisation } from '../domain/organisation.js';
 import { OrganisationApiModule } from '../organisation-api.module.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 
 describe('Organisation API', () => {
     let app: INestApplication;
@@ -122,7 +122,6 @@ describe('Organisation API', () => {
     }, 10000000);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

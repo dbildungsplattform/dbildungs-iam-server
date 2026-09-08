@@ -1,24 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HealthController } from './health.controller.js';
-import {
-    HealthCheckService,
-    HealthIndicatorFunction,
-    HttpHealthIndicator,
-    MikroOrmHealthIndicator,
-} from '@nestjs/terminus';
+import { HealthCheckService, HealthIndicatorFunction, HttpHealthIndicator } from '@nestjs/terminus';
 import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from '../../shared/config/index.js';
 import { KeycloakHealthIndicator } from './keycloak.health-indicator.js';
 import { RedisHealthIndicator } from './redis.health-indicator.js';
+import { DatabaseHealthIndicator } from './database.health-indicator.js';
 
 describe('HealthController', () => {
     let controller: HealthController;
 
     let healthCheckService: DeepMocked<HealthCheckService>;
-    let mikroOrmHealthIndicator: MikroOrmHealthIndicator;
     let httpHealthIndicator: DeepMocked<HttpHealthIndicator>;
     let keycloakHealthIndicator: DeepMocked<KeycloakHealthIndicator>;
+    let databaseHealthIndicator: DeepMocked<DatabaseHealthIndicator>;
     const keycloakConfig: KeycloakConfig = {
         ADMIN_CLIENT_ID: '',
         ADMIN_SECRET: '',
@@ -37,11 +33,11 @@ describe('HealthController', () => {
 
     beforeEach(async () => {
         healthCheckService = createMock(HealthCheckService);
-        mikroOrmHealthIndicator = createMock(MikroOrmHealthIndicator);
         httpHealthIndicator = createMock(HttpHealthIndicator);
         configService = createMock(ConfigService);
         keycloakHealthIndicator = createMock(KeycloakHealthIndicator);
         redisHealthIndicator = createMock(RedisHealthIndicator);
+        databaseHealthIndicator = createMock(DatabaseHealthIndicator);
 
         configService.getOrThrow.mockReturnValue(keycloakConfig);
 
@@ -49,12 +45,12 @@ describe('HealthController', () => {
             controllers: [HealthController],
             providers: [
                 { provide: HealthCheckService, useValue: healthCheckService },
-                { provide: MikroOrmHealthIndicator, useValue: mikroOrmHealthIndicator },
                 { provide: HttpHealthIndicator, useValue: httpHealthIndicator },
                 { provide: KeycloakConfig, useValue: keycloakConfig },
                 { provide: ConfigService, useValue: configService },
                 { provide: KeycloakHealthIndicator, useValue: keycloakHealthIndicator },
                 { provide: RedisHealthIndicator, useValue: redisHealthIndicator },
+                { provide: DatabaseHealthIndicator, useValue: databaseHealthIndicator },
             ],
         }).compile();
 
@@ -78,5 +74,6 @@ describe('HealthController', () => {
         }
         expect(keycloakHealthIndicator.check).toHaveBeenCalled();
         expect(redisHealthIndicator.check).toHaveBeenCalled();
+        expect(databaseHealthIndicator.check).toHaveBeenCalled();
     });
 });

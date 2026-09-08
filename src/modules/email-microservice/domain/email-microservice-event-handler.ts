@@ -236,9 +236,9 @@ export class EmailMicroserviceEventHandler {
             });
         } else {
             this.logger.info(
-                `No email service provider found for personId:${personId}, deleting emails in email microservice if there are any.`,
+                `No email service provider found for personId:${personId}, suspending emails in email microservice if there are any.`,
             );
-            await this.emailResolverService.deleteEmailsForSpshPerson({ spshPersonId: personId });
+            await this.emailResolverService.setEmailsSuspendedForSpshPerson({ spshPersonId: personId });
         }
     }
 

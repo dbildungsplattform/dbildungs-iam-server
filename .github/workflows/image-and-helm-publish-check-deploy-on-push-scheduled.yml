@@ -1,14 +1,14 @@
 # Scan & Publish image and helm chart on push, deployment on push, delete deployment on branch deletion, scheduled trivy scanner
-name: 'Dev Pipeline'
+name: "Dev Pipeline"
 
 # All triggers have to be in one file, so that the trivy results can be compared to identify introduced vulnerabilities
 # See DBP-340
 on:
   push:
     branches:
-      - '**'
+      - "**"
   schedule:
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
   delete:
 
 concurrency:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   check_deployment_clearance:
-    name: 'Check deployment clearance'
+    name: "Check deployment clearance"
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -56,7 +56,7 @@ jobs:
           fi
 
   codeql_analyze:
-    name: 'CodeQL'
+    name: "CodeQL"
     if: ${{ github.event_name == 'push' }}
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/check-codeql.yaml@8
     with:
@@ -67,16 +67,16 @@ jobs:
       security-events: write
 
   nest_lint:
-    name: 'Linting'
+    name: "Linting"
     if: ${{ github.event_name == 'push' }}
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/check-nest-lint.yaml@8
     with:
-      node_version: '24.16.0'
+      node_version: "24.16.0"
     permissions:
       contents: read
 
   prettier_check:
-    name: 'Prettier Formatting'
+    name: "Prettier Formatting"
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +86,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24.16.0'
+          node-version: "24.16.0"
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -95,22 +95,23 @@ jobs:
         run: npm run check-format
 
   tests_and_sonarcloud:
-    name: 'Tests and Sonarcloud'
+    name: "Tests and Sonarcloud"
     if: ${{ github.event_name == 'push' }}
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/check-nest-test-sonarcloud.yaml@8
     with:
-      node_version: '24.16.0'
-      deploy_stage: 'dev'
+      node_version: "24.16.0"
+      deploy_stage: "dev"
       timeout_minutes: 30
     permissions:
       contents: read
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build_image_on_push:
     needs:
       - check_deployment_clearance
       - create_branch_identifier
-    name: 'Publish image and scan with trivy'
+    name: "Publish image and scan with trivy"
     if: ${{ github.event_name == 'push' && needs.check_deployment_clearance.outputs.deployment_clearance == 'true' }}
     permissions:
       packages: write
@@ -118,14 +119,14 @@ jobs:
       contents: read
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/image-publish-trivy.yaml@8
     with:
-      image_name: 'dbildungs-iam-server'
+      image_name: "dbildungs-iam-server"
       run_trivy_scan: true
       image_tag_generation: ${{ github.ref_name == 'main' && 'commit_hash' || 'specified' }}
       image_tag: ${{ github.ref_name == 'main' && '' || needs.create_branch_identifier.outputs.image_tag_from_branch }}
       add_latest_tag: ${{ github.ref_name == 'main' }}
-      container_registry: 'ghcr.io'
+      container_registry: "ghcr.io"
       fail_on_vulnerabilites: false
-      report_location: 'Dockerfile'
+      report_location: "Dockerfile"
 
   scan_helm:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
@@ -159,7 +160,8 @@ jobs:
       - create_branch_identifier
       - select_helm_version_generation_and_image_tag_generation
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/chart-release.yaml@8
-    secrets: inherit
+    secrets:
+      HELM_CHARTS_REGISTRY_PUBLISHER: ${{ secrets.HELM_CHARTS_REGISTRY_PUBLISHER }}
     with:
       chart_name: dbildungs-iam-server
       image_tag_generation: ${{ needs.select_helm_version_generation_and_image_tag_generation.outputs.SELECT_IMAGE_TAG_GENERATION }}
@@ -225,8 +227,9 @@ jobs:
       dbildungs_iam_keycloak_branch: ${{ needs.branch_meta.outputs.ticket }}
       dbildungs_iam_ldap_branch: ${{ needs.branch_meta.outputs.ticket }}
       namespace: ${{ needs.create_branch_identifier.outputs.namespace_from_branch }}
-      database_recreation: 'true' # to prevent database recreation this has to be set to false
-    secrets: inherit
+      database_recreation: "true" # to prevent database recreation this has to be set to false
+    secrets:
+      SPSH_DEV_KUBECONFIG: ${{ secrets.SPSH_DEV_KUBECONFIG }}
 
   # On Delete
   create_branch_identifier_for_deletion:
@@ -256,23 +259,23 @@ jobs:
 
   # Scheduled
   scheduled_trivy_scan:
-    name: 'Scheduled trivy scan of latest image'
+    name: "Scheduled trivy scan of latest image"
     if: ${{ github.event_name == 'schedule' }}
     permissions:
       packages: read
       security-events: write
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/check-trivy.yaml@8
     with:
-      image_ref: 'ghcr.io/${{ github.repository_owner }}/dbildungs-iam-server:latest'
+      image_ref: "ghcr.io/${{ github.repository_owner }}/dbildungs-iam-server:latest"
       fail_on_vulnerabilites: true
-      report_location: 'Dockerfile'
-      trivyignores: '.trivyignore'
+      report_location: "Dockerfile"
+      trivyignores: ".trivyignore"
 
   trivy_scan_rocketchat_notification:
     if: github.event_name == 'schedule' && failure()
     needs:
       - scheduled_trivy_scan
-    runs-on: 'ubuntu-latest'
+    runs-on: "ubuntu-latest"
     steps:
       - name: Check if today is Monday
         id: check_monday
@@ -283,5 +286,5 @@ jobs:
         if: ${{ steps.check_monday.outputs.date == '1' }}
         with:
           type: failure
-          job_name: 'Daily nightly image check failed. This notification will be sent only on Mondays, so the check may have been failing for several days. CVE scan results: https://github.com/dBildungsplattform/dbildungs-iam-server/security/code-scanning'
+          job_name: "Daily nightly image check failed. This notification will be sent only on Mondays, so the check may have been failing for several days. CVE scan results: https://github.com/dBildungsplattform/dbildungs-iam-server/security/code-scanning"
           url: ${{ secrets.RC_WEBHOOK_SPSH_DEVELOPER_CHANNEL }}

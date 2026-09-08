@@ -1,4 +1,4 @@
-import { assignSameKey } from '../../../shared/util/object-utils.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import {
     ServiceProviderKategorie,
@@ -7,11 +7,18 @@ import {
     ServiceProviderTarget,
 } from './service-provider.enum.js';
 
-type SafeUpdateFields = Pick<ServiceProvider<boolean>, 'name' | 'url' | 'kategorie' | 'logoId'>;
+const MERKMALE_REQUIRING_VERFUEGBAR_FUER_ROLLENERWEITERUNG: ServiceProviderMerkmal[] = [
+    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+];
+
+export type ServiceProviderUpdateParams = Partial<
+    Pick<ServiceProvider<true>, 'name' | 'url' | 'kategorie' | 'merkmale' | 'rollenartenWhitelist' | 'requires2fa'> & {
+        logoId: Option<number>;
+    }
+>;
 
 export class ServiceProvider<WasPersisted extends boolean> {
-    protected static readonly SAFE_UPDATE_FIELDS: (keyof SafeUpdateFields)[] = ['name', 'url', 'kategorie', 'logoId'];
-
     protected constructor(
         public id: Persisted<string, WasPersisted>,
         public createdAt: Persisted<Date, WasPersisted>,
@@ -30,7 +37,10 @@ export class ServiceProvider<WasPersisted extends boolean> {
         public requires2fa: boolean,
         public vidisAngebotId: string | undefined,
         public merkmale: ServiceProviderMerkmal[],
-    ) {}
+        public rollenartenWhitelist: RollenArt[],
+    ) {
+        this.merkmale = ServiceProvider.removeDependentMerkmaleWithoutVerfuegbarFuerRollenerweiterung(merkmale);
+    }
 
     public static construct<WasPersisted extends boolean = false>(
         id: string,
@@ -50,6 +60,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
         requires2fa: boolean,
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
+        rollenartenWhitelist: RollenArt[],
     ): ServiceProvider<WasPersisted> {
         return new ServiceProvider(
             id,
@@ -69,6 +80,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
             requires2fa,
             vidisAngebotId,
             merkmale,
+            rollenartenWhitelist,
         );
     }
 
@@ -87,6 +99,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
         requires2fa: boolean,
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
+        rollenartenWhitelist: RollenArt[],
     ): ServiceProvider<false> {
         return new ServiceProvider(
             undefined,
@@ -106,29 +119,39 @@ export class ServiceProvider<WasPersisted extends boolean> {
             requires2fa,
             vidisAngebotId,
             merkmale,
+            rollenartenWhitelist,
         );
     }
 
-    /**
-     * logoId can be set to null to clear it
-     * @param update
-     * @returns
-     */
-    public updateWithSafeFields(update: {
-        name?: string;
-        url?: string;
-        kategorie?: ServiceProviderKategorie;
-        logoId?: Option<number>;
-    }): Option<InvalidLogoCombinationError> {
+    /** logoId can be set to null to clear it. Unsafe fields (kategorie, merkmale, rollenartenWhitelist, requires2fa) require caller to have checked permissions. */
+    public update(update: ServiceProviderUpdateParams): Option<InvalidLogoCombinationError> {
         if (!ServiceProvider.isValidLogoCombination(update.logoId, this.logo, this.logoMimeType)) {
             return new InvalidLogoCombinationError('Cannot set logoId, if there already is a logo');
         }
-        for (const field of ServiceProvider.SAFE_UPDATE_FIELDS) {
-            if (field === 'logoId' && update[field] === null) {
-                this.logoId = undefined;
-            } else if (update[field] !== undefined && update[field] !== null) {
-                assignSameKey(this, update, field);
-            }
+        if (update.logoId === null) {
+            this.logoId = undefined;
+        } else if (update.logoId !== undefined) {
+            this.logoId = update.logoId;
+        }
+        if (update.name !== undefined) {
+            this.name = update.name;
+        }
+        if (update.url !== undefined) {
+            this.url = update.url;
+        }
+        if (update.kategorie !== undefined) {
+            this.kategorie = update.kategorie;
+        }
+        if (update.merkmale !== undefined) {
+            this.merkmale = ServiceProvider.removeDependentMerkmaleWithoutVerfuegbarFuerRollenerweiterung(
+                update.merkmale,
+            );
+        }
+        if (update.rollenartenWhitelist !== undefined) {
+            this.rollenartenWhitelist = update.rollenartenWhitelist;
+        }
+        if (update.requires2fa !== undefined) {
+            this.requires2fa = update.requires2fa;
         }
         return;
     }
@@ -146,5 +169,18 @@ export class ServiceProvider<WasPersisted extends boolean> {
         const validLogoDataCombination: boolean = !logoIdProvided && logoProvided && logoMimeTypeProvided;
         const noLogoCombination: boolean = !logoIdProvided && !logoProvided && !logoMimeTypeProvided;
         return validLogoIdCombination || validLogoDataCombination || noLogoCombination;
+    }
+
+    private static removeDependentMerkmaleWithoutVerfuegbarFuerRollenerweiterung(
+        merkmale: ServiceProviderMerkmal[],
+    ): ServiceProviderMerkmal[] {
+        if (merkmale.includes(ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG)) {
+            return merkmale;
+        }
+
+        return merkmale.filter(
+            (merkmal: ServiceProviderMerkmal) =>
+                !MERKMALE_REQUIRING_VERFUEGBAR_FUER_ROLLENERWEITERUNG.includes(merkmal),
+        );
     }
 }

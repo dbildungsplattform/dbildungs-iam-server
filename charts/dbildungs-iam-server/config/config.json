@@ -83,7 +83,7 @@
         "BASE_URL": "http://localhost:10000",
         "CLIENT_ID": "clientid",
         "CLIENT_SECRET": "clientsecret",
-        "SYNC_SCHOOLS_PAGE_SIZE":5,
+        "SYNC_SCHOOLS_PAGE_SIZE": 5,
         "REGION": "Schleswig-Holstein"
     },
     "HEADER_API_KEY": {
@@ -110,7 +110,7 @@
         "SSL_KEY_PATH": "/tls/client-key.pem"
     },
     "PORTAL": {
-        "LIMITED_ROLLENART_ALLOWLIST": ["LERN", "EXTERN"]
+        "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
     },
     "EMAIL_MICROSERVICE": {
         "USE_EMAIL_MICROSERVICE": false,

@@ -1,9 +1,9 @@
 import { DynamicModule, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomInt } from 'crypto';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { KeycloakInstanceConfig } from '../../src/modules/keycloak-administration/keycloak-instance-config.js';
 import { KeycloakConfig, ServerConfig } from '../../src/shared/config/index.js';
-import { randomInt } from 'crypto';
 
 type KeycloakConfigTestModuleOptions = { isKeycloakRequired: boolean };
 
@@ -21,7 +21,7 @@ export class KeycloakConfigTestModule implements OnModuleDestroy {
                         const keycloakConfig: KeycloakConfig = configService.getOrThrow<KeycloakConfig>('KEYCLOAK');
 
                         if (options?.isKeycloakRequired) {
-                            this.keycloak = await new GenericContainer('quay.io/keycloak/keycloak:26.6.4-1')
+                            this.keycloak = await new GenericContainer('quay.io/keycloak/keycloak:26.7.2-1')
                                 .withCopyFilesToContainer([
                                     {
                                         source: './config/dev-realm-spsh.json',

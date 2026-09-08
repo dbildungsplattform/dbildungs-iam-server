@@ -5,6 +5,7 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { ServiceProviderKategorie } from './service-provider.enum.js';
 import { ServiceProvider } from './service-provider.js';
 
 export type ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount = {
@@ -37,4 +38,11 @@ export type RollenerweiterungForManageableServiceProvider = {
     serviceProviderId: string;
     organisation: Organisation<true>;
     rolle: Rolle<true>;
+};
+
+export type ManageableServiceProviderFilter = {
+    kategorien?: ServiceProviderKategorie[];
+    searchFilter?: string;
+    limit?: number;
+    offset?: number;
 };

@@ -1,4 +1,5 @@
-import { IMigrator, MigrationInfo, MikroORM } from '@mikro-orm/core';
+import { EntityManager, IMigrator, MigrationInfo, MikroORM } from '@mikro-orm/core';
+import { partition } from 'lodash-es';
 import { CommandRunner, Option, SubCommand } from 'nest-commander';
 import { ClassLogger } from '../../core/logging/class-logger.js';
 
@@ -6,6 +7,10 @@ export enum MigrationType {
     STRUCTURAL = 'structural',
     DATA = 'data',
     All = 'all',
+}
+
+interface DbApplyMigrationOptions {
+    migration?: MigrationType;
 }
 
 @SubCommand({ name: 'migration-apply', description: 'applies latest migration version to database' })
@@ -17,13 +22,12 @@ export class DbApplyMigrationConsole extends CommandRunner {
         super();
     }
 
-    public override async run(_passedParams: string[], options?: Record<string, unknown>): Promise<void> {
+    public override async run(_passedParams: string[], options?: DbApplyMigrationOptions): Promise<void> {
         this.logger.info('Migrating to latest version...');
         const migrator: IMigrator = this.orm.migrator;
         const migrationType: MigrationType = (options?.['migration'] as MigrationType) || MigrationType.All;
 
         const allMigrations: MigrationInfo[] = await migrator.getPending();
-
         if (
             !allMigrations
                 .map((migration: MigrationInfo) => migration.name)
@@ -31,20 +35,33 @@ export class DbApplyMigrationConsole extends CommandRunner {
         ) {
             throw new Error('Not all migrations end with a S or D');
         }
+        this.logger.info(`${allMigrations.length} pending migrations`);
 
-        const migrationsToExecute: MigrationInfo[] = allMigrations.filter((migration: MigrationInfo) => {
-            if (migrationType === MigrationType.All) {
-                return true;
-            }
+        const [structuralMigrations, dataMigrations]: [MigrationInfo[], MigrationInfo[]] = partition(
+            allMigrations,
+            (migration: MigrationInfo) => migration.name.endsWith('S'),
+        );
+        if (migrationType === MigrationType.All || migrationType === MigrationType.STRUCTURAL) {
+            this.logger.info(`Applying ${structuralMigrations.length} ${MigrationType.STRUCTURAL} migrations...`);
+            await this.orm.em.transactional(async (em: EntityManager) => {
+                await migrator.up({
+                    migrations: structuralMigrations.map((migration: MigrationInfo) => migration.name),
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    transaction: em.getTransactionContext(),
+                });
+            });
+        }
+        if (migrationType === MigrationType.All || migrationType === MigrationType.DATA) {
+            this.logger.info(`Applying ${dataMigrations.length} ${MigrationType.DATA} migrations...`);
+            await this.orm.em.transactional(async (em: EntityManager) => {
+                await migrator.up({
+                    migrations: dataMigrations.map((migration: MigrationInfo) => migration.name),
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    transaction: em.getTransactionContext(),
+                });
+            });
+        }
 
-            if (migrationType === MigrationType.STRUCTURAL) {
-                return migration.name.endsWith('S');
-            }
-
-            return migration.name.endsWith('D');
-        });
-
-        await migrator.up(migrationsToExecute.map((migration: MigrationInfo) => migration.name));
         this.logger.info('Finished migration to latest version.');
     }
 

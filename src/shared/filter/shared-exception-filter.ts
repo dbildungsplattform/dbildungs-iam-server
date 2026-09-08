@@ -1,8 +1,9 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import { Response } from 'express';
 import { DbiamSharedError, SharedErrorI18nTypes } from '../error/dbiam-shared.error.js';
+import { ExceedsLimitError } from '../error/exceeds-limit.error.js';
 import {
-    SharedDomainError,
+    EmailMicroserviceCommunicationError,
     EntityAlreadyExistsError,
     EntityCouldNotBeCreated,
     EntityCouldNotBeDeleted,
@@ -14,12 +15,12 @@ import {
     KeycloakClientError,
     MismatchedRevisionError,
     MissingPermissionsError,
+    MultipleRollenartenError,
     PersonAlreadyExistsError,
-    EmailMicroserviceCommunicationError,
+    SharedDomainError,
 } from '../error/index.js';
-import { ExceedsLimitError } from '../error/exceeds-limit.error.js';
-import { UserExternalDataWorkflowError } from '../error/user-externaldata-workflow.error.js';
 import { MissingAttributeError } from '../error/missing-attribute.error.js';
+import { UserExternalDataWorkflowError } from '../error/user-externaldata-workflow.error.js';
 
 @Catch(SharedDomainError)
 export class SharedExceptionFilter implements ExceptionFilter<SharedDomainError> {
@@ -134,6 +135,13 @@ export class SharedExceptionFilter implements ExceptionFilter<SharedDomainError>
             new DbiamSharedError({
                 code: 500,
                 i18nKey: SharedErrorI18nTypes.EMAIL_MICROSERVICE_COMMUNICATION_ERROR,
+            }),
+        ],
+        [
+            MultipleRollenartenError.name,
+            new DbiamSharedError({
+                code: 400,
+                i18nKey: SharedErrorI18nTypes.MULTIPLE_ROLLENARTEN,
             }),
         ],
     ]);

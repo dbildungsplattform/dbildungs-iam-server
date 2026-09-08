@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/index.js';
-import { UpdateServiceProviderBodyParams } from '../api/update-service-provider-body.params.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
-import { ServiceProvider } from './service-provider.js';
-import { ServiceProviderKategorie } from './service-provider.enum.js';
+import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
+import { ServiceProvider, ServiceProviderUpdateParams } from './service-provider.js';
 
 type ValidLogoCombinationTestCase =
     | { logoId: number; logo: undefined; logoMimeType: undefined }
@@ -90,73 +90,110 @@ describe('ServiceProvider', () => {
         );
     });
 
-    describe('updateWithSafeFields', () => {
-        let serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-
-        beforeEach(() => {
-            serviceProvider = DoFactory.createServiceProvider(true, {
-                kategorie: ServiceProviderKategorie.HINWEISE,
-                logo: undefined,
-                logoMimeType: undefined,
-            });
-        });
-
+    describe('update', () => {
         it.each([
             [
                 {
                     name: faker.company.buzzNoun(),
                     url: faker.internet.url(),
-                    kategorie: serviceProvider.kategorie,
                     logoId: faker.number.int({ min: 1, max: 1000 }),
                 },
             ],
-            [
-                {
-                    logoId: 1,
-                },
-            ],
-        ])('should update only safe fields', (update: UpdateServiceProviderBodyParams) => {
+            [{ logoId: 1 }],
+        ])('should update safe fields and return undefined', (update: ServiceProviderUpdateParams) => {
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 kategorie: ServiceProviderKategorie.HINWEISE,
                 logo: undefined,
                 logoMimeType: undefined,
             });
-            const result: Option<InvalidLogoCombinationError> = serviceProvider.updateWithSafeFields(update);
+            const result: Option<InvalidLogoCombinationError> = serviceProvider.update(update);
             expect(result).toBeUndefined();
-            expect(serviceProvider).toEqual({
-                ...serviceProvider,
-                ...update,
+            expect(serviceProvider).toEqual({ ...serviceProvider, ...update });
+        });
+
+        it('should update unsafe fields', () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                kategorie: ServiceProviderKategorie.HINWEISE,
+                merkmale: [],
+                rollenartenWhitelist: [],
+                logo: undefined,
+                logoMimeType: undefined,
             });
+            const update: ServiceProviderUpdateParams = {
+                kategorie: ServiceProviderKategorie.EMAIL,
+                merkmale: [ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            };
+            const result: Option<InvalidLogoCombinationError> = serviceProvider.update(update);
+            expect(result).toBeUndefined();
+            expect(serviceProvider.kategorie).toBe(ServiceProviderKategorie.EMAIL);
+            expect(serviceProvider.merkmale).toEqual([]);
+            expect(serviceProvider.rollenartenWhitelist).toEqual([RollenArt.LEHR]);
+        });
+
+        it('should update all fields at once', () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                kategorie: ServiceProviderKategorie.HINWEISE,
+                merkmale: [],
+                rollenartenWhitelist: [],
+                logo: undefined,
+                logoMimeType: undefined,
+            });
+            const update: ServiceProviderUpdateParams = {
+                name: faker.company.buzzNoun(),
+                url: faker.internet.url(),
+                logoId: faker.number.int({ min: 1, max: 1000 }),
+                kategorie: ServiceProviderKategorie.EMAIL,
+                merkmale: [ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            };
+            const result: Option<InvalidLogoCombinationError> = serviceProvider.update(update);
+            expect(result).toBeUndefined();
+            expect(serviceProvider.name).toBe(update.name);
+            expect(serviceProvider.url).toBe(update.url);
+            expect(serviceProvider.logoId).toBe(update.logoId);
+            expect(serviceProvider.kategorie).toBe(ServiceProviderKategorie.EMAIL);
+            expect(serviceProvider.merkmale).toEqual([]);
+            expect(serviceProvider.rollenartenWhitelist).toEqual([RollenArt.LEHR]);
+        });
+
+        it('should keep ANBIETEN merkmale when VERFUEGBAR_FUER_ROLLENERWEITERUNG is also set', () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [],
+                logo: undefined,
+                logoMimeType: undefined,
+            });
+
+            const result: Option<InvalidLogoCombinationError> = serviceProvider.update({
+                merkmale: [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
+            });
+
+            expect(result).toBeUndefined();
+            expect(serviceProvider.merkmale).toEqual([
+                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+            ]);
         });
 
         it('should set logoId to undefined if null is provided', () => {
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                kategorie: ServiceProviderKategorie.HINWEISE,
                 logo: undefined,
                 logoMimeType: undefined,
                 logoId: 123,
             });
-            const update: UpdateServiceProviderBodyParams = {
-                logoId: null,
-            };
-            const result: Option<InvalidLogoCombinationError> = serviceProvider.updateWithSafeFields(update);
+            const result: Option<InvalidLogoCombinationError> = serviceProvider.update({ logoId: null });
             expect(result).toBeUndefined();
-            expect(serviceProvider).toEqual({
-                ...serviceProvider,
-                logoId: undefined,
-            });
+            expect(serviceProvider.logoId).toBeUndefined();
         });
 
         it.each([[1], [123]])(
             'should return an error if logoId=%s is provided when logo is already set',
             (logoId: number) => {
-                const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                    kategorie: ServiceProviderKategorie.HINWEISE,
-                });
-                const update: UpdateServiceProviderBodyParams = {
-                    logoId,
-                };
-                const result: Option<InvalidLogoCombinationError> = serviceProvider.updateWithSafeFields(update);
+                const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+                const result: Option<InvalidLogoCombinationError> = serviceProvider.update({ logoId });
                 expect(result).toBeInstanceOf(InvalidLogoCombinationError);
                 expect(serviceProvider.logoId).toBeUndefined();
             },

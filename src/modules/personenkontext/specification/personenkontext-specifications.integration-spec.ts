@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
 import {
     ConfigTestModule,
     DatabaseTestModule,
@@ -10,27 +10,27 @@ import {
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { GleicheRolleAnKlasseWieSchule } from './gleiche-rolle-an-klasse-wie-schule.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
+import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
+import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
 import { Person } from '../../person/domain/person.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
-import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
 import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { GleicheRolleAnKlasseWieSchule } from './gleiche-rolle-an-klasse-wie-schule.js';
 
 // TODO fix integration test
 // This is not a proper integration test, because most of the repositories are mocked.
@@ -134,7 +134,6 @@ describe('PersonenkontextSpecifications Integration', () => {
     });
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

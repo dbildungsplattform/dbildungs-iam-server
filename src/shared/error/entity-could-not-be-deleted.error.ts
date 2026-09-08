@@ -1,4 +1,4 @@
-import { SharedDomainError } from './index.js';
+import { SharedDomainError } from './shared-domain.error.js';
 
 export class EntityCouldNotBeDeleted extends SharedDomainError {
     public constructor(entityName: string, entityId: string, details?: unknown[] | Record<string, unknown>) {

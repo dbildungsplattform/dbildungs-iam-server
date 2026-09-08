@@ -24,7 +24,7 @@ describe('OrganisationMatchesRollenart specification', () => {
         [
             OrganisationsTyp.SCHULE,
             [RollenArt.LEIT, RollenArt.LEHR, RollenArt.LERN],
-            [RollenArt.SYSADMIN, RollenArt.ORGADMIN, RollenArt.EXTERN],
+            [RollenArt.SYSADMIN, RollenArt.ORGADMIN],
         ],
         [OrganisationsTyp.KLASSE, [RollenArt.LERN], allRollenarten.filter((ra: RollenArt) => ra !== RollenArt.LERN)],
         [OrganisationsTyp.ANBIETER, allRollenarten, []],

@@ -18,5 +18,6 @@ describe('CreateServiceProviderResponse', () => {
         expect(response.target).toBe(serviceProvider.target);
         expect(response.url).toBe(serviceProvider.url);
         expect(response.hasLogo).toBe(true);
+        expect(response.rollenartenWhitelist).toEqual(serviceProvider.rollenartenWhitelist);
     });
 });

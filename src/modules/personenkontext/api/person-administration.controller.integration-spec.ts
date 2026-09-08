@@ -7,6 +7,8 @@ import { Request } from 'express';
 import { Observable } from 'rxjs';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -19,15 +21,13 @@ import { PersonPermissionsRepo } from '../../authentication/domain/person-permis
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
 import { FindRollenResponse } from './response/find-rollen.response.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { DeepMocked } from '../../../../test/utils/createMock.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 
 describe('PersonAdministrationController Integration Test', () => {
     let app: INestApplication;
@@ -86,7 +86,6 @@ describe('PersonAdministrationController Integration Test', () => {
     }, 10000000);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

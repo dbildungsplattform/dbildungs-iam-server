@@ -50,7 +50,7 @@ describe('CreateUserAction', () => {
             });
 
             const body: CreateUserResponseBody = {
-                createResponse: {
+                createByModuleAccessResponse: {
                     return: {
                         aliases: [],
                         email1: 'string',

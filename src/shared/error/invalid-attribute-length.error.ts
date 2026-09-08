@@ -1,4 +1,4 @@
-import { SharedDomainError } from './index.js';
+import { SharedDomainError } from './shared-domain.error.js';
 
 export class InvalidAttributeLengthError extends SharedDomainError {
     public constructor(attribute: string, details?: unknown[] | Record<string, unknown>) {

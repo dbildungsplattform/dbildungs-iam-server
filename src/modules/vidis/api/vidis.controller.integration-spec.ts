@@ -1,25 +1,25 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
+import { Test, TestingModule } from '@nestjs/testing';
+import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
+import { createAndPersistOrganisation } from '../../../../test/utils/organisation-test-helper.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
+import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import { VidisApiResponseAngebotBySchool } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
-import { VidisController } from './vidis.controller.js';
 import { VidisModule } from '../vidis.module.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
-import { createAndPersistOrganisation } from '../../../../test/utils/organisation-test-helper.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
-import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { VidisController } from './vidis.controller.js';
 
 function createVidisAngebotBySchool(offerId: number, offerTitle: string): VidisApiResponseAngebotBySchool {
     return {
@@ -70,7 +70,6 @@ describe('VidisController', () => {
     });
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

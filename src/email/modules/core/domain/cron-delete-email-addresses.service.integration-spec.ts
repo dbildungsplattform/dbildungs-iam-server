@@ -1,28 +1,28 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../test/utils/database-test.module.js';
 import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import { LoggingTestModule } from '../../../../../test/utils/logging-test.module.js';
+import { expectOkResult } from '../../../../../test/utils/test-types.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../../test/utils/timeouts.js';
+import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
+import { Err, Ok } from '../../../../shared/util/result.js';
 import { LdapClientAdapter } from '../../ldap/adapter/domain/ldap-client.adapter.js';
-import { OxSendService } from '../../ox/adapter/technical/ox-send.service.js';
 import { OxAdapter } from '../../ox/adapter/domain/ox.adapter.js';
+import { OxSendService } from '../../ox/adapter/technical/ox-send.service.js';
+import { WebhookService } from '../../webhook/domain/webhook.service.js';
+import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailDomainRepo } from '../persistence/email-domain.repo.js';
+import { CronDeleteEmailsAddressesService } from './cron-delete-email-addresses.service.js';
+import { DeleteEmailsAddressesForSpshPersonService } from './delete-email-adresses-for-spsh-person.service.js';
 import { EmailAddressGenerator } from './email-address-generator.js';
 import { EmailAddress } from './email-address.js';
 import { EmailDomain } from './email-domain.js';
-import { expectOkResult } from '../../../../../test/utils/test-types.js';
-import { CronDeleteEmailsAddressesService } from './cron-delete-email-addresses.service.js';
-import { DeleteEmailsAddressesForSpshPersonService } from './delete-email-adresses-for-spsh-person.service.js';
-import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { Err, Ok } from '../../../../shared/util/result.js';
-import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
-import { WebhookService } from '../../webhook/domain/webhook.service.js';
 
 describe('CronDeleteEmailsAddressesService', () => {
     let module: TestingModule;
@@ -90,7 +90,6 @@ describe('CronDeleteEmailsAddressesService', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

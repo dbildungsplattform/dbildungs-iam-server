@@ -305,7 +305,7 @@ export class CronController {
             }
 
             this.logger.info(
-                `Es wurden ${total} Benutzer gefunden, die seit 84 Tagen oder mehr ohne Schulzuordnung sind. Zur vollständigen Bereinigung sind ${Math.ceil(total / this.config.PERSON_WITHOUT_ORG_LIMIT)} Durchläufe notwendig.`,
+                `Es wurden ${total} Benutzer gefunden, die seit 90 Tagen oder mehr ohne Schulzuordnung sind. Zur vollständigen Bereinigung sind ${Math.ceil(total / this.config.PERSON_WITHOUT_ORG_LIMIT)} Durchläufe notwendig.`,
             );
 
             const results: PromiseSettledResult<Result<void, DomainError>>[] = await Promise.allSettled(
@@ -315,11 +315,11 @@ export class CronController {
                         await this.personDeleteService.deletePersonAfterDeadlineExceeded(id, permissions);
                     if (deleteResult.ok) {
                         this.logger.info(
-                            `System hat ${person?.username} (${person?.id}) nach 84 Tagen ohne Schulzuordnung gelöscht.`,
+                            `System hat ${person?.username} (${person?.id}) nach 90 Tagen ohne Schulzuordnung gelöscht.`,
                         );
                     } else {
                         this.logger.error(
-                            `System konnte Benutzer ${person?.username} (${person?.id}) nach 84 Tagen ohne Schulzuordnung nicht löschen. Fehler: ${deleteResult.error.message}`,
+                            `System konnte Benutzer ${person?.username} (${person?.id}) nach 90 Tagen ohne Schulzuordnung nicht löschen. Fehler: ${deleteResult.error.message}`,
                         );
                     }
                     return deleteResult;
@@ -333,11 +333,11 @@ export class CronController {
 
             if (allSuccessful) {
                 this.logger.info(
-                    `System hat ${toDeleteCount} Benutzer mit einer fehlenden Schulzuordnung nach 84 Tagen gelöscht.`,
+                    `System hat ${toDeleteCount} Benutzer mit einer fehlenden Schulzuordnung nach 90 Tagen gelöscht.`,
                 );
             } else {
                 this.logger.error(
-                    `System konnte nicht alle ${toDeleteCount} Benutzer mit einer fehlenden Schulzuordnung nach 84 Tagen löschen.`,
+                    `System konnte nicht alle ${toDeleteCount} Benutzer mit einer fehlenden Schulzuordnung nach 90 Tagen löschen.`,
                 );
             }
 

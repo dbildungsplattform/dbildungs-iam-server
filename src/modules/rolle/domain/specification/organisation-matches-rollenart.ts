@@ -30,6 +30,7 @@ export class OrganisationMatchesRollenart {
                     RollenArt.SORGBER,
                     RollenArt.SCHB,
                     RollenArt.NLEHR,
+                    RollenArt.EXTERN,
                 ]);
             case OrganisationsTyp.KLASSE:
                 return new Set<RollenArt>([RollenArt.LERN]);

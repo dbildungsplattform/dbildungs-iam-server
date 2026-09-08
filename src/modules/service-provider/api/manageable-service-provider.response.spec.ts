@@ -20,6 +20,7 @@ describe('ManageableServiceProviderResponse', () => {
         );
 
         expect(response.administrationsebene.name).toBe('');
+        expect(response.rollenartenWhitelist).toEqual(serviceProvider.rollenartenWhitelist);
         expect(response.relevantSystemrechte).toEqual([RollenSystemRecht.ROLLEN_ERWEITERN.name]);
     });
 });

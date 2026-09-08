@@ -102,7 +102,7 @@
         "BASE_URL": "http://localhost:10000",
         "CLIENT_ID": "clientid",
         "CLIENT_SECRET": "clientsecret",
-        "SYNC_SCHOOLS_PAGE_SIZE":5,
+        "SYNC_SCHOOLS_PAGE_SIZE": 5,
         "REGION": "Schleswig-Holstein"
     },
     "IMPORT": {
@@ -138,7 +138,7 @@
         "SSL_ENABLED": false
     },
     "PORTAL": {
-        "LIMITED_ROLLENART_ALLOWLIST": ["LERN", "EXTERN"]
+        "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
     },
     "CRON": {
         "PERSON_WITHOUT_ORG_LIMIT": 30,

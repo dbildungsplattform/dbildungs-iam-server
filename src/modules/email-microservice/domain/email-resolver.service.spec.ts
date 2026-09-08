@@ -1,10 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AxiosHeaders, AxiosResponse } from 'axios';
 import { of } from 'rxjs';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
@@ -16,15 +17,14 @@ import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/c
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { DomainError, EmailMicroserviceCommunicationError, EntityNotFoundError } from '../../../shared/error/index.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { EmailMicroserviceModule } from '../email-microservice.module.js';
-import { EmailResolverService, PersonIdWithEmailResponse } from './email-resolver.service.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
+import { EmailMicroserviceModule } from '../email-microservice.module.js';
+import { EmailResolverService, PersonIdWithEmailResponse } from './email-resolver.service.js';
 
 describe('EmailResolverService', () => {
     let module: TestingModule;
@@ -669,6 +669,8 @@ describe('EmailResolverService', () => {
         [EmailAddressStatusEnum.DEACTIVE, EmailAddressStatus.DISABLED],
         [EmailAddressStatusEnum.SUSPENDED, EmailAddressStatus.DISABLED],
         [EmailAddressStatusEnum.TO_BE_DELETED, EmailAddressStatus.DELETED],
+        [EmailAddressStatusEnum.FAILED, EmailAddressStatus.FAILED],
+        [EmailAddressStatusEnum.EXISTS_ONLY_IN_OX, EmailAddressStatus.FAILED],
     ])('should map %s to %s', async (inputStatus: EmailAddressStatusEnum, expectedStatus: EmailAddressStatus) => {
         const mockPersonId: string = faker.string.uuid();
         const mockOxLoginId: string = faker.string.uuid();

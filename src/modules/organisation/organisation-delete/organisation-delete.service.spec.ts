@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { DoFactory } from '../../../../test/utils/index.js';
 import { DomainError } from '../../../shared/error/index.js';

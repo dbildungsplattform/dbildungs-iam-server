@@ -1,19 +1,19 @@
 import { faker } from '@faker-js/faker';
+import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
 } from '../../../../test/utils/index.js';
-import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { mapAggregateToData, OxUserBlacklistRepo } from './ox-user-blacklist.repo.js';
-import { OxUserBlacklistEntry } from '../domain/ox-user-blacklist-entry.js';
-import { OxUserBlacklistEntity } from './ox-user-blacklist.entity.js';
-import { OXEmail, OXUserName } from '../../../shared/types/ox-ids.types.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { createMock } from '../../../../test/utils/createMock.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { OXEmail, OXUserName } from '../../../shared/types/ox-ids.types.js';
+import { OxUserBlacklistEntry } from '../domain/ox-user-blacklist-entry.js';
+import { OxUserBlacklistEntity } from './ox-user-blacklist.entity.js';
+import { mapAggregateToData, OxUserBlacklistRepo } from './ox-user-blacklist.repo.js';
 
 describe('OxUserBlacklistRepo', () => {
     let module: TestingModule;
@@ -67,7 +67,6 @@ describe('OxUserBlacklistRepo', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

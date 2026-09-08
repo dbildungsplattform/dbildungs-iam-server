@@ -1,26 +1,26 @@
+import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DatabaseTestModule, DoFactory } from '../../../../test/utils/index.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
-import { PersonEntity } from './person.entity.js';
-import { PersonScope } from './person.scope.js';
-import { faker } from '@faker-js/faker';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
-import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
 import { PersonenKontextModule } from '../../personenkontext/personenkontext.module.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { mapAggregateToData } from './person.repository.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
-import { PersonExternalIdType } from '../domain/person.enums.js';
+import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { PersonExternalIdType } from '../domain/person.enums.js';
+import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
+import { PersonEntity } from './person.entity.js';
+import { mapAggregateToData } from './person.repository.js';
+import { PersonScope } from './person.scope.js';
 
 describe('PersonScope', () => {
     let module: TestingModule;
@@ -66,7 +66,6 @@ describe('PersonScope', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

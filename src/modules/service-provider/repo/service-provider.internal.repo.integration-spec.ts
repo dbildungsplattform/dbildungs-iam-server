@@ -6,10 +6,15 @@ import {
     ConfigTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
+    DoFactory,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
 import { ServiceProvider } from '../domain/service-provider.js';
+import { mapEntityToAggregate } from './service-provider-entity-mapper.js';
+import { ServiceProviderEntity } from './service-provider.entity.js';
 import { ServiceProviderInternalRepo } from './service-provider.internal.repo.js';
 
 describe('ServiceProviderInternalRepo', () => {
@@ -33,7 +38,6 @@ describe('ServiceProviderInternalRepo', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -100,6 +104,34 @@ describe('ServiceProviderInternalRepo', () => {
             );
 
             await expect(promise).resolves.toBe(true);
+        });
+    });
+
+    describe('persistAndFlush', () => {
+        it('should create serviceProvider', async () => {
+            const sp: ServiceProvider<false> = DoFactory.createServiceProvider(false);
+            const persistedSP: ServiceProvider<true> = await sut.persistAndFlush(sp);
+
+            const entity: ServiceProviderEntity = await em.findOneOrFail(ServiceProviderEntity, {
+                id: persistedSP.id,
+            });
+            expect(mapEntityToAggregate(entity)).toEqual(persistedSP);
+        });
+
+        it('should update serviceProvider', async () => {
+            const updateddSP: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            updateddSP.update({
+                name: 'test',
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+
+            const persistedSP: ServiceProvider<true> = await sut.persistAndFlush(updateddSP);
+
+            const entity: ServiceProviderEntity = await em.findOneOrFail(ServiceProviderEntity, {
+                id: persistedSP.id,
+            });
+            expect(mapEntityToAggregate(entity)).toEqual(persistedSP);
         });
     });
 });

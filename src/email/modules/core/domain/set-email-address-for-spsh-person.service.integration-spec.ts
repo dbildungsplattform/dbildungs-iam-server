@@ -1,20 +1,27 @@
-import { Mock, vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Mock, vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../test/utils/database-test.module.js';
 import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import { LoggingTestModule } from '../../../../../test/utils/logging-test.module.js';
+import { expectOkResult } from '../../../../../test/utils/test-types.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../../test/utils/timeouts.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
+import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
+import { OxError } from '../../../../shared/error/ox.error.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { LdapClientAdapter, PersonData } from '../../ldap/adapter/domain/ldap-client.adapter.js';
-import { OxSendService } from '../../ox/adapter/technical/ox-send.service.js';
+import { OxPrimaryMailAlreadyExistsError } from '../../ox/adapter/domain/error/ox-primary-mail-already-exists.error.js';
 import { OxAdapter } from '../../ox/adapter/domain/ox.adapter.js';
+import { OxSendService } from '../../ox/adapter/technical/ox-send.service.js';
+import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
+import { SetEmailAddressForSpshPersonPathParams } from '../api/dtos/params/set-email-address-for-spsh-person.pathparams.js';
 import { EmailAddressGenerationAttemptsExceededError } from '../error/email-address-generation-attempts-exceeds.error.js';
+import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
 import { EmailDomainNotFoundError } from '../error/email-domain-not-found.error.js';
 import { EmailUpdateInProgressError } from '../error/email-update-in-progress.error.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
@@ -24,13 +31,6 @@ import { EmailAddressGenerator } from './email-address-generator.js';
 import { EmailAddress } from './email-address.js';
 import { EmailDomain } from './email-domain.js';
 import { SetEmailAddressForSpshPersonService } from './set-email-address-for-spsh-person.service.js';
-import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
-import { OxError } from '../../../../shared/error/ox.error.js';
-import { OxPrimaryMailAlreadyExistsError } from '../../ox/adapter/domain/error/ox-primary-mail-already-exists.error.js';
-import { expectOkResult } from '../../../../../test/utils/test-types.js';
-import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
-import { SetEmailAddressForSpshPersonPathParams } from '../api/dtos/params/set-email-address-for-spsh-person.pathparams.js';
-import { WebhookService } from '../../webhook/domain/webhook.service.js';
 
 describe('SetEmailAddressForSpshPersonService', () => {
     let module: TestingModule;
@@ -98,7 +98,6 @@ describe('SetEmailAddressForSpshPersonService', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

@@ -1,5 +1,5 @@
-import { BlobType, Collection, quote } from '@mikro-orm/core';
-import { Check, Entity, Enum, OneToMany, Property, Unique } from '@mikro-orm/decorators/legacy';
+import { BlobType, Collection, quote, SchemaTable } from '@mikro-orm/core';
+import { Check, Entity, Enum, Index, OneToMany, Property, Unique } from '@mikro-orm/decorators/legacy';
 import { TimestampedEntity } from '../../../persistence/timestamped.entity.js';
 import {
     ServiceProviderKategorie,
@@ -7,6 +7,7 @@ import {
     ServiceProviderTarget,
 } from '../domain/service-provider.enum.js';
 import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
+import { ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
 
 @Entity({ tableName: 'service_provider' })
 @Check({
@@ -19,6 +20,11 @@ import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.
     properties: ['providedOnSchulstrukturknoten', 'vidisAngebotId'],
 })
 export class ServiceProviderEntity extends TimestampedEntity {
+    @Index({
+        name: 'service_provider_name_trgm_index',
+        expression: (columns: Record<keyof ServiceProviderEntity, string>, table: SchemaTable, name: string) =>
+            quote`create index ${name} on ${table} using gin (${columns.name} gin_trgm_ops);`,
+    })
     @Property()
     public name!: string;
 
@@ -75,4 +81,13 @@ export class ServiceProviderEntity extends TimestampedEntity {
         eager: true,
     })
     public merkmale: Collection<ServiceProviderMerkmalEntity> = new Collection<ServiceProviderMerkmalEntity>(this);
+
+    @OneToMany({
+        entity: () => ServiceProviderRollenartWhitelistEntity,
+        mappedBy: 'serviceProvider',
+        orphanRemoval: true,
+        eager: true,
+    })
+    public rollenartenWhitelist: Collection<ServiceProviderRollenartWhitelistEntity> =
+        new Collection<ServiceProviderRollenartWhitelistEntity>(this);
 }

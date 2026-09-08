@@ -1,3 +1,4 @@
+import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -37,4 +38,6 @@ export class ServiceProviderFile {
     public vidisAngebotId?: string;
 
     public merkmale?: ServiceProviderMerkmal[];
+
+    public rollenartenWhitelist?: RollenArt[];
 }

@@ -1,15 +1,17 @@
-import { HealthIndicator, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthIndicatorResult, HealthIndicatorService } from '@nestjs/terminus';
 import { Injectable } from '@nestjs/common';
 import { RedisConfig, ServerConfig } from '../../shared/config/index.js';
 import { createClient, RedisClientType } from 'redis';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class RedisHealthIndicator extends HealthIndicator {
+export class RedisHealthIndicator {
     private redisConfig: RedisConfig;
 
-    public constructor(configService: ConfigService<ServerConfig>) {
-        super();
+    public constructor(
+        configService: ConfigService<ServerConfig>,
+        private readonly healthIndicatorService: HealthIndicatorService,
+    ) {
         this.redisConfig = configService.getOrThrow<RedisConfig>('REDIS');
     }
 
@@ -50,8 +52,12 @@ export class RedisHealthIndicator extends HealthIndicator {
             };
         }
 
-        return super.getStatus(HealthCheckKey, currentState.available, {
-            message: currentState.message,
-        });
+        return currentState.available
+            ? this.healthIndicatorService.check(HealthCheckKey).up({
+                  message: currentState.message,
+              })
+            : this.healthIndicatorService.check(HealthCheckKey).down({
+                  message: currentState.message,
+              });
     }
 }

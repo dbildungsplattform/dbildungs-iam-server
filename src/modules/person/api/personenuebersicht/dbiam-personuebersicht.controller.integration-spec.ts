@@ -1,53 +1,53 @@
+import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Request } from 'express';
+import { Observable } from 'rxjs';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
 } from '../../../../../test/utils/index.js';
-import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
-import { PersonApiModule } from '../../person-api.module.js';
-import { PersonRepository } from '../../persistence/person.repository.js';
-import { UsernameGeneratorService } from '../../domain/username-generator.service.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { Person, PersonCreationParams } from '../../domain/person.js';
-import { faker } from '@faker-js/faker';
-import { DomainError } from '../../../../shared/error/index.js';
-import { KeycloakUserService } from '../../../keycloak-administration/index.js';
-import { DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
-import { RolleFactory } from '../../../rolle/domain/rolle.factory.js';
-import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
-import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
-import { Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
-import { DBiamPersonenkontextRepoInternal } from '../../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { DBiamPersonenzuordnungResponse } from './dbiam-personenzuordnung.response.js';
-import { PagedResponse } from '../../../../shared/paging/index.js';
-import { PersonPermissionsRepo } from '../../../authentication/domain/person-permission.repo.js';
-import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
-import { Request } from 'express';
-import { Observable } from 'rxjs';
-import { PersonenkontextFactory } from '../../../personenkontext/domain/personenkontext.factory.js';
-import { OrganisationRepository } from '../../../organisation/persistence/organisation.repository.js';
 import {
     createAndPersistOrganisation,
     createAndPersistRootOrganisation,
 } from '../../../../../test/utils/organisation-test-helper.js';
-import { OrganisationEntity } from '../../../organisation/persistence/organisation.entity.js';
-import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
-import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
-import { ServiceProviderModule } from '../../../service-provider/service-provider.module.js';
+import { DomainError } from '../../../../shared/error/index.js';
 import { SharedExceptionFilter } from '../../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../../shared/filter/validation-exception-filter.js';
+import { PagedResponse } from '../../../../shared/paging/index.js';
+import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../../authentication/api/authentication-exception-filter.js';
-import { EmailPersistenceModule } from '../../../email/email-persistence.module.js';
+import { PersonPermissionsRepo } from '../../../authentication/domain/person-permission.repo.js';
+import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
 import { EmailMicroserviceModule } from '../../../email-microservice/email-microservice.module.js';
-import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
+import { EmailPersistenceModule } from '../../../email/email-persistence.module.js';
+import { KeycloakUserService } from '../../../keycloak-administration/index.js';
+import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
+import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
+import { OrganisationEntity } from '../../../organisation/persistence/organisation.entity.js';
+import { OrganisationRepository } from '../../../organisation/persistence/organisation.repository.js';
+import { PersonenkontextFactory } from '../../../personenkontext/domain/personenkontext.factory.js';
+import { Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepoInternal } from '../../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
+import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
+import { RolleFactory } from '../../../rolle/domain/rolle.factory.js';
+import { Rolle } from '../../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
+import { ServiceProviderModule } from '../../../service-provider/service-provider.module.js';
+import { Person, PersonCreationParams } from '../../domain/person.js';
+import { UsernameGeneratorService } from '../../domain/username-generator.service.js';
+import { PersonRepository } from '../../persistence/person.repository.js';
+import { PersonApiModule } from '../../person-api.module.js';
+import { DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
+import { DBiamPersonenzuordnungResponse } from './dbiam-personenzuordnung.response.js';
 
 describe('Personenuebersicht API', () => {
     let app: INestApplication;
@@ -162,7 +162,6 @@ describe('Personenuebersicht API', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

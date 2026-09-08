@@ -1,38 +1,38 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DoFactory,
 } from '../../../../test/utils/index.js';
-import { ImportVorgangRepository, mapAggregateToData, mapEntityToAggregate } from './import-vorgang.repository.js';
-import { ImportVorgang } from '../domain/import-vorgang.js';
-import { ImportVorgangEntity } from './import-vorgang.entity.js';
-import { ImportStatus } from '../domain/import.enums.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { PersonFactory } from '../../person/domain/person.factory.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { KeycloakUserService } from '../../keycloak-administration/index.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { generatePassword } from '../../../shared/util/password-generator.js';
-import { Person } from '../../person/domain/person.js';
-import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
-import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { generatePassword } from '../../../shared/util/password-generator.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
+import { KeycloakUserService } from '../../keycloak-administration/index.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { OrganisationModule } from '../../organisation/organisation.module.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
+import { PersonFactory } from '../../person/domain/person.factory.js';
+import { Person } from '../../person/domain/person.js';
+import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
+import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { OrganisationModule } from '../../organisation/organisation.module.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { ImportVorgang } from '../domain/import-vorgang.js';
+import { ImportStatus } from '../domain/import.enums.js';
+import { ImportVorgangEntity } from './import-vorgang.entity.js';
+import { ImportVorgangRepository, mapAggregateToData, mapEntityToAggregate } from './import-vorgang.repository.js';
 
 describe('ImportVorgangRepository', () => {
     let module: TestingModule;
@@ -146,7 +146,6 @@ describe('ImportVorgangRepository', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

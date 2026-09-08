@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { createMock } from '../../../test/utils/createMock.js';
 import { BaseClient } from 'openid-client';
 import { KeycloakHealthIndicator } from './keycloak.health-indicator.js';
-import { HealthIndicatorResult, HealthIndicatorStatus } from '@nestjs/terminus';
+import { HealthIndicatorResult, HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
 import { ConfigService } from '@nestjs/config';
 import { ServerConfig } from '../../shared/config/index.js';
 import { ConfigTestModule, createOidcClientMock, KeycloakConfigTestModule } from '../../../test/utils/index.js';
@@ -33,7 +33,7 @@ describe('Keycloak health indicator', () => {
     let module: TestingModule;
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [KeycloakConfigTestModule.forRoot(), ConfigTestModule],
+            imports: [TerminusModule, KeycloakConfigTestModule.forRoot(), ConfigTestModule],
             providers: [
                 KeycloakHealthIndicator,
                 {

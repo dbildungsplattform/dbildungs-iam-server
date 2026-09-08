@@ -4,20 +4,20 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosResponse } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { EmailMicroserviceConfig } from '../../../shared/config/email-microservice.config.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { HeaderApiKeyConfig } from '../../../shared/config/headerapikey.config.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { EmailMicroserviceCommunicationError } from '../../../shared/error/index.js';
-import { Person } from '../../person/domain/person.js';
+import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { Err, Ok } from '../../../shared/util/result.js';
+import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { PersonEmailResponse } from '../../person/api/person-email-response.js';
+import { Person } from '../../person/domain/person.js';
 
 export interface PersonIdWithEmailResponse {
     personId: string;
@@ -235,7 +235,7 @@ export class EmailResolverService {
     }
 
     private mapStatus(ease: EmailAddressStatusEnum): EmailAddressStatus {
-        let eas: EmailAddressStatus;
+        let eas: EmailAddressStatus = EmailAddressStatus.DISABLED;
         switch (ease) {
             case EmailAddressStatusEnum.PENDING:
                 eas = EmailAddressStatus.REQUESTED;
@@ -249,12 +249,17 @@ export class EmailResolverService {
             case EmailAddressStatusEnum.SUSPENDED:
                 eas = EmailAddressStatus.DISABLED;
                 break;
+            case EmailAddressStatusEnum.FAILED:
+                eas = EmailAddressStatus.FAILED;
+                break;
+            case EmailAddressStatusEnum.EXISTS_ONLY_IN_OX:
+                eas = EmailAddressStatus.FAILED;
+                break;
             case EmailAddressStatusEnum.TO_BE_DELETED:
                 eas = EmailAddressStatus.DELETED;
                 break;
-            default:
-                eas = EmailAddressStatus.DISABLED;
         }
+
         return eas;
     }
 }

@@ -1,27 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { OrganisationService } from './organisation.service.js';
-import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
-import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { MikroORM } from '@mikro-orm/core';
+import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { DeepMocked } from '../../../../test/utils/createMock.js';
+import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
+import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock, LoggingTestModule } from '../../../../test/utils/index.js';
-import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
-import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
+import { EventModule } from '../../../core/eventbus/index.js';
+import { DataConfig } from '../../../shared/config/data.config.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
+import { DomainError } from '../../../shared/error/index.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { OrganisationEntity } from '../persistence/organisation.entity.js';
+import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
 import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
-import { DomainError } from '../../../shared/error/index.js';
-import { EventModule } from '../../../core/eventbus/index.js';
-import { Organisation } from './organisation.js';
-import { OrganisationsTyp } from './organisation.enums.js';
-import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
-import { DeepMocked } from '../../../../test/utils/createMock.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
-import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { OrganisationEntity } from '../persistence/organisation.entity.js';
+import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
+import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
+import { OrganisationsTyp } from './organisation.enums.js';
+import { Organisation } from './organisation.js';
+import { OrganisationService } from './organisation.service.js';
 
 describe('OrganisationServiceSpecificationTest', () => {
     let module: TestingModule;
@@ -57,7 +57,6 @@ describe('OrganisationServiceSpecificationTest', () => {
     }, 100000);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

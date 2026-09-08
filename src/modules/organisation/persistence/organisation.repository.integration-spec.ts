@@ -1,9 +1,9 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -18,6 +18,7 @@ import { ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityCouldNotBeUpdated } from '../../../shared/error/entity-could-not-be-updated.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/index.js';
 import { OrganisationID } from '../../../shared/types/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
@@ -31,7 +32,6 @@ import { TraegerUnterRootChildError } from '../specification/error/traeger-unter
 import { OrganisationEntity } from './organisation.entity.js';
 import { mapOrgaAggregateToData, mapOrgaEntityToAggregate, OrganisationRepository } from './organisation.repository.js';
 import { OrganisationScope } from './organisation.scope.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 describe('OrganisationRepository', () => {
     let module: TestingModule;
@@ -63,7 +63,6 @@ describe('OrganisationRepository', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -2464,6 +2463,76 @@ describe('OrganisationRepository', () => {
                 const result: OrganisationsTyp[] = await sut.findDistinctOrganisationsTypen([orga.id]);
                 expect(result).not.toContain(undefined);
                 expect(result).toHaveLength(0);
+            });
+        });
+    });
+
+    describe('findIdsByTypen', () => {
+        describe('when no types are provided', () => {
+            it('should return empty array', async () => {
+                const result: OrganisationID[] = await sut.findIdsByTypen([]);
+
+                expect(result).toEqual([]);
+            });
+        });
+
+        describe('when types are provided', () => {
+            const setup = async (): Promise<{
+                schule: OrganisationEntity;
+                traeger: OrganisationEntity;
+                klasse: OrganisationEntity;
+            }> => {
+                const schule: OrganisationEntity = Object.assign(
+                    new OrganisationEntity(),
+                    DoFactory.createOrganisation<true>(true, { typ: OrganisationsTyp.SCHULE }),
+                );
+                const traeger: OrganisationEntity = Object.assign(
+                    new OrganisationEntity(),
+                    DoFactory.createOrganisation<true>(true, { typ: OrganisationsTyp.TRAEGER }),
+                );
+                const klasse: OrganisationEntity = Object.assign(
+                    new OrganisationEntity(),
+                    DoFactory.createOrganisation<true>(true, { typ: OrganisationsTyp.KLASSE }),
+                );
+                await em.persist([schule, traeger, klasse]).flush();
+                em.clear();
+
+                return { schule, traeger, klasse };
+            };
+
+            it('should return ids of organisations matching the given type', async () => {
+                const { schule, traeger }: { schule: OrganisationEntity; traeger: OrganisationEntity } = await setup();
+
+                const result: OrganisationID[] = await sut.findIdsByTypen([OrganisationsTyp.SCHULE]);
+
+                expect(result).toContain(schule.id);
+                expect(result).not.toContain(traeger.id);
+            });
+
+            it('should return ids for multiple types', async () => {
+                const {
+                    schule,
+                    traeger,
+                    klasse,
+                }: { schule: OrganisationEntity; traeger: OrganisationEntity; klasse: OrganisationEntity } =
+                    await setup();
+
+                const result: OrganisationID[] = await sut.findIdsByTypen([
+                    OrganisationsTyp.SCHULE,
+                    OrganisationsTyp.TRAEGER,
+                ]);
+
+                expect(result).toContain(schule.id);
+                expect(result).toContain(traeger.id);
+                expect(result).not.toContain(klasse.id);
+            });
+
+            it('should return empty array when no organisations match the given type', async () => {
+                const { klasse }: { klasse: OrganisationEntity } = await setup();
+
+                const result: OrganisationID[] = await sut.findIdsByTypen([OrganisationsTyp.SCHULE]);
+
+                expect(result).not.toContain(klasse.id);
             });
         });
     });

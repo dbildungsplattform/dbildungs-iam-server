@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeepMocked } from '../../../test/utils/createMock.js';
-import { HealthIndicatorResult, HealthIndicatorStatus } from '@nestjs/terminus';
+import { HealthIndicatorResult, HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
 import { ConfigTestModule } from '../../../test/utils/index.js';
 import { RedisHealthIndicator } from './redis.health-indicator.js';
 import { RedisClientOptions, RedisClientType } from 'redis';
@@ -31,7 +31,7 @@ describe('Redis health indicator', () => {
     let module: TestingModule;
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [ConfigTestModule],
+            imports: [TerminusModule, ConfigTestModule],
             providers: [RedisHealthIndicator],
         }).compile();
     });

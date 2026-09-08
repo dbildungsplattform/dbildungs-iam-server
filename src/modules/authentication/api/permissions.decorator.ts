@@ -1,4 +1,4 @@
-import { createParamDecorator, ExecutionContext, PipeTransform, Type } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, HttpException, PipeTransform, Type } from '@nestjs/common';
 import { Request } from 'express';
 import { PassportUser } from '../types/user.js';
 import { PersonPermissions } from '../domain/person-permissions.js';
@@ -33,10 +33,20 @@ export const Permissions: (
             return Promise.reject(new Error('No PassportUser found on request'));
         } else {
             if (!passportUser.personPermissions || typeof passportUser.personPermissions !== 'function') {
+                const passportUserString: string = inspect(passportUser, {
+                    compact: Infinity,
+                    depth: 1,
+                    breakLength: Infinity,
+                });
                 logger.error(
-                    `PassportUser does not have personPermissions function. passportUser: ${inspect(passportUser)}`,
+                    `PassportUser does not have personPermissions function. passportUser: ${passportUserString}`,
                 );
-                return Promise.reject(new Error('No personPermissions function found on PassportUser'));
+                return Promise.reject(
+                    new HttpException(
+                        `No personPermissions function found on PassportUser: ${passportUserString}`,
+                        500,
+                    ),
+                );
             }
             return passportUser.personPermissions();
         }

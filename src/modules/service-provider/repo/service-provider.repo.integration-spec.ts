@@ -1,6 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { Collection, EntityManager, MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { MockedObject } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -12,9 +14,18 @@ import {
     expectOkResult,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
 import { RolleEntity } from '../../rolle/entity/rolle.entity.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -25,18 +36,10 @@ import {
 } from '../domain/service-provider.enum.js';
 import { ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
+import { ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
 import { ServiceProviderEntity } from './service-provider.entity.js';
-import { ServiceProviderRepo } from './service-provider.repo.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderInternalRepo } from './service-provider.internal.repo.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { DuplicateNameError } from '../specification/error/duplicate-name.error.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { ServiceProviderPropertyPermissions, ServiceProviderRepo } from './service-provider.repo.js';
 
 describe('ServiceProviderRepo', () => {
     let module: TestingModule;
@@ -76,7 +79,6 @@ describe('ServiceProviderRepo', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -89,199 +91,20 @@ describe('ServiceProviderRepo', () => {
         expect(em).toBeDefined();
     });
 
-    describe('create', () => {
-        it('should save new service-provider', async () => {
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                keycloakGroup: faker.string.alphanumeric(),
-                keycloakRole: faker.string.alphanumeric(),
-            });
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.create(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectOkResult(createResult);
-            expect(createResult.value.id).toBeDefined();
-        });
-
-        it('should return error if name is already used', async () => {
-            const name: string = 'Test name';
-            const providedOnSchulstrukturknoten: string = faker.string.uuid();
-
-            await createAndPersistServiceProvider(em, { name, providedOnSchulstrukturknoten });
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                name,
-                providedOnSchulstrukturknoten,
-            });
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.create(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectErrResult(createResult);
-            expect(createResult.error).toBeInstanceOf(DuplicateNameError);
-        });
-
-        it('should set some default values if person only has limited permissions', async () => {
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                merkmale: [],
-                requires2fa: true,
-                kategorie: ServiceProviderKategorie.VERWALTUNG,
-            });
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false); // ANGEBOTE_VERWALTEN
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true); // ANGEBOTE_EINGESCHRAENKT_VERWALTEN
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.create(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectOkResult(createResult);
-            expect(createResult.value.id).toBeDefined();
-
-            expect(createResult.value.merkmale).toEqual([
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
-                ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR,
-            ]);
-            expect(createResult.value.requires2fa).toBe(false);
-            expect(createResult.value.kategorie).toBe(ServiceProviderKategorie.SCHULISCH);
-        });
-
-        it('return error if person is missing permissions', async () => {
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false);
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.create(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectErrResult(createResult);
-            expect(createResult.error).toBeInstanceOf(MissingPermissionsError);
-        });
-    });
-
-    describe('update', () => {
-        it('should not return duplicate name error when trying to update existing', async () => {
-            const existingSp: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            const updateResult: Result<ServiceProvider<true>, DomainError> = await sut.update(
-                permissionsMock,
-                existingSp,
-            );
-
-            expectOkResult(updateResult);
-        });
-
-        it('should return error if name is already used', async () => {
-            const nameA: string = 'Test name 1';
-            const nameB: string = 'Test name 2';
-            const providedOnSchulstrukturknoten: string = faker.string.uuid();
-
-            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
-                name: nameA,
-                providedOnSchulstrukturknoten,
-            });
-            await createAndPersistServiceProvider(em, { name: nameB, providedOnSchulstrukturknoten });
-
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            // Change name
-            serviceProvider.name = nameB;
-
-            const updateResult: Result<ServiceProvider<true>, DomainError> = await sut.update(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectErrResult(updateResult);
-            expect(updateResult.error).toBeInstanceOf(DuplicateNameError);
-        });
-
-        it('should return error serviceprovider could not be found', async () => {
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            const updateResult: Result<ServiceProvider<true>, DomainError> = await sut.update(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectErrResult(updateResult);
-            expect(updateResult.error).toBeInstanceOf(EntityNotFoundError);
-        });
-
-        it('should ignore changes to specific properties if person has limited permissions', async () => {
-            const merkmale: ServiceProviderMerkmal[] = [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR];
-            const requires2fa: boolean = true;
-            const kategorie: ServiceProviderKategorie = ServiceProviderKategorie.VERWALTUNG;
-
-            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
-                merkmale,
-                requires2fa,
-                kategorie,
-            });
-
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false); // ANGEBOTE_VERWALTEN
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true); // ANGEBOTE_EINGESCHRAENKT_VERWALTEN
-
-            serviceProvider.merkmale = [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG];
-            serviceProvider.requires2fa = false;
-            serviceProvider.kategorie = ServiceProviderKategorie.EMAIL;
-
-            const updateResult: Result<ServiceProvider<true>, DomainError> = await sut.update(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectOkResult(updateResult);
-            expect(updateResult.value.merkmale).toEqual(merkmale);
-            expect(updateResult.value.requires2fa).toEqual(requires2fa);
-            expect(updateResult.value.kategorie).toEqual(kategorie);
-        });
-
-        it('return error if person is missing permissions', async () => {
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.update(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectErrResult(createResult);
-            expect(createResult.error).toBeInstanceOf(MissingPermissionsError);
-        });
-    });
-
     describe('createUnsafe', () => {
         it('should save new service-provider', async () => {
             const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
                 keycloakGroup: faker.string.alphanumeric(),
                 keycloakRole: faker.string.alphanumeric(),
+                merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
+                rollenartenWhitelist: [RollenArt.LEHR],
             });
 
             const createdSp: ServiceProvider<true> = await sut.createUnsafe(serviceProvider);
 
             expect(createdSp.id).toBeDefined();
+            expect(createdSp.merkmale).toEqual(serviceProvider.merkmale);
+            expect(createdSp.rollenartenWhitelist).toEqual(serviceProvider.rollenartenWhitelist);
         });
 
         it('should reject duplicate VIDIS angebot ids for the same school', async () => {
@@ -401,7 +224,7 @@ describe('ServiceProviderRepo', () => {
                     ]);
 
                     const [serviceProviderResult, count]: Counted<ServiceProvider<true>> =
-                        await sut.findByOrganisationsWithMerkmale(orgaIds, 5, 0);
+                        await sut.findByOrganisationsWithMerkmale(orgaIds, { limit: 5, offset: 0 });
 
                     if (orgaIds === 'all') {
                         expect(serviceProviderResult).toHaveLength(serviceProviders.length);
@@ -415,18 +238,188 @@ describe('ServiceProviderRepo', () => {
             },
         );
 
+        it('should filter by kategorie', async () => {
+            const [emailServiceProvider, unterrichtServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] =
+                await Promise.all([
+                    createAndPersistServiceProvider(em, { kategorie: ServiceProviderKategorie.EMAIL }),
+                    createAndPersistServiceProvider(em, { kategorie: ServiceProviderKategorie.UNTERRICHT }),
+                ]);
+
+            const [emailResult, emailCount]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                'all',
+                { kategorien: [ServiceProviderKategorie.EMAIL] },
+            );
+            expect(emailResult).toHaveLength(1);
+            expect(emailResult[0]!.id).toEqual(emailServiceProvider.id);
+            expect(emailCount).toEqual(1);
+
+            const [unterrichtResult, unterrichtCount]: Counted<ServiceProvider<true>> =
+                await sut.findByOrganisationsWithMerkmale('all', {
+                    kategorien: [ServiceProviderKategorie.UNTERRICHT],
+                });
+            expect(unterrichtResult).toHaveLength(1);
+            expect(unterrichtResult[0]!.id).toEqual(unterrichtServiceProvider.id);
+            expect(unterrichtCount).toEqual(1);
+        });
+
+        describe('when searchFilter is provided', () => {
+            it('should filter by searchFilter matching the name case-insensitively', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                    createAndPersistServiceProvider(em, { name: 'Alpha Angebot' }),
+                    createAndPersistServiceProvider(em, { name: 'Beta Angebot' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'alpha',
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+
+            it('should filter by searchFilter matching a substring of the name', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                    createAndPersistServiceProvider(em, { name: 'Gamma Portal' }),
+                    createAndPersistServiceProvider(em, { name: 'Delta Portal' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'Gamma',
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+
+            it('should return no results when searchFilter matches no name', async () => {
+                await Promise.all([
+                    createAndPersistServiceProvider(em, { name: 'Alpha Angebot' }),
+                    createAndPersistServiceProvider(em, { name: 'Beta Angebot' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'nonexistent',
+                    },
+                );
+
+                expect(result).toHaveLength(0);
+                expect(count).toEqual(0);
+            });
+
+            it('should combine searchFilter with kategorie filter', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>, ServiceProvider<true>] =
+                    await Promise.all([
+                        createAndPersistServiceProvider(em, {
+                            name: 'Alpha Angebot',
+                            kategorie: ServiceProviderKategorie.EMAIL,
+                        }),
+                        createAndPersistServiceProvider(em, {
+                            name: 'Alpha Angebot',
+                            kategorie: ServiceProviderKategorie.UNTERRICHT,
+                        }),
+                        createAndPersistServiceProvider(em, {
+                            name: 'Beta Angebot',
+                            kategorie: ServiceProviderKategorie.EMAIL,
+                        }),
+                    ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'alpha',
+                        kategorien: [ServiceProviderKategorie.EMAIL],
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+
+            it('should treat the "_" in the searchFilter literally instead of as a wildcard', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                    createAndPersistServiceProvider(em, { name: 'A_B' }),
+                    createAndPersistServiceProvider(em, { name: 'AXB' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'A_B',
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+
+            it('should treat the "%" in the searchFilter literally instead of as a wildcard', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                    createAndPersistServiceProvider(em, { name: '50% Rabatt' }),
+                    createAndPersistServiceProvider(em, { name: '50 Cent' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: '50%',
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+
+            it('should treat the "\\" in the searchFilter literally instead of as an escape character', async () => {
+                const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                    createAndPersistServiceProvider(em, { name: 'C:\\Temp' }),
+                    createAndPersistServiceProvider(em, { name: 'C:Temp' }),
+                ]);
+                em.clear();
+
+                const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
+                    'all',
+                    {
+                        searchFilter: 'C:\\Temp',
+                    },
+                );
+
+                expect(result).toHaveLength(1);
+                expect(result[0]!.id).toEqual(matchingServiceProvider.id);
+                expect(count).toEqual(1);
+            });
+        });
+
         it('should respect the limit and offset', async () => {
             const total: number = 10;
             await Promise.all(Array.from({ length: total }, () => createAndPersistServiceProvider(em)));
 
             const limit: number = 5;
             const [serviceProviderWithoutOffsetResult, countWithoutOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrganisationsWithMerkmale('all', limit, 0);
+                await sut.findByOrganisationsWithMerkmale('all', { limit, offset: 0 });
             expect(serviceProviderWithoutOffsetResult).toHaveLength(limit);
             expect(countWithoutOffset).toEqual(total);
 
             const [serviceProviderWithOffsetResult, countWithOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrganisationsWithMerkmale('all', limit, 5);
+                await sut.findByOrganisationsWithMerkmale('all', { limit, offset: 5 });
             expect(serviceProviderWithOffsetResult).toHaveLength(limit);
             expect(countWithOffset).toEqual(total);
 
@@ -452,8 +445,7 @@ describe('ServiceProviderRepo', () => {
 
             const [serviceProviderResult]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale(
                 'all',
-                5,
-                0,
+                { limit: 5, offset: 0 },
             );
 
             [
@@ -467,7 +459,7 @@ describe('ServiceProviderRepo', () => {
         });
     });
 
-    describe('findByIdAuthorized', () => {
+    describe('findByIdForOrganisationIds', () => {
         let organisationA: Organisation<true>;
         let organisationB: Organisation<true>;
         let serviceProvider: ServiceProvider<true>;
@@ -746,6 +738,25 @@ describe('ServiceProviderRepo', () => {
             expect(result).toEqual(expect.arrayContaining([matchingServiceProviderA, matchingServiceProviderB]));
         });
 
+        it('should include logos when requested', async () => {
+            const schoolId: OrganisationID = faker.string.uuid();
+            const logo: Buffer = Buffer.from('89504e470d0a1a0a0001', 'hex');
+
+            await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: schoolId,
+                vidisAngebotId: 'vidis-angebot-with-logo',
+                logo,
+                logoMimeType: 'image/png',
+            });
+
+            const [result]: ServiceProvider<true>[] = await sut.findVidisAngeboteforSchools([schoolId], {
+                withLogo: true,
+            });
+
+            expect(result?.logo).toEqual(logo);
+            expect(result?.logoMimeType).toBe('image/png');
+        });
+
         it('should return an empty array for an empty school list', async () => {
             const result: ServiceProvider<true>[] = await sut.findVidisAngeboteforSchools([]);
 
@@ -802,12 +813,212 @@ describe('ServiceProviderRepo', () => {
             const persistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 providedOnSchulstrukturknoten,
             });
-            const result: Array<ServiceProvider<true>> = await sut.findBySchulstrukturknoten([
+            em.clear();
+            const result: ServiceProvider<true>[] = await sut.findBySchulstrukturknoten([
                 providedOnSchulstrukturknoten,
             ]);
 
             expect(result).toHaveLength(1);
-            expect(result).toEqual(expect.arrayContaining([persistedServiceProvider]));
+            expect(result).toEqual(
+                expect.arrayContaining([
+                    {
+                        ...persistedServiceProvider,
+                        logo: undefined,
+                    },
+                ]),
+            );
+        });
+    });
+
+    describe('findBySchulstrukturknotenPaginated', () => {
+        const setup = async (): Promise<{
+            orgAId: string;
+            orgBId: string;
+            serviceProviderAlphaOrgA: ServiceProvider<true>;
+            serviceProviderBetaOrgA: ServiceProvider<true>;
+            serviceProviderGammaOrgB: ServiceProvider<true>;
+        }> => {
+            const orgAId: string = faker.string.uuid();
+            const orgBId: string = faker.string.uuid();
+            const serviceProviderAlphaOrgA: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: orgAId,
+                name: 'Alpha',
+            });
+            const serviceProviderBetaOrgA: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: orgAId,
+                name: 'Beta',
+            });
+            const serviceProviderGammaOrgB: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: orgBId,
+                name: 'Gamma',
+            });
+            em.clear();
+
+            return {
+                orgAId,
+                orgBId,
+                serviceProviderAlphaOrgA,
+                serviceProviderBetaOrgA,
+                serviceProviderGammaOrgB,
+            };
+        };
+
+        it('should return matching service providers with count', async () => {
+            const {
+                orgAId,
+                serviceProviderAlphaOrgA,
+                serviceProviderBetaOrgA,
+            }: {
+                orgAId: string;
+                serviceProviderAlphaOrgA: ServiceProvider<true>;
+                serviceProviderBetaOrgA: ServiceProvider<true>;
+            } = await setup();
+
+            const [results, count]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated([
+                orgAId,
+            ]);
+
+            expect(count).toBe(2);
+            expect(results).toHaveLength(2);
+            expect(results.map((sp: ServiceProvider<true>) => sp.id)).toEqual(
+                expect.arrayContaining([serviceProviderAlphaOrgA.id, serviceProviderBetaOrgA.id]),
+            );
+        });
+
+        it('should filter by searchQuery case-insensitively', async () => {
+            const {
+                orgAId,
+                serviceProviderAlphaOrgA,
+            }: {
+                orgAId: string;
+                serviceProviderAlphaOrgA: ServiceProvider<true>;
+            } = await setup();
+
+            const [results, count]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated(
+                [orgAId],
+                'ALPHA',
+            );
+
+            expect(count).toBe(1);
+            expect(results[0]!.id).toBe(serviceProviderAlphaOrgA.id);
+        });
+
+        it('should not return service providers from other organisations', async () => {
+            const {
+                orgAId,
+                serviceProviderAlphaOrgA,
+                serviceProviderBetaOrgA,
+                serviceProviderGammaOrgB,
+            }: {
+                orgAId: string;
+                serviceProviderAlphaOrgA: ServiceProvider<true>;
+                serviceProviderBetaOrgA: ServiceProvider<true>;
+                serviceProviderGammaOrgB: ServiceProvider<true>;
+            } = await setup();
+
+            const [results, count]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated([
+                orgAId,
+            ]);
+
+            expect(count).toBe(2);
+            const resultIds: string[] = results.map((sp: ServiceProvider<true>) => sp.id);
+            expect(resultIds).toEqual(
+                expect.arrayContaining([serviceProviderAlphaOrgA.id, serviceProviderBetaOrgA.id]),
+            );
+            expect(resultIds).not.toContain(serviceProviderGammaOrgB.id);
+        });
+
+        it('should apply limit and offset', async () => {
+            const {
+                orgAId,
+                orgBId,
+            }: {
+                orgAId: string;
+                orgBId: string;
+            } = await setup();
+
+            const [results, count]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated(
+                [orgAId, orgBId],
+                undefined,
+                2,
+                1,
+            );
+
+            expect(count).toBe(3);
+            expect(results).toHaveLength(2);
+        });
+
+        it('should order results by name ascending', async () => {
+            const {
+                orgAId,
+                serviceProviderAlphaOrgA,
+                serviceProviderBetaOrgA,
+            }: {
+                orgAId: string;
+                serviceProviderAlphaOrgA: ServiceProvider<true>;
+                serviceProviderBetaOrgA: ServiceProvider<true>;
+            } = await setup();
+
+            const [results]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated([orgAId]);
+
+            expect(results[0]!.name).toBe(serviceProviderAlphaOrgA.name);
+            expect(results[1]!.name).toBe(serviceProviderBetaOrgA.name);
+        });
+
+        describe('when searchQuery contains SQL wildcard characters', () => {
+            const setup = async (): Promise<{
+                orgId: string;
+                spWithPercent: ServiceProvider<true>;
+                spWithUnderscore: ServiceProvider<true>;
+                spOther: ServiceProvider<true>;
+            }> => {
+                const orgId: string = faker.string.uuid();
+                const spWithPercent: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    name: '100% Service',
+                });
+                const spWithUnderscore: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    name: 'class_A Service',
+                });
+                const spOther: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    name: 'Other Service',
+                });
+                em.clear();
+
+                return { orgId, spWithPercent, spWithUnderscore, spOther };
+            };
+
+            it('should treat % as a literal character', async () => {
+                const { orgId, spWithPercent, spWithUnderscore, spOther }: Awaited<ReturnType<typeof setup>> =
+                    await setup();
+
+                const [results]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated(
+                    [orgId],
+                    '%',
+                );
+
+                const ids: string[] = results.map((sp: ServiceProvider<true>) => sp.id);
+                expect(ids).toContain(spWithPercent.id);
+                expect(ids).not.toContain(spWithUnderscore.id);
+                expect(ids).not.toContain(spOther.id);
+            });
+
+            it('should treat _ as a literal character', async () => {
+                const { orgId, spWithPercent, spWithUnderscore, spOther }: Awaited<ReturnType<typeof setup>> =
+                    await setup();
+
+                const [results]: Counted<ServiceProvider<true>> = await sut.findBySchulstrukturknotenPaginated(
+                    [orgId],
+                    '_',
+                );
+
+                const ids: string[] = results.map((sp: ServiceProvider<true>) => sp.id);
+                expect(ids).toContain(spWithUnderscore.id);
+                expect(ids).not.toContain(spWithPercent.id);
+                expect(ids).not.toContain(spOther.id);
+            });
         });
     });
 
@@ -833,12 +1044,19 @@ describe('ServiceProviderRepo', () => {
             });
 
             serviceProviderEntityMock.merkmale = {
-                map: () => [
-                    {
+                map: <T>(callback: (item: ServiceProviderMerkmalEntity) => T) => [
+                    callback({
                         merkmal: ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR,
-                    } as ServiceProviderMerkmalEntity,
+                    } as ServiceProviderMerkmalEntity),
                 ],
             } as unknown as Collection<ServiceProviderMerkmalEntity>;
+            serviceProviderEntityMock.rollenartenWhitelist = {
+                map: <T>(callback: (item: ServiceProviderRollenartWhitelistEntity) => T) => [
+                    callback({
+                        rollenart: RollenArt.LEHR,
+                    } as ServiceProviderRollenartWhitelistEntity),
+                ],
+            } as unknown as Collection<ServiceProviderRollenartWhitelistEntity>;
 
             const rolleServiceProviderEntityMock: RolleServiceProviderEntity = {
                 rolle: { id: roleId } as RolleEntity,
@@ -850,10 +1068,19 @@ describe('ServiceProviderRepo', () => {
             const result: ServiceProvider<true>[] = await sut.fetchRolleServiceProvidersWithoutPerson(roleId);
 
             expect(result).toBeDefined();
+            expect(result[0]?.rollenartenWhitelist).toEqual([RollenArt.LEHR]);
             expect(em.find).toHaveBeenCalledWith(
                 RolleServiceProviderEntity,
                 { rolle: { id: roleId } },
-                { populate: ['serviceProvider', 'serviceProvider.merkmale', 'rolle', 'rolle.personenKontexte'] },
+                {
+                    populate: [
+                        'serviceProvider',
+                        'serviceProvider.merkmale',
+                        'serviceProvider.rollenartenWhitelist',
+                        'rolle',
+                        'rolle.personenKontexte',
+                    ],
+                },
             );
         });
     });
@@ -912,23 +1139,37 @@ describe('ServiceProviderRepo', () => {
         });
     });
 
-    describe('deleteById', () => {
-        it('should delete an existing ServiceProvider by its id', async () => {
-            const persistedPersistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+    describe('getPermissionsForServiceProvider', () => {
+        it.each([
+            [RollenSystemRecht.ANGEBOTE_VERWALTEN, ServiceProviderPropertyPermissions.ALL],
+            [RollenSystemRecht.ANGEBOTE_EINGESCHRAENKT_VERWALTEN, ServiceProviderPropertyPermissions.EINGESCHRAENKT],
+        ])(
+            'when systemrecht is %s, it should return %s',
+            async (
+                systemrecht: RollenSystemRecht,
+                serviceProviderPropertyPermission: ServiceProviderPropertyPermissions,
+            ) => {
+                const sp: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+                const permissionsMock: MockedObject<PersonPermissions> =
+                    createMock<PersonPermissions>(PersonPermissions);
+                permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
+                    (_orgaId: OrganisationID, sr: RollenSystemRecht) => Promise.resolve(sr === systemrecht),
+                );
+                const result: Result<ServiceProviderPropertyPermissions, DomainError> =
+                    await sut.getPermissionsForServiceProvider(permissionsMock, sp);
+                expectOkResult(result);
+                expect(result.value).toBe(serviceProviderPropertyPermission);
+            },
+        );
 
-            const result: boolean = await sut.deleteById(persistedPersistedServiceProvider.id);
-
-            expect(result).toBeTruthy();
-        });
-    });
-
-    describe('deleteByName', () => {
-        it('should delete an existing ServiceProvider by its name', async () => {
-            const persistedPersistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            const result: boolean = await sut.deleteByName(persistedPersistedServiceProvider.name);
-
-            expect(result).toBeTruthy();
+        it('should return error if no permissions exist', async () => {
+            const sp: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const permissionsMock: MockedObject<PersonPermissions> = createMock<PersonPermissions>(PersonPermissions);
+            permissionsMock.hasSystemrechtAtOrganisation.mockReturnValue(Promise.resolve(false));
+            const result: Result<ServiceProviderPropertyPermissions, DomainError> =
+                await sut.getPermissionsForServiceProvider(permissionsMock, sp);
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(MissingPermissionsError);
         });
     });
 });

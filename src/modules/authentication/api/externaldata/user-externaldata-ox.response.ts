@@ -10,6 +10,8 @@ export interface NewOxParams {
     oxLoginId: OXContextID;
 }
 
+export type OxParams = OldOxParams | NewOxParams;
+
 export class UserExternalDataResponseOx {
     @ApiProperty()
     public id: string;

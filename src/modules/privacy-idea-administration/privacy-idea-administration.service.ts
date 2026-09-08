@@ -251,8 +251,7 @@ export class PrivacyIdeaAdministrationService {
         const headers: { Authorization: string } = {
             Authorization: `${token}`,
         };
-        const payload: { username: string; user: string; resolver: string } = {
-            username: userName,
+        const payload: { user: string; resolver: string } = {
             user: userName,
             resolver: this.privacyIdeaConfig.USER_RESOLVER,
         };

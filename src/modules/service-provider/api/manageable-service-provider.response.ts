@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Organisation } from '../../organisation/domain/organisation.js';
+import { RollenArt, RollenArtTypName } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import {
     ServiceProviderKategorie,
@@ -38,6 +39,9 @@ export class ManageableServiceProviderResponse {
     @ApiProperty({ enum: ServiceProviderMerkmal, enumName: ServiceProviderMerkmalTypName, isArray: true })
     public merkmale: ServiceProviderMerkmal[];
 
+    @ApiProperty({ enum: RollenArt, enumName: RollenArtTypName, isArray: true })
+    public rollenartenWhitelist: RollenArt[];
+
     @ApiProperty({ description: 'Can be undefined, if `target` is not equal to `URL`' })
     public url?: string;
 
@@ -72,6 +76,7 @@ export class ManageableServiceProviderResponse {
         this.requires2fa = serviceProvider.requires2fa;
         this.vidisAngebotId = serviceProvider.vidisAngebotId;
         this.merkmale = serviceProvider.merkmale;
+        this.rollenartenWhitelist = serviceProvider.rollenartenWhitelist;
         this.url = serviceProvider.url;
         this.hasRollenerweiterung = hasRollenerweiterung;
         this.availableForRollenerweiterung = serviceProvider.merkmale.includes(

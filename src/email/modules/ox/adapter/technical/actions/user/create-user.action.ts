@@ -26,7 +26,7 @@ export type CreateUserResponse = {
 };
 
 export type CreateUserResponseBody = {
-    createResponse: {
+    createByModuleAccessResponse: {
         return: {
             id: string;
             aliases: [];
@@ -44,7 +44,7 @@ export type CreateUserResponseBody = {
 };
 
 export class CreateUserAction extends OxBaseAction<CreateUserResponseBody, CreateUserResponse> {
-    public override action: string = 'http://soap.admin.openexchange.com/create';
+    public override action: string = 'http://soap.admin.openexchange.com/createByModuleAccess';
 
     public override soapServiceName: string = 'OXUserService';
 
@@ -54,7 +54,7 @@ export class CreateUserAction extends OxBaseAction<CreateUserResponseBody, Creat
 
     public override buildRequest(): object {
         return {
-            'tns:create': {
+            'tns:createByModuleAccess': {
                 '@_xmlns:tns': TNS_SCHEMA,
                 '@_xmlns:ns2': NS2_SCHEMA,
                 '@_xmlns:ns6': NS6_SCHEMA,
@@ -75,6 +75,11 @@ export class CreateUserAction extends OxBaseAction<CreateUserResponseBody, Creat
                     'ns6:password': this.params.userPassword,
                 },
 
+                'tns:access': {
+                    'ns6:globalAddressBookDisabled': true,
+                    'ns6:infostore': false,
+                },
+
                 'tns:auth': {
                     'ns2:login': this.params.login,
                     'ns2:password': this.params.password,
@@ -87,12 +92,12 @@ export class CreateUserAction extends OxBaseAction<CreateUserResponseBody, Creat
         return {
             ok: true,
             value: {
-                id: String(body.createResponse.return.id),
-                firstname: body.createResponse.return.given_name,
-                lastname: body.createResponse.return.sur_name,
-                username: body.createResponse.return.name,
-                primaryEmail: body.createResponse.return.primaryEmail,
-                mailenabled: body.createResponse.return.mailenabled,
+                id: String(body.createByModuleAccessResponse.return.id),
+                firstname: body.createByModuleAccessResponse.return.given_name,
+                lastname: body.createByModuleAccessResponse.return.sur_name,
+                username: body.createByModuleAccessResponse.return.name,
+                primaryEmail: body.createByModuleAccessResponse.return.primaryEmail,
+                mailenabled: body.createByModuleAccessResponse.return.mailenabled,
             },
         };
     }

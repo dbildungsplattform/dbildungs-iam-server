@@ -144,13 +144,7 @@ describe('Rolle API', () => {
     }, 10000000);
 
     afterAll(async () => {
-        if (await orm?.isConnected()) {
-            await orm.close();
-        }
-
-        if (app) {
-            await app.close();
-        }
+        await app.close();
     });
 
     beforeEach(async () => {
@@ -738,7 +732,11 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle?systemrechte=IMPORT_DURCHFUEHREN&organisationId=${schule.id}`)
+                .get(`/rolle`)
+                .query({
+                    systemrechte: 'IMPORT_DURCHFUEHREN',
+                    organisationContextForOperation: schule.id,
+                })
                 .send();
 
             expect(response.status).toBe(200);
@@ -774,6 +772,210 @@ describe('Rolle API', () => {
             const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
                 response.body as PagedResponse<RolleWithServiceProvidersResponse>;
             expect(pagedResponse.items).toHaveLength(1);
+        });
+
+        it('should return rollen filtered by organisationenForFilter', async () => {
+            const orgaA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const orgaB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaB.id, istTechnisch: false }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    organisationenForFilter: orgaA.id,
+                })
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every(
+                    (r: RolleWithServiceProvidersResponse) => r.administeredBySchulstrukturknoten === orgaA.id,
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by merkmale', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [],
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    merkmale: RollenMerkmal.BEFRISTUNG_PFLICHT,
+                })
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
+                    r.merkmale.includes(RollenMerkmal.BEFRISTUNG_PFLICHT),
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by serviceProviderIds', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const sp1: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const sp2: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp1.id],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp1.id],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp2.id],
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    serviceProviderIds: sp1.id,
+                })
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
+                    r.serviceProviders.some((sp: { id: string; name: string }) => sp.id === sp1.id),
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by rollenarten without operation right', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LEHR,
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LEHR,
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LERN,
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    rollenarten: RollenArt.LEHR,
+                })
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) => r.rollenart === RollenArt.LEHR),
+            ).toBe(true);
+        });
+
+        it('should return 400 when organisationenForFilter is combined with an operation right', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    systemrechte: RollenSystemRecht.ROLLEN_ERWEITERN.name,
+                    organisationenForFilter: orga.id,
+                })
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should return 400 when organisationContextForOperation is used without an operation right', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle`)
+                .query({
+                    organisationContextForOperation: orga.id,
+                })
+                .send();
+
+            expect(response.status).toBe(400);
         });
     });
 
@@ -816,7 +1018,12 @@ describe('Rolle API', () => {
         permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
         const response: Response = await request(app.getHttpServer() as App)
-            .get(`/rolle?systemrechte=IMPORT_DURCHFUEHREN&rollenarten=${RollenArt.LEHR}&organisationId=${schule.id}`)
+            .get(`/rolle`)
+            .query({
+                systemrechte: RollenSystemRecht.IMPORT_DURCHFUEHREN.name,
+                rollenarten: RollenArt.LEHR,
+                organisationContextForOperation: schule.id,
+            })
             .send();
 
         expect(response.status).toBe(200);

@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Collection, EntityManager, MikroORM, ref, RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -13,6 +13,7 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { createAndPersistOrganisation } from '../../../../test/utils/organisation-test-helper.js';
+import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
@@ -26,13 +27,18 @@ import {
     MismatchedRevisionError,
     MissingPermissionsError,
 } from '../../../shared/error/index.js';
+import { BaseEvent } from '../../../shared/events/index.js';
+import { KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
+import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
 import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
@@ -49,10 +55,12 @@ import { PersonenkontextEntity } from '../../personenkontext/persistence/persone
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleEntity } from '../../rolle/entity/rolle.entity.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { FamiliennameForPersonWithTrailingSpaceError } from '../domain/familienname-with-trailing-space.error.js';
 import { DownstreamKeycloakError } from '../domain/person-keycloak.error.js';
 import { PersonExternalIdType, PersonLockOccasion, SortFieldPerson } from '../domain/person.enums.js';
@@ -74,14 +82,6 @@ import {
     PersonWithoutOrgDeleteListResult,
 } from './person.repository.js';
 import { PersonScope } from './person.scope.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
-import { BaseEvent } from '../../../shared/events/index.js';
-import { KafkaEvent } from '../../../shared/events/kafka-event.js';
-import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 
 describe('PersonRepository Integration', () => {
     let module: TestingModule;
@@ -160,7 +160,6 @@ describe('PersonRepository Integration', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
@@ -3193,9 +3192,9 @@ describe('PersonRepository Integration', () => {
         });
         describe('getPersonWithoutOrgDeleteList', () => {
             it('should return a list of personIds for persons without a personenkontext', async () => {
-                // person without personenkontext & org_unassignment_date older than 84 days
+                // person without personenkontext & org_unassignment_date older than 90 days
                 const daysAgo: Date = new Date();
-                daysAgo.setDate(daysAgo.getDate() - 84);
+                daysAgo.setDate(daysAgo.getDate() - 90);
 
                 const personEntity1: PersonEntity = new PersonEntity();
                 const person1: Person<true> = DoFactory.createPerson(true, { orgUnassignmentDate: daysAgo });

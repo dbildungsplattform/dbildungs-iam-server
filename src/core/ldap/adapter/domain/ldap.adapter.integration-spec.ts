@@ -1,39 +1,39 @@
-import { vi } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
+import assert from 'node:assert';
+import { vi } from 'vitest';
+import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     LdapTestModule,
 } from '../../../../../test/utils/index.js';
-import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
-import { LdapConfigModule } from '../technical/ldap-config.module.js';
-import { LdapModule } from '../../ldap.module.js';
-import { faker } from '@faker-js/faker';
-import { LdapAdapter, LdapPersonAttributes, PersonData } from './ldap.adapter.js';
 import { Person } from '../../../../modules/person/domain/person.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { LdapClient } from '../technical/ldap-client.js';
-import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
 import { PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
-import { LdapSearchError } from './error/ldap-search.error.js';
-import { LdapEntityType } from './ldap.types.js';
-import { ClassLogger } from '../../../logging/class-logger.js';
+import { Err, Ok } from '../../../../shared/util/result.js';
+import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
 import { EventRoutingLegacyKafkaService } from '../../../eventbus/services/event-routing-legacy-kafka.service.js';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapEmailAddressError } from './error/ldap-email-address.error.js';
-import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
-import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
+import { ClassLogger } from '../../../logging/class-logger.js';
+import { LdapModule } from '../../ldap.module.js';
+import { LdapClient } from '../technical/ldap-client.js';
+import { LdapConfigModule } from '../technical/ldap-config.module.js';
 import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
-import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
-import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
-import assert from 'assert';
-import { Err, Ok } from '../../../../shared/util/result.js';
+import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
 import { LdapDeleteOrganisationError } from './error/ldap-delete-organisation.error.js';
-import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
+import { LdapEmailAddressError } from './error/ldap-email-address.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
+import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
+import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
+import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
+import { LdapSearchError } from './error/ldap-search.error.js';
+import { LdapAdapter, LdapPersonAttributes, PersonData } from './ldap.adapter.js';
+import { LdapEntityType } from './ldap.types.js';
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
         _func: () => Promise<Result<T>>,
@@ -224,7 +224,6 @@ describe('LDAP Adapter', () => {
 
     afterAll(async () => {
         await DatabaseTestModule.clearDatabase(orm);
-        await orm.close();
         await app.close();
         vi.clearAllTimers();
     });

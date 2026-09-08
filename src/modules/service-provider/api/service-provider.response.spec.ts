@@ -10,6 +10,7 @@ describe('ServiceProviderResponse', () => {
             const response: ServiceProviderResponse = new ServiceProviderResponse(provider);
 
             expect(response.hasLogo).toBe(true);
+            expect(response.rollenartenWhitelist).toEqual(provider.rollenartenWhitelist);
         });
     });
 

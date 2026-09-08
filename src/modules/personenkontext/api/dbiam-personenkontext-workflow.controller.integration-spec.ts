@@ -13,44 +13,44 @@ import {
     KeycloakConfigTestModule,
 } from '../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../shared/validation/index.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
 
-import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
-import { Personenkontext } from '../domain/personenkontext.js';
-import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
-import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { Person } from '../../person/domain/person.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { PersonFactory } from '../../person/domain/person.factory.js';
-import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
-import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
-import { generatePassword } from '../../../shared/util/password-generator.js';
-import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
-import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
 import { ConfigService } from '@nestjs/config';
-import { PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
+import { generatePassword } from '../../../shared/util/password-generator.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
+import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
+import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
+import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { PersonFactory } from '../../person/domain/person.factory.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
+import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
+import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
+import { PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
+import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
+import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
+import { Personenkontext } from '../domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
+import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 
 describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     let app: INestApplication;
@@ -144,7 +144,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     }
 
     afterAll(async () => {
-        await orm.close();
         await app.close();
     });
 

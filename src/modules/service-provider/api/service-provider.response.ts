@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { RollenArt, RollenArtTypName } from '../../rolle/domain/rolle.enums.js';
 
 import {
     ServiceProviderKategorie,
@@ -38,6 +39,9 @@ export class ServiceProviderResponse {
     @ApiProperty({ enum: ServiceProviderMerkmal, enumName: ServiceProviderMerkmalTypName, isArray: true })
     public merkmale: ServiceProviderMerkmal[];
 
+    @ApiProperty({ enum: RollenArt, enumName: RollenArtTypName, isArray: true })
+    public rollenartenWhitelist: RollenArt[];
+
     public constructor(serviceProvider: ServiceProvider<true>) {
         this.id = serviceProvider.id;
         this.name = serviceProvider.name;
@@ -48,5 +52,6 @@ export class ServiceProviderResponse {
         this.hasLogo = !!serviceProvider.logoMimeType; // serviceProvider.logo might not be loaded, so just check the mime-type
         this.requires2fa = serviceProvider.requires2fa;
         this.merkmale = serviceProvider.merkmale;
+        this.rollenartenWhitelist = serviceProvider.rollenartenWhitelist;
     }
 }

@@ -1,20 +1,20 @@
-import { MikroORM, EntityManager } from '@mikro-orm/core';
-import { TestingModule, Test } from '@nestjs/testing';
+import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { Test, TestingModule } from '@nestjs/testing';
+import { createMock } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     DatabaseTestModule,
-    LoggingTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DoFactory,
+    LoggingTestModule,
 } from '../../../../test/utils/index.js';
-import { OrganisationServiceProviderRepo } from './organisation-service-provider.repo.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { ServiceProvider } from '../domain/service-provider.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { createMock } from '../../../../test/utils/createMock.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderModule } from '../service-provider.module.js';
+import { OrganisationServiceProviderRepo } from './organisation-service-provider.repo.js';
 
 describe('OrganisationServiceProviderRepo', () => {
     let module: TestingModule;
@@ -51,7 +51,6 @@ describe('OrganisationServiceProviderRepo', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

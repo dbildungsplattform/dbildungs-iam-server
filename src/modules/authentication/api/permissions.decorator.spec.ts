@@ -50,9 +50,13 @@ describe('The Permissions-Decorator', () => {
 
     it('should reject if passport user is set without personPermission function', async () => {
         const context: ExecutionContext = createExecutionContextMock();
-        context.switchToHttp().getRequest<MockedObject<express.Request>>().passportUser = {} as PassportUser;
+        context.switchToHttp().getRequest<MockedObject<express.Request>>().passportUser = {
+            someProperty: 'someValue',
+        } as unknown as PassportUser;
 
-        await expect(factory(null, context)).rejects.toThrow('No personPermissions function found on PassportUser');
+        await expect(factory(null, context)).rejects.toThrow(
+            "No personPermissions function found on PassportUser: { someProperty: 'someValue' }",
+        );
     });
 
     it('should reject if there is no passport user', async () => {

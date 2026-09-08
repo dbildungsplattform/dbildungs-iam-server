@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { IsDIN91379AEXT } from '../../../shared/util/din-91379-validation.js';
-import { ServiceProviderKategorie } from '../domain/service-provider.enum.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { ServiceProviderKategorie, ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
 
 export class UpdateServiceProviderBodyParams {
     @ApiProperty({ required: false })
@@ -38,4 +39,14 @@ export class UpdateServiceProviderBodyParams {
     @Max(Math.pow(2, 31) - 1)
     @IsOptional()
     public logoId?: number | null;
+
+    @ApiProperty({ required: false, enum: ServiceProviderMerkmal, isArray: true })
+    @IsOptional()
+    @IsEnum(ServiceProviderMerkmal, { each: true })
+    public merkmale?: ServiceProviderMerkmal[];
+
+    @ApiProperty({ required: false, enum: RollenArt, isArray: true })
+    @IsOptional()
+    @IsEnum(RollenArt, { each: true })
+    public rollenartenWhitelist?: RollenArt[];
 }

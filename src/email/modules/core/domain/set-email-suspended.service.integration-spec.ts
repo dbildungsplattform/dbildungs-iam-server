@@ -1,20 +1,20 @@
 import { faker } from '@faker-js/faker/locale/af_ZA';
 import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     LoggingTestModule,
 } from '../../../../../test/utils/index.js';
-import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { DomainError } from '../../../../shared/error/index.js';
+import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailAddress } from './email-address.js';
 import { SetEmailSuspendedService } from './set-email-suspended.service.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { WebhookService } from '../../webhook/domain/webhook.service.js';
 
 describe('SetEmailSuspendedService', () => {
     let module: TestingModule;
@@ -51,7 +51,6 @@ describe('SetEmailSuspendedService', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 

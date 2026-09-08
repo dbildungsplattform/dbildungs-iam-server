@@ -35,6 +35,7 @@ import { faker } from '@faker-js/faker';
 import { VidisSyncService } from './vidis.sync-service.js';
 import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
+import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
 
 type TorgaIds = {
     id: string;
@@ -47,6 +48,7 @@ describe('VidisSyncService', () => {
     let vidisApiAdapterMock: DeepMocked<VidisApiAdapter>;
     let organisationRepoMock: DeepMocked<OrganisationRepository>;
     let serviceProviderRepoMock: DeepMocked<ServiceProviderRepo>;
+    let serviceProviderModificationServiceMock: DeepMocked<ServiceProviderModificationService>;
     let escalatedPersonPermissionsFactoryMock: DeepMocked<EscalatedPersonPermissionsFactory>;
     let rollenerweiterungRepoMock: DeepMocked<RollenerweiterungRepo>;
     let entityManagerMock: DeepMocked<EntityManager>;
@@ -58,7 +60,8 @@ describe('VidisSyncService', () => {
     type GetActivatedAngeboteBySchoolResult = Awaited<ReturnType<VidisApiAdapter['getActivatedAngeboteBySchool']>>;
     type FindSchoolsResult = Awaited<ReturnType<OrganisationRepository['findBy']>>;
     type FindVidisAngeboteForSchoolsResult = Awaited<ReturnType<ServiceProviderRepo['findVidisAngeboteforSchools']>>;
-    type CreateServiceProviderResult = Awaited<ReturnType<ServiceProviderRepo['create']>>;
+    type CreateServiceProviderResult = Awaited<ReturnType<ServiceProviderModificationService['create']>>;
+    type UpdateVidisServiceProviderResult = Awaited<ReturnType<ServiceProviderModificationService['update']>>;
     type DeleteRollenerweiterungenResult = Awaited<
         ReturnType<RollenerweiterungRepo['deleteByOrganisationIdAndServiceProviderIds']>
     >;
@@ -144,6 +147,7 @@ describe('VidisSyncService', () => {
             false,
             vidisAngebotId,
             [],
+            [],
         );
 
     const decodeVidisLogo = (offerLogo: string): DecodedVidisLogoResult =>
@@ -182,6 +186,10 @@ describe('VidisSyncService', () => {
                     useValue: createMock(ServiceProviderRepo),
                 },
                 {
+                    provide: ServiceProviderModificationService,
+                    useValue: createMock(ServiceProviderModificationService),
+                },
+                {
                     provide: EscalatedPersonPermissionsFactory,
                     useValue: createMock(EscalatedPersonPermissionsFactory),
                 },
@@ -207,6 +215,7 @@ describe('VidisSyncService', () => {
         vidisApiAdapterMock = module.get(VidisApiAdapter);
         organisationRepoMock = module.get(OrganisationRepository);
         serviceProviderRepoMock = module.get(ServiceProviderRepo);
+        serviceProviderModificationServiceMock = module.get(ServiceProviderModificationService);
         escalatedPersonPermissionsFactoryMock = module.get(EscalatedPersonPermissionsFactory);
         rollenerweiterungRepoMock = module.get(RollenerweiterungRepo);
         entityManagerMock = module.get(EntityManager);
@@ -215,6 +224,7 @@ describe('VidisSyncService', () => {
             vidisApiAdapterMock,
             organisationRepoMock,
             serviceProviderRepoMock,
+            serviceProviderModificationServiceMock,
             escalatedPersonPermissionsFactoryMock,
             rollenerweiterungRepoMock,
             entityManagerMock,
@@ -238,6 +248,7 @@ describe('VidisSyncService', () => {
         escalatedPersonPermissionsFactoryMock.createNew.mockReturnValue(permissionsMock);
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(permissionsMock);
         serviceProviderRepoMock.findNonSchoolProvidedVidisAngebote.mockResolvedValue([]);
+        serviceProviderModificationServiceMock.update.mockResolvedValue(Ok({}) as never);
     });
 
     it('should skip VIDIS sync when loading activated Angebote fails', async () => {
@@ -359,7 +370,9 @@ describe('VidisSyncService', () => {
 
             expect(result).toEqual(Ok(undefined));
             expect(vidisApiAdapterMock.getActivatedAngeboteBySchool).toHaveBeenCalledWith(kennung);
-            expect(serviceProviderRepoMock.findVidisAngeboteforSchools).toHaveBeenCalledWith([organisationId]);
+            expect(serviceProviderRepoMock.findVidisAngeboteforSchools).toHaveBeenCalledWith([organisationId], {
+                withLogo: true,
+            });
             expect(syncForSchoolSpy).toHaveBeenCalledWith(
                 organisationId,
                 [activatedAngebote[0]!.angebot, activatedAngebote[1]!.angebot],
@@ -423,7 +436,9 @@ describe('VidisSyncService', () => {
 
         await sut.sync();
 
-        expect(serviceProviderRepoMock.findVidisAngeboteforSchools).toHaveBeenCalledWith([orga1.id, orga2.id]);
+        expect(serviceProviderRepoMock.findVidisAngeboteforSchools).toHaveBeenCalledWith([orga1.id, orga2.id], {
+            withLogo: true,
+        });
         expect(syncForSchoolSpy).toHaveBeenCalledTimes(2);
         expect(syncForSchoolSpy).toHaveBeenCalledWith(
             orga1.id,
@@ -449,6 +464,7 @@ describe('VidisSyncService', () => {
             vidisApiAdapterMock,
             organisationRepoMock,
             serviceProviderRepoMock,
+            serviceProviderModificationServiceMock,
             escalatedPersonPermissionsFactoryMock,
             rollenerweiterungRepoMock,
             entityManagerMock,
@@ -501,6 +517,7 @@ describe('VidisSyncService', () => {
             vidisApiAdapterMock,
             organisationRepoMock,
             serviceProviderRepoMock,
+            serviceProviderModificationServiceMock,
             escalatedPersonPermissionsFactoryMock,
             rollenerweiterungRepoMock,
             entityManagerMock,
@@ -634,8 +651,10 @@ describe('VidisSyncService', () => {
                 id: faker.string.uuid(),
                 kennung: faker.string.alphanumeric(8),
             };
-            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [createAngebot(1, 'Existing Angebot')];
+            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [createAngebot(1, 'Angebot 1')];
             const angeboteInDb: ServiceProvider<true>[] = [createExistingVidisServiceProvider(orga.id, '1')];
+            angeboteInDb[0]!.logo = Buffer.from(tinyPngBase64, 'base64');
+            angeboteInDb[0]!.logoMimeType = 'image/png';
 
             await (
                 sut as unknown as {
@@ -652,22 +671,24 @@ describe('VidisSyncService', () => {
             expect(loggerMock.info).toHaveBeenCalledWith(
                 `No differences between VIDIS API and database for school with organisationId: ${orga.id}`,
             );
-            expect(serviceProviderRepoMock.create).not.toHaveBeenCalled();
+            expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
+            expect(serviceProviderModificationServiceMock.update).not.toHaveBeenCalled();
             expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).not.toHaveBeenCalled();
             expect(serviceProviderRepoMock.deleteByIdAuthorized).not.toHaveBeenCalled();
         });
 
-        it('should create missing VIDIS Angebote for the school and skip existing ones', async () => {
+        it('should update existing VIDIS Angebote when only metadata differs', async () => {
             const orga: TorgaIds = {
                 id: faker.string.uuid(),
                 kennung: faker.string.alphanumeric(8),
             };
-            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [
-                createAngebot(1, 'Existing Angebot'),
-                createAngebot(2, 'Missing Angebot'),
-            ];
             const angeboteInDb: ServiceProvider<true>[] = [createExistingVidisServiceProvider(orga.id, '1')];
-            serviceProviderRepoMock.create.mockResolvedValue(Ok(createExistingVidisServiceProvider(orga.id, '2')));
+            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [
+                {
+                    ...createAngebot(1, 'Updated Angebot'),
+                    offerLink: 'https://updated.example.org/1',
+                },
+            ];
 
             await (
                 sut as unknown as {
@@ -681,9 +702,101 @@ describe('VidisSyncService', () => {
                 }
             ).syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock);
 
-            expect(serviceProviderRepoMock.create).toHaveBeenCalledTimes(1);
-            expect(serviceProviderRepoMock.create).toHaveBeenCalledWith(permissionsMock, expect.any(ServiceProvider));
-            const createdServiceProvider: ServiceProvider<false> = serviceProviderRepoMock.create.mock
+            expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledTimes(1);
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledWith(
+                permissionsMock,
+                expect.objectContaining({
+                    id: angeboteInDb[0]?.id,
+                    name: 'Updated Angebot',
+                    url: 'https://updated.example.org/1',
+                }),
+            );
+            expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).not.toHaveBeenCalled();
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).not.toHaveBeenCalled();
+        });
+
+        it('should wait for metadata updates before finishing sync for a school', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angeboteInDb: ServiceProvider<true>[] = [createExistingVidisServiceProvider(orga.id, '1')];
+            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [
+                {
+                    ...createAngebot(1, 'Updated Angebot'),
+                    offerLink: 'https://updated.example.org/1',
+                },
+            ];
+            let resolveUpdate: ((value: UpdateVidisServiceProviderResult) => void) | undefined;
+            let syncFinished: boolean = false;
+
+            serviceProviderModificationServiceMock.update.mockImplementation(
+                () =>
+                    new Promise((resolve: (value: UpdateVidisServiceProviderResult) => void) => {
+                        resolveUpdate = resolve;
+                    }),
+            );
+
+            const syncPromise: Promise<void> = (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            )
+                .syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock)
+                .then(() => {
+                    syncFinished = true;
+                });
+
+            await vi.waitFor(() => {
+                expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledTimes(1);
+                expect(syncFinished).toBe(false);
+            });
+
+            resolveUpdate?.(Ok(angeboteInDb[0]!));
+            await syncPromise;
+
+            expect(syncFinished).toBe(true);
+        });
+
+        it('should create missing VIDIS Angebote for the school and skip existing ones', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [
+                createAngebot(1, 'Existing Angebot'),
+                createAngebot(2, 'Missing Angebot'),
+            ];
+            const angeboteInDb: ServiceProvider<true>[] = [createExistingVidisServiceProvider(orga.id, '1')];
+            serviceProviderModificationServiceMock.create.mockResolvedValue(
+                Ok(createExistingVidisServiceProvider(orga.id, '2')),
+            );
+
+            await (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock);
+
+            expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledTimes(1);
+            expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
+                permissionsMock,
+                expect.any(ServiceProvider),
+            );
+            const createdServiceProvider: ServiceProvider<false> = serviceProviderModificationServiceMock.create.mock
                 .calls[0]?.[1] as ServiceProvider<false>;
 
             expect(createdServiceProvider.name).toBe('Missing Angebot');
@@ -702,6 +815,8 @@ describe('VidisSyncService', () => {
             expect(createdServiceProvider.merkmale).toEqual([
                 ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                 ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR,
+                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ]);
         });
 
@@ -733,9 +848,12 @@ describe('VidisSyncService', () => {
                     false,
                     '1',
                     [],
+                    [],
                 ),
             ];
-            serviceProviderRepoMock.create.mockResolvedValue(Ok(createExistingVidisServiceProvider(orga.id, '2')));
+            serviceProviderModificationServiceMock.create.mockResolvedValue(
+                Ok(createExistingVidisServiceProvider(orga.id, '2')),
+            );
 
             await (
                 sut as unknown as {
@@ -749,9 +867,12 @@ describe('VidisSyncService', () => {
                 }
             ).syncForSchoolInternal(orga.id, angeboteInVidis, [], nonSchoolProvidedVidisAngeboteInDB, permissionsMock);
 
-            expect(serviceProviderRepoMock.create).toHaveBeenCalledTimes(1);
-            expect(serviceProviderRepoMock.create).toHaveBeenCalledWith(permissionsMock, expect.any(ServiceProvider));
-            const createdServiceProvider: ServiceProvider<false> = serviceProviderRepoMock.create.mock
+            expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledTimes(1);
+            expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
+                permissionsMock,
+                expect.any(ServiceProvider),
+            );
+            const createdServiceProvider: ServiceProvider<false> = serviceProviderModificationServiceMock.create.mock
                 .calls[0]?.[1] as ServiceProvider<false>;
 
             expect(createdServiceProvider.name).toBe('School Angebot');
@@ -788,7 +909,7 @@ describe('VidisSyncService', () => {
                 [staleServiceProvider.id],
                 permissionsMock,
             );
-            expect(serviceProviderRepoMock.create).not.toHaveBeenCalled();
+            expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
         });
 
         it('should wait for stale rollenerweiterung cleanup before deleting stale service providers', async () => {
@@ -965,7 +1086,7 @@ describe('VidisSyncService', () => {
             };
             const rejectionReason: Error = new Error('VIDIS create rejected');
             const angeboteInVidis: VidisApiResponseAngebotBySchool[] = [createAngebot(1, 'Rejected Angebot')];
-            serviceProviderRepoMock.create.mockRejectedValue(rejectionReason);
+            serviceProviderModificationServiceMock.create.mockRejectedValue(rejectionReason);
 
             await (
                 sut as unknown as {
@@ -999,9 +1120,9 @@ describe('VidisSyncService', () => {
                 createAngebot(1, 'Error Angebot'),
                 createAngebot(2, 'Missing Error Payload Angebot'),
             ];
-            serviceProviderRepoMock.create
+            serviceProviderModificationServiceMock.create
                 .mockResolvedValueOnce(Err(resultError) as CreateServiceProviderResult)
-                .mockResolvedValueOnce(failedResultWithoutError as unknown as CreateServiceProviderResult);
+                .mockResolvedValueOnce(failedResultWithoutError as CreateServiceProviderResult);
 
             await (
                 sut as unknown as {
@@ -1028,6 +1149,259 @@ describe('VidisSyncService', () => {
                 failedResultWithoutError,
                 false,
             );
+        });
+    });
+
+    describe('updateAngebotToMatchVidis', () => {
+        type NeedsDbAngebotUpdateResult = {
+            needUpdate: boolean;
+            isNameChanged: boolean;
+            isUrlChanged: boolean;
+            isLogoChanged: boolean;
+        };
+        type UpdateServiceProviderResult = Awaited<ReturnType<ServiceProviderModificationService['update']>>;
+
+        it('should keep unchanged fields when no specific update flags are set', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            const originalName: string = angebotInDb.name;
+            const originalUrl: string | undefined = angebotInDb.url;
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, 'Different Name'),
+                offerLink: 'https://different.example.org/1',
+            };
+            const needsDbUpdate: NeedsDbAngebotUpdateResult = {
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+            };
+            serviceProviderModificationServiceMock.update.mockResolvedValue(
+                Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
+            );
+
+            await (
+                sut as unknown as {
+                    updateAngebotToMatchVidis: (
+                        needsDbUpdate: NeedsDbAngebotUpdateResult,
+                        angebotInDb: ServiceProvider<true>,
+                        matchingAngebotInVidis: VidisApiResponseAngebotBySchool,
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).updateAngebotToMatchVidis(needsDbUpdate, angebotInDb, angebotInVidis, permissionsMock);
+
+            expect(angebotInDb.name).toBe(originalName);
+            expect(angebotInDb.url).toBe(originalUrl);
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledWith(permissionsMock, angebotInDb);
+        });
+
+        it('should update a VIDIS Angebot in DB when differences are detected', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, 'Updated Name'),
+                offerLink: 'https://updated.example.org/1',
+                offerLogo: '/9j/',
+            };
+            const needsDbUpdate: NeedsDbAngebotUpdateResult = {
+                needUpdate: true,
+                isNameChanged: true,
+                isUrlChanged: true,
+                isLogoChanged: true,
+            };
+            serviceProviderModificationServiceMock.update.mockResolvedValue(
+                Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
+            );
+
+            await (
+                sut as unknown as {
+                    updateAngebotToMatchVidis: (
+                        needsDbUpdate: NeedsDbAngebotUpdateResult,
+                        angebotInDb: ServiceProvider<true>,
+                        matchingAngebotInVidis: VidisApiResponseAngebotBySchool,
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).updateAngebotToMatchVidis(needsDbUpdate, angebotInDb, angebotInVidis, permissionsMock);
+
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledTimes(1);
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledWith(permissionsMock, angebotInDb);
+            expect(angebotInDb.name).toBe('Updated Name');
+            expect(angebotInDb.url).toBe('https://updated.example.org/1');
+            expect(angebotInDb.logo).toEqual(Buffer.from('ffd8ff', 'hex'));
+            expect(angebotInDb.logoMimeType).toBe('image/jpeg');
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                `Successfully updated VIDIS Angebot with id ${angebotInDb.id} in DB`,
+            );
+        });
+
+        it('should log an error when updating a VIDIS Angebot in DB fails', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            const angebotInVidis: VidisApiResponseAngebotBySchool = createAngebot(1, 'Updated Name');
+            const resultError: Error = new Error('update failed');
+            const needsDbUpdate: NeedsDbAngebotUpdateResult = {
+                needUpdate: true,
+                isNameChanged: true,
+                isUrlChanged: false,
+                isLogoChanged: false,
+            };
+            serviceProviderModificationServiceMock.update.mockResolvedValue(
+                Err(resultError) as UpdateServiceProviderResult,
+            );
+
+            await (
+                sut as unknown as {
+                    updateAngebotToMatchVidis: (
+                        needsDbUpdate: NeedsDbAngebotUpdateResult,
+                        angebotInDb: ServiceProvider<true>,
+                        matchingAngebotInVidis: VidisApiResponseAngebotBySchool,
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).updateAngebotToMatchVidis(needsDbUpdate, angebotInDb, angebotInVidis, permissionsMock);
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `Failed to update VIDIS Angebot with id ${angebotInDb.id} in DB`,
+                resultError,
+                false,
+            );
+        });
+
+        it('should report no DB update needed when name, URL and logo are unchanged', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.name = 'Unchanged Angebot';
+            angebotInDb.url = 'https://example.org/unchanged';
+            angebotInDb.logo = Buffer.from(tinyPngBase64, 'base64');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, 'Unchanged Angebot'),
+                offerLink: 'https://example.org/unchanged',
+                offerLogo: tinyPngBase64,
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: false,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+            });
+        });
+
+        it('should report logo changes when mime type differs', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.logo = Buffer.from(tinyPngBase64, 'base64');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, angebotInDb.name),
+                offerLink: angebotInDb.url ?? '',
+                offerLogo: '/9j/',
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: true,
+            });
+        });
+
+        it('should report logo changes when mime type is equal but content differs', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.logo = Buffer.from('89504e470d0a1a0a0001', 'hex');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, angebotInDb.name),
+                offerLink: angebotInDb.url ?? '',
+                offerLogo: tinyPngBase64,
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: true,
+            });
+        });
+
+        it('should report name and URL changes but not logo', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.logo = Buffer.from(tinyPngBase64, 'base64');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, 'Renamed Angebot'),
+                offerLink: 'https://example.org/renamed',
+                offerLogo: tinyPngBase64,
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: true,
+                isNameChanged: true,
+                isUrlChanged: true,
+                isLogoChanged: false,
+            });
         });
     });
 

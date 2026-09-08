@@ -1,6 +1,8 @@
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderEntity } from './service-provider.entity.js';
 import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
+import { ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
 import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
@@ -10,6 +12,12 @@ export function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
     const merkmale = serviceProvider.merkmale.map((merkmal: ServiceProviderMerkmal) => ({
         serviceProvider: serviceProvider.id,
         merkmal,
+    }));
+
+    // eslint-disable-next-line @typescript-eslint/typedef
+    const rollenartenWhitelist = serviceProvider.rollenartenWhitelist.map((rollenart: RollenArt) => ({
+        serviceProvider: serviceProvider.id,
+        rollenart,
     }));
 
     return {
@@ -29,12 +37,16 @@ export function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
         merkmale,
+        rollenartenWhitelist,
     };
 }
 
 export function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProvider<boolean> {
     const merkmale: ServiceProviderMerkmal[] = entity.merkmale.map(
         (merkmalEntity: ServiceProviderMerkmalEntity) => merkmalEntity.merkmal,
+    );
+    const rollenartenWhitelist: RollenArt[] = entity.rollenartenWhitelist.map(
+        (rollenartWhitelistEntity: ServiceProviderRollenartWhitelistEntity) => rollenartWhitelistEntity.rollenart,
     );
 
     return ServiceProvider.construct(
@@ -55,5 +67,6 @@ export function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProv
         entity.requires2fa,
         entity.vidisAngebotId,
         merkmale,
+        rollenartenWhitelist,
     );
 }

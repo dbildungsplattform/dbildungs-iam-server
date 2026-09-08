@@ -1,28 +1,28 @@
-import { vi } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmailLdapModule } from '../../email-ldap.module.js';
-import { faker } from '@faker-js/faker';
-import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
-import { LdapClient } from '../technical/ldap-client.js';
 import { Client, SearchResult } from 'ldapts';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
-import assert from 'assert';
-import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import assert from 'node:assert';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../../test/utils/database-test.module.js';
-import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
 import {
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     EmailConfigTestModule,
     expectErrResult,
     expectOkResult,
 } from '../../../../../../test/utils/index.js';
-import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
+import { EmailLdapModule } from '../../email-ldap.module.js';
+import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
+import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
@@ -107,7 +107,6 @@ describe('LDAP Client Adapter', () => {
 
     afterAll(async () => {
         await DatabaseTestModule.clearDatabase(orm);
-        await orm.close();
         await app.close();
         vi.clearAllTimers();
     });

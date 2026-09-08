@@ -1,27 +1,27 @@
-import { vi } from 'vitest';
+import { MikroORM } from '@mikro-orm/core';
+import { EntityManager } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
-import { UsernameGeneratorService } from './username-generator.service.js';
+import { vi } from 'vitest';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { FindUserFilter, KeycloakUserService } from '../../keycloak-administration/index.js';
+import {
+    ConfigTestModule,
+    DatabaseTestModule,
+    DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
+    DoFactory,
+} from '../../../../test/utils/index.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
 import {
     DomainError,
     EntityNotFoundError,
-    InvalidNameError,
-    KeycloakClientError,
     InvalidAttributeLengthError,
     InvalidCharacterSetError,
+    InvalidNameError,
+    KeycloakClientError,
 } from '../../../shared/error/index.js';
-import { EntityManager } from '@mikro-orm/postgresql';
+import { FindUserFilter, KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OxUserBlacklistEntity } from '../persistence/ox-user-blacklist.entity.js';
-import {
-    DatabaseTestModule,
-    DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
-    ConfigTestModule,
-    DoFactory,
-} from '../../../../test/utils/index.js';
-import { MikroORM } from '@mikro-orm/core';
 import { OxUserBlacklistRepo } from '../persistence/ox-user-blacklist.repo.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { UsernameGeneratorService } from './username-generator.service.js';
 
 describe('UsernameGeneratorService', () => {
     let module: TestingModule;
@@ -61,7 +61,6 @@ describe('UsernameGeneratorService', () => {
     });
 
     afterAll(async () => {
-        await orm.close();
         await module.close();
     });
 
