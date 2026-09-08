@@ -1,19 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { uniq } from 'lodash-es';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
-import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { MultipleRollenartenError } from '../../../shared/error/multiple-rollenarten.error.js';
 import { PersonID, RolleID } from '../../../shared/types/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
 import {
     DBiamPersonenkontextRepo,
@@ -48,10 +42,10 @@ export type UserExternalData = OptionalEmailData & {
 export class UserExternaldataService {
     public constructor(
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
-        private readonly configService: ConfigService<ServerConfig>,
     ) {}
+
+    // Decorator an controller um MissingPermissionsError auf 403 zu mappend
 
     public async getExternalData(
         person: Person<true>,
@@ -77,7 +71,7 @@ export class UserExternaldataService {
         }
 
         const emailDataResult: Result<OptionalEmailData, DomainError> = await this.resolveEmailData(
-            person,
+            person.id,
             includeEmailAddress,
         );
         if (!emailDataResult.ok) {
@@ -187,18 +181,14 @@ export class UserExternaldataService {
     }
 
     private async resolveEmailData(
-        person: Person<true>,
+        personId: PersonID,
         includeEmailAddress: boolean,
     ): Promise<Result<OptionalEmailData, DomainError>> {
         if (!includeEmailAddress) {
             return Ok({});
         }
 
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            return this.resolveEmailDataFromMicroservice(person.id);
-        }
-
-        return this.resolveEmailDataFromLegacyRepo(person);
+        return this.resolveEmailDataFromMicroservice(personId);
     }
 
     private async resolveEmailDataFromMicroservice(personId: string): Promise<Result<OptionalEmailData, DomainError>> {
@@ -219,23 +209,6 @@ export class UserExternaldataService {
         return Ok({
             emailAdresse: emailAdresse,
             oxLoginId: oxLoginId,
-        });
-    }
-
-    private async resolveEmailDataFromLegacyRepo(
-        person: Person<true>,
-    ): Promise<Result<OptionalEmailData, DomainError>> {
-        const emailResponse: Option<PersonEmailResponse> =
-            await this.emailRepo.getEmailAddressAndStatusForPerson(person);
-        if (emailResponse?.status !== EmailAddressStatus.ENABLED) {
-            return Ok({});
-        }
-
-        const oxContextId: string = this.configService.getOrThrow<OxServerConfig>('OX').CONTEXT_ID;
-
-        return Ok({
-            emailAdresse: emailResponse.address,
-            oxLoginId: person.username ? `${person.username}@${oxContextId}` : undefined,
         });
     }
 }
