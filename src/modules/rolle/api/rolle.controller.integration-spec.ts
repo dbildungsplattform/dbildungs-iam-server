@@ -164,13 +164,12 @@ describe('Rolle API', () => {
 
     describe('/GET rolle/for-person-administration', () => {
         const url: string = '/rolle/for-person-administration';
-        let query: FindRolleForPersonAdministrationQueryParams;
-
-        beforeEach(() => {
-            query = {
-                limit: 25,
-                offset: 0,
-            };
+        const createQueryWithPaginationDefaults: (overrides?: Partial<FindRolleForPersonAdministrationQueryParams>) => FindRolleForPersonAdministrationQueryParams = (
+            overrides: Partial<FindRolleForPersonAdministrationQueryParams> = {},
+        ): FindRolleForPersonAdministrationQueryParams => ({
+            limit: 25,
+            offset: 0,
+            ...overrides,
         });
 
         describe('when user is landesadmin', () => {
@@ -186,99 +185,78 @@ describe('Rolle API', () => {
             it('should return all rollen for a logged-in user without filter', async () => {
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults())
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: expect.arrayContaining([
-                            expect.objectContaining({ name: sysadmin.name }),
-                            expect.objectContaining({ name: schuladmin.name }),
-                        ]) as Array<RolleResponse>,
-                        total: 2,
-                        offset: query.offset ?? 0,
-                        limit: query.limit ?? 25,
-                    }),
+                expect(responseBody.total).toBe(2);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual(
+                    expect.arrayContaining([
+                        expect.objectContaining({ id: sysadmin.id, name: sysadmin.name }),
+                        expect.objectContaining({ id: schuladmin.id, name: schuladmin.name }),
+                    ]),
                 );
             });
 
             it('should return all rollen for a logged-in user based on search filter', async () => {
-                query = {
-                    ...query,
-                    searchStr: sysadmin.name,
-                };
-
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({ searchStr: sysadmin.name }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: [expect.objectContaining({ name: sysadmin.name })],
-                        total: 1,
-                        offset: 0,
-                        limit: 25,
-                    }),
-                );
+                expect(responseBody.total).toBe(1);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual([
+                    expect.objectContaining({ id: sysadmin.id, name: sysadmin.name }),
+                ]);
             });
 
             it('should return empty list, if rollen do not exist', async () => {
-                query = {
-                    ...query,
-                    searchStr: 'does not exist',
-                };
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({ searchStr: 'does not exist' }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: [],
-                        total: 0,
-                        offset: 0,
-                        limit: 25,
-                    }),
-                );
+                expect(responseBody.total).toBe(0);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual([]);
             });
 
             it('should return MPT rolle, if requested and permitted', async () => {
                 const mptRolle: Rolle<true> = await rolleRepo.create(
                     DoFactory.createRolle(false, { rollenart: RollenArt.SORGBER, merkmale: [RollenMerkmal.MPT_ROLLE] }),
                 );
-                permissionsMock.hasSystemrechteAtRootOrganisation.mockImplementation(
-                    (systemrechte: RollenSystemRecht[]) =>
-                        Promise.resolve(systemrechte.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN)),
-                );
-                query = {
-                    ...query,
-                    systemrechte: [
-                        RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-                        RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
-                    ],
-                };
+                permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(true);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({
+                        systemrechte: [
+                        RollenSystemRechtEnum.PERSONEN_VERWALTEN,
+                        RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
+                        ],
+                    }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: expect.arrayContaining([
-                            expect.objectContaining({ id: mptRolle.id }),
-                        ]) as Array<RolleResponse>,
-                        total: 3,
-                        offset: 0,
-                        limit: 25,
-                    }),
+                expect(responseBody.total).toBe(3);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual(
+                    expect.arrayContaining([expect.objectContaining({ id: mptRolle.id, name: mptRolle.name })]),
                 );
             });
 
@@ -286,26 +264,20 @@ describe('Rolle API', () => {
                 const mptRolle: Rolle<true> = await rolleRepo.create(
                     DoFactory.createRolle(false, { rollenart: RollenArt.SORGBER, merkmale: [RollenMerkmal.MPT_ROLLE] }),
                 );
-                query = {
-                    ...query,
-                    systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN],
-                };
+                permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(false);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({ systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN] }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: expect.not.arrayContaining([
-                            expect.objectContaining({ id: mptRolle.id }),
-                        ]) as Array<RolleResponse>,
-                        total: 2,
-                        offset: 0,
-                        limit: 25,
-                    }),
+                expect(responseBody.total).toBe(2);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).not.toEqual(
+                    expect.arrayContaining([expect.objectContaining({ id: mptRolle.id })]),
                 );
             });
         });
@@ -350,28 +322,23 @@ describe('Rolle API', () => {
                     orgaIds: [schule1.id, schule2.id],
                 });
                 personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-                query = {
-                    ...query,
-                };
-
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults())
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: expect.arrayContaining([
-                            expect.objectContaining({ id: rolleOnParent.id }),
-                            expect.objectContaining({ id: rolleOnSchule1.id }),
-                            expect.objectContaining({ id: rolleOnSchule2.id }),
-                        ]) as Array<RolleResponse>,
-                        total: 3,
-                        offset: 0,
-                        limit: 25,
-                    }),
+                expect(responseBody.total).toBe(3);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual(
+                    expect.arrayContaining([
+                        expect.objectContaining({ id: rolleOnParent.id, name: rolleOnParent.name }),
+                        expect.objectContaining({ id: rolleOnSchule1.id, name: rolleOnSchule1.name }),
+                        expect.objectContaining({ id: rolleOnSchule2.id, name: rolleOnSchule2.name }),
+                    ]),
                 );
             });
         });
@@ -411,59 +378,54 @@ describe('Rolle API', () => {
             });
 
             it('should return rollen for permitted organisationen', async () => {
-                query = {
-                    ...query,
-                    organisationIds: [orga.id],
-                };
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({ organisationIds: [orga.id] }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).toEqual(
-                    expect.objectContaining({
-                        items: expect.arrayContaining([
-                            expect.objectContaining({ id: rolleOnParent.id }),
-                            expect.objectContaining({ id: rolleOnSelf.id }),
-                        ]) as Array<RolleResponse>,
-                        total: 2,
-                        offset: 0,
-                        limit: 25,
-                    }),
+                expect(responseBody.total).toBe(2);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).toEqual(
+                    expect.arrayContaining([
+                        expect.objectContaining({ id: rolleOnParent.id, name: rolleOnParent.name }),
+                        expect.objectContaining({ id: rolleOnSelf.id, name: rolleOnSelf.name }),
+                    ]),
                 );
             });
 
             it('should not return rollen when they dont match the provided organisation', async () => {
+                
+                const unpersistedRolleWithMismatchedRollenart: Rolle<false> = DoFactory.createRolle(false, {
+                    rollenart: RollenArt.SYSADMIN,
+                    administeredBySchulstrukturknoten: orga.id,
+                });
                 const rolleWithMismatchedRollenart: Rolle<true> = await rolleRepo.create(
-                    DoFactory.createRolle(false, {
-                        rollenart: RollenArt.SYSADMIN,
-                        administeredBySchulstrukturknoten: orga.id,
-                    }),
+                    unpersistedRolleWithMismatchedRollenart,
                 );
+                const unpersistedRolleOnDifferentOrga: Rolle<false> = DoFactory.createRolle(false, { rollenart: RollenArt.LEIT });
                 const rolleOnDifferentOrga: Rolle<true> = await rolleRepo.create(
-                    DoFactory.createRolle(false, { rollenart: RollenArt.LEIT }),
+                    unpersistedRolleOnDifferentOrga,
                 );
-                query = {
-                    ...query,
-                    organisationIds: [orga.id],
-                };
-
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(query)
+                    .query(createQueryWithPaginationDefaults({ organisationIds: [orga.id] }))
                     .send();
+                const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
                 expect(response.status).toBe(200);
-                expect(response.body).toBeInstanceOf(Object);
-                expect(response.body).not.toEqual(
-                    expect.objectContaining({
-                        items: expect.arrayContaining([
-                            expect.objectContaining({ id: rolleWithMismatchedRollenart.id }),
-                            expect.objectContaining({ id: rolleOnDifferentOrga.id }),
-                        ]) as Array<RolleResponse>,
-                    }),
+                expect(responseBody.total).toBe(2);
+                expect(responseBody.offset).toBe(0);
+                expect(responseBody.limit).toBe(25);
+                expect(responseBody.items).toBeInstanceOf(Array);
+                expect(responseBody.items).not.toEqual(
+                    expect.arrayContaining([expect.objectContaining({ id: rolleWithMismatchedRollenart.id })]),
+                );
+                expect(responseBody.items).not.toEqual(
+                    expect.arrayContaining([expect.objectContaining({ id: rolleOnDifferentOrga.id })]),
                 );
             });
         });
