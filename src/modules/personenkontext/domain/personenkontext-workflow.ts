@@ -324,14 +324,14 @@ export class PersonenkontextWorkflowAggregate {
 
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
         const allowedRollenArten: RollenArt[] = portalConfig.LIMITED_ROLLENART_ALLOWLIST;
-        if (!this.areRollenAllowedForLimitedCreation(rollen.values(), allowedRollenArten)) {
+        if (!this.isLimitedCreationAllowedForRollen(rollen.values(), allowedRollenArten)) {
             return Err(new MissingPermissionsError('Unauthorized to manage rollenart at the organisation'));
         }
 
         return Ok(undefined);
     }
 
-    private areRollenAllowedForLimitedCreation(
+    private isLimitedCreationAllowedForRollen(
         rollen: Iterable<Rolle<true>>,
         allowedRollenArten: RollenArt[],
     ): boolean {
