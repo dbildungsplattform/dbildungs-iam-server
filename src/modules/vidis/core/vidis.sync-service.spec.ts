@@ -69,6 +69,7 @@ describe('VidisSyncService', () => {
     type DecodedVidisLogoResult = { logo: Buffer | undefined; logoMimeType: string | undefined };
 
     const tinyPngBase64: string = 'iVBORw0KGgo=';
+    const vidisKeycloakClientId: string = 'vidis-keycloak-client';
     const vidisApiServiceProviderMock: Pick<
         VidisApiAdapter,
         'getActivatedAngeboteByRegionSH' | 'getActivatedAngeboteBySchool'
@@ -171,6 +172,7 @@ describe('VidisSyncService', () => {
     beforeAll(async () => {
         getOrThrowMock = vi.fn().mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         module = await Test.createTestingModule({
             providers: [
@@ -245,6 +247,7 @@ describe('VidisSyncService', () => {
         permissionsMock = createPersonPermissionsMock() as unknown as EscalatedPersonPermissions;
         getOrThrowMock.mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         escalatedPersonPermissionsFactoryMock.createNew.mockReturnValue(permissionsMock);
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(permissionsMock);
@@ -819,6 +822,7 @@ describe('VidisSyncService', () => {
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ]);
+            expect(createdServiceProvider.keycloakClient).toBe(vidisKeycloakClientId);
         });
 
         it('should skip VIDIS Angebote that already exist as non-school-provided Angebote in the database', async () => {

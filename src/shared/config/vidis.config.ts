@@ -8,6 +8,9 @@ export class VidisConfig {
     public readonly CLIENT_ID!: string;
 
     @IsString()
+    public readonly KEYCLOAK_CLIENT_ID!: string;
+
+    @IsString()
     public readonly CLIENT_SECRET!: string;
 
     @IsInt()
