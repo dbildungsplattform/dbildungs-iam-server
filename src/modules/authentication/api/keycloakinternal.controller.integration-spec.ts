@@ -327,6 +327,8 @@ describe('KeycloakInternalController', () => {
             expect(result.onlineDateiablage.personId).toEqual(person.id);
             expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
             expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
+            expect(result.polyteia.vorname).toEqual(person.vorname);
+            expect(result.polyteia.familienname).toEqual(person.familienname);
             expect(result.polyteia.dienststellenNummern.length).toEqual(1);
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
@@ -427,6 +429,8 @@ describe('KeycloakInternalController', () => {
             expect(result.onlineDateiablage.personId).toEqual(person.id);
             expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
             expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
+            expect(result.polyteia.vorname).toEqual(person.vorname);
+            expect(result.polyteia.familienname).toEqual(person.familienname);
             expect(result.polyteia.dienststellenNummern.length).toEqual(1);
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
