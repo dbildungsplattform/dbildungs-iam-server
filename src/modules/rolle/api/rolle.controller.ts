@@ -31,7 +31,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import { PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { Public } from '../../authentication/api/public.decorator.js';
@@ -54,7 +54,9 @@ import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
-import { FindRollenQueryParams } from './find-rollen-query.params.js';
+import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
+import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
+import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
@@ -94,97 +96,119 @@ export class RolleController {
         @Query() queryParams: FindRollenQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
-        let rollenAndTotal: [Rolle<true>[], number];
-        if (
-            queryParams.systemrechte &&
-            queryParams.systemrechte.length === 1 &&
-            queryParams.systemrechte[0] === RollenSystemRechtEnum.ROLLEN_ERWEITERN
-        ) {
-            rollenAndTotal = await this.rolleFindService.findRollenAvailableForErweiterung({
-                permissions,
-                searchStr: queryParams.searchStr,
-                organisationIds: queryParams.organisationContextForOperation
-                    ? [queryParams.organisationContextForOperation]
-                    : undefined,
-                rollenArten: queryParams.rollenarten,
-                limit: queryParams.limit,
-                offset: queryParams.offset,
-            });
-        } else if (
-            queryParams.systemrechte &&
-            queryParams.systemrechte.length === 1 &&
-            queryParams.systemrechte[0] === RollenSystemRechtEnum.IMPORT_DURCHFUEHREN
-        ) {
-            rollenAndTotal = await this.rolleFindService.findRollenAvailableForImportPersonenkontext({
-                permissions,
-                searchStr: queryParams.searchStr,
-                organisationIds: queryParams.organisationContextForOperation
-                    ? [queryParams.organisationContextForOperation]
-                    : undefined,
-                rollenArten: queryParams.rollenarten,
-                limit: queryParams.limit,
-                offset: queryParams.offset,
-            });
-        } else {
-            rollenAndTotal = await this.rolleRepo.findRollenAuthorized(
-                permissions,
-                queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
-                false,
-                queryParams.searchStr,
-                queryParams.limit,
-                queryParams.offset,
-                queryParams.organisationenForFilter,
-                queryParams.rolleIds,
-                queryParams.merkmale,
-                queryParams.rollenarten,
-                queryParams.serviceProviderIds,
-            );
-        }
+        const [rollen, total]: [Rolle<true>[], number] = await this.rolleRepo.findRollenAuthorized(
+            permissions,
+            queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
+            false,
+            queryParams.searchStr,
+            queryParams.limit,
+            queryParams.offset,
+            queryParams.organisationenForFilter,
+            queryParams.rolleIds,
+            queryParams.merkmale,
+            queryParams.rollenarten,
+            queryParams.serviceProviderIds,
+        );
 
-        const [rollen, total]: [Rolle<true>[], number] = rollenAndTotal;
-        if (!rollen || rollen.length === 0) {
-            const pagedRolleWithServiceProvidersResponse: Paged<RolleWithServiceProvidersResponse> = {
+        return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
+    }
+
+    @Get('available-for-erweiterung')
+    @ApiOperation({ description: 'List all rollen that are available for the Rollenerweiterung workflow.' })
+    @ApiOkResponse({
+        description: 'The rollen were successfully returned',
+        type: [RolleWithServiceProvidersResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting rollen.' })
+    public async findRollenAvailableForErweiterung(
+        @Query() queryParams: FindRollenForErweiterungQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findRollenAvailableForErweiterung({
+            permissions,
+            searchStr: queryParams.searchStr,
+            organisationIds: queryParams.organisationId ? [queryParams.organisationId] : undefined,
+            rollenArten: queryParams.rollenarten,
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+        });
+
+        return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
+    }
+
+    @Get('available-for-import')
+    @ApiOperation({ description: 'List all rollen that are available for the Personen-Import workflow.' })
+    @ApiOkResponse({
+        description: 'The rollen were successfully returned',
+        type: [RolleWithServiceProvidersResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting rollen.' })
+    public async findRollenAvailableForImport(
+        @Query() queryParams: FindRollenForImportQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAvailableForImportPersonenkontext({
+                permissions,
+                searchStr: queryParams.searchStr,
+                organisationIds: queryParams.organisationId ? [queryParams.organisationId] : undefined,
+                rollenArten: queryParams.rollenarten,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+            });
+
+        return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
+    }
+
+    private async toPagedRollenWithServiceProvidersResponse(
+        rollen: Rolle<true>[],
+        total: number,
+        offset?: number,
+        limit?: number,
+    ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
+        if (rollen.length === 0) {
+            return new PagedResponse<RolleWithServiceProvidersResponse>({
                 total: 0,
                 offset: 0,
-                limit: queryParams.limit ?? 0,
+                limit: limit ?? 0,
                 items: [],
-            };
-            return new PagedResponse(pagedRolleWithServiceProvidersResponse);
+            });
         }
 
-        const administeredBySchulstrukturknotenIds: string[] = rollen.map(
-            (r: Rolle<true>) => r.administeredBySchulstrukturknoten,
-        );
         const administeredOrganisations: Map<string, Organisation<true>> = await this.organisationRepository.findByIds(
-            administeredBySchulstrukturknotenIds,
+            rollen.map((r: Rolle<true>) => r.administeredBySchulstrukturknoten),
         );
         const serviceProviders: ServiceProvider<true>[] = await this.serviceProviderRepo.find();
-        const rollenWithServiceProvidersResponses: RolleWithServiceProvidersResponse[] = rollen.map(
-            (r: Rolle<true>) => {
-                const sps: ServiceProvider<true>[] = r.serviceProviderIds
-                    .map((id: string) => serviceProviders.find((sp: ServiceProvider<true>) => sp.id === id))
-                    .filter(Boolean);
 
-                const administeredBySchulstrukturknoten: Organisation<true> | undefined = administeredOrganisations.get(
-                    r.administeredBySchulstrukturknoten,
-                );
+        const items: RolleWithServiceProvidersResponse[] = rollen.map((r: Rolle<true>) => {
+            const sps: ServiceProvider<true>[] = r.serviceProviderIds
+                .map((id: string) => serviceProviders.find((sp: ServiceProvider<true>) => sp.id === id))
+                .filter(Boolean);
 
-                return new RolleWithServiceProvidersResponse(
-                    r,
-                    sps,
-                    administeredBySchulstrukturknoten?.name,
-                    administeredBySchulstrukturknoten?.kennung,
-                );
-            },
-        );
-        const pagedRolleWithServiceProvidersResponse: Paged<RolleWithServiceProvidersResponse> = {
+            const administeredBySchulstrukturknoten: Organisation<true> | undefined = administeredOrganisations.get(
+                r.administeredBySchulstrukturknoten,
+            );
+
+            return new RolleWithServiceProvidersResponse(
+                r,
+                sps,
+                administeredBySchulstrukturknoten?.name,
+                administeredBySchulstrukturknoten?.kennung,
+            );
+        });
+
+        return new PagedResponse<RolleWithServiceProvidersResponse>({
             total: total,
-            offset: queryParams.offset ?? 0,
-            limit: queryParams.limit ?? rollenWithServiceProvidersResponses.length,
-            items: rollenWithServiceProvidersResponses,
-        };
-
-        return new PagedResponse(pagedRolleWithServiceProvidersResponse);
+            offset: offset ?? 0,
+            limit: limit ?? items.length,
+            items: items,
+        });
     }
 
     @Get('systemrechte')
