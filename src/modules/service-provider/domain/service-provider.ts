@@ -38,7 +38,6 @@ export class ServiceProvider<WasPersisted extends boolean> {
         public vidisAngebotId: string | undefined,
         public merkmale: ServiceProviderMerkmal[],
         public rollenartenWhitelist: RollenArt[],
-        // Eindeutiger Identifikator des Angebots als Keycloak-Client, wird fuer die Berechtigungspruefung pro Angebot benoetigt
         public keycloakClient: string | undefined,
     ) {
         this.merkmale = ServiceProvider.removeDependentMerkmaleWithoutVerfuegbarFuerRollenerweiterung(merkmale);
