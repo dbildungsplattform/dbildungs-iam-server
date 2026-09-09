@@ -611,6 +611,160 @@ describe('KeycloakInternalController', () => {
             ).rejects.toBeInstanceOf(MissingPermissionsError);
         });
 
+        it('should throw MissingPermissionsError when all Personenkontexte belong to a different keycloakClient', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData()];
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+
+            await expect(
+                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClient }),
+            ).rejects.toBeInstanceOf(MissingPermissionsError);
+        });
+
+        it('should throw MultipleRollenartenError when the person has multiple Rollenarten for the permitted Personenkontexte', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [
+                DoFactory.createExternalPkData({ rollenart: RollenArt.LEHR, keycloakClient }),
+                DoFactory.createExternalPkData({ rollenart: RollenArt.LERN, keycloakClient }),
+            ];
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+
+            await expect(
+                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClient }),
+            ).rejects.toBeInstanceOf(MultipleRollenartenError);
+        });
+
+        it('should include the email address when includeEmailAddress is true and the email is active', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+
+            const emailAddressResponseMock: EmailAddressResponse =
+                createMock<EmailAddressResponse>(EmailAddressResponse);
+            emailAddressResponseMock.status = EmailAddressStatusEnum.ACTIVE;
+            emailAddressResponseMock.address = faker.internet.email();
+            emailAddressResponseMock.oxLoginId = faker.string.uuid();
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                Ok(emailAddressResponseMock),
+            );
+
+            const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
+                sub: keycloakSub,
+                keycloakClient,
+                includeEmailAddress: true,
+            });
+
+            expect(result.emailAdresse).toEqual(emailAddressResponseMock.address);
+            expect(emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse).toHaveBeenCalledWith(
+                person.id,
+            );
+        });
+
+        it('should not include the email address when includeEmailAddress is false', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+
+            const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
+                sub: keycloakSub,
+                keycloakClient,
+                includeEmailAddress: false,
+            });
+
+            expect(result.emailAdresse).toBeUndefined();
+            expect(emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse).not.toHaveBeenCalled();
+        });
+
+        it('should not include the email address when the email account is suspended, even if requested', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+
+            const emailAddressResponseMock: EmailAddressResponse =
+                createMock<EmailAddressResponse>(EmailAddressResponse);
+            emailAddressResponseMock.status = EmailAddressStatusEnum.SUSPENDED;
+            emailAddressResponseMock.address = faker.internet.email();
+            emailAddressResponseMock.oxLoginId = faker.string.uuid();
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                Ok(emailAddressResponseMock),
+            );
+
+            const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
+                sub: keycloakSub,
+                keycloakClient,
+                includeEmailAddress: true,
+            });
+
+            expect(result.emailAdresse).toBeUndefined();
+            expect(result.oxLoginId).toBeUndefined();
+        });
+
+        it('should not include the email address when the email account is not active', async () => {
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            const keycloakSub: string = faker.string.uuid();
+            const keycloakClient: string = faker.string.alphanumeric(10);
+            const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
+
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+
+            const emailAddressResponseMock: EmailAddressResponse =
+                createMock<EmailAddressResponse>(EmailAddressResponse);
+            emailAddressResponseMock.status = EmailAddressStatusEnum.PENDING;
+            emailAddressResponseMock.address = faker.internet.email();
+            emailAddressResponseMock.oxLoginId = faker.string.uuid();
+
+            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
+            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                Ok(emailAddressResponseMock),
+            );
+
+            const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
+                sub: keycloakSub,
+                keycloakClient,
+                includeEmailAddress: true,
+            });
+
+            expect(result.emailAdresse).toBeUndefined();
+            expect(result.oxLoginId).toEqual(emailAddressResponseMock.oxLoginId);
+        });
+
         it('should throw EntityNotFoundError if person not found by keycloak user id', async () => {
             const keycloakSub: string = faker.string.uuid();
             personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(undefined);

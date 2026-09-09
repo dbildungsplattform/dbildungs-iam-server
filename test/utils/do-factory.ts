@@ -16,6 +16,7 @@ import {
     SichtfreigabeType,
 } from '../../src/modules/personenkontext/domain/personenkontext.enums.js';
 import { Personenkontext } from '../../src/modules/personenkontext/domain/personenkontext.js';
+import type { ExternalPkData } from '../../src/modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../src/modules/rolle/domain/rolle.enums.js';
 import { Rolle as RolleAggregate } from '../../src/modules/rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../src/modules/rolle/domain/rollenerweiterung.js';
@@ -181,6 +182,23 @@ export class DoFactory {
             serviceProvider,
             props,
         );
+    }
+
+    public static createExternalPkData(
+        this: void,
+        props?: Partial<ExternalPkData> & { keycloakClient?: string },
+    ): ExternalPkData {
+        const keycloakClient: string | undefined = props?.keycloakClient;
+        const externalPkData: ExternalPkData = {
+            pkId: props?.pkId ?? faker.string.uuid(),
+            rolleId: props?.rolleId ?? faker.string.uuid(),
+            rollenart: props?.rollenart ?? faker.helpers.enumValue(RollenArt),
+            kennung: props?.kennung ?? faker.lorem.word(),
+            serviceProvider:
+                props?.serviceProvider ??
+                [DoFactory.createServiceProvider(true, keycloakClient ? { keycloakClient } : undefined)],
+        };
+        return externalPkData;
     }
 
     public static createMeldung<WasPersisted extends boolean>(
