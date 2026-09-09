@@ -114,7 +114,7 @@ describe('DbSeedConsoleIntegration', () => {
             it('should use seeding-integration-test directory and fail due to non-existing entity-type', async () => {
                 const params: string[] = ['seeding-integration-test/nonExistingEntity'];
                 await expect(sut.run(params)).rejects.toThrow(
-                    new DbSeedUnsupportedEntityTypeError('nonExistingEntity'),
+                    new DbSeedUnsupportedEntityTypeError('NonExistingEntityType'),
                 );
             });
         });
