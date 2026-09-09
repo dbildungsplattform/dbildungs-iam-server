@@ -61,6 +61,7 @@
             "rollenart": "LEIT",
             "merkmale": [],
             "systemrechte": [
+                "MPT_ROLLEN_VERWALTEN",
                 "PERSONEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
                 "BULK_VERWALTEN",
@@ -169,6 +170,33 @@
             "merkmale": [],
             "systemrechte": [],
             "serviceProviderIds": [3]
+        },
+        {
+            "id": 20,
+            "administeredBySchulstrukturknoten": 1,
+            "name": "Schulbegleitung",
+            "rollenart": "SCHB",
+            "merkmale": ["MPT_ROLLE"],
+            "systemrechte": [],
+            "serviceProviderIds": []
+        },
+        {
+            "id": 21,
+            "administeredBySchulstrukturknoten": 1,
+            "name": "Ganztagsbetreuung",
+            "rollenart": "NLEHR",
+            "merkmale": ["MPT_ROLLE"],
+            "systemrechte": [],
+            "serviceProviderIds": []
+        },
+        {
+            "id": 22,
+            "administeredBySchulstrukturknoten": 1,
+            "name": "Schulpsychologinnen und Schulpsychologen",
+            "rollenart": "SORGBER",
+            "merkmale": ["MPT_ROLLE", "KOPERS_PFLICHT"],
+            "systemrechte": [],
+            "serviceProviderIds": []
         },
         {
             "id": 100,
