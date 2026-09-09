@@ -20,22 +20,22 @@ import { RollenMerkmal } from './rolle.enums.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
-type TunknownResultForAngebot = {
+interface TunknownResultForAngebot {
     rolleId: string;
     errorIdType: ErrorIdType.ANGEBOT;
     result: Result<unknown, DomainError>;
-};
+}
 
-type TerrorResultForAngebot = {
+interface TerrorResultForAngebot {
     rolleId: string;
     errorIdType: ErrorIdType.ANGEBOT;
     result: {
         ok: false;
         error: DomainError;
     };
-};
+}
 
-type HandleAddErweiterungenParams = {
+interface AddRollenerweiterungenToAngebotParams {
     orgaId: string;
     angebotId: string;
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
@@ -43,16 +43,16 @@ type HandleAddErweiterungenParams = {
     rollen: Map<string, Rolle<true>>;
     permissions: IPersonPermissions;
     hasSystemrechtAtOrganisationMpt: boolean;
-};
+}
 
-type HandleRemoveErweiterungenParams = {
+interface RemoveRollenerweiterungenFromAngebotParams {
     orgaId: string;
     angebotId: string;
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
     removeErweiterungenForRolleIds: string[];
     rollen: Map<string, Rolle<true>>;
     hasSystemrechtAtOrganisationMpt: boolean;
-};
+}
 
 function isErrorResultForRolle<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForAngebot {
     return r.result.ok === false;
@@ -166,7 +166,7 @@ export class ApplyRollenerweiterungForAngebotService {
         removeErweiterungenForRolleIds,
         rollen,
         hasSystemrechtAtOrganisationMpt,
-    }: HandleRemoveErweiterungenParams): Promise<TunknownResultForAngebot>[] {
+    }: RemoveRollenerweiterungenFromAngebotParams): Promise<TunknownResultForAngebot>[] {
         const removeErweiterungenPromises: Promise<TunknownResultForAngebot>[] = removeErweiterungenForRolleIds
             .filter((rolleId: string) => {
                 return existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);
@@ -213,7 +213,7 @@ export class ApplyRollenerweiterungForAngebotService {
         rollen,
         permissions,
         hasSystemrechtAtOrganisationMpt,
-    }: HandleAddErweiterungenParams): Promise<TunknownResultForAngebot>[] {
+    }: AddRollenerweiterungenToAngebotParams): Promise<TunknownResultForAngebot>[] {
         const erweiterungenPromises: Promise<TunknownResultForAngebot>[] = addErweiterungenForRolleIds
             .filter((rolleId: string) => {
                 return !existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);

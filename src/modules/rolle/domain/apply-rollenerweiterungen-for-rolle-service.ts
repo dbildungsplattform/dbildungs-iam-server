@@ -20,37 +20,37 @@ import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 
-type TunknownResultForRolle = {
+interface TunknownResultForRolle {
     serviceProviderId: string;
     errorIdType: ErrorIdType.ROLLE;
     result: Result<unknown, DomainError>;
-};
+}
 
-type TerrorResultForRolle = {
+interface TerrorResultForRolle {
     serviceProviderId: string;
     errorIdType: ErrorIdType.ROLLE;
     result: {
         ok: false;
         error: DomainError;
     };
-};
+}
 
-type HandleAddErweiterungenParams = {
+interface AddRollenerweiterungenToRolleParams {
     orgaId: string;
     rolleId: string;
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
     addErweiterungenForServiceProviderIds: string[];
     serviceProviders: Map<string, ServiceProvider<true>>;
     permissions: IPersonPermissions;
-};
+}
 
-type HandleRemoveErweiterungenParams = {
+interface RemoveRollenerweiterungenFromRolleParams {
     orgaId: string;
     rolleId: string;
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
     removeErweiterungenForServiceProviderIds: string[];
     serviceProviders: Map<string, ServiceProvider<true>>;
-};
+}
 
 function isErrorResultForServiceProvider<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForRolle {
     return r.result.ok === false;
@@ -163,7 +163,7 @@ export class ApplyRollenerweiterungForRolleService {
         addErweiterungenForServiceProviderIds,
         serviceProviders,
         permissions,
-    }: HandleAddErweiterungenParams): Promise<TunknownResultForRolle>[] {
+    }: AddRollenerweiterungenToRolleParams): Promise<TunknownResultForRolle>[] {
         const erweiterungenPromises: Promise<TunknownResultForRolle>[] = addErweiterungenForServiceProviderIds
             .filter((serviceProviderId: string) => {
                 return !existingErweiterungen.some(
@@ -221,7 +221,7 @@ export class ApplyRollenerweiterungForRolleService {
         existingErweiterungen = [],
         removeErweiterungenForServiceProviderIds,
         serviceProviders,
-    }: HandleRemoveErweiterungenParams): Promise<TunknownResultForRolle>[] {
+    }: RemoveRollenerweiterungenFromRolleParams): Promise<TunknownResultForRolle>[] {
         const removeErweiterungenPromises: Promise<TunknownResultForRolle>[] = removeErweiterungenForServiceProviderIds
             .filter((serviceProviderId: string) => {
                 return existingErweiterungen.some(
