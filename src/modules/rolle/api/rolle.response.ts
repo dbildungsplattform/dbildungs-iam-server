@@ -26,7 +26,7 @@ export class RolleResponse {
     @ApiProperty({ enum: RollenMerkmal, enumName: RollenMerkmalTypName, isArray: true })
     public merkmale: RollenMerkmal[];
 
-    @ApiProperty({ isArray: true, uniqueItems: true, type: SystemRechtResponse })
+    @ApiProperty({ isArray: true, type: SystemRechtResponse })
     public systemrechte: SystemRechtResponse[];
 
     @ApiProperty({ nullable: true })

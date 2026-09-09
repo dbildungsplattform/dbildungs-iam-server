@@ -61,12 +61,14 @@ import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js'
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
+import { FindAvailableRollenForPKCreationQueryParams } from './find-available-rollen-for-pk-creation.query.params.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
 import { FindRollenQueryParams } from './find-rollen-query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
+import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
@@ -226,6 +228,44 @@ export class RolleController {
     })
     public getAllSystemrechte(): SystemRechtResponse[] {
         return RollenSystemRecht.ALL.map((systemRecht: RollenSystemRecht) => new SystemRechtResponse(systemRecht));
+    }
+
+    @Get('for-personenkontext-creation')
+    @ApiOperation({ description: 'Find available rollen for personenkontext creation.' })
+    @ApiOkResponse({
+        description: 'The available rollen were successfully returned.',
+        type: [RolleResponse],
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get available rollen for personenkontext creation.' })
+    @ApiForbiddenResponse({
+        description: 'Insufficient permissions to get available rollen for personenkontext creation.',
+    })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting available rollen for personenkontext creation.',
+    })
+    public async findAvailableRollenForPersonenkontextCreation(
+        @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<PagedResponse<RolleResponse>> {
+        const rollenAndTotal: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
+                permissions,
+                systemrecht: queryParams.systemrecht
+                    ? RollenSystemRecht.getByName(queryParams.systemrecht)
+                    : RollenSystemRecht.getByName(RollenSystemRechtEnum.PERSONEN_VERWALTEN),
+                organisationId: queryParams.organisationId,
+                rollenartOfUser: queryParams.rollenartOfUser,
+                rolleName: queryParams.rolleName,
+                rollenIds: queryParams.rollenIds,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+            });
+        return new PagedResponse<RolleResponse>({
+            total: rollenAndTotal[1],
+            offset: queryParams.offset ?? 0,
+            limit: queryParams.limit ?? rollenAndTotal[0].length,
+            items: rollenAndTotal[0].map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+        });
     }
 
     @Get(':rolleId')

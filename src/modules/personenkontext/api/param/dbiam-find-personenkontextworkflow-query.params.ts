@@ -5,7 +5,7 @@ import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../../rolle
 import { OperationContext } from '../../domain/personenkontext.enums.js';
 import { PersonID } from '../../../../shared/types/aggregate-ids.types.js';
 
-export class FindDbiamPersonenkontextWorkflowBodyParams {
+export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsEnum(OperationContext)
     @ApiProperty({
         enum: OperationContext,
@@ -44,15 +44,6 @@ export class FindDbiamPersonenkontextWorkflowBodyParams {
         isArray: true,
     })
     public readonly rollenIds?: string[];
-
-    @IsString()
-    @IsOptional()
-    @ApiProperty({
-        description: 'Rolle name used to filter for rollen in personenkontext.',
-        required: false,
-        nullable: true,
-    })
-    public readonly rolleName?: string;
 
     @IsString()
     @IsOptional()
