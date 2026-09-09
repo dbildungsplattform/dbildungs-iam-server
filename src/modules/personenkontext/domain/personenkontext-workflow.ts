@@ -331,10 +331,7 @@ export class PersonenkontextWorkflowAggregate {
         return Ok(undefined);
     }
 
-    private isLimitedCreationAllowedForRollen(
-        rollen: Iterable<Rolle<true>>,
-        allowedRollenArten: RollenArt[],
-    ): boolean {
+    private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
                 allowedRollenArten.includes(rolle.rollenart) || rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE),

@@ -164,7 +164,9 @@ describe('Rolle API', () => {
 
     describe('/GET rolle/for-person-administration', () => {
         const url: string = '/rolle/for-person-administration';
-        const createQueryWithPaginationDefaults: (overrides?: Partial<FindRolleForPersonAdministrationQueryParams>) => FindRolleForPersonAdministrationQueryParams = (
+        const createQueryWithPaginationDefaults: (
+            overrides?: Partial<FindRolleForPersonAdministrationQueryParams>,
+        ) => FindRolleForPersonAdministrationQueryParams = (
             overrides: Partial<FindRolleForPersonAdministrationQueryParams> = {},
         ): FindRolleForPersonAdministrationQueryParams => ({
             limit: 25,
@@ -214,9 +216,7 @@ describe('Rolle API', () => {
                 expect(responseBody.offset).toBe(0);
                 expect(responseBody.limit).toBe(25);
                 expect(responseBody.items).toBeInstanceOf(Array);
-                expect(responseBody.items).toEqual([
-                    expect.objectContaining({ id: sysadmin.id, name: sysadmin.name }),
-                ]);
+                expect(responseBody.items).toEqual([expect.objectContaining({ id: sysadmin.id, name: sysadmin.name })]);
             });
 
             it('should return empty list, if rollen do not exist', async () => {
@@ -241,12 +241,14 @@ describe('Rolle API', () => {
                 permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(true);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(createQueryWithPaginationDefaults({
-                        systemrechte: [
-                        RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-                        RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
-                        ],
-                    }))
+                    .query(
+                        createQueryWithPaginationDefaults({
+                            systemrechte: [
+                                RollenSystemRechtEnum.PERSONEN_VERWALTEN,
+                                RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
+                            ],
+                        }),
+                    )
                     .send();
                 const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
@@ -267,7 +269,9 @@ describe('Rolle API', () => {
                 permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(false);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
-                    .query(createQueryWithPaginationDefaults({ systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN] }))
+                    .query(
+                        createQueryWithPaginationDefaults({ systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN] }),
+                    )
                     .send();
                 const responseBody: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
@@ -398,7 +402,6 @@ describe('Rolle API', () => {
             });
 
             it('should not return rollen when they dont match the provided organisation', async () => {
-                
                 const unpersistedRolleWithMismatchedRollenart: Rolle<false> = DoFactory.createRolle(false, {
                     rollenart: RollenArt.SYSADMIN,
                     administeredBySchulstrukturknoten: orga.id,
@@ -406,10 +409,10 @@ describe('Rolle API', () => {
                 const rolleWithMismatchedRollenart: Rolle<true> = await rolleRepo.create(
                     unpersistedRolleWithMismatchedRollenart,
                 );
-                const unpersistedRolleOnDifferentOrga: Rolle<false> = DoFactory.createRolle(false, { rollenart: RollenArt.LEIT });
-                const rolleOnDifferentOrga: Rolle<true> = await rolleRepo.create(
-                    unpersistedRolleOnDifferentOrga,
-                );
+                const unpersistedRolleOnDifferentOrga: Rolle<false> = DoFactory.createRolle(false, {
+                    rollenart: RollenArt.LEIT,
+                });
+                const rolleOnDifferentOrga: Rolle<true> = await rolleRepo.create(unpersistedRolleOnDifferentOrga);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(url)
                     .query(createQueryWithPaginationDefaults({ organisationIds: [orga.id] }))
