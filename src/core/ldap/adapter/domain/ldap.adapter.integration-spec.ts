@@ -1824,7 +1824,7 @@ describe('LDAP Adapter', () => {
                         `LDAP: Successfully created empty PersonEntry, DN:${lehrerUid}`,
                     );
                     expect(result.ok).toBeFalsy();
-                    expect(result).toEqual({error: new LdapBindError(), ok: false});
+                    expect(result).toEqual({ error: new LdapBindError(), ok: false });
                 });
             });
 
@@ -2330,7 +2330,7 @@ describe('LDAP Adapter', () => {
 
                 expect(loggerMock.error).toHaveBeenCalledWith(errMsg);
                 expect(result.ok).toBeFalsy();
-                expect(result).toEqual({error: new LdapFetchGroupsError(username, personId), ok: false});
+                expect(result).toEqual({ error: new LdapFetchGroupsError(username, personId), ok: false });
             });
         });
 
@@ -3150,7 +3150,7 @@ describe('LDAP Adapter', () => {
                 const kennung: string = faker.string.numeric(7);
 
                 const promise: Promise<Result<string>> = ldapClientAdapter.deleteOrganisation(kennung);
-                await expect(promise).resolves.toEqual({error: new LdapBindError(), "ok": false});
+                await expect(promise).resolves.toEqual({ error: new LdapBindError(), ok: false });
             });
         });
 

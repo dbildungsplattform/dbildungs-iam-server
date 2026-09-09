@@ -772,7 +772,6 @@ describe('LDAP Client Adapter', () => {
             const result: Result<void, Error> = await ldapClientAdapter.deletePerson(externalId, domain);
             expectErrResult(result);
             expect(result.error).toEqual(new LdapBindError());
-
         });
 
         it('should return error if search throws', async () => {
