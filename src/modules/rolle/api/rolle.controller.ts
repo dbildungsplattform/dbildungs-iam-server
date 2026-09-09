@@ -254,12 +254,13 @@ export class RolleController {
                 ),
             });
 
-        return new RawPagedResponse<RolleResponse>({
-            total,
-            offset: queryParams.offset ?? 0,
-            limit: queryParams.limit ?? rollen.length,
-            items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
-        });
+        return RawPagedResponse.fromItemsAndQuery(
+            {
+                total,
+                items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+            },
+            queryParams,
+        );
     }
 
     @Get('systemrechte')
