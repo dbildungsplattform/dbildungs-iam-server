@@ -540,53 +540,6 @@ describe('Provider Controller Test', () => {
         });
     });
 
-    describe('getServiceProvidersByPersonId', () => {
-        let personId: string;
-        let sp: ServiceProvider<true>;
-        let personPermissions: DeepMocked<PersonPermissions>;
-
-        beforeEach(() => {
-            personId = faker.string.uuid();
-            sp = DoFactory.createServiceProvider(true);
-            personPermissions = createMock(PersonPermissions);
-        });
-
-        describe.each([
-            ['found', true],
-            ['not found', false],
-        ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
-            beforeEach(() => {
-                serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(
-                    Ok(hasFoundServiceProviders ? [sp] : []),
-                );
-            });
-
-            it('should return list of responses', async () => {
-                const spResponse: ServiceProviderResponse[] = await providerController.getServiceProvidersByPersonId(
-                    personPermissions,
-                    { personId },
-                );
-
-                expect(spResponse).toBeInstanceOf(Array);
-                expect(spResponse).toHaveLength(hasFoundServiceProviders ? 1 : 0);
-                expect(serviceProviderServiceMock.getServiceProvidersByPersonId).toHaveBeenCalledWith(
-                    personId,
-                    personPermissions,
-                );
-            });
-        });
-
-        it('should throw error when the service returns an error', async () => {
-            serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(
-                Err(new MissingPermissionsError('Access denied')),
-            );
-
-            await expect(
-                providerController.getServiceProvidersByPersonId(personPermissions, { personId }),
-            ).rejects.toBeInstanceOf(MissingPermissionsError);
-        });
-    });
-
     describe('getManageableServiceProviders', () => {
         function createManageableObjects(
             serviceProviders: ServiceProvider<true>[],

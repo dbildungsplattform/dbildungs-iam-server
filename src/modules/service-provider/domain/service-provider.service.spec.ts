@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { Test, TestingModule } from '@nestjs/testing';
 import { zip } from 'lodash-es';
+import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
@@ -195,7 +196,7 @@ describe('ServiceProviderService', () => {
 
         beforeEach(() => {
             personId = faker.string.uuid();
-            permissions = createMock(PersonPermissions);
+            permissions = createPersonPermissionsMock();
         });
 
         it('returns the assigned service providers when the person is manageable', async () => {
