@@ -503,6 +503,18 @@
             "providedOnSchulstrukturknoten": 32,
             "requires2fa": false,
             "merkmale": ["VERFUEGBAR_FUER_ROLLENERWEITERUNG"]
+        },
+        {
+            "id": 42,
+            "name": "Die Antwort auf das Leben, das Universum und den ganzen Rest",
+            "target": "URL",
+            "url": "https://www.google.com/search?q=42",
+            "kategorie": "SCHULISCH",
+            "logoMimeType": "image/png",
+            "logoBase64": "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAAM6SURBVHhe7ZjtstsgDAXz/i/dTqZ1S1WwDYgv7dkZ//EFI+msczP5/BBoPvaGYCEB4EgAOBIAjgSAIwHgSAA4EgCOBIAjAeBIADgSAI4EgCMB4EgAOBIAjgSAIwHgSAA4EgCOBIAjAeBIADgSAI4EgCMB4EgAOK4CfD6ujxMTcE1MApyHa2IS4DxcE5MA5+GamAQ4D/fEJMFZuKclAc7CPS0JcBbuaUmAs3BPSwKchXtaswX4njf7zEi4T25FGCslWHWuF0Oq9xrKFWzNVYvdX/MMu+/u2pUhlXk1XPOca+2bgd8FU7pvebPm4u681QyryKPZ1mc8DfvubzlK60v3S9Sun8Gwijya7XnGnQSl+xfpG9vznBwte0YytJreZkftL4X6JvSUN2ssLXtGMrQaj2Z7nnG314adrr3bl2L3vaF2/WiGV9MypJTWvT3n1u7LSZTy9PeVTKmodwC1e2vXW3r32mtnplfXMxQ72NLVi8czTmFZp56BebNjTaPYotOSDLl7o1lx5kq269R+nPeE0bK/dv3phO5WAjyD6Lbm0+TNmkiwun2QIXcvOryOE1IZiOF/YXYt/iAB4EgAOBIAjgSAIwHgSAA4EgCOBIAzVQDqr207MzUR+9Mr+SfYXdhi+lYIiTGPradshZAY/hw5TSuExGgn1NSsELtfO7BHFVCsECukmH+iKCIB4EgAMCvC/7LmVPEPq8L/su5kseyLX8ra04Gs/MafY48qgrNb6Cn7VRSEnUNP2bu6g0gD3z30lHMq3YxTA7ecW/lkogRuidPJACIGbonbWSOE0FMYXd4Q9aP9LaiObdjEwC1hJmCDzV3if46cig1W4bZzzORs4Areh2MmWArbClFaJ/KEnJYVQlKUwUzGCiEpfoGeghWCKAar25eQhIjdnQPRJYjbWSf6BIBCCD2F02kB0v/7HLyOf0MN3IKaAPlNL4GZhELPE3oqeuOfCT0ZBf9M6Anp7X8m/HQkwT2Yyej7QB7kNCTCX9BTkAhwAS7IIjC7ziABBFICXscP0CRgdfsSkgScTiuhSMDosgEJAEcCCAQSAI4EgCMB4EgAOBIAjgSAIwHgSAA4EgCOBIDzEzuOohjDzzFTAAAAAElFTkSuQmCC",
+            "providedOnSchulstrukturknoten": 34,
+            "requires2fa": false,
+            "merkmale": ["VERFUEGBAR_FUER_ROLLENERWEITERUNG"]
         }
     ]
 }

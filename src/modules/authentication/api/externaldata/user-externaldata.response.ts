@@ -102,6 +102,8 @@ export class UserExternalDataResponse {
         );
 
         const polyteia: UserExternalDataResponsePolyteia = new UserExternalDataResponsePolyteia(
+            workflowData.person.vorname,
+            workflowData.person.familienname,
             workflowData.polytheaDienststellenNummern,
             workflowData.singleRollenart,
         );
