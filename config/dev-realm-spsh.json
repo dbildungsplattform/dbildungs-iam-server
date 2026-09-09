@@ -1220,7 +1220,7 @@
             "consentRequired": false,
             "standardFlowEnabled": true,
             "implicitFlowEnabled": true,
-            "directAccessGrantsEnabled": true,
+            "directAccessGrantsEnabled": false,
             "serviceAccountsEnabled": false,
             "publicClient": false,
             "frontchannelLogout": false,
@@ -1229,7 +1229,7 @@
               "oidc.ciba.grant.enabled": "false",
               "client.secret.creation.time": "1724413577",
               "backchannel.logout.session.required": "false",
-              "backchannel.logout.url": "https://aai-test.vidis.schule/auth/realms/vidis/protocol/openid-connect/logout/backchannel-logout",
+              "backchannel.logout.url": "${VIDIS_LOCAL_BACKCHANNEL_LOGOUT_URL}",
               "oauth2.device.authorization.grant.enabled": "false",
               "display.on.consent.screen": "false",
               "backchannel.logout.revoke.offline.tokens": "true"

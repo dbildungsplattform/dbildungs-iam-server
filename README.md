@@ -15,6 +15,7 @@
     VIDIS_CLIENT_SECRET=irgendein-secret
     VIDIS_KEYCLOAK_CLIENT_ID=vidis-test
     VIDIS_REDIRECT_URI=https://<vidis-uri>/*
+    VIDIS_LOCAL_BACKCHANNEL_LOGOUT_URL=https://<vidis-uri>/auth
     KC_NEXTCLOUD_CLIENT_ID=nextcloud
     KC_NEXTCLOUD_CLIENT_SECRET=irgendein-secret
     ```
