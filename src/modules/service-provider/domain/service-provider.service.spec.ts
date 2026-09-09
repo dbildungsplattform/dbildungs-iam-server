@@ -224,6 +224,37 @@ describe('ServiceProviderService', () => {
             expect(dBiamPersonenkontextRepo.findByPerson).toHaveBeenCalledWith(personId);
         });
 
+        it('returns providers assigned through rollenerweiterungen when the feature is enabled', async () => {
+            permissions = createPersonPermissionsMock({ id: personId });
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderIds: [] });
+            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                personId,
+                rolleId: rolle.id,
+            });
+            const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
+                organisationId: personenkontext.organisationId,
+                rolleId: rolle.id,
+                serviceProviderId: serviceProvider.id,
+            });
+
+            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
+            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
+            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce([rollenerweiterung]);
+            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
+
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
+                personId,
+                permissions,
+            );
+
+            expectOkResult(result);
+            expect(result.value).toEqual([serviceProvider]);
+            expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith([
+                expect.objectContaining({ organisationId: personenkontext.organisationId, rolleId: rolle.id }),
+            ]);
+        });
+
         it('returns the error when the person is not manageable', async () => {
             dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
                 ok: false,

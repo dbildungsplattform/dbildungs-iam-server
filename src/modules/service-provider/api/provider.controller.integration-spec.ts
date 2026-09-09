@@ -197,7 +197,9 @@ describe('ServiceProvider API', () => {
                 throw rolle;
             }
             await em
-                .persist(em.create(PersonEntity, mapAggregateToData(DoFactory.createPerson(false))).assign({ id: personId }))
+                .persist(
+                    em.create(PersonEntity, mapAggregateToData(DoFactory.createPerson(false))).assign({ id: personId }),
+                )
                 .flush();
             await createAndPersistPersonenkontext(em, personId, rolle.id, organisation.id);
 

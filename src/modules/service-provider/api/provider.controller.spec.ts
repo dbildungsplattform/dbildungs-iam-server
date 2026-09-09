@@ -540,6 +540,18 @@ describe('Provider Controller Test', () => {
         });
     });
 
+    describe('getServiceProvidersByPersonId', () => {
+        it('should throw the error returned by the service', async () => {
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            const error: MissingPermissionsError = new MissingPermissionsError('Access denied');
+            serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(Err(error));
+
+            await expect(
+                providerController.getServiceProvidersByPersonId(personPermissions, { personId: faker.string.uuid() }),
+            ).rejects.toThrow(error);
+        });
+    });
+
     describe('getManageableServiceProviders', () => {
         function createManageableObjects(
             serviceProviders: ServiceProvider<true>[],
