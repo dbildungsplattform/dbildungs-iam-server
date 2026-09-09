@@ -17,7 +17,7 @@ export type ExternalDataWorkflowData = {
     checkedExternalPkData: RequiredExternalPkData[];
     vidisDienststellennummern: string[];
     singleRollenart: RollenArt | undefined;
-    uniqDienststellenNummern: string[];
+    polytheaDienststellenNummern: string[];
     email?: string;
     oxParams?: OldOxParams | NewOxParams;
 };
@@ -102,7 +102,9 @@ export class UserExternalDataResponse {
         );
 
         const polyteia: UserExternalDataResponsePolyteia = new UserExternalDataResponsePolyteia(
-            workflowData.uniqDienststellenNummern,
+            workflowData.person.vorname,
+            workflowData.person.familienname,
+            workflowData.polytheaDienststellenNummern,
             workflowData.singleRollenart,
         );
 

@@ -146,6 +146,10 @@ export class Rolle<WasPersisted extends boolean> {
         return this.systemrechte.includes(systemRecht);
     }
 
+    public hasMerkmal(merkmal: RollenMerkmal): boolean {
+        return this.merkmale.includes(merkmal);
+    }
+
     /**
      * Check this Rolle for validity. Currently checks:
      * - Name validity

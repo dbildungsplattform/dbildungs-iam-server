@@ -30,6 +30,7 @@ import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-pro
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { mapEntityToAggregate as mapSPEntityToAggregate } from '../../service-provider/repo/service-provider-entity-mapper.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 export type RollenCount = { rollenart: string; count: string };
 
@@ -170,6 +171,19 @@ export class DBiamPersonenkontextRepo {
         }
 
         return { ok: true, value: true };
+    }
+
+    public async findByPersonAuthorized(
+        personId: PersonID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Personenkontext<true>[], MissingPermissionsError>> {
+        const hasPermission: boolean = await permissions.canModifyPerson(personId);
+        if (!hasPermission) {
+            return Err(new MissingPermissionsError('Not authorized to manage person'));
+        }
+
+        const personenkontexte: Personenkontext<true>[] = await this.findByPerson(personId);
+        return Ok(personenkontexte);
     }
 
     public async findByPerson(personId: PersonID): Promise<Personenkontext<true>[]> {

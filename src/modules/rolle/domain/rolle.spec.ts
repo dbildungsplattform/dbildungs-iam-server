@@ -267,6 +267,15 @@ describe('Rolle Aggregate', () => {
             expect(savedRolle.merkmale).toEqual([RollenMerkmal.BEFRISTUNG_PFLICHT]);
         });
 
+        it('should add MPT_ROLLE merkmal', () => {
+            expect(Object.values(RollenMerkmal)).toContain('MPT_ROLLE');
+
+            const savedRolle: Rolle<true> = DoFactory.createRolle(true, { merkmale: [] });
+            savedRolle.addMerkmal(RollenMerkmal.MPT_ROLLE);
+
+            expect(savedRolle.merkmale).toEqual([RollenMerkmal.MPT_ROLLE]);
+        });
+
         it('should not add merkmal if it already exists', () => {
             const savedRolle: Rolle<true> = DoFactory.createRolle(true, {
                 merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],

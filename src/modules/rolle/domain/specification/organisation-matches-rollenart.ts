@@ -1,3 +1,4 @@
+import { uniq } from 'lodash-es';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../../organisation/domain/organisation.js';
 import { RollenArt } from '../rolle.enums.js';
@@ -37,5 +38,20 @@ export class OrganisationMatchesRollenart {
             default:
                 return new Set<RollenArt>(Object.values(RollenArt));
         }
+    }
+
+    public static getAllowedRollenartenForOrganisationTypes(organisationTypes: OrganisationsTyp[]): Set<RollenArt> {
+        const rollenartSet: Set<RollenArt> = new Set();
+
+        for (const orgaTyp of uniq(organisationTypes)) {
+            const orgaRollenarten: Set<RollenArt> =
+                OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(orgaTyp);
+
+            for (const rollenart of orgaRollenarten) {
+                rollenartSet.add(rollenart);
+            }
+        }
+
+        return rollenartSet;
     }
 }

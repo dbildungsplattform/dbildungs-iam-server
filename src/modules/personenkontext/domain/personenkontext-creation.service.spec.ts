@@ -274,6 +274,7 @@ describe('PersonenkontextCreationService', () => {
             );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleMock.id, rolleMock]]));
             organisationRepositoryMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND }),
             );
@@ -306,6 +307,7 @@ describe('PersonenkontextCreationService', () => {
             );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleMock.id, rolleMock]]));
             organisationRepositoryMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND }),
             );
@@ -342,6 +344,7 @@ describe('PersonenkontextCreationService', () => {
             );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleMock.id, rolleMock]]));
             organisationRepositoryMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND }),
             );
