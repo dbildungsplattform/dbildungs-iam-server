@@ -1,4 +1,4 @@
-import { DomainError } from "../../../../shared/error/domain.error.js";
+import { DomainError } from '../../../../shared/error/domain.error.js';
 
 export class LdapEventAccumulatedFailuresError extends DomainError {
     public constructor(failureReasons: string[], details?: unknown[] | Record<string, unknown>) {

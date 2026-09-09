@@ -335,7 +335,8 @@ export class VidisSyncService {
                     syncOperations.push(Promise.reject(deleteRollenerweiterungenResult.error));
                 }
             } catch (error) {
-                const rejectionReason: Error = error instanceof Error ? error : new RemoveServiceProviderUnknownError(String(error));
+                const rejectionReason: Error =
+                    error instanceof Error ? error : new RemoveServiceProviderUnknownError(String(error));
                 syncOperations.push(Promise.reject(rejectionReason));
             }
         }

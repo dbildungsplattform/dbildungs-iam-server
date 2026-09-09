@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/error/domain.error.js";
+import { DomainError } from '../../../shared/error/domain.error.js';
 
 export class DbSeedDataGeneratorNoDirectoryError extends DomainError {
     public constructor(details?: unknown[] | Record<string, unknown>) {

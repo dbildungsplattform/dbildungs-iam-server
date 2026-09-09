@@ -165,7 +165,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                         this.logger.logUnknownAsError(`Handler failed for event ${eventClass.name}`, err);
                         return {
                             ok: false,
-                            error: new EventHandlerFailedError(eventClass.name)
+                            error: new EventHandlerFailedError(eventClass.name),
                         } satisfies Result<Error>;
                     }
                 },
@@ -272,7 +272,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                     );
                     resolve({
                         ok: false,
-                        error: new EventHandlerTimeoutError<Event>(event, timeoutMs)
+                        error: new EventHandlerTimeoutError<Event>(event, timeoutMs),
                     } satisfies Result<Error>);
                 }
             };

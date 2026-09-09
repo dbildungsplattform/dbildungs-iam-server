@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/error/domain.error.js";
+import { DomainError } from '../../../shared/error/domain.error.js';
 
 export class RemoveServiceProviderUnknownError extends DomainError {
     public constructor(message: string, details?: unknown[] | Record<string, unknown>) {

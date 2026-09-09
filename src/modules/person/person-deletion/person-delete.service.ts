@@ -81,9 +81,7 @@ export class PersonDeleteService {
                                     };
                                 });
                         } else {
-                            return Promise.reject(
-                                new PersonDeleteRolleNotFoundError(personenKontext),
-                            );
+                            return Promise.reject(new PersonDeleteRolleNotFoundError(personenKontext));
                         }
                     });
                 }),
