@@ -22,7 +22,7 @@ export class ServiceProviderFindService {
     public async findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
         permissions: IPersonPermissions,
         schulstrukturknotenId: OrganisationID,
-        rollenArten?: RollenArt[],
+        rollenArt: RollenArt,
     ): Promise<Result<ServiceProvider<true>[], DomainError>> {
         const hasPermission: boolean = await permissions.hasSystemrechteAtOrganisation(schulstrukturknotenId, [
             RollenSystemRecht.ROLLEN_VERWALTEN,
@@ -34,17 +34,11 @@ export class ServiceProviderFindService {
 
         const parentOrganisations: Organisation<true>[] =
             await this.organisationRepo.findParentOrgasForIdSortedByDepthAsc(schulstrukturknotenId);
-        const serviceProviders: ServiceProvider<true>[] = await this.serviceProviderRepo.findBySchulstrukturknoten(
-            parentOrganisations.map((organisation: Organisation<true>) => organisation.id),
-        );
-
-        if (rollenArten && rollenArten.length > 0) {
-            const filteredServiceProviders: ServiceProvider<true>[] = serviceProviders.filter(
-                (sp: ServiceProvider<true>) =>
-                    sp.rollenartenWhitelist.some((ra: RollenArt) => rollenArten.includes(ra)),
+        const serviceProviders: ServiceProvider<true>[] =
+            await this.serviceProviderRepo.findBySchulstrukturknotenWithRollenArtWhitelist(
+                parentOrganisations.map((organisation: Organisation<true>) => organisation.id),
+                rollenArt,
             );
-            return Ok(filteredServiceProviders);
-        }
 
         return Ok(serviceProviders);
     }

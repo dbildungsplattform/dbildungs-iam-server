@@ -122,7 +122,7 @@ export class ProviderController {
             await this.serviceProviderFindService.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                 permissions,
                 query.schulstrukturknotenOfRolle,
-                query.rollenArten,
+                query.rollenArt,
             );
 
         if (!result.ok) {
