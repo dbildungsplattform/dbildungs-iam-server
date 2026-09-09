@@ -306,7 +306,7 @@
             "spsh-no2fa": [],
             "admin-cli": [],
             "spsh-admin": [],
-            "${VIDIS_CLIENT_ID}": [],
+            "${VIDIS_KEYCLOAK_CLIENT_ID}": [],
             "account-console": [],
             "spsh-service": [],
             "${KC_NEXTCLOUD_CLIENT_ID}": [],
@@ -1198,7 +1198,7 @@
         },
         {
             "id": "cf591738-18c7-4962-9b3f-a1b2ef15c94a",
-            "clientId": "${VIDIS_CLIENT_ID}",
+            "clientId": "${VIDIS_KEYCLOAK_CLIENT_ID}",
             "name": "VIDIS-Testumgebung",
             "description": "",
             "rootUrl": "",
