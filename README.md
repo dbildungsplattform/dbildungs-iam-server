@@ -10,14 +10,21 @@
 
 1. Clone this repository. Make sure that `git autorcrlf` is set to `false`. You can set this with `git config --global core.autocrlf false`. Otherwise Kafke will not run properly in the later steps.
 2. Run `npm ci` to install all dependencies ([What's that?](https://docs.npmjs.com/cli/v9/commands/npm-ci))
-3. Start the required services from the `compose.yaml` file with `docker compose --profile third-party up` ([What's that?](https://docs.docker.com/compose/))
+3. Before starting the `third-party` profile, create a `.env` file in the repository root (next to `compose.yaml`) with the following values, which are needed by Keycloak's realm import:
+    ```
+    VIDIS_CLIENT_SECRET=irgendein-secret
+    VIDIS_KEYCLOAK_CLIENT_ID=vidis-test
+    KC_NEXTCLOUD_CLIENT_ID=nextcloud
+    KC_NEXTCLOUD_CLIENT_SECRET=irgendein-secret
+    ```
+4. Start the required services from the `compose.yaml` file with `docker compose --profile third-party up` ([What's that?](https://docs.docker.com/compose/))
     - db
     - keycloak
     - redis
-4. run `npm run setup` to initialize the DB and seed data
-5. Run `npm run start` to start the server
-6. Server runs on the url printed in the console
-7. The client and how to run it is described in the [client repo](https://github.com/dBildungsplattform/schulportal-client)
+5. run `npm run setup` to initialize the DB and seed data
+6. Run `npm run start` to start the server
+7. Server runs on the url printed in the console
+8. The client and how to run it is described in the [client repo](https://github.com/dBildungsplattform/schulportal-client)
 
 ## Scripts for Development
 
