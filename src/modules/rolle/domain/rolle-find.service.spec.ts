@@ -359,11 +359,6 @@ describe('RolleFindService', () => {
             };
             await rolleFindService.findRollenAvailableForErweiterung(params);
             expect(rolleRepoMock.findBy).not.toHaveBeenCalled();
-            // expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
-            //     expect.objectContaining<Partial<RolleFindByParameters>>({
-            //         excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
-            //     }),
-            // );
         });
     });
 
