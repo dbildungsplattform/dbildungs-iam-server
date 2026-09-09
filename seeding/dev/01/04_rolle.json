@@ -61,6 +61,7 @@
             "rollenart": "LEIT",
             "merkmale": [],
             "systemrechte": [
+                "MPT_ROLLEN_VERWALTEN",
                 "PERSONEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
                 "BULK_VERWALTEN",
