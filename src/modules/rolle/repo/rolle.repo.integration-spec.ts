@@ -1239,6 +1239,24 @@ describe('RolleRepo', () => {
             expect(count).toBe(2);
         });
 
+        it('should not return technische rollen', async () => {
+            const rolle: Rolle<true> = await createRolle();
+            await createRolle({
+                administeredBySchulstrukturknoten: rolle.administeredBySchulstrukturknoten,
+                rollenart: rolle.rollenart,
+                istTechnisch: true,
+            });
+
+            const [rollen, count]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: rolle.administeredBySchulstrukturknoten,
+                allowedOrganisationIds: [rolle.administeredBySchulstrukturknoten],
+                allowedRollenarten: [rolle.rollenart],
+            });
+
+            expect(rollen).toEqual([rolle]);
+            expect(count).toBe(1);
+        });
+
         it('should return sticky rollen regardless of filter', async () => {
             await createRolle();
             const stickyRolle: Rolle<true> = await createRolle({ rollenart: RollenArt.LEHR });
