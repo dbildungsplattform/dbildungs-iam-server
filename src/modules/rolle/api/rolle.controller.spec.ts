@@ -256,7 +256,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
             );
 
             expect(result.offset).toBe(0);
-            expect(result.limit).toBe(foundRollen.length);
+            expect(result.limit).toBe(100);
             expect(result.total).toBe(100);
         });
     });
