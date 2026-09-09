@@ -493,6 +493,7 @@ export class RolleRepo {
             : [];
 
         const where: FilterQuery<NoInfer<RolleEntity>> = {
+            istTechnisch: false,
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
         };
         if (params.stickyRollenIds) {
