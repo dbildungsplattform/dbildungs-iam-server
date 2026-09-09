@@ -14,8 +14,8 @@ export class UserExternalDataV2Response {
     @ApiProperty()
     public nachname: string;
 
-    @ApiProperty({ enum: RollenArt })
-    public rollenart: RollenArt;
+    @ApiPropertyOptional({ enum: RollenArt })
+    public rollenart?: RollenArt;
 
     @ApiProperty({ type: [UserExternalDataV2PersonenkontextResponse] })
     public personenkontexte: UserExternalDataV2PersonenkontextResponse[];
