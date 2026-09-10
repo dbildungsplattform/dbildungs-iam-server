@@ -796,6 +796,46 @@ describe('ServiceProviderRepo', () => {
         });
     });
 
+    describe('findBySchulstrukturknotenWithRollenArtWhitelist', () => {
+        it('should return the service provider with rollenartenWhitelist', async () => {
+            const providedOnSchulstrukturknoten: string = faker.string.uuid();
+            const persistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten,
+                rollenartenWhitelist: [RollenArt.LEHR, RollenArt.LERN],
+            });
+            em.clear();
+            const result: ServiceProvider<true>[] = await sut.findBySchulstrukturknotenWithRollenArtWhitelist(
+                [providedOnSchulstrukturknoten],
+                RollenArt.LEHR,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result).toEqual(
+                expect.arrayContaining([
+                    {
+                        ...persistedServiceProvider,
+                        logo: undefined,
+                    },
+                ]),
+            );
+        });
+
+        it('should not return the service provider if rollenartenWhitelist does not match', async () => {
+            const providedOnSchulstrukturknoten: string = faker.string.uuid();
+            await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            em.clear();
+            const result: ServiceProvider<true>[] = await sut.findBySchulstrukturknotenWithRollenArtWhitelist(
+                [providedOnSchulstrukturknoten],
+                RollenArt.LERN,
+            );
+
+            expect(result).toHaveLength(0);
+        });
+    });
+
     describe('findBySchulstrukturknotenPaginated', () => {
         const setup = async (): Promise<{
             orgAId: string;
