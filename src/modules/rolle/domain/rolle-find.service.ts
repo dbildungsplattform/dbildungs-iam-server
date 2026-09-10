@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isIn } from 'class-validator';
 import { intersection } from 'lodash-es';
 import { ServerConfig } from '../../../shared/config/index.js';
 import { PortalConfig } from '../../../shared/config/portal.config.js';
@@ -86,11 +87,11 @@ interface FindRollenForPersonenImportParams {
     offset?: number;
 }
 
-type FindRollenAvailableForErweiterungParams = FindRollenWithPermissionsParams & {
+export type FindRollenAvailableForErweiterungParams = FindRollenWithPermissionsParams & {
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
-type FindRollenAvailableForPersonAdministrationParams = FindRollenWithPermissionsParams & {
+export type FindRollenAvailableForPersonAdministrationParams = FindRollenWithPermissionsParams & {
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
@@ -105,8 +106,13 @@ export class RolleFindService {
     public async findRollenAvailableForErweiterung(
         params: FindRollenAvailableForErweiterungParams,
     ): Promise<Counted<Rolle<true>>> {
+        const systemrechte: RollenSystemRecht[] = this.resolveSystemrechte(
+            [RollenSystemRecht.ROLLEN_ERWEITERN],
+            params.requestedSystemrechte,
+        );
         const permittedOrgas: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
-            params.requestedSystemrechte ?? [RollenSystemRecht.ROLLEN_ERWEITERN],
+            systemrechte,
+            true,
             true,
         );
 
@@ -201,6 +207,15 @@ export class RolleFindService {
     public async findRollenAvailableForPersonenkontextCreation(
         params: FindRollenForPersonenkontextCreationWithPermissionsParams,
     ): Promise<Counted<Rolle<true>>> {
+        if (
+            !isIn(params.systemrecht, [
+                RollenSystemRecht.PERSONEN_VERWALTEN,
+                RollenSystemRecht.PERSONEN_ANLEGEN,
+                RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
+            ])
+        ) {
+            return [[], 0];
+        }
         const permittedOrgas: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht([params.systemrecht]);
         const organisationBounds: EmptyOrganisationBounds | BoundedOrganisationBounds =
             await this.resolveOrganisationBoundsWithSelection(permittedOrgas, [params.organisationId]);
@@ -246,8 +261,12 @@ export class RolleFindService {
     public async findRollenAvailableForPersonAdministration(
         params: FindRollenAvailableForPersonAdministrationParams,
     ): Promise<Counted<Rolle<true>>> {
+        const systemrechte: RollenSystemRecht[] = this.resolveSystemrechte(
+            [RollenSystemRecht.PERSONEN_VERWALTEN],
+            params.requestedSystemrechte,
+        );
         const permittedOrgas: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
-            params.requestedSystemrechte ?? [RollenSystemRecht.PERSONEN_VERWALTEN],
+            systemrechte,
             true,
             true,
         );
@@ -334,6 +353,17 @@ export class RolleFindService {
         }
 
         return this.rolleRepo.findBy(rolleFindByParams);
+    }
+
+    private resolveSystemrechte(
+        requiredSystemrechte: Iterable<RollenSystemRecht>,
+        requestedSystemrechte: Iterable<RollenSystemRecht> = [],
+    ): RollenSystemRecht[] {
+        const systemrechte: Set<RollenSystemRecht> = new Set(requiredSystemrechte);
+        for (const systemrecht of requestedSystemrechte) {
+            systemrechte.add(systemrecht);
+        }
+        return Array.from(systemrechte);
     }
 
     private createRolleFindByParams(

@@ -12,7 +12,11 @@ import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.j
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleFindByParameters, RolleRepo } from '../repo/rolle.repo.js';
-import { FindRollenWithPermissionsParams, RolleFindService } from './rolle-find.service.js';
+import {
+    FindRollenAvailableForErweiterungParams,
+    FindRollenWithPermissionsParams,
+    RolleFindService,
+} from './rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
@@ -319,7 +323,7 @@ describe('RolleFindService', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
             organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
             organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([OrganisationsTyp.SCHULE]);
-            const params: FindRollenWithPermissionsParams & { requestedSystemrechte?: RollenSystemRecht[] } = {
+            const params: FindRollenAvailableForErweiterungParams = {
                 permissions: permissionsMock,
                 requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
             };
@@ -346,14 +350,14 @@ describe('RolleFindService', () => {
             );
         });
 
-        it('should exclude MPT rollen when requested but caller does not actually hold MPT_ROLLEN_VERWALTEN', async () => {
+        it('should not return rollen when caller does not actually hold requested systemrecht', async () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockImplementation((systemrechte: RollenSystemRecht[]) => {
                 if (systemrechte.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN)) {
                     return Promise.resolve({ all: false, orgaIds: [] });
                 }
                 return Promise.resolve({ all: true });
             });
-            const params: FindRollenWithPermissionsParams & { requestedSystemrechte?: RollenSystemRecht[] } = {
+            const params: FindRollenAvailableForErweiterungParams = {
                 permissions: permissionsMock,
                 requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
             };
@@ -637,6 +641,19 @@ describe('RolleFindService', () => {
         let permissionsMock: DeepMocked<PersonPermissions>;
         beforeEach(() => {
             permissionsMock = createMock(PersonPermissions);
+        });
+
+        describe('when requested systemrecht does not match', () => {
+            it('should return early', async () => {
+                const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+                const result: Counted<Rolle<true>> =
+                    await rolleFindService.findRollenAvailableForPersonenkontextCreation({
+                        permissions: permissionsMock,
+                        systemrecht: RollenSystemRecht.ANGEBOTE_EINGESCHRAENKT_VERWALTEN,
+                        organisationId: schule.id,
+                    });
+                expect(result).toEqual([[], 0]);
+            });
         });
 
         describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_VERWALTEN.name}`, () => {
