@@ -751,6 +751,14 @@ describe('Rolle API', () => {
             );
         });
 
+        it('should return 400 when organisationId is missing for import', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/available-for-import`)
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+
         it('should return rollen filtered by multiple systemrechte', async () => {
             const rolleA: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
             const rolleB: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
