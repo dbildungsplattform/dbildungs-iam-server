@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
@@ -29,6 +29,10 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
     @TransformToArray()
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
+    @ArrayContains([RollenSystemRechtEnum.PERSONEN_VERWALTEN])
+    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN], {
+        each: true,
+    })
     @ApiProperty({
         enum: RollenSystemRechtEnum,
         nullable: true,
@@ -37,9 +41,6 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
         isArray: true,
         description:
             'The system right for which the roles should be available. Can only be PERSONEN_VERWALTEN and optionally MPT_ROLLEN_VERWALTEN.',
-    })
-    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN], {
-        each: true,
     })
     public readonly systemrechte?: RollenSystemRechtEnum[];
 }
