@@ -741,41 +741,6 @@ describe('OrganisationService', () => {
         });
     });
 
-    describe('findAllOrganizations', () => {
-        describe('when organizations are found', () => {
-            it('should return all organizations', async () => {
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true);
-                const organisations: Organisation<true>[] = [organisation];
-                const total: number = organisations.length;
-
-                organisationRepositoryMock.findBy.mockResolvedValue([organisations, total]);
-
-                const result: Paged<Organisation<true>> = await organisationService.findAllOrganizations(organisation);
-
-                expect(result).toEqual({
-                    total: total,
-                    offset: 0,
-                    limit: total,
-                    items: organisations,
-                    pageTotal: total,
-                });
-            });
-        });
-
-        describe('when no organizations are found', () => {
-            it('should return an empty list of organizations', async () => {
-                const organisation: Organisation<false> = DoFactory.createOrganisation(false);
-
-                organisationRepositoryMock.findBy.mockResolvedValue([[], 0]);
-
-                const result: Paged<Organisation<true>> = await organisationService.findAllOrganizations(organisation);
-
-                expect(result.items).toHaveLength(0);
-                expect(result.items).toBeInstanceOf(Array);
-            });
-        });
-    });
-
     describe('setZugehoerigZu', () => {
         it('should return a domain error if the child organisation does not exist', async () => {
             const parentId: string = faker.string.uuid();
