@@ -501,14 +501,14 @@ describe('Provider Controller Test', () => {
                 const spResponse: ServiceProviderResponse[] =
                     await providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: orga.id,
-                        rollenArten: [RollenArt.LEHR],
+                        rollenArt: RollenArt.LEHR,
                     });
                 expect(spResponse).toBeDefined();
                 expect(spResponse).toBeInstanceOf(Array);
                 expect(spResponse).toHaveLength(1);
                 expect(
                     serviceProviderFindServiceMock.findServiceProvidersForRolleBySchulstrukturknotenAuthorized,
-                ).toHaveBeenCalledWith(personPermissionsMock, orga.id, [RollenArt.LEHR]);
+                ).toHaveBeenCalledWith(personPermissionsMock, orga.id, RollenArt.LEHR);
             });
         });
 
@@ -522,6 +522,7 @@ describe('Provider Controller Test', () => {
                 const spResponse: ServiceProviderResponse[] =
                     await providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: orgaId,
+                        rollenArt: RollenArt.LEHR,
                     });
                 expect(spResponse).toBeDefined();
                 expect(spResponse).toBeInstanceOf(Array);
@@ -538,6 +539,7 @@ describe('Provider Controller Test', () => {
                 await expect(
                     providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: faker.string.uuid(),
+                        rollenArt: RollenArt.LEHR,
                     }),
                 ).rejects.toBeInstanceOf(MissingPermissionsError);
             });
