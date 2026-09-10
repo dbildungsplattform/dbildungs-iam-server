@@ -451,10 +451,13 @@ export class LdapEventHandler {
         personenkontextEventKontextData: PersonenkontextEventKontextData,
     ): boolean {
         const orgaId: OrganisationID = personenkontextEventKontextData.orgaId;
-        const currentOrgaIds: OrganisationID[] = personenkontextUpdatedEvent.currentKontexte.map(
-            (pk: PersonenkontextEventKontextData) => pk.orgaId,
-        );
+        // Only a remaining kontext that still carries UEM keeps the LDAP group membership justified.
+        const currentOrgaIdsWithUem: OrganisationID[] = personenkontextUpdatedEvent.currentKontexte
+            .filter((pk: PersonenkontextEventKontextData) =>
+                pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM),
+            )
+            .map((pk: PersonenkontextEventKontextData) => pk.orgaId);
 
-        return currentOrgaIds.includes(orgaId);
+        return currentOrgaIdsWithUem.includes(orgaId);
     }
 }
