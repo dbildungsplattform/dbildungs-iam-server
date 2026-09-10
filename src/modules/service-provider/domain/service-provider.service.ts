@@ -241,6 +241,30 @@ export class ServiceProviderService {
         return { ok: true, value: [enrichedServiceProviders, total] };
     }
 
+    public async findAllowedProvidersForRollenerweiterungAtOrga(
+        organisationId: OrganisationID,
+        permissions: IPersonPermissions,
+    ): Promise<Counted<ServiceProvider<true>>> {
+        const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
+            [RollenSystemRecht.ROLLEN_ERWEITERN],
+            true,
+        );
+        if (!permittedOrgas.all && !permittedOrgas.orgaIds.includes(organisationId)) {
+            return [[], 0];
+        }
+        const parents: Organisation<true>[] = await this.organisationRepo.findParentOrgasForIds([organisationId]);
+        const organisationWithParentsIds: OrganisationID[] = [
+            organisationId,
+            ...parents.map((orga: Organisation<true>) => orga.id),
+        ];
+        const serviceProviders: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmal(
+            organisationWithParentsIds,
+            ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+        );
+
+        return serviceProviders;
+    }
+
     private async getRollenAndRollenerweiterungCountForServiceProviders(
         serviceProviders: ServiceProvider<true>[],
         limitRoles?: number,

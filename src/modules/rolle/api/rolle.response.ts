@@ -23,7 +23,7 @@ export class RolleResponse {
     @ApiProperty({ enum: RollenArt, enumName: RollenArtTypName })
     public rollenart: RollenArt;
 
-    @ApiProperty({ enum: RollenMerkmal, enumName: RollenMerkmalTypName, isArray: true, uniqueItems: true })
+    @ApiProperty({ enum: RollenMerkmal, enumName: RollenMerkmalTypName, isArray: true })
     public merkmale: RollenMerkmal[];
 
     @ApiProperty({ isArray: true, uniqueItems: true, type: SystemRechtResponse })

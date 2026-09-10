@@ -43,11 +43,10 @@ import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rollenerweiterung-with-extended-data.response.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { AttachedRollenError } from '../domain/errors/attached-rollen.error.js';
@@ -81,6 +80,9 @@ import { RollenerweiterungByServiceProvidersIdQueryParams } from './rollenerweit
 import { ServiceProviderErrorFilter } from './service-provider-exception.filter.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
+import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
+import { Paged } from '../../../shared/paging/index.js';
+import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 
 @UseFilters(ServiceProviderErrorFilter)
 @ApiTags('provider')
@@ -134,6 +136,47 @@ export class ProviderController {
     }
 
     @Get()
+    @ApiOperation({ description: 'Get service-providers.' })
+    @ApiOkResponsePaginated(ServiceProviderResponse, {
+        description: 'The service-providers were successfully returned.',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get available service providers.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting all service-providers.' })
+    public async getAvailableServiceProviders(
+        @Query() queryParams: FindAngeboteQueryParams,
+        @Permissions() permissions: PersonPermissions,
+    ): Promise<RawPagedResponse<ServiceProviderResponse>> {
+        let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
+
+        if (
+            queryParams.systemrechte &&
+            queryParams.systemrechte.length === 1 &&
+            queryParams.systemrechte[0] === RollenSystemRechtEnum.ROLLEN_ERWEITERN &&
+            queryParams.organisationId
+        ) {
+            angeboteAndTotal = await this.serviceProviderService.findAllowedProvidersForRollenerweiterungAtOrga(
+                queryParams.organisationId,
+                permissions,
+            );
+        }
+
+        const [angebote, total]: [ServiceProvider<true>[], number] = angeboteAndTotal;
+        const serviceProviderResponses: ServiceProviderResponse[] = angebote.map(
+            (serviceProvider: ServiceProvider<true>) => new ServiceProviderResponse(serviceProvider),
+        );
+
+        const pagedResponse: Paged<ServiceProviderResponse> = {
+            total,
+            offset: queryParams.offset ?? 0,
+            limit: queryParams.limit ?? serviceProviderResponses.length,
+            items: serviceProviderResponses,
+        };
+
+        return new RawPagedResponse(pagedResponse);
+    }
+
+    @Get('my-providers')
     @ApiOperation({ description: 'Get service-providers available for logged-in user.' })
     @ApiOkResponse({
         description: 'The service-providers were successfully returned.',
@@ -142,7 +185,7 @@ export class ProviderController {
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available service providers.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers.' })
     @ApiInternalServerErrorResponse({ description: 'Internal server error while getting all service-providers.' })
-    public async getAvailableServiceProviders(
+    public async getMyServiceProviders(
         @Permissions() permissions: PersonPermissions,
     ): Promise<ServiceProviderResponse[]> {
         const personenkontexteIds: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =

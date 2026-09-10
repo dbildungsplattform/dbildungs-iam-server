@@ -769,6 +769,76 @@ describe('ServiceProviderService', () => {
         });
     });
 
+    describe('findAllowedProvidersForRollenerweiterungAtOrga', () => {
+        let permissions: DeepMocked<PersonPermissions>;
+        let organisation: Organisation<true>;
+        let parentOrganisation: Organisation<true>;
+        let serviceProvider: ServiceProvider<true>;
+
+        beforeEach(() => {
+            organisation = DoFactory.createOrganisation(true);
+            parentOrganisation = DoFactory.createOrganisation(true);
+            organisationRepo.findParentOrgasForIds.mockResolvedValue([parentOrganisation]);
+            serviceProvider = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+            organisationRepo.findByIds.mockResolvedValue(new Map([[organisation.id, organisation]]));
+            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            permissions = createMock(PersonPermissions);
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('returns allowed providers for rollenerweiterung at orga', async () => {
+            const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
+                organisation.id,
+                permissions,
+            );
+
+            expect(organisationRepo.findParentOrgasForIds).toHaveBeenCalledWith([organisation.id]);
+            expect(serviceProviderRepo.findByOrgasWithMerkmal).toHaveBeenCalledWith(
+                [organisation.id, parentOrganisation.id],
+                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+            );
+            expect(result[0]).toContain(serviceProvider);
+            expect(result[1]).toBe(1);
+        });
+
+        it('returns empty array if user has no permissions for the orga', async () => {
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
+                all: false,
+                orgaIds: [],
+            });
+
+            const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
+                organisation.id,
+                permissions,
+            );
+
+            expect(result[0]).toHaveLength(0);
+            expect(result[1]).toBe(0);
+        });
+
+        it('returns empty array if no providers found', async () => {
+            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[], 0]);
+
+            const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
+                organisation.id,
+                permissions,
+            );
+
+            expect(result[0]).toHaveLength(0);
+            expect(result[1]).toBe(0);
+        });
+    });
+
     describe('findManageableLandRoot', () => {
         describe('when user has all=true ANGEBOTE_VERWALTEN', () => {
             it('should return service providers', async () => {

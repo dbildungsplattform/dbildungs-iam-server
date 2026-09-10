@@ -203,17 +203,6 @@ export class ServiceProviderRepo {
         return serviceProviders.map(mapEntityToAggregate);
     }
 
-    public async find(options?: ServiceProviderFindOptions): Promise<ServiceProvider<true>[]> {
-        const exclude: readonly ['logo'] | undefined = options?.withLogo ? undefined : ['logo'];
-
-        const serviceProviders: ServiceProviderEntity[] = await this.em.findAll(ServiceProviderEntity, {
-            exclude,
-            populate: ['merkmale', 'rollenartenWhitelist'],
-        });
-
-        return serviceProviders.map(mapEntityToAggregate);
-    }
-
     public async findByIds(ids: string[]): Promise<Map<string, ServiceProvider<true>>> {
         const serviceProviderEntities: ServiceProviderEntity[] = await this.em.find(
             ServiceProviderEntity,

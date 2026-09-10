@@ -10,7 +10,7 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -69,7 +69,6 @@ export class PersonenkontextWorkflowAggregate {
     public async findAllSchulstrukturknoten(
         permissions: IPersonPermissions,
         organisationName: string | undefined,
-        organisationId?: string, // Add organisationId as an optional parameter
         limit?: number,
     ): Promise<Organisation<true>[]> {
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
@@ -100,7 +99,7 @@ export class PersonenkontextWorkflowAggregate {
         // If organisationId is provided and it's not in the filtered results, fetch it explicitly
         if (
             this.selectedOrganisationId &&
-            !organisationsExceptKlassen.find((orga: Organisation<true>) => orga.id === organisationId)
+            !organisationsExceptKlassen.find((orga: Organisation<true>) => orga.id === this.selectedOrganisationId)
         ) {
             const selectedOrg: Option<Organisation<true>> = await this.organisationRepository.findById(
                 this.selectedOrganisationId,
@@ -269,6 +268,18 @@ export class PersonenkontextWorkflowAggregate {
                 RollenSystemRecht.PERSONEN_ANLEGEN,
             );
 
+            const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
+            const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
+            if (includesMPTRollen) {
+                const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
+                    organisationId,
+                    RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+                );
+                if (!hasSystemrecht) {
+                    return new MissingPermissionsError('Unauthorized to manage MPT-Rollen at the organisation');
+                }
+            }
+
             if (hasAnlegenPermissionAtOrga) {
                 return undefined;
             }
@@ -277,12 +288,9 @@ export class PersonenkontextWorkflowAggregate {
                 organisationId,
                 RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
             );
-
             if (!hasLimitedCreationPermissionAtOrga) {
                 return new MissingPermissionsError('Unauthorized to manage persons at the organisation');
             }
-
-            const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
 
             const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
 
@@ -290,15 +298,20 @@ export class PersonenkontextWorkflowAggregate {
                 portalConfig.LIMITED_ROLLENART_ALLOWLIST || [],
             );
 
-            // Check if the selected roles match the allowed roles
-            const isAllowed: boolean = Array.from(rollen.values()).every((rolle: Rolle<true>) =>
-                allowedRollenArten?.includes(rolle.rollenart),
-            );
-            if (isAllowed) {
-                return undefined;
-            } else {
-                return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
+            for (const rolle of rollen.values()) {
+                const rollenArtNotAllowed: boolean = !allowedRollenArten?.includes(rolle.rollenart);
+                if (includesMPTRollen) {
+                    // implies user has RollenSystemRecht.MPT_ROLLEN_VERWALTEN
+                    if (rollenArtNotAllowed && !rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
+                        return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
+                    }
+                } else {
+                    if (rollenArtNotAllowed) {
+                        return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
+                    }
+                }
             }
+            return;
         } else if (operationContext === OperationContext.PERSON_BEARBEITEN) {
             const hasVerwaltenPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
                 organisationId,
@@ -310,5 +323,14 @@ export class PersonenkontextWorkflowAggregate {
         }
 
         return new MissingPermissionsError('Unauthorized to manage persons at the organisation');
+    }
+
+    private includesMPTRollen(rollen: Iterable<Rolle<true>>): boolean {
+        for (const rolle of rollen) {
+            if (rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

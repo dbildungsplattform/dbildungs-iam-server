@@ -131,40 +131,6 @@ describe('ServiceProviderRepo', () => {
         });
     });
 
-    describe('find', () => {
-        it('should return all service-provider without logo', async () => {
-            const serviceProviders: ServiceProvider<true>[] = await Promise.all([
-                createAndPersistServiceProvider(em),
-                createAndPersistServiceProvider(em),
-                createAndPersistServiceProvider(em),
-            ]);
-            em.clear();
-
-            const serviceProviderResult: ServiceProvider<true>[] = await sut.find({ withLogo: false });
-
-            expect(serviceProviderResult).toHaveLength(serviceProviders.length);
-            for (const sp of serviceProviderResult) {
-                expect(sp.logo).toBeUndefined();
-            }
-        });
-
-        it('should return all service-provider with logo', async () => {
-            const serviceProviders: ServiceProvider<true>[] = await Promise.all([
-                createAndPersistServiceProvider(em),
-                createAndPersistServiceProvider(em),
-                createAndPersistServiceProvider(em),
-            ]);
-            em.clear();
-
-            const serviceProviderResult: ServiceProvider<true>[] = await sut.find({ withLogo: true });
-
-            expect(serviceProviderResult).toHaveLength(serviceProviders.length);
-            for (const sp of serviceProviderResult) {
-                expect(sp.logo).toBeInstanceOf(Buffer);
-            }
-        });
-    });
-
     describe('findById', () => {
         it('should return the service-provider without logo', async () => {
             const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);

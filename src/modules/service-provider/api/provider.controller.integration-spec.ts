@@ -21,6 +21,7 @@ import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeo
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
+import { PagedResponse } from '../../../shared/paging/index.js';
 import { RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
@@ -170,6 +171,60 @@ describe('ServiceProvider API', () => {
             expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(schulstrukturknotenOfRolle, [
                 RollenSystemRecht.ROLLEN_VERWALTEN,
             ]);
+        });
+    });
+
+    describe('/GET getAvailableServiceProviders', () => {
+        it('should return if orga and systemrecht are provided', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get('/provider')
+                .query({
+                    organisationId: organisation.id,
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                })
+                .expect(200);
+
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<ServiceProviderResponse> =
+                response.body as PagedResponse<ServiceProviderResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toContainEqual(expect.objectContaining({ id: serviceProvider.id }));
+        });
+
+        it('should return empty result if organisationId is missing', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get('/provider')
+                .query({
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                })
+                .expect(200);
+
+            const pagedResponse: PagedResponse<ServiceProviderResponse> =
+                response.body as PagedResponse<ServiceProviderResponse>;
+            expect(pagedResponse.items).toHaveLength(0);
+        });
+
+        it('should return empty result if another systemrecht is provided', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await request(app.getHttpServer() as App)
+                .get('/provider')
+                .query({
+                    organisationId: organisation.id,
+                    systemrechte: [RollenSystemRechtEnum.ANGEBOTE_VERWALTEN],
+                })
+                .expect(400);
         });
     });
 
