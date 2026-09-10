@@ -2,7 +2,12 @@ import { faker } from '@faker-js/faker';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { createPersonPermissionsMock, DoFactory } from '../../../../test/utils/index.js';
+import {
+    createPersonPermissionsMock,
+    DoFactory,
+    expectErrResult,
+    expectOkResult,
+} from '../../../../test/utils/index.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -900,7 +905,8 @@ describe('PersonenkontextWorkflow', () => {
                 OperationContext.PERSON_ANLEGEN,
             );
 
-            expect(result).toEqual(Ok(undefined));
+            expectOkResult(result);
+            expect(result.value).toBeUndefined();
         });
 
         it('should return an error for MPT rollen without MPT_ROLLEN_VERWALTEN permission', async () => {
@@ -922,8 +928,8 @@ describe('PersonenkontextWorkflow', () => {
                 OperationContext.PERSON_ANLEGEN,
             );
 
-            expect(result.ok).toBe(false);
-            expect((result as { ok: false; error: DomainError }).error).toBeInstanceOf(DomainError);
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(DomainError);
             expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
                 1,
                 'orgId',
@@ -961,7 +967,8 @@ describe('PersonenkontextWorkflow', () => {
                 OperationContext.PERSON_ANLEGEN,
             );
 
-            expect(result).toEqual(Ok(undefined));
+            expectOkResult(result);
+            expect(result.value).toBeUndefined();
         });
 
         it('should reject a mixed assignment with a non-allowlisted non-MPT rolle', async () => {
@@ -999,8 +1006,8 @@ describe('PersonenkontextWorkflow', () => {
                 OperationContext.PERSON_ANLEGEN,
             );
 
-            expect(result.ok).toBe(false);
-            expect((result as { ok: false; error: DomainError }).error).toBeInstanceOf(DomainError);
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(DomainError);
         });
 
         it('should return undefined if context is PERSON_BEARBEITEN and user has systemrecht PERSONEN_VERWALTEN', async () => {
@@ -1015,7 +1022,8 @@ describe('PersonenkontextWorkflow', () => {
                 OperationContext.PERSON_BEARBEITEN,
             );
 
-            expect(result).toEqual(Ok(undefined));
+            expectOkResult(result);
+            expect(result.value).toBeUndefined();
         });
 
         describe.each([[OperationContext.PERSON_ANLEGEN], [OperationContext.PERSON_BEARBEITEN]])(
@@ -1054,8 +1062,8 @@ describe('PersonenkontextWorkflow', () => {
                         operationContext,
                     );
 
-                    expect(result.ok).toBe(false);
-                    expect((result as { ok: false; error: DomainError }).error).toBeInstanceOf(DomainError);
+                    expectErrResult(result);
+                    expect(result.error).toBeInstanceOf(DomainError);
                 });
 
                 it('should return error if config is not set for limited rollenarten', async () => {
@@ -1081,8 +1089,8 @@ describe('PersonenkontextWorkflow', () => {
                         operationContext,
                     );
 
-                    expect(result.ok).toBe(false);
-                    expect((result as { ok: false; error: DomainError }).error).toBeInstanceOf(DomainError);
+                    expectErrResult(result);
+                    expect(result.error).toBeInstanceOf(DomainError);
                 });
 
                 it('should return error if personid is set but user is not allowed to modify', async () => {
@@ -1097,8 +1105,8 @@ describe('PersonenkontextWorkflow', () => {
                         operationContext,
                     );
 
-                    expect(result.ok).toBe(false);
-                    expect((result as { ok: false; error: DomainError }).error).toBeInstanceOf(DomainError);
+                    expectErrResult(result);
+                    expect(result.error).toBeInstanceOf(DomainError);
                 });
             },
         );
