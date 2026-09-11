@@ -385,12 +385,14 @@ describe('ApplyRollenerweiterungForAngebotService', () => {
             DoFactory.createServiceProvider(true, {
                 id: angebotId,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
             }),
         );
 
         const rolleAdd: Rolle<true> = DoFactory.createRolle(true, {
             id: rolleAddId,
             merkmale: [RollenMerkmal.MPT_ROLLE],
+            rollenart: RollenArt.LEHR,
         });
         rolleRepo.findByIds.mockResolvedValue(new Map([[rolleAddId, rolleAdd]]));
 
