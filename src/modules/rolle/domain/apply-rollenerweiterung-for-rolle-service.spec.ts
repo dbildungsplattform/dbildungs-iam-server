@@ -21,9 +21,10 @@ import {
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
-import { RollenMerkmal } from './rolle.enums.js';
+import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { ApplyRollenerweiterungForRolleService } from './apply-rollenerweiterungen-for-rolle-service.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 describe('ApplyRollenerweiterungForRolleService', () => {
     let serviceProviderRepo: DeepMocked<ServiceProviderRepo>;
@@ -87,6 +88,7 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             const rolle: Rolle<true> = createMock<Rolle<true>>(Rolle, {
                 id: rolleId,
                 merkmale: [],
+                rollenart: RollenArt.LEHR,
             });
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolleId, rolle]]));
 
@@ -98,10 +100,12 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             const serviceProviderAdd: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 id: serviceProviderIdAdd,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
             });
             const serviceProviderRemove: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 id: serviceProviderIdRemove,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
             });
 
             serviceProviderRepo.findByIds.mockResolvedValue(
@@ -334,6 +338,7 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             const rolle: Rolle<true> = createMock<Rolle<true>>(Rolle, {
                 id: rolleId,
                 merkmale: [],
+                rollenart: RollenArt.LEHR,
             });
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolleId, rolle]]));
 
@@ -342,6 +347,7 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 id: serviceProviderId,
                 merkmale: [],
+                rollenartenWhitelist: [RollenArt.LEHR],
             });
 
             serviceProviderRepo.findByIds.mockResolvedValue(new Map([[serviceProviderId, serviceProvider]]));
@@ -407,6 +413,60 @@ describe('ApplyRollenerweiterungForRolleService', () => {
                 return;
             }
             expect(result.error).toBeInstanceOf(MissingPermissionsError);
+        });
+
+        it('should return error if serviceProvider rollenartWhitelist does not match rollenart', async () => {
+            const orgaId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+
+            organisationRepo.findById.mockResolvedValue(DoFactory.createOrganisation(true, { id: orgaId }));
+
+            const rolle: Rolle<true> = createMock<Rolle<true>>(Rolle, {
+                id: rolleId,
+                merkmale: [],
+                rollenart: RollenArt.LEHR,
+            });
+            rolleRepo.findByIds.mockResolvedValue(new Map([[rolleId, rolle]]));
+
+            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValue([]);
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                id: serviceProviderId,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+
+            serviceProviderRepo.findByIds.mockResolvedValue(new Map([[serviceProviderId, serviceProvider]]));
+
+            const body: ApplyRollenerweiterungChangesBodyParams = {
+                addErweiterungenForServiceProviderIds: [serviceProviderId],
+                removeErweiterungenForServiceProviderIds: [],
+            };
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const result: TresultType = await service.applyRollenerweiterungChangesForRolle(
+                orgaId,
+                rolleId,
+                body,
+                permissions,
+            );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                return;
+            }
+
+            expect(result.error).toBeInstanceOf(ApplyRollenerweiterungError);
+
+            const err: unknown = result.error;
+            if (!(err instanceof ApplyRollenerweiterungError)) {
+                return;
+            }
+
+            expect(err.errors[0]?.id).toBe(serviceProviderId);
+            expect(err.errors[0]?.error).toBeInstanceOf(RollenartNotAllowedForSPError);
         });
     });
 });

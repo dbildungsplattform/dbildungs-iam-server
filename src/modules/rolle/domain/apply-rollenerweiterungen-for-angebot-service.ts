@@ -19,6 +19,7 @@ import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-me
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 type TunknownResultForAngebot = {
     rolleId: string;
@@ -102,7 +103,7 @@ export class ApplyRollenerweiterungForAngebotService {
                 Promise.all(
                     this.handleAddErweiterungen(
                         orgaId,
-                        angebotId,
+                        serviceProvider,
                         existingErweiterungen,
                         body.addErweiterungenForRolleIds,
                         rollen,
@@ -187,7 +188,7 @@ export class ApplyRollenerweiterungForAngebotService {
 
     private handleAddErweiterungen(
         orgaId: string,
-        angebotId: string,
+        serviceProvider: ServiceProvider<true>,
         existingErweiterungen: Array<Rollenerweiterung<true>> = [],
         addErweiterungenForRolleIds: string[],
         rollen: Map<string, Rolle<true>>,
@@ -201,13 +202,20 @@ export class ApplyRollenerweiterungForAngebotService {
             .map((rolleId: string) => {
                 const rolle: Option<Rolle<true>> = rollen.get(rolleId);
                 this.logger.info(
-                    `Adding Erweiterung for for rolleId: ${rolleId}, orgaId: ${orgaId}, angebotId: ${angebotId}`,
+                    `Adding Erweiterung for for rolleId: ${rolleId}, orgaId: ${orgaId}, angebotId: ${serviceProvider.id}`,
                 );
                 if (!rolle) {
                     return Promise.resolve({
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
+                    });
+                }
+                if (!serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)) {
+                    return Promise.resolve({
+                        rolleId,
+                        errorIdType: ErrorIdType.ANGEBOT,
+                        result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
                     });
                 }
                 if (rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE) && !hasSystemrechtAtOrganisationMpt) {
@@ -225,7 +233,7 @@ export class ApplyRollenerweiterungForAngebotService {
                             this.serviceProviderRepo,
                             orgaId,
                             rolleId,
-                            angebotId,
+                            serviceProvider.id,
                         ),
                         permissions,
                     )

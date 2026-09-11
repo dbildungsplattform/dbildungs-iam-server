@@ -122,6 +122,7 @@ export class ProviderController {
             await this.serviceProviderFindService.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                 permissions,
                 query.schulstrukturknotenOfRolle,
+                query.rollenArt,
             );
 
         if (!result.ok) {
@@ -148,7 +149,6 @@ export class ProviderController {
         @Permissions() permissions: PersonPermissions,
     ): Promise<RawPagedResponse<ServiceProviderResponse>> {
         let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
-
         if (
             queryParams.systemrechte &&
             queryParams.systemrechte.length === 1 &&
@@ -158,6 +158,7 @@ export class ProviderController {
             angeboteAndTotal = await this.serviceProviderService.findAllowedProvidersForRollenerweiterungAtOrga(
                 queryParams.organisationId,
                 permissions,
+                queryParams.rollenArten,
             );
         }
 
