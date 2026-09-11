@@ -1,7 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { intersection } from 'lodash-es';
 import { PortalConfig } from '../../../shared/config/portal.config.js';
-import { mapStringsToRollenArt } from '../../../shared/config/utils.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
@@ -23,6 +22,7 @@ import { OperationContext } from './personenkontext.enums.js';
 import { Personenkontext } from './personenkontext.js';
 import { PersonenkontexteUpdate } from './personenkontexte-update.js';
 import { findAllowedRollen } from '../../../shared/util/rollen.helper.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 export class PersonenkontextWorkflowAggregate {
     public personId?: PersonID;
@@ -99,7 +99,7 @@ export class PersonenkontextWorkflowAggregate {
         // If organisationId is provided and it's not in the filtered results, fetch it explicitly
         if (
             this.selectedOrganisationId &&
-            !organisationsExceptKlassen.find((orga: Organisation<true>) => orga.id === this.selectedOrganisationId)
+            !organisationsExceptKlassen.some((orga: Organisation<true>) => orga.id === this.selectedOrganisationId)
         ) {
             const selectedOrg: Option<Organisation<true>> = await this.organisationRepository.findById(
                 this.selectedOrganisationId,
@@ -184,35 +184,36 @@ export class PersonenkontextWorkflowAggregate {
     public async canCommit(
         permissions: IPersonPermissions,
         operationContext: OperationContext,
-    ): Promise<DomainError | boolean> {
+    ): Promise<Result<void, DomainError>> {
         if (this.selectedOrganisationId && this.selectedRolleIds && this.selectedRolleIds.length > 0) {
             // Check references for all selected roles concurrently
-            const referenceCheckErrors: Option<DomainError>[] = await Promise.all(
+            const referenceChecks: Result<void, DomainError>[] = await Promise.all(
                 this.selectedRolleIds.map((rolleId: string) =>
                     this.checkReferences(this.selectedOrganisationId!, rolleId),
                 ),
             );
 
-            // Find the first error if any
-            const firstError: Option<DomainError> = referenceCheckErrors.find((error: Option<DomainError>) => error);
-            if (firstError) {
-                return firstError;
+            const firstFailedCheck: Result<void, DomainError> | undefined = referenceChecks.find(
+                (result: Result<void, DomainError>) => !result.ok,
+            );
+            if (firstFailedCheck) {
+                return firstFailedCheck;
             }
 
             // Check permissions after verifying references
-            const permissionCheckError: Option<DomainError> = await this.checkPermissions(
+            const permissionCheckError: Result<void, DomainError> = await this.checkPermissions(
                 permissions,
                 this.personId,
                 this.selectedOrganisationId,
                 this.selectedRolleIds,
                 operationContext,
             );
-            if (permissionCheckError) {
+            if (!permissionCheckError.ok) {
                 return permissionCheckError;
             }
         }
 
-        return true;
+        return Ok(undefined);
     }
 
     // Takes in the list of personenkontexte and decides whether to add or delete the personenkontexte for a specific PersonId
@@ -233,16 +234,11 @@ export class PersonenkontextWorkflowAggregate {
             permissions,
             personalnummer,
         );
-        const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError = await pkUpdate.update();
-
-        if (updateResult instanceof PersonenkontexteUpdateError) {
-            return updateResult;
-        }
-        return updateResult;
+        return pkUpdate.update();
     }
 
     // Checks if the rolle can be assigned to the target organisation
-    public async checkReferences(organisationId: string, rolleId: string): Promise<Option<DomainError>> {
+    public async checkReferences(organisationId: string, rolleId: string): Promise<Result<void, DomainError>> {
         return this.personenkontextWorkflowSharedKernel.checkReferences(organisationId, rolleId);
     }
 
@@ -252,77 +248,94 @@ export class PersonenkontextWorkflowAggregate {
         organisationId: string,
         rolleIds: RolleID[],
         operationContext: OperationContext,
-    ): Promise<Option<DomainError>> {
+    ): Promise<Result<void, DomainError>> {
         // When person is given, check for permission regardless of operationContext
         if (personId) {
             const hasPersonModifyPermission: boolean = await permissions.canModifyPerson(personId);
             if (!hasPersonModifyPermission) {
-                return new MissingPermissionsError('Unauthorized to manage person');
+                return Err(new MissingPermissionsError('Unauthorized to manage person'));
             }
         }
 
-        if (operationContext === OperationContext.PERSON_ANLEGEN) {
-            // Check if logged in person has permission
-            const hasAnlegenPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
+        return this.checkOperationPermissions(permissions, organisationId, rolleIds, operationContext);
+    }
+
+    private async checkOperationPermissions(
+        permissions: IPersonPermissions,
+        organisationId: string,
+        rolleIds: RolleID[],
+        operationContext: OperationContext,
+    ): Promise<Result<void, DomainError>> {
+        switch (operationContext) {
+            case OperationContext.PERSON_ANLEGEN:
+                return this.checkCreatePermissions(permissions, organisationId, rolleIds);
+            case OperationContext.PERSON_BEARBEITEN:
+                return this.checkEditPermissions(permissions, organisationId);
+        }
+    }
+
+    private async checkEditPermissions(
+        permissions: IPersonPermissions,
+        organisationId: string,
+    ): Promise<Result<void, DomainError>> {
+        const hasVerwaltenPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
+            organisationId,
+            RollenSystemRecht.PERSONEN_VERWALTEN,
+        );
+        if (!hasVerwaltenPermissionAtOrga) {
+            return Err(new MissingPermissionsError('Unauthorized to manage persons at the organisation'));
+        }
+        return Ok(undefined);
+    }
+
+    private async checkCreatePermissions(
+        permissions: IPersonPermissions,
+        organisationId: string,
+        rolleIds: RolleID[],
+    ): Promise<Result<void, DomainError>> {
+        const hasAnlegenPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
+            organisationId,
+            RollenSystemRecht.PERSONEN_ANLEGEN,
+        );
+
+        const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
+        const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
+        if (includesMPTRollen) {
+            const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
                 organisationId,
-                RollenSystemRecht.PERSONEN_ANLEGEN,
+                RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
             );
-
-            const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-            const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
-            if (includesMPTRollen) {
-                const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
-                    organisationId,
-                    RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
-                );
-                if (!hasSystemrecht) {
-                    return new MissingPermissionsError('Unauthorized to manage MPT-Rollen at the organisation');
-                }
-            }
-
-            if (hasAnlegenPermissionAtOrga) {
-                return undefined;
-            }
-
-            const hasLimitedCreationPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
-                organisationId,
-                RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-            );
-            if (!hasLimitedCreationPermissionAtOrga) {
-                return new MissingPermissionsError('Unauthorized to manage persons at the organisation');
-            }
-
-            const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-
-            const allowedRollenArten: RollenArt[] | undefined = mapStringsToRollenArt(
-                portalConfig.LIMITED_ROLLENART_ALLOWLIST || [],
-            );
-
-            for (const rolle of rollen.values()) {
-                const rollenArtNotAllowed: boolean = !allowedRollenArten?.includes(rolle.rollenart);
-                if (includesMPTRollen) {
-                    // implies user has RollenSystemRecht.MPT_ROLLEN_VERWALTEN
-                    if (rollenArtNotAllowed && !rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
-                        return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
-                    }
-                } else {
-                    if (rollenArtNotAllowed) {
-                        return new MissingPermissionsError('Unauthorized to manage rollenart at the organisation');
-                    }
-                }
-            }
-            return;
-        } else if (operationContext === OperationContext.PERSON_BEARBEITEN) {
-            const hasVerwaltenPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
-                organisationId,
-                RollenSystemRecht.PERSONEN_VERWALTEN,
-            );
-            if (hasVerwaltenPermissionAtOrga) {
-                return;
+            if (!hasSystemrecht) {
+                return Err(new MissingPermissionsError('Unauthorized to manage MPT-Rollen at the organisation'));
             }
         }
 
-        return new MissingPermissionsError('Unauthorized to manage persons at the organisation');
+        if (hasAnlegenPermissionAtOrga) {
+            return Ok(undefined);
+        }
+
+        const hasLimitedCreationPermissionAtOrga: boolean = await permissions.hasSystemrechtAtOrganisation(
+            organisationId,
+            RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
+        );
+        if (!hasLimitedCreationPermissionAtOrga) {
+            return Err(new MissingPermissionsError('Unauthorized to manage persons at the organisation'));
+        }
+
+        const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
+        const allowedRollenArten: RollenArt[] = portalConfig.LIMITED_ROLLENART_ALLOWLIST;
+        if (!this.isLimitedCreationAllowedForRollen(rollen.values(), allowedRollenArten)) {
+            return Err(new MissingPermissionsError('Unauthorized to manage rollenart at the organisation'));
+        }
+
+        return Ok(undefined);
+    }
+
+    private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
+        return Array.from(rollen).every(
+            (rolle: Rolle<true>) =>
+                allowedRollenArten.includes(rolle.rollenart) || rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+        );
     }
 
     private includesMPTRollen(rollen: Iterable<Rolle<true>>): boolean {

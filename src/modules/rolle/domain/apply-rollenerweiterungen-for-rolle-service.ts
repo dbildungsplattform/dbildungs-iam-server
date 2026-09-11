@@ -2,7 +2,6 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { uniq } from 'lodash-es';
 import { Rolle } from './rolle.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
@@ -19,21 +18,39 @@ import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerwe
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RollenMerkmal } from './rolle.enums.js';
+import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 
-type TunknownResultForRolle = {
+interface TunknownResultForRolle {
     serviceProviderId: string;
     errorIdType: ErrorIdType.ROLLE;
     result: Result<unknown, DomainError>;
-};
+}
 
-type TerrorResultForRolle = {
+interface TerrorResultForRolle {
     serviceProviderId: string;
     errorIdType: ErrorIdType.ROLLE;
     result: {
         ok: false;
         error: DomainError;
     };
-};
+}
+
+interface AddRollenerweiterungenToRolleParams {
+    orgaId: string;
+    rolleId: string;
+    existingErweiterungen?: Array<Rollenerweiterung<true>>;
+    addErweiterungenForServiceProviderIds: string[];
+    serviceProviders: Map<string, ServiceProvider<true>>;
+    permissions: IPersonPermissions;
+}
+
+interface RemoveRollenerweiterungenFromRolleParams {
+    orgaId: string;
+    rolleId: string;
+    existingErweiterungen?: Array<Rollenerweiterung<true>>;
+    removeErweiterungenForServiceProviderIds: string[];
+    serviceProviders: Map<string, ServiceProvider<true>>;
+}
 
 function isErrorResultForServiceProvider<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForRolle {
     return r.result.ok === false;
@@ -92,29 +109,32 @@ export class ApplyRollenerweiterungForRolleService {
                 },
             ]);
 
+        const uniqueServiceProviderIds: ServiceProviderID[] = Array.from(
+            new Set([...body.addErweiterungenForServiceProviderIds, ...body.removeErweiterungenForServiceProviderIds]),
+        );
         const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
-            uniq([...body.addErweiterungenForServiceProviderIds, ...body.removeErweiterungenForServiceProviderIds]),
+            uniqueServiceProviderIds,
         );
 
         const [addResults, removeResults]: [TunknownResultForRolle[], TunknownResultForRolle[]] = await Promise.all([
             Promise.all(
-                this.handleAddErweiterungen(
+                this.handleAddErweiterungen({
                     orgaId,
                     rolleId,
                     existingErweiterungen,
-                    body.addErweiterungenForServiceProviderIds,
+                    addErweiterungenForServiceProviderIds: body.addErweiterungenForServiceProviderIds,
                     serviceProviders,
                     permissions,
-                ),
+                }),
             ),
             Promise.all(
-                this.handleRemoveErweiterungen(
+                this.handleRemoveErweiterungen({
                     orgaId,
                     rolleId,
                     existingErweiterungen,
-                    body.removeErweiterungenForServiceProviderIds,
+                    removeErweiterungenForServiceProviderIds: body.removeErweiterungenForServiceProviderIds,
                     serviceProviders,
-                ),
+                }),
             ),
         ]);
 
@@ -136,20 +156,18 @@ export class ApplyRollenerweiterungForRolleService {
         return Ok(null);
     }
 
-    private handleAddErweiterungen(
-        orgaId: string,
-        rolleId: string,
-        existingErweiterungen: Array<Rollenerweiterung<true>> = [],
-        addErweiterungenForServiceProviderIds: string[],
-        serviceProviders: Map<string, ServiceProvider<true>>,
-        permissions: IPersonPermissions,
-    ): Promise<TunknownResultForRolle>[] {
+    private handleAddErweiterungen({
+        orgaId,
+        rolleId,
+        existingErweiterungen = [],
+        addErweiterungenForServiceProviderIds,
+        serviceProviders,
+        permissions,
+    }: AddRollenerweiterungenToRolleParams): Promise<TunknownResultForRolle>[] {
         const erweiterungenPromises: Promise<TunknownResultForRolle>[] = addErweiterungenForServiceProviderIds
             .filter((serviceProviderId: string) => {
-                return (
-                    existingErweiterungen.findIndex(
-                        (re: Rollenerweiterung<true>) => re.serviceProviderId === serviceProviderId,
-                    ) === -1
+                return !existingErweiterungen.some(
+                    (re: Rollenerweiterung<true>) => re.serviceProviderId === serviceProviderId,
                 );
             })
             .map((serviceProviderId: string) => {
@@ -197,13 +215,13 @@ export class ApplyRollenerweiterungForRolleService {
         return erweiterungenPromises;
     }
 
-    private handleRemoveErweiterungen(
-        orgaId: string,
-        rolleId: string,
-        existingErweiterungen: Array<Rollenerweiterung<true>> = [],
-        removeErweiterungenForServiceProviderIds: string[],
-        serviceProviders: Map<string, ServiceProvider<true>>,
-    ): Promise<TunknownResultForRolle>[] {
+    private handleRemoveErweiterungen({
+        orgaId,
+        rolleId,
+        existingErweiterungen = [],
+        removeErweiterungenForServiceProviderIds,
+        serviceProviders,
+    }: RemoveRollenerweiterungenFromRolleParams): Promise<TunknownResultForRolle>[] {
         const removeErweiterungenPromises: Promise<TunknownResultForRolle>[] = removeErweiterungenForServiceProviderIds
             .filter((serviceProviderId: string) => {
                 return existingErweiterungen.some(

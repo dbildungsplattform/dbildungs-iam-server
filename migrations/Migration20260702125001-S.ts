@@ -6,6 +6,4 @@ export class Migration20260702125001 extends Migration {
             `alter type "rollen_system_recht_enum" add value if not exists 'MPT_ROLLEN_VERWALTEN' after 'ROLLEN_VERWALTEN';`,
         );
     }
-
-    override down(): void | Promise<void> {}
 }

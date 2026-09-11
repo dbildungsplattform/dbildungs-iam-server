@@ -1,3 +1,4 @@
+import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 import { CronConfig } from './cron.config.js';
 import { DbConfig } from './db.config.js';
 import { EmailMicroserviceConfig } from './email-microservice.config.js';
@@ -16,7 +17,7 @@ import { PrivacyIdeaConfig } from './privacyidea.config.js';
 import { RedisConfig } from './redis.config.js';
 import { SchulconnexConfig } from './schulconnex.config.js';
 import { SystemConfig } from './system.config.js';
-import { envToOptionalBoolean, envToOptionalInteger, envToStringArray } from './utils.js';
+import { envToEnumArray, envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 import { VidisConfig } from './vidis.config.js';
 
 export type Config = {
@@ -151,7 +152,7 @@ export default (): Config => ({
         SSL_KEY_PATH: process.env['KAFKA_SSL_KEY_PATH'],
     },
     PORTAL: {
-        LIMITED_ROLLENART_ALLOWLIST: envToStringArray('PORTAL_LIMITED_ROLLENART_ALLOWLIST'),
+        LIMITED_ROLLENART_ALLOWLIST: envToEnumArray('PORTAL_LIMITED_ROLLENART_ALLOWLIST', RollenArt),
     },
     CRON: {
         PERSON_WITHOUT_ORG_LIMIT: envToOptionalInteger('CRON_PERSON_WITHOUT_ORG_LIMIT'),

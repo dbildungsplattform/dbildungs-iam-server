@@ -6,8 +6,6 @@ import { PersonApiMapper } from '../person/mapper/person-api.mapper.js';
 import { PersonModule } from '../person/person.module.js';
 import { RolleModule } from '../rolle/rolle.module.js';
 import { DbiamPersonenkontextWorkflowController } from './api/dbiam-personenkontext-workflow.controller.js';
-import { PersonAdministrationController } from './api/person-administration.controller.js';
-import { PersonAdministrationService } from './domain/person-administration.service.js';
 import { PersonenKontextModule } from './personenkontext.module.js';
 
 @Module({
@@ -19,7 +17,7 @@ import { PersonenKontextModule } from './personenkontext.module.js';
         OrganisationModule,
         LoggerModule.register(PersonenKontextApiModule.name),
     ],
-    providers: [PersonAdministrationService, PersonApiMapper],
-    controllers: [DbiamPersonenkontextWorkflowController, PersonAdministrationController],
+    providers: [PersonApiMapper],
+    controllers: [DbiamPersonenkontextWorkflowController],
 })
 export class PersonenKontextApiModule {}

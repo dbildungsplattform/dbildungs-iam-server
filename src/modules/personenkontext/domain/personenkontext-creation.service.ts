@@ -15,6 +15,7 @@ import { EscalatedPermissionAtOrga } from '../../permission/escalated-person-per
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 export type PersonPersonenkontext = {
     person: Person<true>;
@@ -45,10 +46,7 @@ export class PersonenkontextCreationService {
             personalnummer: personalnummer,
         });
         if (personOrError instanceof DomainError) {
-            return {
-                ok: false,
-                error: personOrError,
-            };
+            return Err(personOrError);
         }
 
         const anlage: PersonenkontextWorkflowAggregate = this.personenkontextWorkflowFactory.createNew();
@@ -56,15 +54,12 @@ export class PersonenkontextCreationService {
         for (const createPersonenkontext of createPersonenkontexte) {
             // No person ID
             anlage.initialize(undefined, createPersonenkontext.organisationId, [createPersonenkontext.rolleId]);
-            const canCommit: DomainError | boolean = await anlage.canCommit(
+            const canCommit: Result<void, DomainError> = await anlage.canCommit(
                 permissions,
                 OperationContext.PERSON_ANLEGEN,
             );
-            if (canCommit instanceof DomainError) {
-                return {
-                    ok: false,
-                    error: canCommit,
-                };
+            if (!canCommit.ok) {
+                return canCommit;
             }
         }
 
@@ -72,10 +67,7 @@ export class PersonenkontextCreationService {
         const savedPersonOrError: DomainError | Person<true> = await this.personRepository.create(personOrError);
 
         if (savedPersonOrError instanceof DomainError) {
-            return {
-                ok: false,
-                error: savedPersonOrError,
-            };
+            return Err(savedPersonOrError);
         }
 
         /* We must grant PERSONEN_VERWALTEN on the ROOT level instead of only on the schools
@@ -117,25 +109,16 @@ export class PersonenkontextCreationService {
 
         const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError = await pkUpdate.update();
         if (updateResult instanceof DomainError) {
-            return {
-                ok: false,
-                error: updateResult,
-            };
+            return Err(updateResult);
         }
 
         if (updateResult.length !== createPersonenkontexte.length) {
-            return {
-                ok: false,
-                error: new PersonenkontexteUpdateError('The number of updated personenkontexte is invalid'),
-            };
+            return Err(new PersonenkontexteUpdateError('The number of updated personenkontexte is invalid'));
         }
 
-        return {
-            ok: true,
-            value: {
-                person: savedPersonOrError,
-                personenkontexte: updateResult,
-            },
-        };
+        return Ok({
+            person: savedPersonOrError,
+            personenkontexte: updateResult,
+        });
     }
 }
