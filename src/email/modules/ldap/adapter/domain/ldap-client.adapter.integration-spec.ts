@@ -23,6 +23,7 @@ import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
+import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
@@ -606,7 +607,7 @@ describe('LDAP Client Adapter', () => {
             );
 
             expectErrResult(result);
-            expect(result.error).toEqual(bindError);
+            expect(result.error).toEqual(new LdapBindError());
         });
 
         it('should return error if modify fails', async () => {
@@ -700,7 +701,7 @@ describe('LDAP Client Adapter', () => {
             );
 
             expectErrResult(result);
-            expect(result.error).toEqual(bindError);
+            expect(result.error).toEqual(new LdapBindError());
         });
 
         it('should return error if modify fails', async () => {
@@ -770,7 +771,7 @@ describe('LDAP Client Adapter', () => {
             });
             const result: Result<void, Error> = await ldapClientAdapter.deletePerson(externalId, domain);
             expectErrResult(result);
-            expect(result.error).toEqual(new Error('LDAP bind FAILED'));
+            expect(result.error).toEqual(new LdapBindError());
         });
 
         it('should return error if search throws', async () => {

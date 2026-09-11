@@ -48,6 +48,9 @@ import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/e
 import { RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
 import { EscalatedPersonPermissions } from '../../../modules/permission/escalated-person-permissions.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
+import { LdapEventInvalidEmailDomainError } from './error/ldap-event-invalid-email-domain.error.js';
+import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
 
 @Injectable()
 export class LdapEventHandler {
@@ -211,7 +214,7 @@ export class LdapEventHandler {
                 )
                 .map((pk: PersonenkontextEventKontextData) => {
                     if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
+                        return Promise.reject(new LdapEventOrganisationWithoutKennungError());
                     }
                     return this.getEmailDomainForOrganisationId(pk.orgaId)
                         .catch((error: Error) => {
@@ -241,7 +244,7 @@ export class LdapEventHandler {
                                 this.logger.error(
                                     `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
                                 );
-                                return Promise.reject(new Error('Invalid email domain'));
+                                return Promise.reject(new LdapEventInvalidEmailDomainError());
                             }
                         });
                 }),
@@ -254,7 +257,7 @@ export class LdapEventHandler {
                 .map((pk: PersonenkontextEventKontextData) => {
                     this.logger.info(`Call LdapClientService because rollenArt is LEHR`);
                     if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
+                        return Promise.reject(new LdapEventOrganisationWithoutKennungError());
                     }
                     return this.getEmailDomainForOrganisationId(pk.orgaId)
                         .catch((error: Error) => {
@@ -292,7 +295,7 @@ export class LdapEventHandler {
                                 this.logger.error(
                                     `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
                                 );
-                                return Promise.reject(new Error('Invalid email domain'));
+                                return Promise.reject(new LdapEventInvalidEmailDomainError());
                             }
                         });
                 }),
@@ -312,7 +315,7 @@ export class LdapEventHandler {
         );
 
         if (failureReasons.length > 0) {
-            return { ok: false, error: new Error(failureReasons.join(', ')) };
+            return { ok: false, error: new LdapEventAccumulatedFailuresError(failureReasons) };
         }
 
         return { ok: true, value: null };

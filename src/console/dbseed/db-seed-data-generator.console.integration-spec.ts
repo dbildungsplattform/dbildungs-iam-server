@@ -4,6 +4,7 @@ import { DbSeedDataGeneratorConsole, SeedDataGeneratorOptions } from './db-seed-
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { DbSeedDataGeneratorNoDirectoryError } from './error/db-seed-data-generator-no-directory.error.js';
 
 describe('DbSeedDataGeneratorConsoleIntegration', () => {
     let module: TestingModule;
@@ -53,7 +54,7 @@ describe('DbSeedDataGeneratorConsoleIntegration', () => {
 
         describe('when the directory is not provided', () => {
             it('should fail with error', async () => {
-                await expect(sut.run([], defaultOptions)).rejects.toThrow(new Error('No directory provided!'));
+                await expect(sut.run([], defaultOptions)).rejects.toThrow(new DbSeedDataGeneratorNoDirectoryError());
             });
         });
 

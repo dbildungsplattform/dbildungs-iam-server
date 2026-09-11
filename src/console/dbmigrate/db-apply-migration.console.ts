@@ -2,6 +2,7 @@ import { EntityManager, IMigrator, MigrationInfo, MikroORM } from '@mikro-orm/co
 import { partition } from 'lodash-es';
 import { CommandRunner, Option, SubCommand } from 'nest-commander';
 import { ClassLogger } from '../../core/logging/class-logger.js';
+import { DbMigrationNameEndingError } from './db-migration-name-ending.error.js';
 
 export enum MigrationType {
     STRUCTURAL = 'structural',
@@ -33,7 +34,7 @@ export class DbApplyMigrationConsole extends CommandRunner {
                 .map((migration: MigrationInfo) => migration.name)
                 .every((name: string) => name.endsWith('S') || name.endsWith('D'))
         ) {
-            throw new Error('Not all migrations end with a S or D');
+            throw new DbMigrationNameEndingError();
         }
         this.logger.info(`${allMigrations.length} pending migrations`);
 

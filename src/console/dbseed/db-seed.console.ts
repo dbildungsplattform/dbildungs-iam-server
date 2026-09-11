@@ -12,6 +12,9 @@ import { DbSeed } from './domain/db-seed.js';
 import { DbSeedStatus } from './repo/db-seed.entity.js';
 import { DbSeedRepo } from './repo/db-seed.repo.js';
 import { DataProviderEntity } from '../../persistence/data-provider.entity.js';
+import { DbSeedNoDirectoryError } from './error/db-seed-no-directory.error.js';
+import { DbSeedNoDataError } from './error/db-seed-no-data.error.js';
+import { DbSeedUnsupportedEntityTypeError } from './error/db-seed-unsupported-entity-type.error.js';
 
 export interface SeedFile {
     entityName: string;
@@ -47,7 +50,7 @@ export class DbSeedConsole extends CommandRunner {
         if (_passedParams[0] !== undefined) {
             return _passedParams[0];
         }
-        throw new Error('No directory provided!');
+        throw new DbSeedNoDirectoryError();
     }
 
     public override async run(_passedParams: string[], _options?: Record<string, unknown>): Promise<void> {
@@ -66,7 +69,7 @@ export class DbSeedConsole extends CommandRunner {
             const entityFileNames: string[] = this.dbSeedService.getEntityFileNames(directory, subDir);
             if (entityFileNames.length === 0) {
                 this.logger.error(`No seeding data in the directory ${directory}!`);
-                throw new Error('No seeding data in the directory');
+                throw new DbSeedNoDataError(directory);
             }
             this.logger.info(`Following files from ${subDir} will be processed:`);
             entityFileNames.forEach((n: string) => this.logger.info(n));
@@ -141,7 +144,7 @@ export class DbSeedConsole extends CommandRunner {
                 await this.dbSeedService.seedRollenerweiterung(fileContentAsStr);
                 break;
             default:
-                throw new Error(`Unsupported EntityName / EntityType: ${seedFile.entityName}`);
+                throw new DbSeedUnsupportedEntityTypeError(seedFile.entityName);
         }
     }
 

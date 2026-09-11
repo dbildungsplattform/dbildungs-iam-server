@@ -22,6 +22,7 @@ import { ServiceProviderModule } from '../../modules/service-provider/service-pr
 import { DbSeedConsole } from './db-seed.console.js';
 import { DbSeedModule } from './db-seed.module.js';
 import { DbSeedService } from './domain/db-seed.service.js';
+import { DbSeedUnsupportedEntityTypeError } from './error/db-seed-unsupported-entity-type.error.js';
 
 describe('DbSeedConsoleIntegration', () => {
     let module: TestingModule;
@@ -113,7 +114,7 @@ describe('DbSeedConsoleIntegration', () => {
             it('should use seeding-integration-test directory and fail due to non-existing entity-type', async () => {
                 const params: string[] = ['seeding-integration-test/nonExistingEntity'];
                 await expect(sut.run(params)).rejects.toThrow(
-                    new Error(`Unsupported EntityName / EntityType: NonExistingEntityType`),
+                    new DbSeedUnsupportedEntityTypeError('NonExistingEntityType'),
                 );
             });
         });

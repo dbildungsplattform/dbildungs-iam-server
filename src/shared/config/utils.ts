@@ -1,4 +1,6 @@
 import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
+import { EnvToBooleanError } from './errors/env-to-boolean.error.js';
+import { EnvToIntegerError } from './errors/env-to-integer.error.js';
 
 /**
  * Reads the environment variable and returns an optional boolean.
@@ -25,7 +27,7 @@ export function envToOptionalBoolean(key: string): boolean | undefined {
         case 'false':
             return false;
         default:
-            throw new Error(`Expected environment variable "${key}" to be "true" or "false", received "${value}".`);
+            throw new EnvToBooleanError(key, value);
     }
 }
 
@@ -48,7 +50,7 @@ export function envToOptionalInteger(key: string): number | undefined {
     const parsed: number = parseInt(value, 10);
 
     if (isNaN(parsed)) {
-        throw new Error(`Expected environment variable "${key}" to be a valid integer, received "${value}".`);
+        throw new EnvToIntegerError(key, value);
     }
 
     return parsed;
