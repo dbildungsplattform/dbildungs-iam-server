@@ -53,8 +53,6 @@ describe('MeldungRepo', () => {
             await sut.save(meldung1);
             const savedMeldung2: Meldung<true> = await sut.save(meldung2);
 
-            em.clear();
-
             const meldungResult: Option<Meldung<true>> = await sut.getRecentVeroeffentlichtMeldung();
 
             expect(meldungResult).toBeDefined();
