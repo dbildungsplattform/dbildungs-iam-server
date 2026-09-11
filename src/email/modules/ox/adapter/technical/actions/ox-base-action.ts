@@ -76,7 +76,7 @@ export abstract class OxBaseAction<ResponseBodyType, ResultType> {
 
     public abstract buildRequest(): object;
 
-    // Customize parsing behaviour, see X2jOptions.isArray
+    // Customize parsing behaviour, see X2jOptions.isArray.
     public isArrayOverride(_tagName: string, _jPath: string, _isLeafNode: boolean, _isAttribute: boolean): boolean {
         return false;
     }
