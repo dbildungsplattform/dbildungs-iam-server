@@ -21,7 +21,6 @@ describe('EmailRepo', () => {
     let module: TestingModule;
     let sut: EmailAddressRepo;
     let orm: MikroORM;
-
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [EmailConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true }), EmailCoreModule],
@@ -97,7 +96,7 @@ describe('EmailRepo', () => {
             expect(result!.id).toBe(createdMail.id);
         });
 
-        it('should return EmailAddress with sorted statuses', async () => {
+        it('should return EmailAddress with status sorted by creation time', async () => {
             async function setStatusAndSave(status: EmailAddressStatusEnum): Promise<void> {
                 await vi.advanceTimersByTimeAsync(10);
                 createdMail.setStatus(status);
@@ -212,7 +211,7 @@ describe('EmailRepo', () => {
             expect(result).toHaveLength(0);
         });
 
-        it('should return only primary email addresses with status aktive even if multiple exist for a spshPersonId', async () => {
+        it('should return only primary email addresses with status active even if multiple exist for a spshPersonId', async () => {
             const pid: string = faker.string.uuid();
 
             const mail1: EmailAddress<true> = await createAndSaveMail(undefined, 0, pid);
@@ -233,10 +232,9 @@ describe('EmailRepo', () => {
         });
     });
 
-    describe('findAllEmailAddressesWithStatusesDescBySpshPersonId', () => {
-        const spshPersonId: string = faker.string.uuid();
-
+    describe('findBySpshPersonIdSortedByPriorityAsc', () => {
         it('should return email addresses with their statuses for a given spshPersonId', async () => {
+            const spshPersonId: string = faker.string.uuid();
             let mail1: EmailAddress<true> = await createAndSaveMail(undefined, 1, spshPersonId);
             let mail2: EmailAddress<true> = await createAndSaveMail(undefined, 2, spshPersonId);
 
@@ -534,19 +532,6 @@ describe('EmailRepo', () => {
                 expect.objectContaining({ status: EmailAddressStatusEnum.DEACTIVE }),
                 expect.objectContaining({ status: EmailAddressStatusEnum.SUSPENDED }),
             ]);
-        });
-    });
-
-    describe('delete', () => {
-        it('should delete the email address by id', async () => {
-            const mail: EmailAddress<true> = await createAndSaveMail();
-            const found: Option<EmailAddress<true>> = await sut.findEmailAddress(mail.address);
-            expect(found).toBeDefined();
-
-            await sut.delete(mail);
-
-            const afterDelete: Option<EmailAddress<true>> = await sut.findEmailAddress(mail.address);
-            expect(afterDelete).toBeUndefined();
         });
     });
 

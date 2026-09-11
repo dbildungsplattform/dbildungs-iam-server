@@ -1,7 +1,7 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
 import {
     ConfigTestModule,
     DatabaseTestModule,
@@ -9,12 +9,12 @@ import {
     DoFactory,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
-import { ImportDataRepository, mapAggregateToData, mapEntityToAggregate } from './import-data.repository.js';
-import { ImportDataItemEntity } from './import-data-item.entity.js';
 import { ImportDataItem } from '../domain/import-data-item.js';
-import { ImportVorgangRepository } from './import-vorgang.repository.js';
 import { ImportVorgang } from '../domain/import-vorgang.js';
 import { ImportDataItemStatus } from '../domain/importDataItem.enum.js';
+import { ImportDataItemEntity } from './import-data-item.entity.js';
+import { ImportDataRepository, mapAggregateToData, mapEntityToAggregate } from './import-data.repository.js';
+import { ImportVorgangRepository } from './import-vorgang.repository.js';
 
 describe('ImportDataRepository', () => {
     let module: TestingModule;
@@ -274,6 +274,7 @@ describe('ImportDataRepository', () => {
 
         it('should delete all the import data items for the importVorgnagsId', async () => {
             const result: void = await sut.deleteByImportVorgangId(importvorgangId);
+
             const [findResult, findTotal]: [Option<ImportDataItem<true>[]>, number] =
                 await sut.findByImportVorgangId(importvorgangId);
 

@@ -1881,6 +1881,7 @@ describe('PersonRepository Integration', () => {
                     removedPersonenkontexts,
                 );
                 expect(result.ok).toBeTruthy();
+                expect(await em.count(PersonEntity, { id: person1.id })).toBe(0);
             });
 
             it('should delete the person as admin of organisation', async () => {
@@ -1938,6 +1939,9 @@ describe('PersonRepository Integration', () => {
                     removedPersonenkontexts,
                 );
                 expect(result.ok).toBeTruthy();
+
+                expect(await em.count(PersonEntity, { id: person1.id })).toBe(0);
+                expect(await em.count(PersonenkontextEntity, { personId: person1.id })).toBe(0);
             });
 
             describe('Delete the person and all kontexte and trigger event to delete email', () => {
@@ -1988,6 +1992,8 @@ describe('PersonRepository Integration', () => {
                         expect.any(PersonDeletedEvent),
                         expect.any(KafkaPersonDeletedEvent),
                     );
+
+                    expect(await em.count(PersonEntity, { id: person.id })).toBe(0);
 
                     const callArgs: [] | [legacyEvent: BaseEvent, kafkaEvent?: KafkaEvent | undefined] =
                         eventServiceMock.publish.mock.calls[1] ?? [];
@@ -2124,6 +2130,8 @@ describe('PersonRepository Integration', () => {
                     removedPersonenkontexts,
                 );
                 expect(result.ok).toBeTruthy();
+
+                expect(await em.count(PersonEntity, { id: person1.id })).toBe(0);
             });
 
             it('should delete the person as admin of organisation', async () => {
@@ -2181,6 +2189,9 @@ describe('PersonRepository Integration', () => {
                     removedPersonenkontexts,
                 );
                 expect(result.ok).toBeTruthy();
+
+                expect(await em.count(PersonEntity, { id: person1.id })).toBe(0);
+                expect(await em.count(PersonenkontextEntity, { personId: person1.id })).toBe(0);
             });
 
             it('should delete the person as admin of organisation and publish events when username and oxUserId are defined', async () => {
@@ -2265,6 +2276,9 @@ describe('PersonRepository Integration', () => {
                         oxUserId: oxUserId,
                     }),
                 );
+
+                expect(await em.count(PersonEntity, { id: person1.id })).toBe(0);
+                expect(await em.count(PersonenkontextEntity, { personId: person1.id })).toBe(0);
             });
 
             it('should log error, because person has no username', async () => {

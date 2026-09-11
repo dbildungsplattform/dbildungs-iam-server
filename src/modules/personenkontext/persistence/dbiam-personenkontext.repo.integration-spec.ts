@@ -1302,10 +1302,14 @@ describe('dbiam Personenkontext Repo', () => {
                 }),
             );
 
+            // force a fresh read, otherwise the already-managed service-provider entity would keep its logo despite the exclude in findErweiterteSPByPersonId
+            em.clear();
             const result: ErweiterterServiceProviderForPK[] = await sut.findErweiterteSPByPersonId(person.id);
             expect(result.length).toEqual(1);
             expect(result[0]?.personenkontext.id).toEqual(pk.id);
             expect(result[0]?.serviceProvider.id).toEqual(serviceprovider.id);
+            expect(result[0]?.serviceProvider.logo).toBeUndefined();
+            expect(result[0]?.serviceProvider.logoMimeType).toBeUndefined();
         });
     });
 });

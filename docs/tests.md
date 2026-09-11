@@ -162,11 +162,17 @@ Integration tests are desirable for external systems, but difficult to achieve i
 Integration tests can help finding bugs due to a change of the external systems API.
 
 > Highly recommended, but they not a must if there is no test system or not enough.
+
 <!-- -->
+
 > Nothing is mocked in an integration test.
+
 <!-- -->
+
 > We use [Testcontainers](https://node.testcontainers.org/), not an in-memory-db.
+
 <!-- -->
+
 > A test must define the before and after state of the data set clearly and cleanup the database after execution to the before state.
 
 Our repository layer uses `mikro-orm/EntityManager` to execute the queries.
@@ -179,8 +185,8 @@ The basic structure of the repo integration test:
 #### Preconditions (beforeAll)
 
 1. Create `Nest JS Testing Module`:</br>
-  1.1 with `isDatabaseRequired` must be set to true, so that `testcontainers` set up a database</br>
-  1.2 provide the repo which should be tested
+   1.1 with `isDatabaseRequired` must be set to true, so that `testcontainers` set up a database</br>
+   1.2 provide the repo which should be tested
 2. Get repo, orm and entityManager from testing module
 3. Create a database schema with `setupDatabase`
 
@@ -227,6 +233,30 @@ To fill the database we use factories. They are located in `\src\shared\testing`
 
 Test modules are located in `\src\shared\testing`. If you create a new one, please add it to the index.ts in that folder and refer to `database-test.module.ts`.
 
+#### Identity Map (`em.clear()`)
+
+MikroORM's `EntityManager` caches every loaded entity in its Identity Map. Whether a test needs `em.clear()` before an assertion depends on the combination of the **write operation** under test and the **read operation** used to verify it. There are two distinct, unrelated cases where this matters.
+
+##### Case 1: native write + primary-key read
+
+**1. Does the write operation touch the Identity Map?**
+
+- `em.remove(entity).flush()` and `em.persist(entity).flush()` keep the Identity Map in sync automatically.
+- `em.nativeDelete()` / `em.nativeUpdate()` bypass the Identity Map entirely - an entity loaded before the call stays cached with its old, now outdated state.
+
+**2. Does the read operation used for verification have an Identity Map shortcut?**
+
+- `em.findOne()` by primary key (and anything built on it, e.g. `sut.findById()`, `sut.exists()`) can return an already-loaded entity straight from the Identity Map without ever hitting the database.
+- `em.count()` and `em.find()` (plural) have no such shortcut and always query the database directly.
+
+**Only the combination of both** - a native write followed by a primary-key-based read of an entity that was already loaded into `em` - can produce a false-positive assertion. In that case, call `em.clear()` right before the read to force it to hit the database.
+
+Prefer `em.count(...)` for verifying deletes/updates where possible: since it never uses the Identity Map shortcut, it is reliable regardless of `em.clear()`.
+
+##### Case 2: `exclude` on an already-loaded entity
+
+`em.find()`/`em.findOne()` with an `exclude` option (e.g. to skip large fields like a logo) always queries the database, but if the returned entity is already managed in the Identity Map, MikroORM only merges the fields present in the fresh query response into the existing instance - excluded fields are left untouched. If that entity was previously loaded elsewhere in the test with those fields populated, they stay populated instead of becoming `undefined`, even though the query excluded them. Call `em.clear()` before the read to force a fresh entity instance instead of merging into the stale one.
+
 ### Mapping Tests - Unit Tests
 
 Mapping tests are unit tests which verify the correct mapping between entities and Dto objects.
@@ -237,7 +267,9 @@ These tests should not have any external dependencies to other layers like datab
 Since a usecase only contains orchestration, its tests should be decoupled from the components it depends on. We thus use unit tests to verify the orchestration where necessary
 
 > All Dependencies should be mocked.
+
 <!-- -->
+
 > Use Spies to verify necessary steps, such as authorization checks.
 
 ### Controller/API

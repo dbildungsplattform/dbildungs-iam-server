@@ -14,6 +14,7 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderModule } from '../service-provider.module.js';
+import { OrganisationServiceProviderEntity } from './organisation-service-provider.entity.js';
 import { OrganisationServiceProviderRepo } from './organisation-service-provider.repo.js';
 
 describe('OrganisationServiceProviderRepo', () => {
@@ -70,7 +71,13 @@ describe('OrganisationServiceProviderRepo', () => {
             const persistedOrganisation: Organisation<true> = await organisationRepo.save(organisation);
             const persistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
 
-            await expect(sut.save(persistedOrganisation, persistedServiceProvider)).resolves.not.toThrow();
+            await sut.save(persistedOrganisation, persistedServiceProvider);
+
+            const count: number = await em.count(OrganisationServiceProviderEntity, {
+                organisation: persistedOrganisation.id,
+                serviceProvider: persistedServiceProvider.id,
+            });
+            expect(count).toBe(1);
         });
     });
 
@@ -91,6 +98,8 @@ describe('OrganisationServiceProviderRepo', () => {
             const result: boolean = await sut.deleteAll();
 
             expect(result).toBeTruthy();
+            const count: number = await em.count(OrganisationServiceProviderEntity, {});
+            expect(count).toBe(0);
         });
     });
 });
