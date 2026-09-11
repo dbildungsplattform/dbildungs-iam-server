@@ -18,6 +18,7 @@ import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
@@ -354,7 +355,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -394,7 +395,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -437,7 +438,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -477,7 +478,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                 ],
                 [
@@ -488,7 +489,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                 ],
             );
@@ -496,6 +497,45 @@ describe('LdapEventHandler', () => {
             organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
             expect(ldapClientAdapterMock.deleteLehrer).toHaveBeenCalledTimes(0);
+        });
+
+        it('should call ldap client to remove person from group when remaining PK at same organisation does NOT have UEM', async () => {
+            const fakeOrgaID: string = faker.string.uuid();
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                {
+                    id: faker.string.uuid(),
+                    vorname: faker.person.firstName(),
+                    familienname: faker.person.lastName(),
+                    username: faker.internet.username(),
+                },
+                [],
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: fakeOrgaID,
+                        rolle: RollenArt.LEHR,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
+                    },
+                ],
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: fakeOrgaID,
+                        rolle: RollenArt.EXTERN,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [],
+                    },
+                ],
+            );
+
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+            expect(ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung).toHaveBeenCalledTimes(1);
         });
 
         it('when organisation of deleted PK has no valid emailDomain should log error', async () => {
@@ -516,7 +556,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -558,7 +598,7 @@ describe('LdapEventHandler', () => {
                             rolleId: faker.string.uuid(),
                             orgaKennung: faker.string.numeric(7),
                             isItslearningOrga: false,
-                            serviceProviderExternalSystems: [],
+                            serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                         },
                     ],
                     [],
@@ -591,7 +631,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                 ],
                 [],
@@ -625,7 +665,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: undefined,
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                 ],
                 [],
@@ -652,7 +692,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: undefined,
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                 ],
                 [],
@@ -682,7 +722,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -725,7 +765,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -766,7 +806,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -807,7 +847,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -849,7 +889,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),
@@ -898,7 +938,7 @@ describe('LdapEventHandler', () => {
                         rolleId: faker.string.uuid(),
                         orgaKennung: faker.string.numeric(7),
                         isItslearningOrga: false,
-                        serviceProviderExternalSystems: [],
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
                     },
                     {
                         id: faker.string.uuid(),

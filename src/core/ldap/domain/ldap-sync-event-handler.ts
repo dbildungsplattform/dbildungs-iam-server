@@ -1,38 +1,39 @@
-import { Injectable } from '@nestjs/common';
-import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
-import { ClassLogger } from '../../logging/class-logger.js';
-import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
-import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { Person } from '../../../modules/person/domain/person.js';
-import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
-import { EmailRepo } from '../../../modules/email/persistence/email.repo.js';
-import { EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
-import { uniq } from 'lodash-es';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
-import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
-import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-group-kennung-extraction.error.js';
-import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
-import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
-import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
-import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
-import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
-import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
-import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
-import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
-import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
-import { KafkaLdapSyncFailedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-failed.event.js';
-import { PersonIdentifier } from '../../logging/person-identifier.js';
+import { Injectable } from '@nestjs/common';
+import { uniq } from 'lodash-es';
 import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
+import { EmailRepo } from '../../../modules/email/persistence/email.repo.js';
+import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
+import { Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
+import { Person } from '../../../modules/person/domain/person.js';
+import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
+import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
+import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
+import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
+import { KafkaLdapSyncFailedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-failed.event.js';
+import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
+import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
+import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
+import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
+import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
+import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
+import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../logging/class-logger.js';
+import { PersonIdentifier } from '../../logging/person-identifier.js';
+import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-group-kennung-extraction.error.js';
+import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
+import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 
 export type LdapSyncData = {
     givenName: string;
@@ -189,9 +190,13 @@ export class LdapSyncEventHandler {
                 this.organisationRepository.findByIds(organisationIDs),
             ]);
 
-        // Delete all rollen from map which are NOT LEHR
+        // Delete all rollen from map which do NOT have the UEM service provider
         for (const [rolleId, rolle] of rollen.entries()) {
-            if (rolle.rollenart !== RollenArt.LEHR) {
+            if (
+                !rolle.serviceProviderData.some(
+                    (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
+                )
+            ) {
                 rollen.delete(rolleId);
             }
         }

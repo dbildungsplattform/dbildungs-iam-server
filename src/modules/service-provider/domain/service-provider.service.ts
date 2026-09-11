@@ -3,14 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { uniq } from 'lodash-es';
 import { FeatureFlagConfig } from '../../../shared/config/featureflag.config.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
+import { DomainError } from '../../../shared/error/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, PersonID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
@@ -36,6 +39,7 @@ export class ServiceProviderService {
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
         private readonly serviceProviderRepo: ServiceProviderRepo,
         private readonly organisationRepo: OrganisationRepository,
+        private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         configService: ConfigService<ServerConfig>,
     ) {
         const featureFlags: FeatureFlagConfig = configService.getOrThrow<FeatureFlagConfig>('FEATUREFLAG');
@@ -54,33 +58,25 @@ export class ServiceProviderService {
         return Array.from(serviceProviders.values());
     }
 
-    public async getServiceProvidersByOrganisationenAndRollen(
-        ids: Array<{ organisationId: string; rolleId: string }>,
-    ): Promise<ServiceProvider<true>[]> {
-        const uniqueRollenIds: RolleID[] = uniq(
-            ids.map((idTuple: { organisationId: string; rolleId: string }) => idTuple.rolleId),
-        );
-        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
-        const serviceProviderIds: Set<ServiceProviderID> = new Set();
-        for (const rolle of rollen.values()) {
-            for (const id of rolle.serviceProviderIds) {
-                serviceProviderIds.add(id);
+    public async getServiceProvidersByPersonId(
+        personId: PersonID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<ServiceProvider<true>[], DomainError>> {
+        if (personId !== permissions.personFields.id) {
+            // Requesting another person's service-providers (admin): authorized fetch.
+            const readableResult: Result<boolean, DomainError> =
+                await this.dBiamPersonenkontextRepo.hasPersonAnyManageableKontext(personId, permissions);
+            if (!readableResult.ok) {
+                return Err(readableResult.error);
             }
         }
 
-        if (this.isFeatureRolleErweiternEnabled) {
-            const rollenerweiterungen: Array<Rollenerweiterung<true>> =
-                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids);
-            for (const rollenerweiterung of rollenerweiterungen) {
-                serviceProviderIds.add(rollenerweiterung.serviceProviderId);
-            }
-        }
+        const personenkontexte: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
+            await this.dBiamPersonenkontextRepo.findByPerson(personId);
+        const serviceProviders: ServiceProvider<true>[] =
+            await this.getServiceProvidersByOrganisationenAndRollen(personenkontexte);
 
-        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
-            Array.from(serviceProviderIds),
-        );
-
-        return Array.from(serviceProviders.values());
+        return Ok(serviceProviders);
     }
 
     public async findManageableById(
@@ -369,5 +365,34 @@ export class ServiceProviderService {
             organisation: organisationen.get(rollenerweiterung.organisationId)!,
             rolle: rollen.get(rollenerweiterung.rolleId)!,
         }));
+    }
+
+    private async getServiceProvidersByOrganisationenAndRollen(
+        ids: Array<{ organisationId: string; rolleId: string }>,
+    ): Promise<ServiceProvider<true>[]> {
+        const uniqueRollenIds: RolleID[] = uniq(
+            ids.map((idTuple: { organisationId: string; rolleId: string }) => idTuple.rolleId),
+        );
+        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
+        const serviceProviderIds: Set<ServiceProviderID> = new Set();
+        for (const rolle of rollen.values()) {
+            for (const id of rolle.serviceProviderIds) {
+                serviceProviderIds.add(id);
+            }
+        }
+
+        if (this.isFeatureRolleErweiternEnabled) {
+            const rollenerweiterungen: Array<Rollenerweiterung<true>> =
+                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids);
+            for (const rollenerweiterung of rollenerweiterungen) {
+                serviceProviderIds.add(rollenerweiterung.serviceProviderId);
+            }
+        }
+
+        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
+            Array.from(serviceProviderIds),
+        );
+
+        return Array.from(serviceProviders.values());
     }
 }

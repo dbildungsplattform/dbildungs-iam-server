@@ -515,6 +515,17 @@
             "providedOnSchulstrukturknoten": 34,
             "requires2fa": false,
             "merkmale": ["VERFUEGBAR_FUER_ROLLENERWEITERUNG"]
+        },
+        {
+            "id": 43,
+            "overrideId": "be044c68-46fe-4cd9-be0c-3c8a6bb926a7",
+            "name": "LK-Endgeräte",
+            "target": "NONE",
+            "kategorie": "VERWALTUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "externalSystem": "UEM",
+            "requires2fa": false,
+            "merkmale": []
         }
     ]
 }

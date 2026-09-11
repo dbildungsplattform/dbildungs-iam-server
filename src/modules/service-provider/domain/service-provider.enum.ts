@@ -1,6 +1,7 @@
 export const ServiceProviderKategorieTypName: string = 'ServiceProviderKategorie';
 export const ServiceProviderTargetTypName: string = 'ServiceProviderTarget';
 export const ServiceProviderMerkmalTypName: string = 'ServiceProviderMerkmal';
+export const ServiceProviderSystemTypName: string = 'ServiceProviderSystem';
 
 export enum ServiceProviderKategorie {
     EMAIL = 'EMAIL',
@@ -11,6 +12,7 @@ export enum ServiceProviderKategorie {
 }
 
 export enum ServiceProviderTarget {
+    NONE = 'NONE',
     URL = 'URL',
     EMAIL = 'EMAIL',
     SCHULPORTAL_ADMINISTRATION = 'SCHULPORTAL_ADMINISTRATION',
@@ -20,6 +22,7 @@ export enum ServiceProviderSystem {
     NONE = 'NONE',
     EMAIL = 'EMAIL',
     ITSLEARNING = 'ITSLEARNING',
+    UEM = 'UEM',
 }
 
 export enum ServiceProviderMerkmal {

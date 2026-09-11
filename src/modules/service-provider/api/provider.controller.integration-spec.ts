@@ -16,6 +16,7 @@ import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { createAndPersistPersonenkontext } from '../../../../test/utils/personenkontext-test-helper.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
@@ -31,12 +32,18 @@ import { OIDC_CLIENT } from '../../authentication/services/oidc-client.service.j
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { PersonEntity } from '../../person/persistence/person.entity.js';
+import { mapAggregateToData } from '../../person/persistence/person.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
-import { ServiceProviderKategorie, ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
+import {
+    ServiceProviderKategorie,
+    ServiceProviderMerkmal,
+    ServiceProviderSystem,
+} from '../domain/service-provider.enum.js';
 import { ServiceProvider } from '../domain/service-provider.js';
 import { mapEntityToAggregate } from '../repo/service-provider-entity-mapper.js';
 import { ServiceProviderEntity } from '../repo/service-provider.entity.js';
@@ -170,6 +177,49 @@ describe('ServiceProvider API', () => {
             expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(schulstrukturknotenOfRolle, [
                 RollenSystemRecht.ROLLEN_VERWALTEN,
             ]);
+        });
+    });
+
+    describe('/GET provider/:personId', () => {
+        it('should return the service providers assigned to the requested person', async () => {
+            const personId: string = permissionsMock.personFields.id;
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisation.id,
+            });
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    serviceProviderIds: [serviceProvider.id],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+            await em
+                .persist(
+                    em.create(PersonEntity, mapAggregateToData(DoFactory.createPerson(false))).assign({ id: personId }),
+                )
+                .flush();
+            await createAndPersistPersonenkontext(em, personId, rolle.id, organisation.id);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/provider/${personId}`)
+                .send();
+            const expectedServiceProvider: ServiceProviderResponse = new ServiceProviderResponse(serviceProvider);
+            delete expectedServiceProvider.logoId;
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([expectedServiceProvider]);
+        });
+
+        it('should return an empty list when the requested person has no contexts', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/provider/${faker.string.uuid()}`)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([]);
         });
     });
 
@@ -964,6 +1014,7 @@ describe('ServiceProvider API', () => {
                 rollenartenWhitelist: body.rollenartenWhitelist,
                 requires2fa: body.requires2fa,
                 merkmale: body.merkmale,
+                externalSystem: ServiceProviderSystem.NONE,
             });
 
             const persistedServiceProvider: ServiceProviderEntity = await em.findOneOrFail(
