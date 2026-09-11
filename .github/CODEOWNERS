@@ -1,0 +1,6 @@
+
+# Default owner for all repository files
+* @dBildungsplattform/schulportal-sh
+
+# GitHub configuration files can be reviewed by either the Dev or SRE team
+/.github/ @dBildungsplattform/schulportal-sh @dBildungsplattform/sre-team
