@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from '../../core/logging/logger.module.js';
+import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonModule } from '../person/person.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
 import { RolleModule } from '../rolle/rolle.module.js';
 import { PersonPermissionsRepo } from './domain/person-permission.repo.js';
-import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
+import { UserExternaldataService } from './domain/user-externaldata.service.js';
 
 @Module({
     imports: [
@@ -16,7 +17,7 @@ import { EmailMicroserviceModule } from '../email-microservice/email-microservic
         RolleModule,
         EmailMicroserviceModule,
     ],
-    providers: [PersonPermissionsRepo],
-    exports: [PersonPermissionsRepo],
+    providers: [PersonPermissionsRepo, UserExternaldataService],
+    exports: [PersonPermissionsRepo, UserExternaldataService],
 })
 export class AuthenticationModule {}

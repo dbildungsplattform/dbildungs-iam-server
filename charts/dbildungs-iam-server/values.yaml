@@ -123,6 +123,7 @@ vidis:
   url: "http://localhost:10000"
   region: "Schleswig-Holstein"
   syncSchoolsPageSize: 5
+  keycloakClientId: "vidis-test"
 
 backend:
   replicaCount: 1

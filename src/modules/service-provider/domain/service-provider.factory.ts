@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -7,8 +9,6 @@ import {
     ServiceProviderTarget,
 } from './service-provider.enum.js';
 import { ServiceProvider } from './service-provider.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 
 @Injectable()
 export class ServiceProviderFactory {
@@ -31,6 +31,7 @@ export class ServiceProviderFactory {
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
         rollenartenWhitelist: RollenArt[],
+        keycloakClient: string | undefined,
     ): Result<ServiceProvider<true>, InvalidLogoCombinationError> {
         if (!ServiceProvider.isValidLogoCombination(logoId, logo, logoMimeType)) {
             return Err(new InvalidLogoCombinationError('Cannot construct ServiceProvider with both logoId and logo'));
@@ -55,6 +56,7 @@ export class ServiceProviderFactory {
                 vidisAngebotId,
                 merkmale,
                 rollenartenWhitelist,
+                keycloakClient,
             ),
         );
     }
@@ -75,6 +77,7 @@ export class ServiceProviderFactory {
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
         rollenartenWhitelist: RollenArt[],
+        keycloakClient: string | undefined,
     ): Result<ServiceProvider<false>, InvalidLogoCombinationError> {
         if (!ServiceProvider.isValidLogoCombination(logoId, logo, logoMimeType)) {
             return Err(new InvalidLogoCombinationError('Cannot construct ServiceProvider with both logoId and logo'));
@@ -96,6 +99,7 @@ export class ServiceProviderFactory {
                 vidisAngebotId,
                 merkmale,
                 rollenartenWhitelist,
+                keycloakClient,
             ),
         );
     }

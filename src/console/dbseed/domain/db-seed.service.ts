@@ -4,9 +4,11 @@ import { plainToInstance } from 'class-transformer';
 import fs from 'fs';
 import { validate as isUUID } from 'uuid';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { EmailDomain } from '../../../email/modules/core/domain/email-domain.js';
+import { EmailDomainRepo } from '../../../email/modules/core/persistence/email-domain.repo.js';
 import { FindUserFilter, KeycloakUserService, User } from '../../../modules/keycloak-administration/index.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
+import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../../modules/person/domain/person.factory.js';
 import { Person, PersonCreationParams } from '../../../modules/person/domain/person.js';
@@ -16,10 +18,14 @@ import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/
 import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../../modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { RollenMerkmal } from '../../../modules/rolle/domain/rolle.enums.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
 import { RolleFactory } from '../../../modules/rolle/domain/rolle.factory.js';
 import { Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { RollenerweiterungFactory } from '../../../modules/rolle/domain/rollenerweiterung.factory.js';
+import { Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { RollenerweiterungRepo } from '../../../modules/rolle/repo/rollenerweiterung.repo.js';
+import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { ServiceProviderFactory } from '../../../modules/service-provider/domain/service-provider.factory.js';
 import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
@@ -28,22 +34,16 @@ import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
 import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
 import { ConstructorCall, EntityFile } from '../db-seed.console.js';
 import { DataProviderFile } from '../file/data-provider-file.js';
+import { EmailDomainFile } from '../file/email-domain-file.js';
 import { OrganisationFile } from '../file/organisation-file.js';
 import { PersonFile } from '../file/person-file.js';
 import { PersonenkontextFile } from '../file/personenkontext-file.js';
 import { RolleFile } from '../file/rolle-file.js';
+import { RollenerweiterungFile } from '../file/rollenerweiterung-file.js';
 import { ServiceProviderFile } from '../file/service-provider-file.js';
 import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 import { DbSeedReferenceRepo } from '../repo/db-seed-reference.repo.js';
 import { DbSeedReference } from './db-seed-reference.js';
-import { EmailDomainFile } from '../file/email-domain-file.js';
-import { EmailDomain } from '../../../email/modules/core/domain/email-domain.js';
-import { EmailDomainRepo } from '../../../email/modules/core/persistence/email-domain.repo.js';
-import { RollenerweiterungFile } from '../file/rollenerweiterung-file.js';
-import { Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
-import { RollenerweiterungFactory } from '../../../modules/rolle/domain/rollenerweiterung.factory.js';
-import { RollenerweiterungRepo } from '../../../modules/rolle/repo/rollenerweiterung.repo.js';
-import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
 
 @Injectable()
 export class DbSeedService {
@@ -259,6 +259,7 @@ export class DbSeedService {
                 file.vidisAngebotId,
                 file.merkmale ?? [],
                 file.rollenartenWhitelist ?? [],
+                file.keycloakClient,
             );
             if (!serviceProvider.ok) {
                 throw serviceProvider.error;

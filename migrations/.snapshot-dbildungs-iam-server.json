@@ -3603,6 +3603,23 @@
           "mappedType": "enum",
           "nativeEnumName": "service_provider_kategorie_enum"
         },
+        "keycloak_client": {
+          "name": "keycloak_client",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
         "keycloak_group": {
           "name": "keycloak_group",
           "type": "varchar(255)",

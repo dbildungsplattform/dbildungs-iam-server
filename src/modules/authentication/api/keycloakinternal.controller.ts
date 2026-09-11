@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards, UseInterceptors, Version } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ExternalDataCacheInterceptor } from '../../../shared/cache/external-data-cache-interceptor.js';
 import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
@@ -12,11 +12,14 @@ import {
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
 import { UserExternaldataWorkflowAggregate } from '../domain/user-extenaldata.workflow.js';
+import { UserExternalData, UserExternaldataService } from '../domain/user-externaldata.service.js';
 import { AccessApiKeyGuard } from './access.apikey.guard.js';
 import { OxParams } from './externaldata/user-externaldata-ox.response.js';
+import { UserExternalDataV2BodyParams } from './externaldata/user-externaldata-v2.body.params.js';
+import { UserExternalDataV2Response } from './externaldata/user-externaldata-v2.response.js';
+import { UserExternalDataBodyParams } from './externaldata/user-externaldata.body.params.js';
 import { UserExternalDataResponse } from './externaldata/user-externaldata.response.js';
 import { Public } from './public.decorator.js';
-import { UserExternalDataBodyParams } from './externaldata/user-externaldata.body.params.js';
 
 type WithoutOptional<T> = {
     [K in keyof T]-?: T[K];
@@ -41,6 +44,7 @@ type InitializedWorkflow = UserExternaldataWorkflowAggregate & {
 export class KeycloakInternalController {
     public constructor(
         private readonly userExternaldataWorkflowFactory: UserExternaldataWorkflowFactory,
+        private readonly userExternaldataService: UserExternaldataService,
         private readonly personRepository: PersonRepository,
     ) {}
 
@@ -75,6 +79,30 @@ export class KeycloakInternalController {
         });
 
         return userExternalDataResponse;
+    }
+
+    @UseInterceptors(ExternalDataCacheInterceptor)
+    @Version('2')
+    @Post('externaldata')
+    @HttpCode(200)
+    @Public()
+    @UseGuards(AccessApiKeyGuard)
+    @ApiOperation({ summary: 'External Data about the requested user, scoped to a single Angebot.' })
+    @ApiOkResponse({
+        description: 'Returns external Data about the requested user for the given Angebot.',
+        type: UserExternalDataV2Response,
+    })
+    public async getExternalDataV2(@Body() params: UserExternalDataV2BodyParams): Promise<UserExternalDataV2Response> {
+        const result: Result<UserExternalData, DomainError> = await this.userExternaldataService.getExternalData(
+            params.sub,
+            params.keycloakClient,
+            params.includeEmailAddress ?? false,
+        );
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return UserExternalDataV2Response.createNew(result.value);
     }
 
     private checkPerson(person: Option<Person<true>>, keycloakSub: string): asserts person is Person<true> {

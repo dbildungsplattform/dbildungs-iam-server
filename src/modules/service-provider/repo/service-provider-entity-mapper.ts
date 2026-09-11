@@ -1,9 +1,9 @@
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
 import { ServiceProvider } from '../domain/service-provider.js';
-import { ServiceProviderEntity } from './service-provider.entity.js';
 import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
 import { ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
-import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
+import { ServiceProviderEntity } from './service-provider.entity.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -36,6 +36,7 @@ export function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         externalSystem: serviceProvider.externalSystem,
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
+        keycloakClient: serviceProvider.keycloakClient,
         merkmale,
         rollenartenWhitelist,
     };
@@ -68,5 +69,6 @@ export function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProv
         entity.vidisAngebotId,
         merkmale,
         rollenartenWhitelist,
+        entity.keycloakClient,
     );
 }

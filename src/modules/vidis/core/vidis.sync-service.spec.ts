@@ -1,9 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { faker } from '@faker-js/faker';
 import { EntityManager } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import {
     EntityNotFoundError,
@@ -11,12 +12,14 @@ import {
     MissingPermissionsError,
     SharedDomainError,
 } from '../../../shared/error/index.js';
-import { Err, Ok } from '../../../shared/util/result.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
+import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -25,17 +28,14 @@ import {
 } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import type {
     VidisAngebotWithSchoolActivations,
     VidisApiResponseAngebotBySchool,
     VidisServiceResponseAngebot,
 } from '../adapter/domain/vidis.types.js';
-import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
-import { faker } from '@faker-js/faker';
-import { VidisSyncService } from './vidis.sync-service.js';
-import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
-import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
+import { VidisSyncService } from './vidis.sync-service.js';
 
 type TorgaIds = {
     id: string;
@@ -69,6 +69,7 @@ describe('VidisSyncService', () => {
     type DecodedVidisLogoResult = { logo: Buffer | undefined; logoMimeType: string | undefined };
 
     const tinyPngBase64: string = 'iVBORw0KGgo=';
+    const vidisKeycloakClientId: string = 'vidis-keycloak-client';
     const vidisApiServiceProviderMock: Pick<
         VidisApiAdapter,
         'getActivatedAngeboteByRegionSH' | 'getActivatedAngeboteBySchool'
@@ -148,6 +149,7 @@ describe('VidisSyncService', () => {
             vidisAngebotId,
             [],
             [],
+            vidisKeycloakClientId,
         );
 
     const decodeVidisLogo = (offerLogo: string): DecodedVidisLogoResult =>
@@ -170,6 +172,7 @@ describe('VidisSyncService', () => {
     beforeAll(async () => {
         getOrThrowMock = vi.fn().mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         module = await Test.createTestingModule({
             providers: [
@@ -244,6 +247,7 @@ describe('VidisSyncService', () => {
         permissionsMock = createPersonPermissionsMock() as unknown as EscalatedPersonPermissions;
         getOrThrowMock.mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         escalatedPersonPermissionsFactoryMock.createNew.mockReturnValue(permissionsMock);
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(permissionsMock);
@@ -818,6 +822,7 @@ describe('VidisSyncService', () => {
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ]);
+            expect(createdServiceProvider.keycloakClient).toBe(vidisKeycloakClientId);
         });
 
         it('should skip VIDIS Angebote that already exist as non-school-provided Angebote in the database', async () => {
@@ -849,6 +854,7 @@ describe('VidisSyncService', () => {
                     '1',
                     [],
                     [],
+                    undefined,
                 ),
             ];
             serviceProviderModificationServiceMock.create.mockResolvedValue(

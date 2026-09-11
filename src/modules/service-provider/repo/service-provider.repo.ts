@@ -54,6 +54,7 @@ function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         externalSystem: serviceProvider.externalSystem,
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
+        keycloakClient: serviceProvider.keycloakClient,
         merkmale,
         rollenartenWhitelist,
     };
@@ -86,6 +87,7 @@ function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProvider<bo
         entity.vidisAngebotId,
         merkmale,
         rollenartenWhitelist,
+        entity.keycloakClient,
     );
 }
 

@@ -306,7 +306,7 @@
             "spsh-no2fa": [],
             "admin-cli": [],
             "spsh-admin": [],
-            "${VIDIS_CLIENT_ID}": [],
+            "${VIDIS_KEYCLOAK_CLIENT_ID}": [],
             "account-console": [],
             "spsh-service": [],
             "${KC_NEXTCLOUD_CLIENT_ID}": [],
@@ -1198,7 +1198,7 @@
         },
         {
             "id": "cf591738-18c7-4962-9b3f-a1b2ef15c94a",
-            "clientId": "${VIDIS_CLIENT_ID}",
+            "clientId": "${VIDIS_KEYCLOAK_CLIENT_ID}",
             "name": "VIDIS-Testumgebung",
             "description": "",
             "rootUrl": "",
@@ -1210,7 +1210,7 @@
             "clientAuthenticatorType": "client-secret",
             "secret": "${VIDIS_CLIENT_SECRET}",
             "redirectUris": [
-              "/*"
+              "${VIDIS_REDIRECT_URI}"
             ],
             "webOrigins": [
               "/*"
@@ -1220,7 +1220,7 @@
             "consentRequired": false,
             "standardFlowEnabled": true,
             "implicitFlowEnabled": true,
-            "directAccessGrantsEnabled": true,
+            "directAccessGrantsEnabled": false,
             "serviceAccountsEnabled": false,
             "publicClient": false,
             "frontchannelLogout": false,
@@ -1229,7 +1229,7 @@
               "oidc.ciba.grant.enabled": "false",
               "client.secret.creation.time": "1724413577",
               "backchannel.logout.session.required": "false",
-              "backchannel.logout.url": "https://aai-test.vidis.schule/auth/realms/vidis/protocol/openid-connect/logout/backchannel-logout",
+              "backchannel.logout.url": "${VIDIS_LOCAL_BACKCHANNEL_LOGOUT_URL}",
               "oauth2.device.authorization.grant.enabled": "false",
               "display.on.consent.screen": "false",
               "backchannel.logout.revoke.offline.tokens": "true"
@@ -1237,6 +1237,128 @@
             "authenticationFlowBindingOverrides": {},
             "fullScopeAllowed": true,
             "nodeReRegistrationTimeout": -1,
+            "protocolMappers": [
+              {
+                "id": "6f05a68c-1dfc-48ad-b258-c251e26ecdab",
+                "name": "rolle",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.rollenart",
+                  "ignoreMissingPath": "true",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "false",
+                  "multivalued": "false",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "rolle",
+                  "jsonType.label": "String"
+                }
+              },
+              {
+                "id": "6a096d4d-c024-488d-920c-a44ddb219941",
+                "name": "schulkennung",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.dienststellenNummern",
+                  "ignoreMissingPath": "false",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "false",
+                  "multivalued": "true",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "schulkennung",
+                  "jsonType.label": "String"
+                }
+              },
+              {
+                "id": "ce4a78e6-405c-4615-860a-5792354812bc",
+                "name": "vorname",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.vorname",
+                  "ignoreMissingPath": "false",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "false",
+                  "multivalued": "false",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "vorname",
+                  "jsonType.label": "String"
+                }
+              },
+              {
+                "id": "2b80b676-0488-44cd-a33c-9f15c5e4d543",
+                "name": "email",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.emailAdresse",
+                  "ignoreMissingPath": "true",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "true",
+                  "multivalued": "false",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "email",
+                  "jsonType.label": "String"
+                }
+              },
+              {
+                "id": "be242a66-71b9-47af-b277-b3e8bd5eab34",
+                "name": "nachname",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.nachname",
+                  "ignoreMissingPath": "false",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "false",
+                  "multivalued": "false",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "nachname",
+                  "jsonType.label": "String"
+                }
+              },
+              {
+                "id": "a44d44e1-dc80-4e7e-8faa-343c451029f6",
+                "name": "uid",
+                "protocol": "openid-connect",
+                "protocolMapper": "spsh-custom-oidc-api-mapper",
+                "consentRequired": false,
+                "config": {
+                  "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                  "extractJsonPath": "$.personId",
+                  "ignoreMissingPath": "false",
+                  "keycloakClient": "",
+                  "includeEmailAddress": "false",
+                  "multivalued": "false",
+                  "userinfo.token.claim": "true",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "claim.name": "uid",
+                  "jsonType.label": "String"
+                }
+              }
+            ],
             "defaultClientScopes": [
               "web-origins",
               "acr",

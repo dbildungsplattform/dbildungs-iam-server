@@ -455,6 +455,7 @@ export class ProviderController {
             undefined, // vidisAngebotId
             body.merkmale,
             body.rollenartenWhitelist ?? [],
+            undefined, // keycloakClient
         );
         if (!serviceProvider.ok) {
             throw serviceProvider.error;
