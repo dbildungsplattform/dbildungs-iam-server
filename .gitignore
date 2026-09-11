@@ -151,5 +151,6 @@ mariadb/
 test/secrets.test.json
 nginx/ssl/
 
-# exclude skills directory to allow custom setups
+# exclude directories to allow custom setups
 .github/skills
+.github/prompts
