@@ -318,7 +318,7 @@ describe('Rolle API', () => {
                 const rolleOnSchule2: Rolle<true> = await rolleRepo.create(
                     DoFactory.createRolle(false, {
                         rollenart: RollenArt.LEHR,
-                        administeredBySchulstrukturknoten: schule1.id,
+                        administeredBySchulstrukturknoten: schule2.id,
                     }),
                 );
                 permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
