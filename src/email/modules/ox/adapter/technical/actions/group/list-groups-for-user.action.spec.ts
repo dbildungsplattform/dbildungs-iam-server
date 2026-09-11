@@ -1,5 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ListGroupsForUserAction, ListGroupsForUserResponseBody } from './list-groups-for-user.action.js';
+import {
+    ListGroupsForUserAction,
+    ListGroupsForUserResponse,
+    ListGroupsForUserResponseBody,
+} from './list-groups-for-user.action.js';
+import { expectOkResult } from '../../../../../../../../test/utils/test-types.js';
 
 describe('ListGroupsForUserAction', () => {
     describe('buildRequest', () => {
@@ -12,6 +17,21 @@ describe('ListGroupsForUserAction', () => {
             });
 
             expect(action.buildRequest()).toBeDefined();
+        });
+    });
+
+    describe('isArrayOverride', () => {
+        it('should return true for repeating list elements', () => {
+            const action: ListGroupsForUserAction = new ListGroupsForUserAction({
+                contextId: faker.string.uuid(),
+                userId: faker.string.uuid(),
+                login: '',
+                password: '',
+            });
+
+            const ret: boolean = action.isArrayOverride('', 'Envelope.Body.listGroupsForUserResponse.return');
+
+            expect(ret).toBe(true);
         });
     });
 
@@ -65,7 +85,7 @@ describe('ListGroupsForUserAction', () => {
             });
         });
 
-        describe('when only one group is in result', () => {
+        describe('when no groups are part of result', () => {
             it('should return ListGroupsForUserResponse', () => {
                 const action: ListGroupsForUserAction = new ListGroupsForUserAction({
                     contextId: faker.string.uuid(),
@@ -75,28 +95,13 @@ describe('ListGroupsForUserAction', () => {
                 });
 
                 const body: ListGroupsForUserResponseBody = {
-                    listGroupsForUserResponse: {
-                        return: {
-                            id: 'id1',
-                            displayname: 'display name group 1',
-                            name: 'group1',
-                            memberIds: ['userId1'],
-                        },
-                    },
+                    listGroupsForUserResponse: {},
                 };
-                expect(action.parseBody(body)).toEqual({
-                    ok: true,
-                    value: {
-                        groups: [
-                            {
-                                id: 'id1',
-                                displayname: 'display name group 1',
-                                name: 'group1',
-                                memberIds: ['userId1'],
-                            },
-                        ],
-                    },
-                });
+
+                const result: Result<ListGroupsForUserResponse> = action.parseBody(body);
+
+                expectOkResult(result);
+                expect(result.value.groups).toHaveLength(0);
             });
         });
     });
