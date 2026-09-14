@@ -3,7 +3,7 @@ import { PagedQueryParams } from '../../../shared/paging/index.js';
 import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { RollenArt, RollenArtTypName } from '../domain/rolle.enums.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
-import { ArrayUnique, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayUnique, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
 
 export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParams {
@@ -50,6 +50,7 @@ export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParam
 
     @IsEnum(RollenSystemRechtEnum)
     @IsOptional()
+    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN])
     @ApiProperty({
         enum: RollenSystemRechtEnum,
         enumName: RollenSystemRechtEnumName,

@@ -247,7 +247,7 @@ export class RolleController {
         @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PagedResponse<RolleResponse>> {
-        const rollenAndTotal: [Rolle<true>[], number] =
+        const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
                 permissions,
                 systemrecht: queryParams.systemrecht
@@ -261,10 +261,10 @@ export class RolleController {
                 offset: queryParams.offset,
             });
         return new PagedResponse<RolleResponse>({
-            total: rollenAndTotal[1],
+            total,
             offset: queryParams.offset ?? 0,
-            limit: queryParams.limit ?? rollenAndTotal[0].length,
-            items: rollenAndTotal[0].map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+            limit: queryParams.limit ?? rollen.length,
+            items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
         });
     }
 
