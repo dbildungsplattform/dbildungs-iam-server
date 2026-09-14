@@ -37,7 +37,10 @@ import { OrganisationDeletedEvent } from '../../../shared/events/organisation-de
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
+import {
+    PersonenkontextEventKontextData,
+    PersonenkontextEventPersonData,
+} from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
 import { OrganisationID, PersonID, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
 import { Ok } from '../../../shared/util/result.js';
@@ -210,117 +213,131 @@ export class LdapEventHandler {
                         pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM) &&
                         !this.hatZuordnungZuOrganisationNachLoeschen(event, pk),
                 )
-                .map((pk: PersonenkontextEventKontextData) => {
-                    if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
-                    }
-                    return this.getEmailDomainForOrganisationId(pk.orgaId)
-                        .catch((error: Error) => {
-                            this.logger.error(`Error in getEmailDomainForOrganisationId: ${error.message}`);
-                            return Promise.reject(error);
-                        })
-                        .then((emailDomain: Result<string>) => {
-                            if (emailDomain.ok) {
-                                this.logger.info(
-                                    `Call LdapClientService because person has UEM service provider, pkId: ${pk.id}`,
-                                );
-                                return this.ldapClientAdapter
-                                    .removePersonFromGroupByUsernameAndKennung(
-                                        event.person.username!,
-                                        pk.orgaKennung!,
-                                        emailDomain.value,
-                                    )
-                                    .then((removeFromGroupResult: Result<boolean>) => {
-                                        if (!removeFromGroupResult.ok) {
-                                            this.logger.error(removeFromGroupResult.error.message);
-                                        }
-                                        return removeFromGroupResult;
-                                    })
-                                    .catch((error: Error) => {
-                                        this.logger.error(`Error in removePersonFromGroup: ${error.message}`);
-                                        return Promise.reject(error);
-                                    });
-                            } else {
-                                this.logger.error(
-                                    `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
-                                );
-                                return Promise.reject(new Error('Invalid email domain'));
-                            }
-                        });
-                }),
+                .map((pk: PersonenkontextEventKontextData) =>
+                    this.removePersonFromLdapGroup(event.person.username!, pk),
+                ),
         );
 
-        // Create personenkontexte if the person has the UEM service provider
         const newKontexteResults: PromiseSettledResult<Result<PersonData>>[] = await Promise.allSettled(
             event.newKontexte
                 .filter((pk: PersonenkontextEventKontextData) =>
                     pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM),
                 )
-                .map((pk: PersonenkontextEventKontextData) => {
-                    this.logger.info(`Call LdapClientService because person has UEM service provider`);
-                    if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
-                    }
-                    return this.getEmailDomainForOrganisationId(pk.orgaId)
-                        .catch((error: Error) => {
-                            this.logger.error(`Error in getEmailDomainForOrganisationId: ${error.message}`);
-                            return Promise.reject(error);
-                        })
-                        .then((emailDomain: Result<string>) => {
-                            if (emailDomain.ok) {
-                                return this.ldapClientAdapter
-                                    .createLehrer(event.person, emailDomain.value, pk.orgaKennung!)
-                                    .then(async (creationResult: Result<PersonData>) => {
-                                        if (!creationResult.ok) {
-                                            this.logger.error(creationResult.error.message);
-                                        } else {
-                                            const person: Option<Person<true>> = await this.personRepo.findById(
-                                                event.person.id,
-                                            );
-                                            if (!person) {
-                                                this.logger.error(
-                                                    `LdapClientService createLehrer could not find person with id:${event.person.id}, ref:${event.person.username}`,
-                                                );
-                                            } else if (creationResult.value.ldapEntryUUID) {
-                                                person.externalIds.LDAP = creationResult.value.ldapEntryUUID;
-                                                await this.personRepo.save(person);
-                                            }
-                                        }
-
-                                        return creationResult;
-                                    })
-                                    .catch((error: Error) => {
-                                        this.logger.error(`Error in createLehrer: ${error.message}`);
-                                        return Promise.reject(error);
-                                    });
-                            } else {
-                                this.logger.error(
-                                    `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
-                                );
-                                return Promise.reject(new Error('Invalid email domain'));
-                            }
-                        });
-                }),
+                .map((pk: PersonenkontextEventKontextData) => this.createLehrerInLdap(event.person, pk)),
         );
 
-        const combinedResults: PromiseSettledResult<Result<unknown>>[] = [...removeResults, ...newKontexteResults];
-        const failureReasons: string[] = combinedResults.reduce(
-            (acc: string[], result: PromiseSettledResult<Result<unknown, Error>>) => {
-                if (result.status === 'rejected') {
-                    acc.push(inspect(result.reason));
-                } else if (result.status === 'fulfilled' && !result.value.ok) {
-                    acc.push(inspect(result.value.error));
-                }
-                return acc;
-            },
-            [],
-        );
-
+        const failureReasons: string[] = this.collectFailureReasons([...removeResults, ...newKontexteResults]);
         if (failureReasons.length > 0) {
             return { ok: false, error: new Error(failureReasons.join(', ')) };
         }
 
         return { ok: true, value: null };
+    }
+
+    private async removePersonFromLdapGroup(
+        username: PersonUsername,
+        pk: PersonenkontextEventKontextData,
+    ): Promise<Result<boolean>> {
+        if (!pk.orgaKennung) {
+            throw new Error('Organisation has no Kennung');
+        }
+
+        const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
+        if (!emailDomain.ok) {
+            this.logger.error(
+                `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
+            );
+            throw new Error('Invalid email domain');
+        }
+
+        this.logger.info(`Call LdapClientService because person has UEM service provider, pkId: ${pk.id}`);
+        try {
+            const removeResult: Result<boolean> = await this.ldapClientAdapter.removePersonFromGroupByUsernameAndKennung(
+                username,
+                pk.orgaKennung,
+                emailDomain.value,
+            );
+            if (!removeResult.ok) {
+                this.logger.error(removeResult.error.message);
+            }
+            return removeResult;
+        } catch (error: unknown) {
+            this.logger.error(
+                `Error in removePersonFromGroup: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            throw error;
+        }
+    }
+
+    private async createLehrerInLdap(
+        person: PersonenkontextEventPersonData,
+        pk: PersonenkontextEventKontextData,
+    ): Promise<Result<PersonData>> {
+        this.logger.info(`Call LdapClientService because person has UEM service provider`);
+        if (!pk.orgaKennung) {
+            throw new Error('Organisation has no Kennung');
+        }
+
+        const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
+        if (!emailDomain.ok) {
+            this.logger.error(
+                `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
+            );
+            throw new Error('Invalid email domain');
+        }
+
+        try {
+            const creationResult: Result<PersonData> = await this.ldapClientAdapter.createLehrer(
+                person,
+                emailDomain.value,
+                pk.orgaKennung,
+            );
+            if (!creationResult.ok) {
+                this.logger.error(creationResult.error.message);
+                return creationResult;
+            }
+            await this.persistLdapEntryUuid(person, creationResult.value);
+            return creationResult;
+        } catch (error: unknown) {
+            this.logger.error(`Error in createLehrer: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+
+    private async persistLdapEntryUuid(person: PersonenkontextEventPersonData, creation: PersonData): Promise<void> {
+        const persistedPerson: Option<Person<true>> = await this.personRepo.findById(person.id);
+        if (!persistedPerson) {
+            this.logger.error(
+                `LdapClientService createLehrer could not find person with id:${person.id}, ref:${person.username}`,
+            );
+            return;
+        }
+        if (creation.ldapEntryUUID) {
+            persistedPerson.externalIds.LDAP = creation.ldapEntryUUID;
+            await this.personRepo.save(persistedPerson);
+        }
+    }
+
+    private async resolveEmailDomainOrThrow(organisationId: OrganisationID): Promise<Result<string>> {
+        try {
+            return await this.getEmailDomainForOrganisationId(organisationId);
+        } catch (error: unknown) {
+            this.logger.error(
+                `Error in getEmailDomainForOrganisationId: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            throw error;
+        }
+    }
+
+    private collectFailureReasons(results: PromiseSettledResult<Result<unknown>>[]): string[] {
+        return results.reduce((acc: string[], result: PromiseSettledResult<Result<unknown, Error>>) => {
+            if (result.status === 'rejected') {
+                acc.push(inspect(result.reason));
+            } else if (!result.value.ok) {
+                acc.push(inspect(result.value.error));
+            }
+            return acc;
+        }, []);
     }
 
     @KafkaEventHandler(KafkaEmailAddressGeneratedEvent)

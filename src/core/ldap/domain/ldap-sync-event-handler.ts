@@ -192,11 +192,7 @@ export class LdapSyncEventHandler {
 
         // Delete all rollen from map which do NOT have the UEM service provider
         for (const [rolleId, rolle] of rollen.entries()) {
-            if (
-                !rolle.serviceProviderData.some(
-                    (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
-                )
-            ) {
+            if (!this.hasUemServiceProvider(rolle)) {
                 rollen.delete(rolleId);
             }
         }
@@ -419,6 +415,12 @@ export class LdapSyncEventHandler {
 
     private isAddressInDisabledAddresses(email: string, disabledEmailAddresses: string[]): boolean {
         return disabledEmailAddresses.some((disabledAddress: string) => disabledAddress === email);
+    }
+
+    private hasUemServiceProvider(rolle: Rolle<true>): boolean {
+        return rolle.serviceProviderData.some(
+            (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
+        );
     }
 
     private createGroupAdditionList(schulenDstNrList: string[], groupDns: string[]): string[] {
