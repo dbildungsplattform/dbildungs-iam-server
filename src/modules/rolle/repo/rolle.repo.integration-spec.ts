@@ -163,11 +163,23 @@ describe('RolleRepo', () => {
                 sut.save(DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] })),
                 sut.save(DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] })),
             ]);
+            // force a fresh read, otherwise the already-managed serviceProvider would keep its logo despite the exclude below
+            em.clear();
 
             const rollenResult: Rolle<true>[] = await sut.findByRollenArten(false);
 
             expect(rollenResult).toHaveLength(3);
-            expect(rollenResult).toEqual(expect.arrayContaining(rollen));
+            expect(rollenResult).toEqual(
+                expect.arrayContaining(
+                    (rollen as Rolle<true>[]).map((rolle: Rolle<true>) => ({
+                        ...rolle,
+                        serviceProviderData: rolle.serviceProviderData.map((sp: ServiceProvider<true>) => ({
+                            ...sp,
+                            logo: undefined,
+                        })),
+                    })),
+                ),
+            );
         });
 
         it.each([
