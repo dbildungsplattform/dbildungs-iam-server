@@ -252,11 +252,12 @@ export class LdapEventHandler {
 
         this.logger.info(`Call LdapClientService because person has UEM service provider, pkId: ${pk.id}`);
         try {
-            const removeResult: Result<boolean> = await this.ldapClientAdapter.removePersonFromGroupByUsernameAndKennung(
-                username,
-                pk.orgaKennung,
-                emailDomain.value,
-            );
+            const removeResult: Result<boolean> =
+                await this.ldapClientAdapter.removePersonFromGroupByUsernameAndKennung(
+                    username,
+                    pk.orgaKennung,
+                    emailDomain.value,
+                );
             if (!removeResult.ok) {
                 this.logger.error(removeResult.error.message);
             }
