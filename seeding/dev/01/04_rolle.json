@@ -192,7 +192,7 @@
         {
             "id": 22,
             "administeredBySchulstrukturknoten": 1,
-            "name": "Schulpsychologinnen und Schulpsychologen",
+            "name": "Schulpsychologe",
             "rollenart": "SORGBER",
             "merkmale": ["MPT_ROLLE", "KOPERS_PFLICHT"],
             "systemrechte": [],
