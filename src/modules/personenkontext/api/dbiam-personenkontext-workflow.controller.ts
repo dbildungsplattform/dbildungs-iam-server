@@ -69,7 +69,7 @@ export class DbiamPersonenkontextWorkflowController {
     ) {}
 
     @Get('step')
-    //@UseGuards(StepUpGuard)
+    @UseGuards(StepUpGuard)
     @ApiOkResponse({
         description: `Initialize or process data from the person creation form.
                       Valid combinations:
