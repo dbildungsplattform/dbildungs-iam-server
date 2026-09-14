@@ -10,6 +10,9 @@ import {
 } from '../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { DomainError } from '../../../../shared/error/index.js';
+import { OxError } from '../../../../shared/error/ox.error.js';
+import { Err, Ok } from '../../../../shared/util/result.js';
+import { OxAdapter } from '../../ox/adapter/domain/ox.adapter.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
@@ -21,6 +24,7 @@ describe('SetEmailSuspendedService', () => {
     let sut: SetEmailSuspendedService;
     let orm: MikroORM;
     let emailAddressRepo: EmailAddressRepo;
+    let oxAdapterMock: DeepMocked<OxAdapter>;
     let loggerMock: DeepMocked<ClassLogger>;
     let webhookServiceMock: DeepMocked<WebhookService>;
 
@@ -38,12 +42,17 @@ describe('SetEmailSuspendedService', () => {
                     provide: WebhookService,
                     useValue: createMock(WebhookService),
                 },
+                {
+                    provide: OxAdapter,
+                    useValue: createMock(OxAdapter),
+                },
             ],
         }).compile();
 
         sut = module.get(SetEmailSuspendedService);
         orm = module.get(MikroORM);
         emailAddressRepo = module.get(EmailAddressRepo);
+        oxAdapterMock = module.get(OxAdapter);
         loggerMock = module.get(ClassLogger);
         webhookServiceMock = module.get(WebhookService);
 
@@ -67,6 +76,7 @@ describe('SetEmailSuspendedService', () => {
         priority: number,
         status: EmailAddressStatusEnum,
         markedForCron?: Date,
+        oxUserCounter?: string,
     ): Promise<EmailAddress<true>> => {
         const emailAddress: EmailAddress<false> = EmailAddress.createNew({
             address,
@@ -78,7 +88,7 @@ describe('SetEmailSuspendedService', () => {
             ],
             markedForCron: markedForCron,
             spshPersonId: spshPersonId,
-            oxUserCounter: undefined,
+            oxUserCounter,
             externalId: faker.string.uuid(),
         });
         const savedEmail: Result<EmailAddress<true>, DomainError> = await emailAddressRepo.save(emailAddress);
@@ -143,6 +153,7 @@ describe('SetEmailSuspendedService', () => {
             expect(loggerMock.info).toHaveBeenCalledWith(
                 `Priority of email address ${inlegibleEmail} is not 0 or 1. Skipping setting suspended`,
             );
+            expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
             expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
                 spshPersonId,
                 newPrimaryEmail: undefined,
@@ -183,6 +194,88 @@ describe('SetEmailSuspendedService', () => {
             expect(loggerMock.info).toHaveBeenCalledWith(
                 `Received request to set email addresses to suspended for spshPerson ${spshPersonId}.`,
             );
+        });
+
+        describe('OX groups', () => {
+            it('should set OX-groups if user has an OX id', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                const oxUserCounter: string = faker.string.numeric(6);
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    oxUserCounter,
+                );
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
+                oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
+
+                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+
+                expect(oxAdapterMock.setUserOxGroups).toHaveBeenCalledWith(oxUserCounter, []);
+            });
+
+            it('should not set OX-groups if user does not have an OX id', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    undefined,
+                );
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
+                oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
+
+                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+
+                expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
+            });
+
+            it('should log error if setting of groups failed', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    faker.string.numeric(6),
+                );
+
+                oxAdapterMock.useOx.mockReturnValueOnce(true);
+                const error: OxError = new OxError('Could not set groups');
+                oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Err(error));
+
+                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+
+                expect(oxAdapterMock.setUserOxGroups).toHaveBeenCalled();
+                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                    'Error while removing user from OX groups.',
+                    error,
+                );
+            });
+
+            it('should not set OX-groups if OX is disabled', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    faker.string.numeric(6),
+                );
+                oxAdapterMock.useOx.mockReturnValueOnce(false);
+                oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
+
+                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+
+                expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
+                expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('Ox is disabled'));
+            });
         });
     });
 });
