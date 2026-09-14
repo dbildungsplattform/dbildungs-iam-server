@@ -25,6 +25,7 @@ import { ServiceProvider } from '../../service-provider/domain/service-provider.
 import { RequiredExternalPkData } from '../api/authentication.controller.js';
 import { NewOxParams, OldOxParams, OxParams } from '../api/externaldata/user-externaldata-ox.response.js';
 
+export const POLYTHEA_SERVICE_PROVIDER_ID: string = 'b2478ade-f0d1-4864-9713-a12c95cde898';
 export class UserExternaldataWorkflowAggregate {
     public contextID: OXContextID;
 
@@ -46,7 +47,7 @@ export class UserExternaldataWorkflowAggregate {
 
     public singleRollenart?: RollenArt;
 
-    public uniqDienststellenNummern?: string[];
+    public polytheaDienststellenNummern?: string[];
 
     public oxParams?: OxParams;
 
@@ -129,10 +130,27 @@ export class UserExternaldataWorkflowAggregate {
         }
         this.singleRollenart = uniqueRollenarten.length === 1 ? uniqueRollenarten[0] : undefined;
 
-        this.uniqDienststellenNummern = this.computeUniqDienststellenNummern(this.checkedExternalPkData);
+        this.polytheaDienststellenNummern = this.computePolytheaDienststellenNummern(this.mergedExternalPkData);
+
         this.oxParams = this.computeOxParams(this.mergedExternalPkData, this.oxLoginId, this.person);
 
         return undefined;
+    }
+
+    private computePolytheaDienststellenNummern(mergedExternalPkData: ExternalPkData[]): string[] {
+        const polytheaDienststellenNummern: string[] = mergedExternalPkData
+            .filter(
+                (pk: ExternalPkData) =>
+                    pk.serviceProvider &&
+                    pk.serviceProvider.some(
+                        // FIX implement better solution to check if the ServiceProvider is a Polythea ServiceProvider
+                        (sp: ServiceProvider<true>) => sp.id === POLYTHEA_SERVICE_PROVIDER_ID,
+                    ),
+            )
+            .map((pk: ExternalPkData) => pk.kennung)
+            .filter((kennung: string | undefined): kennung is string => kennung !== undefined);
+        new Set(polytheaDienststellenNummern).entries();
+        return Array.from(new Set(polytheaDienststellenNummern));
     }
 
     // Filtering out !expk.kennung || !expk.rollenart automatically leads to only valid organisations of type SCHOOLS are included
@@ -194,10 +212,6 @@ export class UserExternaldataWorkflowAggregate {
 
     private computeUniqueRollenarten(checkedExternalPkData: RequiredExternalPkData[]): RollenArt[] {
         return uniq(checkedExternalPkData.map((pk: RequiredExternalPkData) => pk.rollenart));
-    }
-
-    private computeUniqDienststellenNummern(checkedExternalPkData: RequiredExternalPkData[]): string[] {
-        return uniq(checkedExternalPkData.map((pk: RequiredExternalPkData) => pk.kennung).filter(Boolean));
     }
 
     private computeOxParams(

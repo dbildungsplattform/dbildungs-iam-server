@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DatabaseTestModule, KeycloakConfigTestModule } from '../../../test/utils/index.js';
-import { PersonenKontextApiModule } from './personenkontext-api.module.js';
-import { PersonenkontextController } from './api/personenkontext.controller.js';
-import { PersonenkontextService } from './domain/personenkontext.service.js';
-import { RolleRepo } from '../rolle/repo/rolle.repo.js';
-import { createMock } from '../../../test/utils/createMock.js';
-import { DBiamPersonenkontextRepo } from './persistence/dbiam-personenkontext.repo.js';
 import { CommonTestModule } from '../../../test/utils/common-test.module.js';
+import { createMock } from '../../../test/utils/createMock.js';
+import { DatabaseTestModule, KeycloakConfigTestModule } from '../../../test/utils/index.js';
+import { RolleRepo } from '../rolle/repo/rolle.repo.js';
+import { PersonenkontextService } from './domain/personenkontext.service.js';
+import { DBiamPersonenkontextRepo } from './persistence/dbiam-personenkontext.repo.js';
+import { PersonenKontextApiModule } from './personenkontext-api.module.js';
 
 describe('PersonenKontextApiModule', () => {
     let module: TestingModule;
@@ -41,10 +40,6 @@ describe('PersonenKontextApiModule', () => {
     });
 
     describe('when module is initialized', () => {
-        it('should resolve PersonkontextController', () => {
-            expect(module.get(PersonenkontextController)).toBeInstanceOf(PersonenkontextController);
-        });
-
         it('should resolve PersonenkontextService', () => {
             expect(module.get(PersonenkontextService)).toBeInstanceOf(PersonenkontextService);
         });

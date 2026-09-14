@@ -23,7 +23,7 @@ import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { RequiredExternalPkData } from '../api/keycloakinternal.controller.js';
-import { UserExternaldataWorkflowAggregate } from './user-extenaldata.workflow.js';
+import { POLYTHEA_SERVICE_PROVIDER_ID, UserExternaldataWorkflowAggregate } from './user-extenaldata.workflow.js';
 
 const createRequiredExternalPkData = (props?: Partial<RequiredExternalPkData>): RequiredExternalPkData => {
     return {
@@ -693,6 +693,102 @@ describe('UserExternaldataWorkflow', () => {
             await sut.initialize(person.id);
 
             expect(sut.checkedExternalPkData).toHaveLength(1);
+        });
+    });
+
+    describe('polytheaDienststellenNummern', () => {
+        const setup = (): { person: Person<true> } => {
+            const person: Person<true> = DoFactory.createPerson(true);
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+
+            return { person };
+        };
+
+        it('should include kennung when pk has Polythea service provider', async () => {
+            const { person }: { person: Person<true> } = setup();
+            const externalPkData: RequiredExternalPkData[] = [
+                createRequiredExternalPkData({
+                    kennung: 'poly-kennung',
+                    serviceProvider: [
+                        DoFactory.createServiceProvider(true, {
+                            id: POLYTHEA_SERVICE_PROVIDER_ID,
+                        }),
+                    ],
+                }),
+                createRequiredExternalPkData({
+                    kennung: 'non-poly-kennung',
+                    serviceProvider: [
+                        DoFactory.createServiceProvider(true, {
+                            id: faker.string.uuid(),
+                        }),
+                    ],
+                }),
+            ];
+
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(externalPkData);
+            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+
+            await sut.initialize(person.id);
+
+            expect(sut.polytheaDienststellenNummern).toEqual(['poly-kennung']);
+        });
+
+        it('should return empty list when no Polythea service provider is present', async () => {
+            const { person }: { person: Person<true> } = setup();
+            const externalPkData: RequiredExternalPkData[] = [
+                createRequiredExternalPkData({
+                    kennung: 'kennung-1',
+                    serviceProvider: [
+                        DoFactory.createServiceProvider(true, {
+                            id: faker.string.uuid(),
+                        }),
+                    ],
+                }),
+            ];
+
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(externalPkData);
+            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+
+            await sut.initialize(person.id);
+
+            expect(sut.polytheaDienststellenNummern).toEqual([]);
+        });
+
+        it('should filter out undefined kennung values in private method result', () => {
+            const polytheaPkData: ExternalPkData[] = [
+                {
+                    pkId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                    rollenart: RollenArt.LEHR,
+                    kennung: undefined,
+                    serviceProvider: [
+                        DoFactory.createServiceProvider(true, {
+                            id: POLYTHEA_SERVICE_PROVIDER_ID,
+                        }),
+                    ],
+                },
+                {
+                    pkId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                    rollenart: RollenArt.LEHR,
+                    kennung: 'poly-kennung',
+                    serviceProvider: [
+                        DoFactory.createServiceProvider(true, {
+                            id: POLYTHEA_SERVICE_PROVIDER_ID,
+                        }),
+                    ],
+                },
+            ];
+
+            const result: string[] = (
+                sut as unknown as {
+                    computePolytheaDienststellenNummern: (checkedExternalPkData: ExternalPkData[]) => string[];
+                }
+            ).computePolytheaDienststellenNummern(polytheaPkData);
+
+            expect(result).toEqual(['poly-kennung']);
         });
     });
 });

@@ -16,6 +16,7 @@ import { AccessApiKeyGuard } from './access.apikey.guard.js';
 import { OxParams } from './externaldata/user-externaldata-ox.response.js';
 import { UserExternalDataResponse } from './externaldata/user-externaldata.response.js';
 import { Public } from './public.decorator.js';
+import { UserExternalDataBodyParams } from './externaldata/user-externaldata.body.params.js';
 
 type WithoutOptional<T> = {
     [K in keyof T]-?: T[K];
@@ -31,7 +32,7 @@ type InitializedWorkflow = UserExternaldataWorkflowAggregate & {
     externalPkDataWithVidisAngebotId: RequiredExternalPkData[];
     vidisDienststellennummern: string[];
     singleRollenart: RollenArt | undefined;
-    uniqDienststellenNummern: string[];
+    polytheaDienststellenNummern: string[];
     oxParams: OxParams | undefined;
 };
 
@@ -55,7 +56,7 @@ export class KeycloakInternalController {
     @UseGuards(AccessApiKeyGuard)
     @ApiOperation({ summary: 'External Data about requested in user.' })
     @ApiOkResponse({ description: 'Returns external Data about the requested user.', type: UserExternalDataResponse })
-    public async getExternalData(@Body() params: { sub: string }): Promise<UserExternalDataResponse> {
+    public async getExternalData(@Body() params: UserExternalDataBodyParams): Promise<UserExternalDataResponse> {
         const person: Option<Person<true>> = await this.personRepository.findByKeycloakUserId(params.sub);
         this.checkPerson(person, params.sub);
 
@@ -68,7 +69,7 @@ export class KeycloakInternalController {
             checkedExternalPkData: workflow.checkedExternalPkData,
             vidisDienststellennummern: workflow.vidisDienststellennummern,
             singleRollenart: workflow.singleRollenart,
-            uniqDienststellenNummern: workflow.uniqDienststellenNummern,
+            polytheaDienststellenNummern: workflow.polytheaDienststellenNummern,
             email: workflow.email,
             oxParams: workflow.oxParams,
         });
@@ -95,7 +96,7 @@ export class KeycloakInternalController {
             !workflow.mergedExternalPkData ||
             !workflow.externalPkDataWithVidisAngebotId ||
             !workflow.vidisDienststellennummern ||
-            !workflow.uniqDienststellenNummern
+            !workflow.polytheaDienststellenNummern
         ) {
             throw new UserExternalDataWorkflowError(
                 'UserExternaldataWorkflowAggregate has not been successfully initialized',

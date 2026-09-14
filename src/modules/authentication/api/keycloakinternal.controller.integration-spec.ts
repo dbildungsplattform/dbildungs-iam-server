@@ -36,7 +36,10 @@ import { ServiceProviderSystem } from '../../service-provider/domain/service-pro
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
-import { UserExternaldataWorkflowAggregate } from '../domain/user-extenaldata.workflow.js';
+import {
+    POLYTHEA_SERVICE_PROVIDER_ID,
+    UserExternaldataWorkflowAggregate,
+} from '../domain/user-extenaldata.workflow.js';
 import { AuthenticationExceptionFilter } from './authentication-exception-filter.js';
 import { UserExternalDataResponse } from './externaldata/user-externaldata.response.js';
 import { KeycloakInternalController } from './keycloakinternal.controller.js';
@@ -199,7 +202,7 @@ describe('KeycloakInternalController', () => {
             expect(result.onlineDateiablage.personId).toEqual(person.id);
             expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
             expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
-            expect(result.polyteia.dienststellenNummern.length).toEqual(3);
+            expect(result.polyteia.dienststellenNummern.length).toEqual(0);
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
 
@@ -265,7 +268,7 @@ describe('KeycloakInternalController', () => {
                     kennung: faker.lorem.word(),
                     serviceProvider: [
                         createMock<ServiceProvider<true>>(ServiceProvider<true>, {
-                            vidisAngebotId: faker.string.uuid(),
+                            id: POLYTHEA_SERVICE_PROVIDER_ID,
                         }),
                     ],
                 },
@@ -314,14 +317,16 @@ describe('KeycloakInternalController', () => {
             expect(result.vidis.vorname).toEqual(person.vorname);
             expect(result.vidis.nachname).toEqual(person.familienname);
             expect(result.vidis.rollenart).toEqual(pkExternalData[0]?.rollenart);
-            expect(result.vidis.dienststellenNummern.length).toEqual(2);
+            expect(result.vidis.dienststellenNummern.length).toEqual(1);
             expect(result.opsh.vorname).toEqual(person.vorname);
             expect(result.opsh.nachname).toEqual(person.familienname);
             expect(result.opsh.personenkontexte.length).toEqual(2);
             expect(result.onlineDateiablage.personId).toEqual(person.id);
             expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
             expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
-            expect(result.polyteia.dienststellenNummern.length).toEqual(2);
+            expect(result.polyteia.vorname).toEqual(person.vorname);
+            expect(result.polyteia.familienname).toEqual(person.familienname);
+            expect(result.polyteia.dienststellenNummern.length).toEqual(1);
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
 
@@ -360,6 +365,17 @@ describe('KeycloakInternalController', () => {
                     serviceProvider: [
                         createMock<ServiceProvider<true>>(ServiceProvider<true>, {
                             vidisAngebotId: faker.string.uuid(),
+                        }),
+                    ],
+                },
+                {
+                    pkId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                    rollenart: RollenArt.LEHR,
+                    kennung: faker.lorem.word(),
+                    serviceProvider: [
+                        createMock<ServiceProvider<true>>(ServiceProvider<true>, {
+                            id: POLYTHEA_SERVICE_PROVIDER_ID,
                         }),
                     ],
                 },
@@ -406,11 +422,13 @@ describe('KeycloakInternalController', () => {
             expect(result.opsh.vorname).toEqual(person.vorname);
             expect(result.opsh.nachname).toEqual(person.familienname);
 
-            expect(result.opsh.personenkontexte.length).toEqual(2);
+            expect(result.opsh.personenkontexte.length).toEqual(3);
             expect(result.onlineDateiablage.personId).toEqual(person.id);
             expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
             expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
-            expect(result.polyteia.dienststellenNummern.length).toEqual(2);
+            expect(result.polyteia.vorname).toEqual(person.vorname);
+            expect(result.polyteia.familienname).toEqual(person.familienname);
+            expect(result.polyteia.dienststellenNummern.length).toEqual(1);
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
 
@@ -506,7 +524,7 @@ describe('KeycloakInternalController', () => {
             workflowMock.mergedExternalPkData = undefined;
             workflowMock.externalPkDataWithVidisAngebotId = undefined;
             workflowMock.vidisDienststellennummern = undefined;
-            workflowMock.uniqDienststellenNummern = undefined;
+            workflowMock.polytheaDienststellenNummern = undefined;
 
             const workflowFactoryMock: DeepMocked<UserExternaldataWorkflowFactory> =
                 createMock<UserExternaldataWorkflowFactory>(UserExternaldataWorkflowFactory);
