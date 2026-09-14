@@ -28,12 +28,10 @@ describe('PersonenkontextWorkflow', () => {
     let rolleRepoMock: DeepMocked<RolleRepo>;
     let organisationRepoMock: DeepMocked<OrganisationRepository>;
     let anlage: PersonenkontextWorkflowAggregate;
-    let personenkontextKontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let personenkontextAnlageFactory: PersonenkontextWorkflowFactory;
     let personpermissionsMock: DeepMocked<PersonPermissions>;
     let dbiamPersonenkontextFactoryMock: DeepMocked<DbiamPersonenkontextFactory>;
     let configMock: DeepMocked<ConfigService>;
-    let personenkontextWorkflowSharedKernelMock: DeepMocked<PersonenkontextWorkflowSharedKernel>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -78,10 +76,8 @@ describe('PersonenkontextWorkflow', () => {
         organisationRepoMock = module.get(OrganisationRepository);
         dbiamPersonenkontextFactoryMock = module.get(DbiamPersonenkontextFactory);
         personenkontextAnlageFactory = module.get(PersonenkontextWorkflowFactory);
-        personenkontextKontextRepoMock = module.get(DBiamPersonenkontextRepo);
         personpermissionsMock = module.get(PersonPermissions);
         configMock = module.get(ConfigService);
-        personenkontextWorkflowSharedKernelMock = module.get(PersonenkontextWorkflowSharedKernel);
     });
 
     afterAll(async () => {
