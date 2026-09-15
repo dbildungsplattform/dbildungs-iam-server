@@ -1,4 +1,4 @@
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
+import { isEnum } from 'class-validator';
 
 /**
  * Reads the environment variable and returns an optional boolean.
@@ -71,15 +71,9 @@ export function envToStringArray(key: string): string[] | undefined {
     return value.split(',').map((item: string) => item.trim());
 }
 
-/**
- * Maps an array of strings to an array of RollenArt enums.
- * Filters out any strings that are not valid RollenArt values.
- *
- * @param rollenarten Array of strings representing RollenArt
- * @returns Array of RollenArt enums or undefined if no valid RollenArt found
- */
-export function mapStringsToRollenArt(rollenarten: string[]): RollenArt[] | undefined {
-    return rollenarten
-        .filter((rollenart: string) => Object.values(RollenArt).includes(rollenart as RollenArt))
-        .map((rollenart: string) => rollenart as RollenArt);
+export function envToEnumArray<TEnum extends string>(
+    key: string,
+    enumObject: Record<string, TEnum>,
+): TEnum[] | undefined {
+    return envToStringArray(key)?.filter((value: string): value is TEnum => isEnum(value, enumObject));
 }

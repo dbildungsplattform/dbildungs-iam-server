@@ -9,6 +9,7 @@
             "merkmale": [],
             "systemrechte": [
                 "ROLLEN_VERWALTEN",
+                "MPT_ROLLEN_VERWALTEN",
                 "PERSONEN_VERWALTEN",
                 "SCHULEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",

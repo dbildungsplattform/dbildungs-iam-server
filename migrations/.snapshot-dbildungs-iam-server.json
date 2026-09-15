@@ -2867,7 +2867,8 @@
           "collation": null,
           "enumItems": [
             "BEFRISTUNG_PFLICHT",
-            "KOPERS_PFLICHT"
+            "KOPERS_PFLICHT",
+            "MPT_ROLLE"
           ],
           "mappedType": "enum",
           "nativeEnumName": "rollen_merkmal_enum"
@@ -3070,6 +3071,7 @@
           "collation": null,
           "enumItems": [
             "ROLLEN_VERWALTEN",
+            "MPT_ROLLEN_VERWALTEN",
             "PERSONEN_SOFORT_LOESCHEN",
             "PERSONEN_VERWALTEN",
             "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
@@ -4346,7 +4348,8 @@
       "schema": "public",
       "items": [
         "BEFRISTUNG_PFLICHT",
-        "KOPERS_PFLICHT"
+        "KOPERS_PFLICHT",
+        "MPT_ROLLE"
       ]
     },
     "rollen_system_recht_enum": {
@@ -4354,6 +4357,7 @@
       "schema": "public",
       "items": [
         "ROLLEN_VERWALTEN",
+        "MPT_ROLLEN_VERWALTEN",
         "PERSONEN_SOFORT_LOESCHEN",
         "PERSONEN_VERWALTEN",
         "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
