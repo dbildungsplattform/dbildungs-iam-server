@@ -1,14 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ArrayMaxSize, ArrayUnique, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
-import { PagedQueryParams } from '../../../shared/paging/index.js';
-import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
-import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
-import { RollenArt, RollenArtTypName, RollenMerkmal, RollenMerkmalTypName } from '../domain/rolle.enums.js';
-import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
-import { IsNotAllowedWithOperationRecht } from './is-not-allowed-with-operation-recht.validator.js';
-import { IsOnlyAllowedWithOperationRecht } from './is-only-allowed-with-workflow-recht.validator.js';
-import { IsSystemrechtForRollenAdministration } from './is-systemrecht-for-rollen-admin-validator.js';
+import { PagedQueryParams } from '../../../../shared/paging/index.js';
+import { OrganisationID, RolleID, ServiceProviderID } from '../../../../shared/types/index.js';
+import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
+import { RollenArt, RollenArtTypName, RollenMerkmal, RollenMerkmalTypName } from '../../domain/rolle.enums.js';
+import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
 
 export class FindRollenQueryParams extends PagedQueryParams {
     @IsOptional()
@@ -20,28 +17,11 @@ export class FindRollenQueryParams extends PagedQueryParams {
     public readonly searchStr?: string;
 
     @IsOptional()
-    @IsUUID()
-    @IsOnlyAllowedWithOperationRecht()
-    @ApiProperty({
-        description:
-            'Only relevant when systemrechte contains ROLLEN_ERWEITERN or IMPORT_DURCHFUEHREN.' +
-            ' Provides the organisation context for the requested workflow operation.' +
-            ' If provided, only roles available for that organisation will be returned.' +
-            ' Mutually exclusive with organisationenForFilter.',
-        required: false,
-    })
-    public readonly organisationContextForOperation?: OrganisationID;
-
-    @IsOptional()
     @IsUUID(undefined, { each: true })
     @TransformToArray()
     @ArrayUnique()
-    @IsNotAllowedWithOperationRecht()
     @ApiProperty({
-        description:
-            'Only relevant when systemrechte contains ROLLEN_VERWALTEN or no systemrechte is provided.' +
-            ' Filters the result to roles administered by any of the given organisations.' +
-            ' Mutually exclusive with organisationContextForOperation.',
+        description: 'Filters the result to roles administered by any of the given organisations.',
         required: false,
         nullable: true,
         isArray: true,
@@ -72,12 +52,9 @@ export class FindRollenQueryParams extends PagedQueryParams {
         required: false,
         isArray: true,
         description:
-            'Determines the authorization context for this request.' +
-            ' Use ROLLEN_VERWALTEN (default) with organisationIdsForFilter for general role administration.' +
-            ' Use ROLLEN_ERWEITERN or IMPORT_DURCHFUEHREN with organisationIdContextForOperation for workflow-specific role lookups.' +
-            ' Can only be ROLLEN_VERWALTEN, ROLLEN_ERWEITERN or both, or IMPORT_DURCHFUEHREN.',
+            'Restricts the result to roles administered at organisations where the requesting user holds the given systemrechte.' +
+            ' Defaults to ROLLEN_VERWALTEN.',
     })
-    @IsSystemrechtForRollenAdministration()
     public readonly systemrechte?: RollenSystemRechtEnum[];
 
     @IsOptional()
