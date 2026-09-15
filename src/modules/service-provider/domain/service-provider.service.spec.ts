@@ -269,6 +269,21 @@ describe('ServiceProviderService', () => {
             expectErrResult(result);
             expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
         });
+
+        it('returns a MissingPermissionsError when the person has no manageable Kontext', async () => {
+            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({ ok: true, value: false });
+
+            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
+                personId,
+                permissions,
+            );
+
+            expectErrResult(result);
+            if (!result.ok) {
+                expect(result.error).toBeInstanceOf(MissingPermissionsError);
+            }
+            expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
+        });
     });
 
     describe('getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung', () => {

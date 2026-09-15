@@ -66,8 +66,8 @@ export class ServiceProviderService {
             // Requesting another person's service-providers (admin): authorized fetch.
             const readableResult: Result<boolean, DomainError> =
                 await this.dBiamPersonenkontextRepo.hasPersonAnyManageableKontext(personId, permissions);
-            if (!readableResult.ok) {
-                return Err(readableResult.error);
+            if (!readableResult.ok || !readableResult.value) {
+                return Err(readableResult.ok ? new MissingPermissionsError('Access denied') : readableResult.error);
             }
         }
 
