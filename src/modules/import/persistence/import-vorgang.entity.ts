@@ -14,7 +14,7 @@ export class ImportVorgangEntity extends TimestampedEntity {
         deleteRule: 'set null',
         updateRule: 'cascade',
         ref: true,
-        nullable: true,
+        nullable: false,
         entity: () => PersonEntity,
     })
     public readonly importByPersonId?: Ref<PersonEntity>;
@@ -28,7 +28,7 @@ export class ImportVorgangEntity extends TimestampedEntity {
         deleteRule: 'set null',
         updateRule: 'cascade',
         ref: true,
-        nullable: true,
+        nullable: false,
         entity: () => RolleEntity,
     })
     public readonly rolleId?: Ref<RolleEntity>;
@@ -42,7 +42,7 @@ export class ImportVorgangEntity extends TimestampedEntity {
         deleteRule: 'set null',
         updateRule: 'cascade',
         ref: true,
-        nullable: true,
+        nullable: false,
         entity: () => OrganisationEntity,
     })
     public readonly organisationId?: Ref<OrganisationEntity>;

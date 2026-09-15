@@ -1,6 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260915070652 extends Migration {
+export class Migration20260915072128 extends Migration {
 
   override up(): void | Promise<void> {
     this.addSql(`alter table "email"."address" alter column "marked_for_cron" set not null;`);
@@ -23,6 +23,9 @@ export class Migration20260915070652 extends Migration {
     this.addSql(`alter table "person" alter column "stammorganisation" set not null;`);
     this.addSql(`alter table "person" alter column "username" set not null;`);
 
+    this.addSql(`alter table "email_address" alter column "ox_user_id" set not null;`);
+    this.addSql(`alter table "email_address" alter column "person_id" set not null;`);
+
     this.addSql(`alter table "personenkontext" alter column "befristung" set not null;`);
     this.addSql(`alter table "personenkontext" alter column "jahrgangsstufe" set not null;`);
     this.addSql(`alter table "personenkontext" alter column "loeschung_zeitpunkt" set not null;`);
@@ -31,6 +34,16 @@ export class Migration20260915070652 extends Migration {
     this.addSql(`alter table "personenkontext" alter column "sichtfreigabe" set not null;`);
     this.addSql(`alter table "personenkontext" alter column "username" set not null;`);
 
+    this.addSql(`alter table "importvorgang" alter column "organisation_id" set not null;`);
+    this.addSql(`alter table "importvorgang" alter column "person_id" set not null;`);
+    this.addSql(`alter table "importvorgang" alter column "rolle_id" set not null;`);
+
+    this.addSql(`alter table "importdataitem" alter column "klasse" set not null;`);
+    this.addSql(`alter table "importdataitem" alter column "password" set not null;`);
+    this.addSql(`alter table "importdataitem" alter column "personalnummer" set not null;`);
+    this.addSql(`alter table "importdataitem" alter column "username" set not null;`);
+    this.addSql(`alter table "importdataitem" alter column "validation_errors" set not null;`);
+
     this.addSql(`alter table "service_provider" alter column "keycloak_group" set not null;`);
     this.addSql(`alter table "service_provider" alter column "keycloak_role" set not null;`);
     this.addSql(`alter table "service_provider" alter column "logo" set not null;`);
@@ -38,11 +51,26 @@ export class Migration20260915070652 extends Migration {
     this.addSql(`alter table "service_provider" alter column "logo_mime_type" set not null;`);
     this.addSql(`alter table "service_provider" alter column "url" set not null;`);
     this.addSql(`alter table "service_provider" alter column "vidis_angebot_id" set not null;`);
+
+    this.addSql(`alter table "user_lock" alter column "locked_until" set not null;`);
   }
 
   override down(): void | Promise<void> {
     this.addSql(`alter table "email"."address" alter column "ox_user_counter" drop not null;`);
     this.addSql(`alter table "email"."address" alter column "marked_for_cron" drop not null;`);
+
+    this.addSql(`alter table "email_address" alter column "person_id" drop not null;`);
+    this.addSql(`alter table "email_address" alter column "ox_user_id" drop not null;`);
+
+    this.addSql(`alter table "importdataitem" alter column "klasse" drop not null;`);
+    this.addSql(`alter table "importdataitem" alter column "personalnummer" drop not null;`);
+    this.addSql(`alter table "importdataitem" alter column "validation_errors" drop not null;`);
+    this.addSql(`alter table "importdataitem" alter column "username" drop not null;`);
+    this.addSql(`alter table "importdataitem" alter column "password" drop not null;`);
+
+    this.addSql(`alter table "importvorgang" alter column "person_id" drop not null;`);
+    this.addSql(`alter table "importvorgang" alter column "rolle_id" drop not null;`);
+    this.addSql(`alter table "importvorgang" alter column "organisation_id" drop not null;`);
 
     this.addSql(`alter table "organisation" alter column "administriert_von" drop not null;`);
     this.addSql(`alter table "organisation" alter column "zugehoerig_zu" drop not null;`);
@@ -76,6 +104,8 @@ export class Migration20260915070652 extends Migration {
     this.addSql(`alter table "service_provider" alter column "keycloak_group" drop not null;`);
     this.addSql(`alter table "service_provider" alter column "keycloak_role" drop not null;`);
     this.addSql(`alter table "service_provider" alter column "vidis_angebot_id" drop not null;`);
+
+    this.addSql(`alter table "user_lock" alter column "locked_until" drop not null;`);
   }
 
 }

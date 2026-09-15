@@ -21,7 +21,7 @@ export class UserLockEntity extends TimestampedEntity {
     @Property({ nullable: false })
     public locked_by!: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public locked_until?: Date;
 
     @Property({ nullable: false, type: 'string' })

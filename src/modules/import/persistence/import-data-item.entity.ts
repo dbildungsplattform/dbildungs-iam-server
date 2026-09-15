@@ -23,19 +23,19 @@ export class ImportDataItemEntity extends TimestampedEntity {
     @Property()
     public readonly vorname!: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public readonly klasse?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public personalnummer?: string;
 
-    @Property({ type: ArrayType, nullable: true })
+    @Property({ type: ArrayType, nullable: false })
     public validationErrors?: string[];
 
-    @Property({ nullable: true, length: 50 })
+    @Property({ nullable: false, length: 50 })
     public username?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public password?: string;
 
     @Enum({
