@@ -34,13 +34,13 @@ export class PersonEntity extends TimestampedEntity {
         expression: (columns: Record<keyof PersonEntity, string>, table: SchemaTable, name: string) =>
             quote`create unique index ${name} on ${table} (${columns.username}) nulls distinct;`,
     })
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public username?: string;
 
     @Property()
     public mandant!: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public readonly stammorganisation?: string;
 
     @Index({
@@ -59,7 +59,7 @@ export class PersonEntity extends TimestampedEntity {
     @Property()
     public vorname!: string;
 
-    @ManyToOne({ nullable: true, deleteRule: 'set null', updateRule: 'cascade' })
+    @ManyToOne({ nullable: false, deleteRule: 'set null', updateRule: 'cascade' })
     public dataProvider?: DataProviderEntity;
 
     @Property({ nullable: false, default: '1' })
@@ -75,7 +75,7 @@ export class PersonEntity extends TimestampedEntity {
         expression: (columns: Record<keyof PersonEntity, string>, table: SchemaTable, name: string) =>
             quote`create index ${name} on ${table} using gin (${columns.personalnummer} gin_trgm_ops);`,
     })
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public personalnummer?: string;
 
     @OneToMany({
@@ -94,7 +94,7 @@ export class PersonEntity extends TimestampedEntity {
     })
     public emailAddresses: Collection<EmailAddressEntity> = new Collection<EmailAddressEntity>(this);
 
-    @Property({ nullable: true, type: DateTimeType })
+    @Property({ nullable: false, type: DateTimeType })
     public orgUnassignmentDate?: Date;
 
     @OneToMany({
