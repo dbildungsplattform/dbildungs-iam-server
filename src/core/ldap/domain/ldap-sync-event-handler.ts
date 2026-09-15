@@ -14,8 +14,6 @@ import { Personenkontext } from '../../../modules/personenkontext/domain/persone
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
@@ -192,7 +190,7 @@ export class LdapSyncEventHandler {
 
         // Delete all rollen from map which do NOT have the UEM service provider
         for (const [rolleId, rolle] of rollen.entries()) {
-            if (!this.hasUemServiceProvider(rolle)) {
+            if (!rolle.hasUemServiceProvider()) {
                 rollen.delete(rolleId);
             }
         }
@@ -415,12 +413,6 @@ export class LdapSyncEventHandler {
 
     private isAddressInDisabledAddresses(email: string, disabledEmailAddresses: string[]): boolean {
         return disabledEmailAddresses.some((disabledAddress: string) => disabledAddress === email);
-    }
-
-    private hasUemServiceProvider(rolle: Rolle<true>): boolean {
-        return rolle.serviceProviderData.some(
-            (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
-        );
     }
 
     private createGroupAdditionList(schulenDstNrList: string[], groupDns: string[]): string[] {
