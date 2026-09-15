@@ -973,6 +973,139 @@ describe('LdapEventHandler', () => {
                 `LdapClientService createLehrer could not find person with id:${event.person.id}, ref:${event.person.username}`,
             );
         });
+
+        it('should stringify a non-Error thrown in removePersonFromGroupByUsernameAndKennung', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                {
+                    id: faker.string.uuid(),
+                    vorname: faker.person.firstName(),
+                    familienname: faker.person.lastName(),
+                    username: faker.internet.username(),
+                },
+                [],
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: faker.string.uuid(),
+                        rolle: RollenArt.LEHR,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
+                    },
+                ],
+                [],
+            );
+
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung.mockRejectedValueOnce('non-error reason');
+
+            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining('Error in removePersonFromGroup: non-error reason'),
+            );
+        });
+
+        it('should stringify a non-Error thrown in createLehrer', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                {
+                    id: faker.string.uuid(),
+                    vorname: faker.person.firstName(),
+                    familienname: faker.person.lastName(),
+                    username: faker.internet.username(),
+                },
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: faker.string.uuid(),
+                        rolle: RollenArt.LEHR,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
+                    },
+                ],
+                [],
+                [],
+            );
+
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            ldapClientAdapterMock.createLehrer.mockRejectedValueOnce('non-error reason');
+
+            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining('Error in createLehrer: non-error reason'),
+            );
+        });
+
+        it('should stringify a non-Error thrown in getEmailDomainForOrganisationId', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                {
+                    id: faker.string.uuid(),
+                    vorname: faker.person.firstName(),
+                    familienname: faker.person.lastName(),
+                    username: faker.internet.username(),
+                },
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: faker.string.uuid(),
+                        rolle: RollenArt.LEHR,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
+                    },
+                ],
+                [],
+                [],
+            );
+
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockRejectedValueOnce('non-error reason');
+
+            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining('Error in getEmailDomainForOrganisationId: non-error reason'),
+            );
+        });
+
+        it('should not persist entryUUID when createLehrer returns no ldapEntryUUID', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                {
+                    id: faker.string.uuid(),
+                    vorname: faker.person.firstName(),
+                    familienname: faker.person.lastName(),
+                    username: faker.internet.username(),
+                },
+                [
+                    {
+                        id: faker.string.uuid(),
+                        orgaId: faker.string.uuid(),
+                        rolle: RollenArt.LEHR,
+                        rolleId: faker.string.uuid(),
+                        orgaKennung: faker.string.numeric(7),
+                        isItslearningOrga: false,
+                        serviceProviderExternalSystems: [ServiceProviderSystem.UEM],
+                    },
+                ],
+                [],
+                [],
+            );
+
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            ldapClientAdapterMock.createLehrer.mockResolvedValueOnce({
+                ok: true,
+                value: {} as PersonData,
+            });
+            personRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createPerson(true));
+
+            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+
+            expect(personRepositoryMock.save).toHaveBeenCalledTimes(0);
+        });
     });
 
     describe('handleEmailAddressGeneratedEvent', () => {
