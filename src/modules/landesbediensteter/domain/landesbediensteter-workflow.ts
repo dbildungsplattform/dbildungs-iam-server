@@ -165,16 +165,17 @@ export class LandesbediensteterWorkflowAggregate {
     public async canCommit(permissions: IPersonPermissions): Promise<Result<void, DomainError>> {
         if (this.selectedOrganisationId && this.selectedRolleIds && this.selectedRolleIds.length > 0) {
             // Check references for all selected roles concurrently
-            const referenceCheckErrors: Option<DomainError>[] = await Promise.all(
+            const referenceChecks: Result<void, DomainError>[] = await Promise.all(
                 this.selectedRolleIds.map((rolleId: string) =>
                     this.checkReferences(this.selectedOrganisationId!, rolleId),
                 ),
             );
 
-            // Find the first error if any
-            const firstError: Option<DomainError> = referenceCheckErrors.find((error: Option<DomainError>) => error);
-            if (firstError) {
-                return Err(firstError);
+            const firstFailedCheck: Result<void, DomainError> | undefined = referenceChecks.find(
+                (result: Result<void, DomainError>) => !result.ok,
+            );
+            if (firstFailedCheck) {
+                return firstFailedCheck;
             }
 
             // Check permissions after verifying references
@@ -265,7 +266,7 @@ export class LandesbediensteterWorkflowAggregate {
     }
 
     // Checks if the rolle can be assigned to the target organisation
-    public async checkReferences(organisationId: string, rolleId: string): Promise<Option<DomainError>> {
+    public async checkReferences(organisationId: string, rolleId: string): Promise<Result<void, DomainError>> {
         return this.personenkontextWorkflowSharedKernel.checkReferences(organisationId, rolleId);
     }
 

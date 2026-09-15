@@ -2,7 +2,6 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { uniq } from 'lodash-es';
 import { Rolle } from './rolle.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
@@ -19,21 +18,41 @@ import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-me
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
+import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
-type TunknownResultForAngebot = {
+interface TunknownResultForAngebot {
     rolleId: string;
     errorIdType: ErrorIdType.ANGEBOT;
     result: Result<unknown, DomainError>;
-};
+}
 
-type TerrorResultForAngebot = {
+interface TerrorResultForAngebot {
     rolleId: string;
     errorIdType: ErrorIdType.ANGEBOT;
     result: {
         ok: false;
         error: DomainError;
     };
-};
+}
+
+interface AddRollenerweiterungenToAngebotParams {
+    orgaId: string;
+    angebotId: string;
+    existingErweiterungen?: Array<Rollenerweiterung<true>>;
+    addErweiterungenForRolleIds: string[];
+    rollen: Map<string, Rolle<true>>;
+    permissions: IPersonPermissions;
+    hasSystemrechtAtOrganisationMpt: boolean;
+}
+
+interface RemoveRollenerweiterungenFromAngebotParams {
+    orgaId: string;
+    angebotId: string;
+    existingErweiterungen?: Array<Rollenerweiterung<true>>;
+    removeErweiterungenForRolleIds: string[];
+    rollen: Map<string, Rolle<true>>;
+    hasSystemrechtAtOrganisationMpt: boolean;
+}
 
 function isErrorResultForRolle<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForAngebot {
     return r.result.ok === false;
@@ -94,31 +113,32 @@ export class ApplyRollenerweiterungForAngebotService {
 
         const existingErweiterungen: Rollenerweiterung<true>[] =
             await this.rollenerweiterungRepo.findManyByOrganisationIdAndServiceProviderId(orgaId, angebotId);
-        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(
-            uniq([...body.addErweiterungenForRolleIds, ...body.removeErweiterungenForRolleIds]),
+        const uniqueRollenIds: RolleID[] = Array.from(
+            new Set([...body.addErweiterungenForRolleIds, ...body.removeErweiterungenForRolleIds]),
         );
+        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
         const [addResults, removeResults]: [TunknownResultForAngebot[], TunknownResultForAngebot[]] = await Promise.all(
             [
                 Promise.all(
-                    this.handleAddErweiterungen(
+                    this.handleAddErweiterungen({
                         orgaId,
                         angebotId,
                         existingErweiterungen,
-                        body.addErweiterungenForRolleIds,
+                        addErweiterungenForRolleIds: body.addErweiterungenForRolleIds,
                         rollen,
                         permissions,
                         hasSystemrechtAtOrganisationMpt,
-                    ),
+                    }),
                 ),
                 Promise.all(
-                    this.handleRemoveErweiterungen(
+                    this.handleRemoveErweiterungen({
                         orgaId,
                         angebotId,
                         existingErweiterungen,
-                        body.removeErweiterungenForRolleIds,
+                        removeErweiterungenForRolleIds: body.removeErweiterungenForRolleIds,
                         rollen,
                         hasSystemrechtAtOrganisationMpt,
-                    ),
+                    }),
                 ),
             ],
         );
@@ -139,14 +159,14 @@ export class ApplyRollenerweiterungForAngebotService {
         return Ok(null);
     }
 
-    private handleRemoveErweiterungen(
-        orgaId: string,
-        angebotId: string,
-        existingErweiterungen: Array<Rollenerweiterung<true>> = [],
-        removeErweiterungenForRolleIds: string[],
-        rollen: Map<string, Rolle<true>>,
-        hasSystemrechtAtOrganisationMpt: boolean,
-    ): Promise<TunknownResultForAngebot>[] {
+    private handleRemoveErweiterungen({
+        orgaId,
+        angebotId,
+        existingErweiterungen = [],
+        removeErweiterungenForRolleIds,
+        rollen,
+        hasSystemrechtAtOrganisationMpt,
+    }: RemoveRollenerweiterungenFromAngebotParams): Promise<TunknownResultForAngebot>[] {
         const removeErweiterungenPromises: Promise<TunknownResultForAngebot>[] = removeErweiterungenForRolleIds
             .filter((rolleId: string) => {
                 return existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);
@@ -185,18 +205,18 @@ export class ApplyRollenerweiterungForAngebotService {
         return removeErweiterungenPromises;
     }
 
-    private handleAddErweiterungen(
-        orgaId: string,
-        angebotId: string,
-        existingErweiterungen: Array<Rollenerweiterung<true>> = [],
-        addErweiterungenForRolleIds: string[],
-        rollen: Map<string, Rolle<true>>,
-        permissions: IPersonPermissions,
-        hasSystemrechtAtOrganisationMpt: boolean,
-    ): Promise<TunknownResultForAngebot>[] {
+    private handleAddErweiterungen({
+        orgaId,
+        angebotId,
+        existingErweiterungen = [],
+        addErweiterungenForRolleIds,
+        rollen,
+        permissions,
+        hasSystemrechtAtOrganisationMpt,
+    }: AddRollenerweiterungenToAngebotParams): Promise<TunknownResultForAngebot>[] {
         const erweiterungenPromises: Promise<TunknownResultForAngebot>[] = addErweiterungenForRolleIds
             .filter((rolleId: string) => {
-                return existingErweiterungen.findIndex((re: Rollenerweiterung<true>) => re.rolleId === rolleId) === -1;
+                return !existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);
             })
             .map((rolleId: string) => {
                 const rolle: Option<Rolle<true>> = rollen.get(rolleId);
