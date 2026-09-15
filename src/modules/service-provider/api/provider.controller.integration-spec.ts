@@ -245,7 +245,7 @@ describe('ServiceProvider API', () => {
                 )
                 .flush();
             await createAndPersistPersonenkontext(em, otherPersonId, rolle.id, organisation.id);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/provider/${otherPersonId}`)
@@ -284,7 +284,7 @@ describe('ServiceProvider API', () => {
                 )
                 .flush();
             await createAndPersistPersonenkontext(em, otherPersonId, rolle.id, organisation.id);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/provider/${otherPersonId}`)
