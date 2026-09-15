@@ -664,6 +664,36 @@ describe('Provider Controller Test', () => {
             ).rejects.toBeInstanceOf(MissingPermissionsError);
         });
 
+        it('should default offset to 0 and limit to total when paging params are omitted', async () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+            const rolle: Rolle<true> = DoFactory.createRolle(true);
+            const params: ManageableServiceProvidersForOrganisationParams = { organisationId: organisation.id };
+            const total: number = 3;
+
+            const manageableObjects: ManageableServiceProviderWithReferencedObjects[] = [
+                {
+                    serviceProvider,
+                    organisation,
+                    rollen: [rolle],
+                    rollenerweiterungen: [],
+                    rollenerweiterungenWithName: [],
+                    hasSomeVerwaltenPermission: true,
+                },
+            ];
+
+            serviceProviderServiceMock.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung.mockResolvedValue(
+                Ok([manageableObjects, total]),
+            );
+
+            const result: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
+                await providerController.getManageableServiceProvidersForOrganisationId(personPermissionsMock, params);
+
+            expect(result.offset).toBe(0);
+            expect(result.limit).toBe(total);
+            expect(result.total).toBe(total);
+        });
+
         it('should handle rollenerweiterungenWithName', async () => {
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
             const organisation: Organisation<true> = DoFactory.createOrganisation(true);

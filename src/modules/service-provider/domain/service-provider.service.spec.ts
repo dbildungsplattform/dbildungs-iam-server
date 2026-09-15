@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { zip } from 'lodash-es';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
@@ -7,6 +8,7 @@ import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
@@ -255,6 +257,39 @@ describe('ServiceProviderService', () => {
             ]);
         });
 
+        it('does not resolve rollenerweiterungen providers when the feature is disabled', async () => {
+            const featureDisabledService: ServiceProviderService = new ServiceProviderService(
+                rolleRepo,
+                rollenerweiterungRepo,
+                serviceProviderRepo,
+                organisationRepo,
+                dBiamPersonenkontextRepo,
+                {
+                    getOrThrow: () => ({ FEATURE_FLAG_ROLLE_ERWEITERN: false }),
+                } as unknown as ConfigService<ServerConfig>,
+            );
+            permissions = createPersonPermissionsMock({ id: personId });
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderIds: [serviceProvider.id] });
+            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                personId,
+                rolleId: rolle.id,
+            });
+
+            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
+            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
+            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
+
+            const result: Result<ServiceProvider<true>[]> = await featureDisabledService.getServiceProvidersByPersonId(
+                personId,
+                permissions,
+            );
+
+            expectOkResult(result);
+            expect(result.value).toEqual([serviceProvider]);
+            expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).not.toHaveBeenCalled();
+        });
+
         it('returns the error when the person is not manageable', async () => {
             dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
                 ok: false,
@@ -367,6 +402,32 @@ describe('ServiceProviderService', () => {
             ).toContain(serviceProvider);
             expect(result.value[0][0]?.hasSomeVerwaltenPermission).toBe(true);
             expect(result.value[1]).toBe(1);
+        });
+
+        it('sets hasSomeVerwaltenPermission when the person has the permission on all organisations', async () => {
+            const parentOrga: Organisation<true> = DoFactory.createOrganisation(true);
+            const permissions: DeepMocked<PersonPermissions> = createMock(PersonPermissions);
+            permissions.hasSystemrechtAtOrganisation = vi.fn().mockResolvedValue(true);
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
+
+            organisationRepo.findParentOrgasForIds.mockResolvedValue([parentOrga]);
+            organisationRepo.findByIds.mockResolvedValue(
+                new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
+            );
+            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            rolleRepo.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
+            rolleRepo.findByServiceProviderIds.mockResolvedValue(new Map([[serviceProvider.id, [rolle]]]));
+            rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValue(
+                new Map([[serviceProvider.id, [rollenerweiterung]]]),
+            );
+
+            const result: Result<
+                Counted<ManageableServiceProviderWithReferencedObjects>,
+                MissingPermissionsError
+            > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
+
+            expectOkResult(result);
+            expect(result.value[0][0]?.hasSomeVerwaltenPermission).toBe(true);
         });
 
         it('returns authorized serviceProviders when person has rights and includes parent organisation ids', async () => {
