@@ -28,6 +28,7 @@ import {
     ManageableServiceProviderWithReferencedObjects,
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from './types.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 // helper to mock output of some repos
 function getIdMap<T>(arr: Array<T & { id: string }>): Map<string, T> {
@@ -836,6 +837,30 @@ describe('ServiceProviderService', () => {
 
             expect(result[0]).toHaveLength(0);
             expect(result[1]).toBe(0);
+        });
+
+        it('should filter service providers by rollenArten when provided', async () => {
+            const matchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const nonMatchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[matchingProvider, nonMatchingProvider], 2]);
+
+            const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
+                organisation.id,
+                permissions,
+                [RollenArt.LERN],
+            );
+
+            expect(result[0]).toEqual([matchingProvider]);
+            expect(result[1]).toBe(1);
         });
     });
 

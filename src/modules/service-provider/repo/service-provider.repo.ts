@@ -341,6 +341,28 @@ export class ServiceProviderRepo {
         ).map(mapEntityToAggregate);
     }
 
+    public async findBySchulstrukturknotenWithRollenArtWhitelist(
+        organisationIds: Array<OrganisationID>,
+        rollenArt: RollenArt,
+    ): Promise<Array<ServiceProvider<true>>> {
+        const exclude: readonly ['logo'] | undefined = ['logo'];
+        return (
+            await this.em.find(
+                ServiceProviderEntity,
+                {
+                    providedOnSchulstrukturknoten: { $in: organisationIds },
+                    $or: [
+                        { rollenartenWhitelist: { rollenart: rollenArt } },
+                        { rollenartenWhitelist: { $exists: false } },
+                    ],
+                },
+                {
+                    exclude,
+                },
+            )
+        ).map(mapEntityToAggregate);
+    }
+
     public async findBySchulstrukturknotenPaginated(
         organisationIds: Array<OrganisationID>,
         searchQuery?: string,
