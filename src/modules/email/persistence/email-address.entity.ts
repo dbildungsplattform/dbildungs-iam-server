@@ -10,7 +10,7 @@ export class EmailAddressEntity extends TimestampedEntity {
         columnType: 'uuid',
         fieldName: 'person_id',
         ref: true,
-        nullable: true,
+        nullable: false,
         deleteRule: 'set null',
         updateRule: 'cascade',
         eager: true,
@@ -24,7 +24,7 @@ export class EmailAddressEntity extends TimestampedEntity {
     @Property({ primary: true, nullable: false, unique: true })
     public address!: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public oxUserId?: string;
 
     @Enum({ items: () => EmailAddressStatus, nativeEnumName: 'email_address_status_enum' })

@@ -46,29 +46,29 @@ export class PersonenkontextEntity extends TimestampedEntity {
     @Index({ name: 'personenkontext_rolle_id_index', type: 'hash' })
     public rolleId!: Ref<RolleEntity>;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public username?: string;
 
     // TODO EW-636: mandant is related to organizations so it is not set for now. When implemented should be set to nullable: false
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public mandant?: string;
 
-    @Enum({ nullable: true, items: () => Personenstatus, nativeEnumName: 'personenstatus_enum' })
+    @Enum({ nullable: false, items: () => Personenstatus, nativeEnumName: 'personenstatus_enum' })
     public personenstatus?: Personenstatus;
 
-    @Enum({ nullable: true, items: () => Jahrgangsstufe, nativeEnumName: 'jahrgangsstufe_enum' })
+    @Enum({ nullable: false, items: () => Jahrgangsstufe, nativeEnumName: 'jahrgangsstufe_enum' })
     public jahrgangsstufe?: Jahrgangsstufe;
 
-    @Property({ nullable: true, default: SichtfreigabeType.NEIN, type: 'string' })
+    @Property({ nullable: false, default: SichtfreigabeType.NEIN, type: 'string' })
     public sichtfreigabe?: SichtfreigabeType;
 
-    @Property({ nullable: true, type: DateTimeType })
+    @Property({ nullable: false, type: DateTimeType })
     public loeschungZeitpunkt?: Date;
 
     @Property({ nullable: false, default: '1' })
     public revision!: string & Opt;
 
-    @Property({ nullable: true, type: DateTimeType })
+    @Property({ nullable: false, type: DateTimeType })
     public readonly befristung?: Date;
 }

@@ -31,7 +31,7 @@ export class ServiceProviderEntity extends TimestampedEntity {
     @Enum({ items: () => ServiceProviderTarget, nativeEnumName: 'service_provider_target_enum' })
     public target!: ServiceProviderTarget;
 
-    @Property({ nullable: true, type: 'text' })
+    @Property({ nullable: false, type: 'text' })
     public url?: string;
 
     @Property({ columnType: 'uuid' })
@@ -50,19 +50,19 @@ export class ServiceProviderEntity extends TimestampedEntity {
     })
     public kategorie!: ServiceProviderKategorie;
 
-    @Property({ nullable: true, unsigned: true, columnType: 'int' })
+    @Property({ nullable: false, unsigned: true, columnType: 'int' })
     public logoId?: number;
 
-    @Property({ type: BlobType, nullable: true })
+    @Property({ type: BlobType, nullable: false })
     public logo?: Buffer;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public logoMimeType?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public keycloakGroup?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public keycloakRole?: string;
 
     @Enum({ items: () => ServiceProviderSystem, nativeEnumName: 'service_provider_system_enum' })
@@ -71,7 +71,7 @@ export class ServiceProviderEntity extends TimestampedEntity {
     @Property()
     public requires2fa!: boolean;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public vidisAngebotId?: string;
 
     @OneToMany({

@@ -10,35 +10,35 @@ export class OrganisationEntity extends TimestampedEntity {
     }
 
     @Index({ name: 'organisation_administriert_von_index' })
-    @Property({ columnType: 'uuid', nullable: true })
+    @Property({ columnType: 'uuid', nullable: false })
     public administriertVon?: string;
 
-    @Property({ columnType: 'uuid', nullable: true })
+    @Property({ columnType: 'uuid', nullable: false })
     public zugehoerigZu?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public kennung?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public name?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public namensergaenzung?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public kuerzel?: string;
 
     @Index({ name: 'organisation_typ_index' })
-    @Enum({ items: () => OrganisationsTyp, nullable: true, nativeEnumName: 'organisations_typ_enum' })
+    @Enum({ items: () => OrganisationsTyp, nullable: false, nativeEnumName: 'organisations_typ_enum' })
     public typ?: OrganisationsTyp;
 
-    @Enum({ items: () => Traegerschaft, nullable: true, nativeEnumName: 'traegerschaft_enum' })
+    @Enum({ items: () => Traegerschaft, nullable: false, nativeEnumName: 'traegerschaft_enum' })
     public traegerschaft?: Traegerschaft;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public emailDomain?: string;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public emailAddress?: string;
 
     @Property({ default: false })

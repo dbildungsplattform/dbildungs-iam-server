@@ -13,7 +13,7 @@ export class EmailAddrEntity extends TimestampedEntity {
     @Property({ nullable: false })
     public priority!: number;
 
-    @Property({ nullable: true })
+    @Property({ nullable: false })
     public oxUserCounter?: string;
 
     @Property({ nullable: false })
@@ -28,7 +28,7 @@ export class EmailAddrEntity extends TimestampedEntity {
     })
     public spshPersonId!: string;
 
-    @Property({ nullable: true, type: DateTimeType })
+    @Property({ nullable: false, type: DateTimeType })
     public markedForCron?: Date;
 
     @OneToMany({
