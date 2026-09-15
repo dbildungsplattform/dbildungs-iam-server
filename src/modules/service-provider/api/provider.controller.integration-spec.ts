@@ -218,13 +218,13 @@ describe('ServiceProvider API', () => {
         it('should return empty result if another systemrecht is provided', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
 
-            await request(app.getHttpServer() as App)
+            const response: Response = await request(app.getHttpServer() as App)
                 .get('/provider')
                 .query({
                     organisationId: organisation.id,
                     systemrechte: [RollenSystemRechtEnum.ANGEBOTE_VERWALTEN],
-                })
-                .expect(400);
+                });
+            expect(response.status).toBe(400);
         });
     });
 

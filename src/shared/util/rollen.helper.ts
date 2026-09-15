@@ -10,7 +10,7 @@ export interface FindAllowedRollenOptions {
     permissionsCheck: () => Promise<boolean>;
     organisationRepository: OrganisationRepository;
     rolleRepo: RolleRepo;
-    checkReferences: (orgId: string, rolleId: string) => Promise<Option<DomainError>>;
+    checkReferences: (orgId: string, rolleId: string) => Promise<Result<void, DomainError>>;
     rolleName?: string;
     rollenIds?: string[];
     limit?: number;
@@ -44,8 +44,8 @@ export async function findAllowedRollen({
     const allowedRollen: Rolle<true>[] = (
         await Promise.all(
             rollen.map(async (rolle: Rolle<true>) => {
-                const error: Option<DomainError> = await checkReferences(organisation.id, rolle.id);
-                return error ? null : rolle;
+                const result: Result<void, DomainError> = await checkReferences(organisation.id, rolle.id);
+                return result.ok ? rolle : null;
             }),
         )
     ).filter((rolle: Rolle<true> | null): rolle is Rolle<true> => rolle !== null);

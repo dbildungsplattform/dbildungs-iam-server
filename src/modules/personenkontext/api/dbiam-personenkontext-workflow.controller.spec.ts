@@ -28,7 +28,7 @@ import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.fac
 import { PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { Err } from '../../../shared/util/result.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { Person } from '../../person/domain/person.js';
 
 describe('DbiamPersonenkontextWorkflowController Test', () => {
@@ -184,7 +184,8 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                         limit: undefined,
                     });
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([]);
-                    personenkontextWorkflowMock.canCommit.mockResolvedValue(true);
+                    rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValue([[rolle], 0]);
+                    personenkontextWorkflowMock.canCommit.mockResolvedValue(Ok(undefined));
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValue(personenkontextWorkflowMock);
 
                     const response: PersonenkontextWorkflowResponse = await sut.processStep(params, personpermissions);

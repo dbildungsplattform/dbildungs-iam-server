@@ -134,6 +134,19 @@ const rollenartOrderClause: RawQueryFragment = sql`CASE
     ELSE 10
 END`;
 
+export interface FindRollenAvailableForPersonenkontextCreationParams {
+    organisationId: OrganisationID;
+    allowedOrganisationIds: Array<OrganisationID>;
+    allowedRollenarten: Array<RollenArt>;
+    mpt?: {
+        allowedRollenarten: Array<RollenArt>;
+    };
+    searchStr?: string;
+    stickyRollenIds?: Array<RolleID>;
+    limit?: number;
+    offset?: number;
+}
+
 @Injectable()
 export class RolleRepo {
     public static readonly DEFAULT_LIMIT: number = 25;
@@ -464,18 +477,9 @@ export class RolleRepo {
         return rollenMap;
     }
 
-    public async findRollenAvailableForPersonenkontextCreation(params: {
-        organisationId: OrganisationID;
-        allowedOrganisationIds: Array<OrganisationID>;
-        allowedRollenarten: Array<RollenArt>;
-        mpt?: {
-            allowedRollenarten: Array<RollenArt>;
-        };
-        searchStr?: string;
-        stickyRollenIds?: Array<RolleID>;
-        limit?: number;
-        offset?: number;
-    }): Promise<Counted<Rolle<true>>> {
+    public async findRollenAvailableForPersonenkontextCreation(
+        params: FindRollenAvailableForPersonenkontextCreationParams,
+    ): Promise<Counted<Rolle<true>>> {
         const stickyRollenEntities: Array<RolleEntity> = params.stickyRollenIds
             ? await this.em.findAll(RolleEntity, {
                   where: {
