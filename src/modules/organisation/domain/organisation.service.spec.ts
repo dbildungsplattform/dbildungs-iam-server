@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
-import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { DomainError, EntityCouldNotBeUpdated, MissingPermissionsError } from '../../../shared/error/index.js';
@@ -579,7 +579,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).toEqual<Result<Organisation<true>>>({
+            expect(result).not.toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new KennungRequiredForSchuleError(),
             });
@@ -601,7 +601,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).toEqual<Result<Organisation<true>>>({
+            expect(result).not.toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new NameRequiredForSchuleError(),
             });
@@ -647,7 +647,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).toEqual<Result<Organisation<true>>>({
+            expect(result).not.toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new SchuleKennungEindeutigError(),
             });

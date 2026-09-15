@@ -14,6 +14,7 @@ import {
     UseFilters,
     UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
@@ -30,35 +31,35 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { DataConfig } from '../../../shared/config/data.config.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
+import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Paged, PagingHeadersObject } from '../../../shared/paging/index.js';
 import { PagedResponse } from '../../../shared/paging/paged.response.js';
-import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
-import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
-import { OrganisationByIdParams } from './organisation-by-id.params.js';
-import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationResponse } from './organisation.response.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
-import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
-import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { DbiamOrganisationError } from './dbiam-organisation.error.js';
-import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
-import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
-import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
-import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { OrganisationService } from '../domain/organisation.service.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
-import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
-import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { OrganisationsTyp } from '../domain/organisation.enums.js';
+import { Organisation } from '../domain/organisation.js';
+import { OrganisationService } from '../domain/organisation.service.js';
 import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
+import { DbiamOrganisationError } from './dbiam-organisation.error.js';
+import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
+import { OrganisationByIdParams } from './organisation-by-id.params.js';
+import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
+import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
+import { ParentOrganisationenResponse } from './organisation.parents.response.js';
+import { OrganisationResponse } from './organisation.response.js';
+import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
+import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
+import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 
 @UseFilters(new OrganisationExceptionFilter())
 @ApiTags('organisationen')
@@ -152,9 +153,10 @@ export class OrganisationController {
         }
 
         existingOrganisation.id = params.organisationId;
-        existingOrganisation.administriertVon = body.administriertVon;
-        existingOrganisation.zugehoerigZu = body.zugehoerigZu;
-        existingOrganisation.kennung = body.kennung;
+        if (existingOrganisation.typ !== OrganisationsTyp.SCHULE) {
+            existingOrganisation.administriertVon = body.administriertVon;
+            existingOrganisation.zugehoerigZu = body.zugehoerigZu;
+        }
         existingOrganisation.name = body.name;
         existingOrganisation.namensergaenzung = body.namensergaenzung;
         existingOrganisation.kuerzel = body.kuerzel;

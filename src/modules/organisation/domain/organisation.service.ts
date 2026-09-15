@@ -132,69 +132,30 @@ export class OrganisationService {
         organisationDo: Organisation<false>,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
-        if (organisationDo.administriertVon && !(await this.organisationRepo.exists(organisationDo.administriertVon))) {
-            const error: DomainError = new EntityNotFoundError('Organisation', organisationDo.administriertVon);
-            await this.logCreation(permissions, organisationDo, error);
-            return {
-                ok: false,
-                error: error,
-            };
+        const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
+        if (referenceError) {
+            await this.logCreation(permissions, organisationDo, referenceError);
+            return { ok: false, error: referenceError };
         }
 
-        if (organisationDo.zugehoerigZu && !(await this.organisationRepo.exists(organisationDo.zugehoerigZu))) {
-            const error: DomainError = new EntityNotFoundError('Organisation', organisationDo.zugehoerigZu);
-            await this.logCreation(permissions, organisationDo, error);
-            return {
-                ok: false,
-                error: error,
-            };
+        const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
+        if (validationError) {
+            await this.logCreation(permissions, organisationDo, validationError);
+            return { ok: false, error: validationError };
         }
 
-        const validationFieldnamesResult: void | DomainError = this.validateFieldNames(organisationDo);
-        if (validationFieldnamesResult) {
-            const error: DomainError = validationFieldnamesResult;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
+        const schulSpecificationsError: DomainError | undefined =
+            await this.validateSchulSpecifications(organisationDo);
+        if (schulSpecificationsError) {
+            await this.logCreation(permissions, organisationDo, schulSpecificationsError);
+            return { ok: false, error: schulSpecificationsError };
         }
 
-        let validationResult: Result<void, DomainError> = await this.validateKennungRequiredForSchule(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateNameRequiredForSchule(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateSchuleKennungUnique(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateEmailAdressOnOrganisationTyp(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-
-        const validateKlassen: Result<boolean, DomainError> = await this.validateKlassenSpecifications(organisationDo);
-        if (!validateKlassen.ok) {
-            const error: DomainError = validateKlassen.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-
-        const validateSchultraeger: Result<void, DomainError> =
+        const schultraegerResult: Result<void, DomainError> =
             await this.validateSchultraegerSpecifications(organisationDo);
-        if (!validateSchultraeger.ok) {
-            const error: DomainError = validateSchultraeger.error;
-            await this.logCreation(permissions, organisationDo, error);
-            return { ok: false, error: error };
+        if (!schultraegerResult.ok) {
+            await this.logCreation(permissions, organisationDo, schultraegerResult.error);
+            return { ok: false, error: schultraegerResult.error };
         }
 
         const organisation: Organisation<true> | OrganisationSpecificationError =
@@ -220,43 +181,10 @@ export class OrganisationService {
             return { ok: false, error: error };
         }
 
-        const validationFieldnamesResult: void | DomainError = this.validateFieldNames(organisationDo);
-        if (validationFieldnamesResult) {
-            const error: DomainError = validationFieldnamesResult;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-
-        let validationResult: Result<void, DomainError> = await this.validateKennungRequiredForSchule(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateNameRequiredForSchule(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateSchuleKennungUnique(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-        validationResult = await this.validateEmailAdressOnOrganisationTyp(organisationDo);
-        if (!validationResult.ok) {
-            const error: DomainError = validationResult.error;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
-        }
-
-        const validateKlassen: Result<boolean, DomainError> = await this.validateKlassenSpecifications(organisationDo);
-        if (!validateKlassen.ok) {
-            const error: DomainError = validateKlassen.error;
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
+        const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
+        if (validationError) {
+            await this.logUpdate(permissions, organisationDo, validationError);
+            return { ok: false, error: validationError };
         }
 
         const organisation: Organisation<true> | OrganisationSpecificationError =
@@ -272,6 +200,59 @@ export class OrganisationService {
             ok: false,
             error: error,
         };
+    }
+
+    // Checks referenced parent organisations exist (create-only, since update reuses the stored parent references).
+    private async validateOrganisationReferences(
+        organisationDo: Organisation<false>,
+    ): Promise<DomainError | undefined> {
+        if (organisationDo.administriertVon && !(await this.organisationRepo.exists(organisationDo.administriertVon))) {
+            return new EntityNotFoundError('Organisation', organisationDo.administriertVon);
+        }
+
+        if (organisationDo.zugehoerigZu && !(await this.organisationRepo.exists(organisationDo.zugehoerigZu))) {
+            return new EntityNotFoundError('Organisation', organisationDo.zugehoerigZu);
+        }
+
+        return undefined;
+    }
+
+    // Shared validation pipeline for create and update; returns the first failing validation's error, if any.
+    private async validateOrganisation(organisationDo: Organisation<boolean>): Promise<DomainError | undefined> {
+        const fieldNamesError: void | DomainError = this.validateFieldNames(organisationDo);
+        if (fieldNamesError) {
+            return fieldNamesError;
+        }
+
+        const emailResult: Result<void, DomainError> = await this.validateEmailAdressOnOrganisationTyp(organisationDo);
+        if (!emailResult.ok) {
+            return emailResult.error;
+        }
+
+        const klassenResult: Result<boolean, DomainError> = await this.validateKlassenSpecifications(organisationDo);
+        if (!klassenResult.ok) {
+            return klassenResult.error;
+        }
+
+        return undefined;
+    }
+
+    private async validateSchulSpecifications(organisationDo: Organisation<boolean>): Promise<DomainError | undefined> {
+        const kennungResult: Result<void, DomainError> = await this.validateKennungRequiredForSchule(organisationDo);
+        if (!kennungResult.ok) {
+            return kennungResult.error;
+        }
+
+        const nameResult: Result<void, DomainError> = await this.validateNameRequiredForSchule(organisationDo);
+        if (!nameResult.ok) {
+            return nameResult.error;
+        }
+
+        const kennungUniqueResult: Result<void, DomainError> = await this.validateSchuleKennungUnique(organisationDo);
+        if (!kennungUniqueResult.ok) {
+            return kennungUniqueResult.error;
+        }
+        return undefined;
     }
 
     private async validateEmailAdressOnOrganisationTyp(
