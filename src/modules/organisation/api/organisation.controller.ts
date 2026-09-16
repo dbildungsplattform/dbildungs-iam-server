@@ -153,7 +153,7 @@ export class OrganisationController {
         }
 
         existingOrganisation.id = params.organisationId;
-        if (existingOrganisation.typ !== OrganisationsTyp.SCHULE) {
+        if (existingOrganisation.typ !== OrganisationsTyp.SCHULE || body.typ !== OrganisationsTyp.SCHULE) {
             existingOrganisation.administriertVon = body.administriertVon;
             existingOrganisation.zugehoerigZu = body.zugehoerigZu;
         }

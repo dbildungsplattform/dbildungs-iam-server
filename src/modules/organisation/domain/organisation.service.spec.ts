@@ -579,7 +579,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).not.toEqual<Result<Organisation<true>>>({
+            expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new KennungRequiredForSchuleError(),
             });
@@ -601,7 +601,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).not.toEqual<Result<Organisation<true>>>({
+            expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new NameRequiredForSchuleError(),
             });
@@ -637,7 +637,12 @@ describe('OrganisationService', () => {
                 kennung: kennung,
                 name: name,
             });
-            const counted: Counted<Organisation<true>> = [[organisation], 1];
+            const otherOrganisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: kennung,
+                name: faker.string.alpha(),
+            });
+            const counted: Counted<Organisation<true>> = [[otherOrganisation], 1];
             organisationRepositoryMock.findById.mockResolvedValue(organisation);
             organisationRepositoryMock.findBy.mockResolvedValueOnce(counted);
             organisationRepositoryMock.save.mockResolvedValue(organisation);
@@ -647,7 +652,7 @@ describe('OrganisationService', () => {
                 permissionsMock,
             );
 
-            expect(result).not.toEqual<Result<Organisation<true>>>({
+            expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new SchuleKennungEindeutigError(),
             });

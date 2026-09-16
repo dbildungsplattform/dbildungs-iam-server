@@ -187,6 +187,13 @@ export class OrganisationService {
             return { ok: false, error: validationError };
         }
 
+        const schulSpecificationsError: DomainError | undefined =
+            await this.validateSchulSpecifications(organisationDo);
+        if (schulSpecificationsError) {
+            await this.logCreation(permissions, organisationDo, schulSpecificationsError);
+            return { ok: false, error: schulSpecificationsError };
+        }
+
         const organisation: Organisation<true> | OrganisationSpecificationError =
             await this.organisationRepo.save(organisationDo);
         if (organisation instanceof Organisation) {
