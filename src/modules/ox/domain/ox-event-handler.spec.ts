@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
@@ -35,18 +35,18 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { ListGroupsAction, ListGroupsResponse } from '../adapter/technical/actions/group/list-groups.action.js';
-import { CreateUserAction } from '../adapter/technical/actions/user/create-user.action.js';
-import { ExistsUserAction } from '../adapter/technical/actions/user/exists-user.action.js';
-import { GetDataForUserResponse } from '../adapter/technical/actions/user/get-data-user.action.js';
 import { OxGroupNotFoundError } from '../adapter/domain/error/ox-group-not-found.error.js';
 import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
 import { OxNoSuchUserError } from '../adapter/domain/error/ox-no-such-user.error.js';
-import { OxEventHandler } from './ox-event-handler.js';
 import { OxAdapter } from '../adapter/domain/ox.adapter.js';
-import { OxSyncEventHandler } from './ox-sync-event-handler.js';
-import { OxSendService } from '../adapter/technical/ox.send-service.js';
+import { ListGroupsAction, ListGroupsResponse } from '../adapter/technical/actions/group/list-groups.action.js';
 import { ChangeUserParams } from '../adapter/technical/actions/user/change-user.action.js';
+import { CreateUserAction } from '../adapter/technical/actions/user/create-user.action.js';
+import { ExistsUserAction } from '../adapter/technical/actions/user/exists-user.action.js';
+import { GetDataForUserResponse } from '../adapter/technical/actions/user/get-data-user.action.js';
+import { OxSendService } from '../adapter/technical/ox.send-service.js';
+import { OxEventHandler } from './ox-event-handler.js';
+import { OxSyncEventHandler } from './ox-sync-event-handler.js';
 
 describe('OxEventHandler', () => {
     let module: TestingModule;
@@ -2238,6 +2238,17 @@ describe('OxEventHandler', () => {
                 sut.ENABLED = false;
                 await sut.handleOrganisationDeletedEvent(event);
                 expect(loggerMock.info).toHaveBeenCalledWith('Not enabled, ignoring event');
+            });
+        });
+
+        describe('when email microservice is enabled', () => {
+            it('should process the event when enabled', async () => {
+                emailResolverService.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+                await sut.handleOrganisationDeletedEvent(event);
+                expect(loggerMock.info).toHaveBeenCalledWith(
+                    `Ignoring Event for organisationId:${event.organisationId} because email microservice is enabled`,
+                );
             });
         });
 

@@ -2,78 +2,78 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { uniq } from 'lodash-es';
 
-import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { DomainError } from '../../../shared/error/index.js';
-import { OxSendService } from '../adapter/technical/ox.send-service.js';
-import { CreateUserAction, CreateUserResponse } from '../adapter/technical/actions/user/create-user.action.js';
-import { OrganisationKennung, PersonID, PersonUsername } from '../../../shared/types/index.js';
-import { Person } from '../../person/domain/person.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
-import { ExistsUserAction, ExistsUserResponse } from '../adapter/technical/actions/user/exists-user.action.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
-import { ChangeUserAction } from '../adapter/technical/actions/user/change-user.action.js';
-import {
-    GetDataForUserAction,
-    GetDataForUserResponse,
-} from '../adapter/technical/actions/user/get-data-user.action.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
-import {
-    AddMemberToGroupAction,
-    AddMemberToGroupResponse,
-} from '../adapter/technical/actions/group/add-member-to-group.action.js';
-import { ChangeByModuleAccessAction } from '../adapter/technical/actions/user/change-by-module-access.action.js';
-import { EmailAddressAlreadyExistsEvent } from '../../../shared/events/email/email-address-already-exists.event.js';
-import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
-import { EmailAddressDisabledEvent } from '../../../shared/events/email/email-address-disabled.event.js';
-import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
-import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
-import { DisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/disabled-email-address-generated.event.js';
-import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
-import { DeleteUserAction } from '../adapter/technical/actions/user/delete-user.action.js';
-import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
-import { OxAccountDeletedEvent } from '../../../shared/events/ox/ox-account-deleted.event.js';
-import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
-import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
-import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
-import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
-import { KafkaOxAccountDeletedEvent } from '../../../shared/events/ox/kafka-ox-account-deleted.event.js';
-import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kafka-email-address-disabled.event.js';
-import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
-import { KafkaDisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-disabled-email-address-generated.event.js';
-import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
-import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
-import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
+import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
+import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { PersonIdentifier } from '../../../core/logging/person-identifier.js';
+import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
+import { DomainError } from '../../../shared/error/index.js';
+import { DisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/disabled-email-address-generated.event.js';
+import { EmailAddressAlreadyExistsEvent } from '../../../shared/events/email/email-address-already-exists.event.js';
+import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
+import { EmailAddressDisabledEvent } from '../../../shared/events/email/email-address-disabled.event.js';
+import { EmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/email-address-generated-after-ldap-sync-failed.event.js';
+import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
+import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
+import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
+import { KafkaDisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-disabled-email-address-generated.event.js';
+import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
+import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
+import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kafka-email-address-disabled.event.js';
+import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/kafka-email-address-generated-after-ldap-sync-failed.event.js';
+import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
+import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
+import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
+import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
+import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
+import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
+import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
+import { KafkaOxAccountDeletedEvent } from '../../../shared/events/ox/kafka-ox-account-deleted.event.js';
+import { OxAccountDeletedEvent } from '../../../shared/events/ox/ox-account-deleted.event.js';
+import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
+import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
+import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
+import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
+import { OrganisationKennung, PersonID, PersonUsername } from '../../../shared/types/index.js';
+import { OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
+import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
 import { OxNoSuchUserError } from '../adapter/domain/error/ox-no-such-user.error.js';
 import {
     generateDisabledOxUserChangedEvent,
     generateOxSyncUserCreatedEvent,
     generateOxUserChangedEvent,
     generateOxUserCreatedEvent,
+    OxAdapter,
     OxUserChangedEventCreator,
     OxUserCreatedEventCreator,
-    OxAdapter,
 } from '../adapter/domain/ox.adapter.js';
-import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
-import { EmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/email-address-generated-after-ldap-sync-failed.event.js';
-import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/kafka-email-address-generated-after-ldap-sync-failed.event.js';
-import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
+import {
+    AddMemberToGroupAction,
+    AddMemberToGroupResponse,
+} from '../adapter/technical/actions/group/add-member-to-group.action.js';
+import { ChangeByModuleAccessAction } from '../adapter/technical/actions/user/change-by-module-access.action.js';
+import { ChangeUserAction } from '../adapter/technical/actions/user/change-user.action.js';
+import { CreateUserAction, CreateUserResponse } from '../adapter/technical/actions/user/create-user.action.js';
+import { DeleteUserAction } from '../adapter/technical/actions/user/delete-user.action.js';
+import { ExistsUserAction, ExistsUserResponse } from '../adapter/technical/actions/user/exists-user.action.js';
+import {
+    GetDataForUserAction,
+    GetDataForUserResponse,
+} from '../adapter/technical/actions/user/get-data-user.action.js';
+import { OxSendService } from '../adapter/technical/ox.send-service.js';
 import { OxSyncEventHandler } from './ox-sync-event-handler.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
-import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
 @Injectable()
 export class OxEventHandler {
@@ -464,6 +464,13 @@ export class OxEventHandler {
         // Check if the functionality is enabled
         if (!this.ENABLED) {
             return this.logger.info('Not enabled, ignoring event');
+        }
+
+        if (this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(
+                `Ignoring Event for organisationId:${event.organisationId} because email microservice is enabled`,
+            );
+            return;
         }
 
         if (!event.kennung || event?.typ !== OrganisationsTyp.SCHULE) {
