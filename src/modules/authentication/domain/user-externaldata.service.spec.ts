@@ -337,8 +337,11 @@ describe('UserExternaldataService', () => {
                 };
 
                 it('should set emailAdresse and oxLoginId', async () => {
-                    const { person, emailAddress, oxLoginId }: { person: Person<true>; emailAddress: EmailAddress<true>; oxLoginId: string } =
-                        setup();
+                    const {
+                        person,
+                        emailAddress,
+                        oxLoginId,
+                    }: { person: Person<true>; emailAddress: EmailAddress<true>; oxLoginId: string } = setup();
 
                     const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
                         person.keycloakUserId!,

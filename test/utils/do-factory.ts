@@ -194,9 +194,9 @@ export class DoFactory {
             rolleId: props?.rolleId ?? faker.string.uuid(),
             rollenart: props?.rollenart ?? faker.helpers.enumValue(RollenArt),
             kennung: props?.kennung ?? faker.lorem.word(),
-            serviceProvider:
-                props?.serviceProvider ??
-                [DoFactory.createServiceProvider(true, keycloakClientId ? { keycloakClientId } : undefined)],
+            serviceProvider: props?.serviceProvider ?? [
+                DoFactory.createServiceProvider(true, keycloakClientId ? { keycloakClientId } : undefined),
+            ],
         };
         return externalPkData;
     }
