@@ -290,6 +290,7 @@ describe('LDAP Client Adapter', () => {
         });
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
+            vi.useFakeTimers();
             instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
@@ -297,10 +298,13 @@ describe('LDAP Client Adapter', () => {
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(30000);
+            const result: Result<boolean> = await resultPromise;
+            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(3);
@@ -320,16 +324,20 @@ describe('LDAP Client Adapter', () => {
         });
 
         it('when operation fails and throws Error it should automatically retry the operation with nr of retries set via env', async () => {
+            vi.useFakeTimers();
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error());
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<boolean> = await resultPromise;
+            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);

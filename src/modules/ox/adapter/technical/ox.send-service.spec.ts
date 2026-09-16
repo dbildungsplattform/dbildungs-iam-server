@@ -82,6 +82,7 @@ describe('OxSendService', () => {
         it('should call HttpService.post', async () => {
             const mockAction: DeepMocked<OxBaseAction<unknown, string>> = createMock(OxActionMock);
             mockAction.buildRequest.mockReturnValueOnce({});
+            mockAction.parseResponse.mockReturnValueOnce({ ok: true, value: 'TestResult' });
             mockAction.action = 'testAction';
             mockAction.soapServiceName = 'TestService';
             httpServiceMock.post.mockReturnValueOnce(of({} as AxiosResponse));
@@ -118,6 +119,8 @@ describe('OxSendService', () => {
         });
 
         it('should return result if a retry succeeds', async () => {
+            vi.useFakeTimers();
+
             const mockAction: DeepMocked<OxBaseAction<unknown, string>> = createMock(OxActionMock);
             mockAction.buildRequest.mockReturnValueOnce({});
             mockAction.parseResponse.mockReturnValueOnce({ ok: true, value: 'TestResult' });
@@ -128,7 +131,11 @@ describe('OxSendService', () => {
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Fail first
             httpServiceMock.post.mockReturnValueOnce(of({} as AxiosResponse)); // Succeed on retry
 
-            const result: Result<string, DomainError> = await sut.send(mockAction);
+            const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<string, DomainError> = await resultPromise;
+
+            vi.useRealTimers();
 
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                 'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 1',
@@ -141,12 +148,18 @@ describe('OxSendService', () => {
         });
 
         it('should return OxError if request failed and response is NOT a specific OX-Error-response', async () => {
+            vi.useFakeTimers();
+
             const error: Error = new Error('AxiosError');
             const mockAction: DeepMocked<OxBaseAction<unknown, string>> = createMock(OxActionMock);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error));
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Retry
 
-            const result: Result<string, DomainError> = await sut.send(mockAction);
+            const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<string, DomainError> = await resultPromise;
+
+            vi.useRealTimers();
 
             expect(result).toEqual({
                 ok: false,
@@ -176,11 +189,17 @@ describe('OxSendService', () => {
                 },
             };
 
+            vi.useFakeTimers();
+
             const mockAction: DeepMocked<OxBaseAction<unknown, string>> = createMock(OxActionMock);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error));
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Retry
 
-            const result: Result<string, DomainError> = await sut.send(mockAction);
+            const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<string, DomainError> = await resultPromise;
+
+            vi.useRealTimers();
 
             expect(loggerMock.error).toHaveBeenCalledWith('OX_PRIMARY_MAIL_NOT_EQUAL_EMAIL1_ERROR');
             expect(result).toEqual({
@@ -207,11 +226,17 @@ describe('OxSendService', () => {
                 },
             };
 
+            vi.useFakeTimers();
+
             const mockAction: DeepMocked<OxBaseAction<unknown, string>> = createMock(OxActionMock);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => faultyErrorWithMissingFaultString));
             httpServiceMock.post.mockReturnValueOnce(throwError(() => faultyErrorWithMissingFaultString)); // Retry
 
-            const result: Result<string, DomainError> = await sut.send(mockAction);
+            const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<string, DomainError> = await resultPromise;
+
+            vi.useRealTimers();
 
             expect(loggerMock.error).toHaveBeenCalledWith(`OX-response could not be parsed after error occurred`);
             expect(result).toEqual({
