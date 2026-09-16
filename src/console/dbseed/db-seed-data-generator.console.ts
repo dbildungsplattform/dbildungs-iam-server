@@ -8,6 +8,9 @@ import { EntityFile } from './db-seed.console.js';
 import { OrganisationFile } from './file/organisation-file.js';
 import { PersonFile } from './file/person-file.js';
 import { PersonenkontextFile } from './file/personenkontext-file.js';
+import { DbSeedDataGeneratorValidationIntegerError } from './error/db-seed-data-generator-validation-integer.error.js';
+import { DbSeedDataGeneratorValidationPositiveIntegerError } from './error/db-seed-data-generator-validation-positive-integer.error.js';
+import { DbSeedDataGeneratorNoDirectoryError } from './error/db-seed-data-generator-no-directory.error.js';
 
 export type SeedDataGeneratorOptions = {
     baseId: number;
@@ -142,36 +145,36 @@ export class DbSeedDataGeneratorConsole extends CommandRunner {
         if (passedParams[0] !== undefined) {
             return passedParams[0];
         }
-        throw new Error('No directory provided!');
+        throw new DbSeedDataGeneratorNoDirectoryError();
     }
 
     public validateOptions(options: SeedDataGeneratorOptions): void {
         if (!Number.isFinite(options.baseId) || options.baseId < 0) {
-            throw new Error('The value for baseId must be a positive integer.');
+            throw new DbSeedDataGeneratorValidationPositiveIntegerError('baseId');
         }
 
         if (!Number.isFinite(options.schoolCount) || options.schoolCount < 0) {
-            throw new Error('The value for schoolCount must be at least 0.');
+            throw new DbSeedDataGeneratorValidationPositiveIntegerError('schoolCount');
         }
 
         if (!Number.isFinite(options.classesPerSchool) || options.classesPerSchool < 0) {
-            throw new Error('The value for classesPerSchool must be at least 0.');
+            throw new DbSeedDataGeneratorValidationPositiveIntegerError('classesPerSchool');
         }
 
         if (!Number.isFinite(options.teacherCount) || options.teacherCount < 0) {
-            throw new Error('The value for teacherCount must be at least 0.');
+            throw new DbSeedDataGeneratorValidationPositiveIntegerError('teacherCount');
         }
 
         if (!Number.isFinite(options.studentCount) || options.studentCount < 0) {
-            throw new Error('The value for studentCount must be at least 0.');
+            throw new DbSeedDataGeneratorValidationPositiveIntegerError('studentCount');
         }
 
         if (!Number.isFinite(options.teacherRoleId)) {
-            throw new Error('The value for teacherRoleId must be a valid integer.');
+            throw new DbSeedDataGeneratorValidationIntegerError('teacherRoleId');
         }
 
         if (!Number.isFinite(options.studentRoleId)) {
-            throw new Error('The value for studentRoleId must be a valid integer.');
+            throw new DbSeedDataGeneratorValidationIntegerError('studentRoleId');
         }
     }
 
