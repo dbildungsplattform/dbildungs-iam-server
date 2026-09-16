@@ -27,6 +27,7 @@ import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-ex
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
 
 describe('EmailMicroserviceEventHandler', () => {
     let app: INestApplication;
@@ -630,8 +631,9 @@ describe('EmailMicroserviceEventHandler', () => {
         });
 
         it('should fail when microservice is enabled and username is undefined', async () => {
+            const fakePersonId: string = faker.string.uuid();
             const mockEvent: PersonRenamedEvent = new PersonRenamedEvent(
-                faker.string.uuid(),
+                fakePersonId,
                 faker.person.firstName(),
                 faker.person.lastName(),
                 undefined, // username
@@ -642,7 +644,7 @@ describe('EmailMicroserviceEventHandler', () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             await expect(sut.handlePersonRenamedEvent(mockEvent)).rejects.toEqual(
-                new Error(`Person with id:${mockEvent.personId} has no username, cannot resolve email.`),
+                new PersonHasNoUsernameError(fakePersonId),
             );
 
             expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('Received PersonRenamedEvent'));

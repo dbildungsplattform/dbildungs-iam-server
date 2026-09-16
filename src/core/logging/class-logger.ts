@@ -5,6 +5,8 @@ import { Logger } from './logger.js';
 import { INQUIRER } from '@nestjs/core';
 import { inspect } from 'util';
 import { PersonIdentifier } from './person-identifier.js';
+import { InstanceOfErrorUndefinedError } from './error/instance-of-error-undefined.error.js';
+import { InstanceOfErrorStringError } from './error/instance-of-error-string.error.js';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class ClassLogger extends Logger {
@@ -165,15 +167,13 @@ export class ClassLogger extends Logger {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private instanceOfError(object: any, warnWhenErrorIsUndefined: boolean): object is Error {
         if (object === undefined && warnWhenErrorIsUndefined) {
-            const error: Error = new Error('Parameter was UNDEFINED when calling instanceOfError');
+            const error: Error = new InstanceOfErrorUndefinedError();
             this.warning(error.message, error.stack);
 
             return false;
         }
         if (typeof object === 'string') {
-            const error: Error = new Error(
-                'Type of parameter was String when calling instanceOfError, that may not have been intentional',
-            );
+            const error: Error = new InstanceOfErrorStringError();
             this.warning(error.message, error.stack);
 
             return false;

@@ -15,7 +15,7 @@ export type ListGroupsForUserResponse = {
 
 export type ListGroupsForUserResponseBody = {
     listGroupsForUserResponse: {
-        return: OXGroup | OXGroup[];
+        return?: OXGroup[];
     };
 };
 
@@ -26,6 +26,13 @@ export class ListGroupsForUserAction extends OxBaseAction<ListGroupsForUserRespo
 
     public constructor(private readonly params: ListGroupsForUserParams) {
         super();
+    }
+
+    public override isArrayOverride(_tagName: string, jPath: string): boolean {
+        return [
+            'Envelope.Body.listGroupsForUserResponse.return',
+            'Envelope.Body.listGroupsForUserResponse.return.members',
+        ].includes(jPath);
     }
 
     public override buildRequest(): object {
@@ -52,30 +59,17 @@ export class ListGroupsForUserAction extends OxBaseAction<ListGroupsForUserRespo
     }
 
     public override parseBody(body: ListGroupsForUserResponseBody): Result<ListGroupsForUserResponse, DomainError> {
-        const groups: OXGroup[] = [];
-
-        if (Array.isArray(body.listGroupsForUserResponse.return)) {
-            for (const ret of body.listGroupsForUserResponse.return) {
-                groups.push({
-                    id: ret.id,
-                    name: ret.name,
-                    displayname: ret.displayname,
-                    memberIds: ret.memberIds,
-                });
-            }
-        } else {
-            groups.push({
-                id: body.listGroupsForUserResponse.return.id,
-                name: body.listGroupsForUserResponse.return.name,
-                displayname: body.listGroupsForUserResponse.return.displayname,
-                memberIds: body.listGroupsForUserResponse.return.memberIds,
-            });
-        }
+        const groups: OXGroup[] | undefined = body.listGroupsForUserResponse.return?.map((ret: OXGroup) => ({
+            id: ret.id,
+            name: ret.name,
+            displayname: ret.displayname,
+            memberIds: ret.memberIds,
+        }));
 
         return {
             ok: true,
             value: {
-                groups: groups,
+                groups: groups ?? [],
             },
         };
     }
