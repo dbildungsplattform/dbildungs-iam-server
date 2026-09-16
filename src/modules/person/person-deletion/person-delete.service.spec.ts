@@ -9,6 +9,7 @@ import { DomainError } from '../../../shared/error/index.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/index.js';
+import { PersonDeleteRolleNotFoundError } from './person-delete-rolle-not-found.error.js';
 
 describe('PersonDeleteService', () => {
     let module: TestingModule;
@@ -89,7 +90,7 @@ describe('PersonDeleteService', () => {
                 expect(res.ok).toBeFalsy();
                 expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                     'Error while loading Kontexts of person to delete',
-                    new Error(`Rolle not found for Personenkontext dummy-id`),
+                    new PersonDeleteRolleNotFoundError(personenkontextMock),
                 );
             });
         });

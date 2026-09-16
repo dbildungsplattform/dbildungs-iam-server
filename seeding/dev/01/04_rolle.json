@@ -42,7 +42,7 @@
             "rollenart": "LEHR",
             "merkmale": ["KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 15, 16, 17]
+            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 15, 16, 17, 43]
         },
         {
             "id": 3,
@@ -51,7 +51,7 @@
             "rollenart": "LEHR",
             "merkmale": ["BEFRISTUNG_PFLICHT", "KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 17]
+            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 17, 43]
         },
         {
             "id": 4,
@@ -86,7 +86,7 @@
             "rollenart": "LEHR",
             "merkmale": ["BEFRISTUNG_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11]
+            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 43]
         },
         {
             "id": 7,
@@ -113,7 +113,7 @@
             "rollenart": "LEHR",
             "merkmale": ["BEFRISTUNG_PFLICHT", "KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 17]
+            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 17, 43]
         },
         {
             "id": 11,
@@ -122,7 +122,7 @@
             "rollenart": "LEHR",
             "merkmale": [],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11]
+            "serviceProviderIds": [0, 1, 2, 4, 6, 7, 8, 9, 10, 11, 43]
         },
         {
             "id": 12,
@@ -131,7 +131,7 @@
             "rollenart": "LEHR",
             "merkmale": ["KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 6, 7, 8, 9, 10, 11, 17]
+            "serviceProviderIds": [0, 1, 2, 6, 7, 8, 9, 10, 11, 17, 43]
         },
         {
             "id": 13,
@@ -140,7 +140,7 @@
             "rollenart": "LEHR",
             "merkmale": [],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 8, 10]
+            "serviceProviderIds": [0, 1, 2, 8, 10, 43]
         },
         {
             "id": 14,
@@ -149,7 +149,7 @@
             "rollenart": "LEHR",
             "merkmale": ["KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 17]
+            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 17, 43]
         },
         {
             "id": 16,
@@ -196,7 +196,7 @@
             "rollenart": "LEHR",
             "merkmale": [],
             "systemrechte": [],
-            "serviceProviderIds": [13, 14]
+            "serviceProviderIds": [13, 14, 43]
         },
         {
             "id": 201,

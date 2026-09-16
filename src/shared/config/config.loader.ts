@@ -6,6 +6,7 @@ import { merge } from 'lodash-es';
 import EnvConfig from './config.env.js';
 import { getEmailConfig } from './email-config.env.js';
 import { EmailAppConfig } from './email-app.config.js';
+import { ConfigLoaderValidationError } from './errors/config-loader-validation.error.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseFileToJSON(path: string): any {
@@ -42,11 +43,7 @@ export function loadConfigFiles(): JsonConfig {
         forbidUnknownValues: true,
     });
     if (errors.length !== 0) {
-        throw new Error(
-            errors
-                .map((error: ValidationError) => error.toString())
-                .reduce((previous: string, current: string) => `${previous}\n${current}`),
-        );
+        throw new ConfigLoaderValidationError(errors);
     }
     return mergedConfig;
 }
@@ -80,11 +77,7 @@ export function loadEmailAppConfigFiles(): EmailAppConfig {
         forbidUnknownValues: true,
     });
     if (errors.length !== 0) {
-        throw new Error(
-            errors
-                .map((error: ValidationError) => error.toString())
-                .reduce((previous: string, current: string) => `${previous}\n${current}`),
-        );
+        throw new ConfigLoaderValidationError(errors);
     }
     return mergedConfig;
 }

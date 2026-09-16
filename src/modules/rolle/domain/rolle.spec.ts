@@ -1,27 +1,28 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { RollenArt, RollenMerkmal } from './rolle.enums.js';
-import { RollenSystemRecht } from './systemrecht.js';
-import { Rolle } from './rolle.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { EntityAlreadyExistsError } from '../../../shared/error/entity-already-exists.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { Err, Ok } from '../../../shared/util/result.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { RolleFactory } from './rolle.factory.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { NameForRolleWithTrailingSpaceError } from './name-with-trailing-space.error.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { EntityAlreadyExistsError } from '../../../shared/error/entity-already-exists.error.js';
+import { RollenArt, RollenMerkmal } from './rolle.enums.js';
+import { RolleFactory } from './rolle.factory.js';
+import { Rolle } from './rolle.js';
 import { ServiceProviderProvidedOutOfTreeError } from './service-provider-provided-out-of-tree.error.js';
+import { RollenSystemRecht } from './systemrecht.js';
 
 describe('Rolle Aggregate', () => {
     let module: TestingModule;
@@ -347,6 +348,34 @@ describe('Rolle Aggregate', () => {
             const savedRolle: Rolle<true> = DoFactory.createRolle(true, { systemrechte: [] });
 
             expect(savedRolle.hasSystemRecht(RollenSystemRecht.ROLLEN_VERWALTEN)).toBeFalsy();
+        });
+    });
+
+    describe('hasUemServiceProvider', () => {
+        it('should return true when a service provider uses the UEM external system', () => {
+            const savedRolle: Rolle<true> = DoFactory.createRolle(true, {
+                serviceProviderData: [
+                    DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
+                ],
+            });
+
+            expect(savedRolle.hasUemServiceProvider()).toBe(true);
+        });
+
+        it('should return false when no service provider uses the UEM external system', () => {
+            const savedRolle: Rolle<true> = DoFactory.createRolle(true, {
+                serviceProviderData: [
+                    DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.ITSLEARNING }),
+                ],
+            });
+
+            expect(savedRolle.hasUemServiceProvider()).toBe(false);
+        });
+
+        it('should return false when there is no service provider data', () => {
+            const savedRolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderData: [] });
+
+            expect(savedRolle.hasUemServiceProvider()).toBe(false);
         });
     });
 
