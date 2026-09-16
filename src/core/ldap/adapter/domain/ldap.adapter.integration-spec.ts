@@ -3214,6 +3214,19 @@ describe('LDAP Adapter', () => {
             const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
             expect(result).toEqual(Ok(false));
         });
+
+        describe('when bind fails', () => {
+            it('should return error', async () => {
+                ldapClientMock.getClient.mockImplementation(() => {
+                    clientMock.bind.mockRejectedValueOnce(Err(false));
+                    return clientMock;
+                });
+                const kennung: string = faker.string.numeric(7);
+
+                const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
+                expect(result).toEqual({ error: new LdapBindError(), ok: false });
+            });
+        });
     });
 
     describe('createNewLehrerUidFromOldUid', () => {
