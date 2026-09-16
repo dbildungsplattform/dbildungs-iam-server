@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Post, UseGuards, UseInterceptors, Version } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ExternalDataCacheInterceptor } from '../../../shared/cache/external-data-cache-interceptor.js';
 import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
 import { UserExternalDataWorkflowError } from '../../../shared/error/user-externaldata-workflow.error.js';
@@ -40,6 +40,7 @@ type InitializedWorkflow = UserExternaldataWorkflowAggregate & {
 };
 
 @ApiTags('Keycloakinternal')
+@ApiHeader({ name: 'api-key', description: 'Internal API key for server-to-server communication', required: true })
 @Controller({ path: 'keycloakinternal' })
 export class KeycloakInternalController {
     public constructor(
