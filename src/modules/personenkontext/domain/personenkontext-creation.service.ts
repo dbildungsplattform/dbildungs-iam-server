@@ -15,6 +15,8 @@ import { EscalatedPermissionAtOrga } from '../../permission/escalated-person-per
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 
 export type PersonPersonenkontext = {
     person: Person<true>;
@@ -29,6 +31,7 @@ export class PersonenkontextCreationService {
         private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
+        private readonly dBiamPersonenkontextService: DBiamPersonenkontextService,
     ) {}
 
     public async createPersonWithPersonenkontexte(
@@ -39,6 +42,15 @@ export class PersonenkontextCreationService {
         personalnummer?: string,
         befristung?: Date,
     ): Promise<Result<PersonPersonenkontext, DomainError>> {
+        if (
+            personalnummer &&
+            !(await this.dBiamPersonenkontextService.IsPersonalnummerRequiredByRoleIds(
+                createPersonenkontexte.map((personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId)
+            ))
+        ) {
+            throw new PersonalnummerWithoutKoperspflichtError();
+        }
+
         const personOrError: Person<false> | DomainError = await this.personFactory.createNew({
             vorname: vorname,
             familienname: familienname,

@@ -33,6 +33,7 @@ import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflo
 import { Ok } from '../../../shared/util/result.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
+import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
 
 describe('PersonenkontextCreationService', () => {
     let module: TestingModule;
@@ -47,6 +48,7 @@ describe('PersonenkontextCreationService', () => {
     const escalatedPersonPermissionsFactoryMock: DeepMocked<EscalatedPersonPermissionsFactory> = createMock(
         EscalatedPersonPermissionsFactory,
     );
+    let dBiamPersonenkontextService: DeepMocked<DBiamPersonenkontextService>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -94,6 +96,10 @@ describe('PersonenkontextCreationService', () => {
                     provide: EscalatedPersonPermissionsFactory,
                     useValue: escalatedPersonPermissionsFactoryMock,
                 },
+                {
+                    provide: DBiamPersonenkontextService,
+                    useValue: createMock(DBiamPersonenkontextService)
+                },
             ],
         })
             .overrideProvider(EscalatedPersonPermissionsFactory)
@@ -111,6 +117,7 @@ describe('PersonenkontextCreationService', () => {
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(
             personpermissionsMock as unknown as EscalatedPersonPermissions,
         );
+        dBiamPersonenkontextService = module.get(DBiamPersonenkontextService)
     });
 
     afterAll(async () => {
@@ -126,6 +133,26 @@ describe('PersonenkontextCreationService', () => {
     });
 
     describe('createPersonWithPersonenkontexte', () => {
+        it('should return DomainError if personalnummer is passed, but no Role requires a Kopersnummer', async () => {
+            dBiamPersonenkontextService.IsPersonalnummerRequiredByRoleIds.mockResolvedValueOnce(false);
+
+            const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
+                personpermissionsMock,
+                faker.string.uuid(),
+                faker.string.uuid(),
+                [
+                    {
+                        organisationId: faker.string.uuid(),
+                        rolleId: faker.string.uuid(),
+                    },
+                ],
+            );
+            expect(result.ok).toBeFalsy();
+            if (!result.ok) {
+                expect(result.error).toBeInstanceOf(DomainError);
+            }
+        })
+
         it('should return DomainError if Person Aggregate ist invalid ', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(new InvalidAttributeLengthError('name.vorname'));
             rolleRepoMock.findById.mockResolvedValueOnce(DoFactory.createRolle(true));

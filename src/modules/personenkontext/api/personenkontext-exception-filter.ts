@@ -11,8 +11,9 @@ import {
     DbiamPersonenkontextError,
     PersonenkontextSpecificationErrorI18nTypes,
 } from './dbiam-personenkontext.error.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 
-@Catch(PersonenkontextSpecificationError, DuplicatePersonalnummerError)
+@Catch(PersonenkontextSpecificationError, DuplicatePersonalnummerError, PersonalnummerWithoutKoperspflichtError)
 export class PersonenkontextExceptionFilter implements ExceptionFilter<PersonenkontextSpecificationError> {
     private ERROR_MAPPINGS: Map<string, DbiamPersonenkontextError> = new Map([
         [
@@ -50,6 +51,13 @@ export class PersonenkontextExceptionFilter implements ExceptionFilter<Personenk
                 i18nKey: PersonenkontextSpecificationErrorI18nTypes.PERSONALNUMMER_NICHT_EINDEUTIG,
             }),
         ],
+        [
+            PersonalnummerWithoutKoperspflichtError.name,
+            new DbiamPersonenkontextError({
+                code: 400,
+                i18nKey: PersonenkontextSpecificationErrorI18nTypes.PERSON_HAT_KEINE_KOPERSPFLICHTIGE_ROLLE,
+            })
+        ]
     ]);
 
     public catch(exception: PersonenkontextSpecificationError, host: ArgumentsHost): void {
