@@ -4,6 +4,7 @@ import { Err, Ok } from '../../../shared/util/result.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { NameForRolleWithTrailingSpaceError } from './name-with-trailing-space.error.js';
@@ -148,6 +149,12 @@ export class Rolle<WasPersisted extends boolean> {
 
     public hasMerkmal(merkmal: RollenMerkmal): boolean {
         return this.merkmale.includes(merkmal);
+    }
+
+    public hasUemServiceProvider(): boolean {
+        return this.serviceProviderData.some(
+            (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
+        );
     }
 
     /**
