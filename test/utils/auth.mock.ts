@@ -44,6 +44,7 @@ export class PersonPermissionsMock implements IPersonPermissions {
         _systemrechte: RollenSystemRecht[],
         _matchAll?: boolean,
     ): Promise<boolean> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getOrgIdsWithSystemrecht(
@@ -51,15 +52,19 @@ export class PersonPermissionsMock implements IPersonPermissions {
         _withChildren: boolean,
         _matchAll?: boolean,
     ): Promise<PermittedOrgas> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getRoleIds(): Promise<RolleID[]> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getPersonenkontexteWithRolesAndOrgs(): Promise<PersonenkontextRolleWithOrganisation[]> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public hasOrgVerwaltenRechtAtOrga(_typ: OrganisationsTyp, _administriertVon?: string): Promise<boolean> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public hasSystemrechteAtOrganisation(): Promise<boolean> {

@@ -10,6 +10,7 @@ import { PersonRepository } from '../persistence/person.repository.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { PersonDeleteRolleNotFoundError } from './person-delete-rolle-not-found.error.js';
 
 @Injectable()
 export class PersonDeleteService {
@@ -80,9 +81,7 @@ export class PersonDeleteService {
                                     };
                                 });
                         } else {
-                            return Promise.reject(
-                                new Error(`Rolle not found for Personenkontext ${personenKontext.id}`),
-                            );
+                            return Promise.reject(new PersonDeleteRolleNotFoundError(personenKontext));
                         }
                     });
                 }),

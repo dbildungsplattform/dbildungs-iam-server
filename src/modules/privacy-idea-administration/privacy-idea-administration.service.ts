@@ -40,6 +40,15 @@ import { SoftwareTokenInitializationError } from './api/error/software-token-ini
 import { TokenStateError } from './api/error/token-state.error.js';
 import { PIUnavailableError } from './api/error/pi-unavailable.error.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';
+import { JwtFetchError } from './error/jwt-fetch.error.js';
+import { TokenDeleteError } from './error/token-delete.error.js';
+import { TokenInitError } from './error/token-init.error.js';
+import { TokenUnassignError } from './error/token-unassign.error.js';
+import { TokenVerifyError } from './error/token-verify.error.js';
+import { UserCheckError } from './error/user-check.error.js';
+import { UserCreationError } from './error/user-creation.error.js';
+import { UserTokensError } from './error/user-tokens.error.js';
+import { VeryfyNoTokenError } from './error/verify-no-token.error.js';
 
 @Injectable()
 export class PrivacyIdeaAdministrationService {
@@ -110,9 +119,9 @@ export class PrivacyIdeaAdministrationService {
             if (error instanceof PIUnavailableError) {
                 throw error;
             } else if (error instanceof Error) {
-                throw new Error(`Error fetching JWT token: ${error.message}`);
+                throw new JwtFetchError(error.message);
             } else {
-                throw new Error(`Error fetching JWT token: Unknown error occurred`);
+                throw new JwtFetchError();
             }
         }
     }
@@ -160,9 +169,9 @@ export class PrivacyIdeaAdministrationService {
             this.logger.logUnknownAsError('Could not initialize token', error);
 
             if (error instanceof Error) {
-                throw new Error(`Error requesting 2fa token: ${error.message}`);
+                throw new TokenInitError(error.message);
             } else {
-                throw new Error(`Error requesting 2fa token: Unknown error occurred`);
+                throw new TokenInitError();
             }
         }
     }
@@ -208,9 +217,9 @@ export class PrivacyIdeaAdministrationService {
             if (error instanceof PIUnavailableError) {
                 throw error;
             } else if (error instanceof Error) {
-                throw new Error(`Error getting user tokens: ${error.message}`);
+                throw new UserTokensError(error.message);
             } else {
-                throw new Error(`Error getting user tokens: Unknown error occurred`);
+                throw new UserTokensError();
             }
         }
     }
@@ -238,9 +247,9 @@ export class PrivacyIdeaAdministrationService {
             if (error instanceof PIUnavailableError) {
                 throw error;
             } else if (error instanceof Error) {
-                throw new Error(`Error checking user exists: ${error.message}`);
+                throw new UserCheckError(error.message);
             } else {
-                throw new Error(`Error checking user exists: Unknown error occurred`);
+                throw new UserCheckError();
             }
         }
     }
@@ -262,9 +271,9 @@ export class PrivacyIdeaAdministrationService {
             this.logger.logUnknownAsError('Could not add user', error);
 
             if (error instanceof Error) {
-                throw new Error(`Error adding user: ${error.message}`);
+                throw new UserCreationError(error.message);
             } else {
-                throw new Error(`Error adding user: Unknown error occurred`);
+                throw new UserCreationError();
             }
         }
     }
@@ -449,9 +458,9 @@ export class PrivacyIdeaAdministrationService {
             this.logger.logUnknownAsError('Could not unassign token', error);
 
             if (error instanceof Error) {
-                throw new Error(`Error unassigning token: ${error.message}`);
+                throw new TokenUnassignError(error.message);
             } else {
-                throw new Error(`Error unassigning token: Unknown error occurred`);
+                throw new TokenUnassignError();
             }
         }
     }
@@ -459,7 +468,7 @@ export class PrivacyIdeaAdministrationService {
     public async verifyTokenEnrollment(userName: string, otp: string): Promise<void> {
         const tokenToVerify: PrivacyIdeaToken | undefined = await this.getTokenToVerify(userName);
         if (!tokenToVerify) {
-            throw new Error('No token to verify');
+            throw new VeryfyNoTokenError();
         }
         const token: string = await this.getJWTToken();
         const url: string = this.privacyIdeaConfig.ENDPOINT + '/token/init';
@@ -493,9 +502,9 @@ export class PrivacyIdeaAdministrationService {
             if (error instanceof TokenError) {
                 throw error;
             } else if (error instanceof Error) {
-                throw new Error(`Error verifying token: ${error.message}`);
+                throw new TokenVerifyError(error.message);
             } else {
-                throw new Error(`Error verifying token: Unknown error occurred`);
+                throw new TokenVerifyError();
             }
         }
     }
@@ -531,9 +540,9 @@ export class PrivacyIdeaAdministrationService {
             this.logger.logUnknownAsError('Could not delete token', error);
 
             if (error instanceof Error) {
-                throw new Error(`Error deleting token: ${error.message}`);
+                throw new TokenDeleteError(error.message);
             } else {
-                throw new Error(`Error deleting token: Unknown error occurred`);
+                throw new TokenDeleteError();
             }
         }
     }

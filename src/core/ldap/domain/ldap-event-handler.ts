@@ -51,6 +51,9 @@ import { ClassLogger } from '../../logging/class-logger.js';
 import { LdapDeleteLehrerError } from '../adapter/domain/error/ldap-delete-lehrer.error.js';
 import { LdapEmailDomainError } from '../adapter/domain/error/ldap-email-domain.error.js';
 import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
+import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
+import { LdapEventInvalidEmailDomainError } from './error/ldap-event-invalid-email-domain.error.js';
+import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
 
 @Injectable()
 export class LdapEventHandler {
@@ -228,7 +231,7 @@ export class LdapEventHandler {
 
         const failureReasons: string[] = this.collectFailureReasons([...removeResults, ...newKontexteResults]);
         if (failureReasons.length > 0) {
-            return { ok: false, error: new Error(failureReasons.join(', ')) };
+            return { ok: false, error: new LdapEventAccumulatedFailuresError(failureReasons) };
         }
 
         return { ok: true, value: null };
@@ -239,7 +242,7 @@ export class LdapEventHandler {
         pk: PersonenkontextEventKontextData,
     ): Promise<Result<boolean>> {
         if (!pk.orgaKennung) {
-            throw new Error('Organisation has no Kennung');
+            throw new LdapEventOrganisationWithoutKennungError();
         }
 
         const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
@@ -247,7 +250,7 @@ export class LdapEventHandler {
             this.logger.error(
                 `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
             );
-            throw new Error('Invalid email domain');
+            throw new LdapEventInvalidEmailDomainError();
         }
 
         this.logger.info(`Call LdapClientService because person has UEM service provider, pkId: ${pk.id}`);
@@ -276,7 +279,7 @@ export class LdapEventHandler {
     ): Promise<Result<PersonData>> {
         this.logger.info(`Call LdapClientService because person has UEM service provider`);
         if (!pk.orgaKennung) {
-            throw new Error('Organisation has no Kennung');
+            throw new LdapEventOrganisationWithoutKennungError();
         }
 
         const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
@@ -284,7 +287,7 @@ export class LdapEventHandler {
             this.logger.error(
                 `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
             );
-            throw new Error('Invalid email domain');
+            throw new LdapEventInvalidEmailDomainError();
         }
 
         try {
