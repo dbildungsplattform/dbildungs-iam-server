@@ -8,6 +8,8 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=dbildungs-iam-server
+    volumes:
+      - db-data:/var/lib/postgresql/data
 
   keycloak:
     image: ghcr.io/dbildungsplattform/dbildungs-iam-keycloak:latest
@@ -31,9 +33,9 @@ services:
       # No caching
       - '--cache=local'
       # External communication happens here
-      - "--hostname=http://localhost:8080"
+      - '--hostname=http://localhost:8080'
       # Internal communication happens under a different name
-      - "--hostname-backchannel-dynamic=true"
+      - '--hostname-backchannel-dynamic=true'
       # We have no way of checking for the health probe so we might just as well turn it off
       - '--health-enabled=false'
       # Import SPSH-Realm
