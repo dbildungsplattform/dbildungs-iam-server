@@ -150,8 +150,7 @@ export class ProviderController {
         let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
 
         if (
-            queryParams.systemrechte &&
-            queryParams.systemrechte.length === 1 &&
+            queryParams.systemrechte?.length === 1 &&
             queryParams.systemrechte[0] === RollenSystemRechtEnum.ROLLEN_ERWEITERN &&
             queryParams.organisationId
         ) {

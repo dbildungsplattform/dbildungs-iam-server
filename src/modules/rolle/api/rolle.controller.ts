@@ -26,13 +26,18 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { uniq } from 'lodash-es';
 
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import {
+    ApiOkResponsePaginated,
+    Paged,
+    PagedResponse,
+    PagingHeadersObject,
+    RawPagedResponse,
+} from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
@@ -64,9 +69,11 @@ import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
 import { FindRollenQueryParams } from './find-rollen-query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
+import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
+import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
@@ -108,26 +115,28 @@ export class RolleController {
         const systemrechteSet: Set<RollenSystemRechtEnum> = new Set(queryParams.systemrechte ?? []);
 
         if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.IMPORT_DURCHFUEHREN)) {
-            rollenAndTotal = await this.rolleFindService.findRollenAvailableForImportPersonenkontext({
+            if (!queryParams.organisationContextForOperation) {
+                rollenAndTotal = [[], 0];
+            } else {
+                rollenAndTotal = await this.rolleFindService.findRollenAvailableForImportPersonenkontext({
+                    permissions,
+                    searchStr: queryParams.searchStr,
+                    organisationId: queryParams.organisationContextForOperation,
+                    rollenArten: queryParams.rollenarten,
+                    limit: queryParams.limit,
+                    offset: queryParams.offset,
+                });
+            }
+        } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN)) {
+            rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized({
                 permissions,
+                includeTechnische: false,
                 searchStr: queryParams.searchStr,
-                organisationIds: queryParams.organisationContextForOperation
-                    ? [queryParams.organisationContextForOperation]
-                    : undefined,
-                rollenArten: queryParams.rollenarten,
                 limit: queryParams.limit,
                 offset: queryParams.offset,
+                organisationIds: queryParams.organisationenForFilter,
+                rolleIds: queryParams.rolleIds,
             });
-        } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN)) {
-            rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized(
-                permissions,
-                false,
-                queryParams.searchStr,
-                queryParams.limit,
-                queryParams.offset,
-                queryParams.organisationenForFilter,
-                queryParams.rolleIds,
-            );
         } else if (
             // covers plain [ROLLEN_ERWEITERN], and the combo [ROLLEN_ERWEITERN, MPT_ROLLEN_VERWALTEN]
             systemrechteSet.has(RollenSystemRechtEnum.ROLLEN_ERWEITERN) &&
@@ -182,10 +191,13 @@ export class RolleController {
         const administeredOrganisations: Map<string, Organisation<true>> = await this.organisationRepository.findByIds(
             administeredBySchulstrukturknotenIds,
         );
+        const uniqueServiceProviderIds: ServiceProviderID[] = Array.from(
+            new Set(rollen.flatMap((r: Rolle<true>): ServiceProviderID[] => r.serviceProviderIds)),
+        );
         const serviceProviders: Map<
             ServiceProviderID,
             ServiceProvider<true>
-        > = await this.serviceProviderRepo.findByIds(uniq(rollen.flatMap((r: Rolle<true>) => r.serviceProviderIds)));
+        > = await this.serviceProviderRepo.findByIds(uniqueServiceProviderIds);
         const rollenWithServiceProvidersResponses: RolleWithServiceProvidersResponse[] = rollen.map(
             (r: Rolle<true>) => {
                 const sps: ServiceProvider<true>[] = r.serviceProviderIds
@@ -212,6 +224,43 @@ export class RolleController {
         };
 
         return new PagedResponse(pagedRolleWithServiceProvidersResponse);
+    }
+
+    @Get('for-person-administration')
+    @ApiOperation({ description: 'List rollen available for person administration.' })
+    @ApiOkResponsePaginated(RolleResponse, {
+        description: 'The rollen were successfully returned',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get available rollen for person administration.' })
+    @ApiForbiddenResponse({
+        description: 'Insufficient permissions to get available rollen for person administration.',
+    })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting available rollen for person administration.',
+    })
+    public async findRollenAvailableForPersonAdministration(
+        @Query() queryParams: FindRolleForPersonAdministrationQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<RawPagedResponse<RolleResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAvailableForPersonAdministration({
+                permissions,
+                searchStr: queryParams.searchStr,
+                organisationIds: queryParams.organisationIds,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+                requestedSystemrechte: queryParams.systemrechte?.map((systemrecht: RollenSystemRechtEnum) =>
+                    RollenSystemRecht.getByName(systemrecht),
+                ),
+            });
+
+        return RawPagedResponse.fromItemsAndQuery(
+            {
+                total,
+                items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+            },
+            queryParams,
+        );
     }
 
     @Get('systemrechte')
