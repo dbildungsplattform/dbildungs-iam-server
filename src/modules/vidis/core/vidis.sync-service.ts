@@ -37,6 +37,7 @@ import type {
     VidisServiceResponseSchoolActivation,
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
+import { RemoveServiceProviderUnknownError } from '../error/remove-service-provider.error.js';
 
 type VidisSchoolActivatedAngebot = {
     angebot: VidisServiceResponseAngebot;
@@ -334,7 +335,8 @@ export class VidisSyncService {
                     syncOperations.push(Promise.reject(deleteRollenerweiterungenResult.error));
                 }
             } catch (error) {
-                const rejectionReason: Error = error instanceof Error ? error : new Error(String(error));
+                const rejectionReason: Error =
+                    error instanceof Error ? error : new RemoveServiceProviderUnknownError(String(error));
                 syncOperations.push(Promise.reject(rejectionReason));
             }
         }

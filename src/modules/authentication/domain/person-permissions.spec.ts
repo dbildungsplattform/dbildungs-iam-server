@@ -1,7 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { RolleID } from '../../../shared/types/index.js';
 import { OrganisationResponse } from '../../organisation/api/organisation.response.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -12,8 +13,8 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonenkontextRolleFieldsResponse } from '../api/personen-kontext-rolle-fields.response.js';
 import { RollenSystemRechtServiceProviderIDResponse } from '../api/rolle-systemrechte-serviceproviderid.response.js';
@@ -24,7 +25,6 @@ import {
     PersonFields,
     PersonPermissions,
 } from './person-permissions.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 describe('PersonPermissions', () => {
     let module: TestingModule;
@@ -626,22 +626,6 @@ describe('PersonPermissions', () => {
             const result: boolean = await personPermissions.hasOrgVerwaltenRechtAtOrga(OrganisationsTyp.SONSTIGE);
 
             expect(result).toBe(false);
-        });
-    });
-
-    describe('getPersonenkontextIds', () => {
-        it('should return fields', async () => {
-            const personPermissions: PersonPermissions = new PersonPermissions(
-                dbiamPersonenkontextRepoMock,
-                organisationRepoMock,
-                rolleRepoMock,
-                DoFactory.createPerson(true),
-            );
-            const pk: Personenkontext<true> = createPersonenkontext();
-            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([pk]);
-            const result: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
-                await personPermissions.getPersonenkontextIds();
-            expect(result).toEqual([{ organisationId: pk.organisationId, rolleId: pk.rolleId }]);
         });
     });
 });

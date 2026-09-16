@@ -43,7 +43,6 @@ import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rollenerweiterung-with-extended-data.response.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
@@ -78,6 +77,7 @@ import { ManageableServiceProvidersForOrganisationParams } from './manageable-se
 import { ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
 import { RollenerweiterungByServiceProvidersIdPathParams } from './rollenerweiterung-by-service-provider-id.pathparams.js';
 import { RollenerweiterungByServiceProvidersIdQueryParams } from './rollenerweiterung-by-service-provider-id.queryparams.js';
+import { ServiceProviderByPersonIdParams } from './service-provider-by-person-id.params.js';
 import { ServiceProviderErrorFilter } from './service-provider-exception.filter.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
@@ -131,27 +131,6 @@ export class ProviderController {
         );
 
         return response;
-    }
-
-    @Get()
-    @ApiOperation({ description: 'Get service-providers available for logged-in user.' })
-    @ApiOkResponse({
-        description: 'The service-providers were successfully returned.',
-        type: [ServiceProviderResponse],
-    })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to get available service providers.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting all service-providers.' })
-    public async getAvailableServiceProviders(
-        @Permissions() permissions: PersonPermissions,
-    ): Promise<ServiceProviderResponse[]> {
-        const personenkontexteIds: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
-            await permissions.getPersonenkontextIds();
-        const serviceProviders: ServiceProvider<true>[] =
-            await this.serviceProviderService.getServiceProvidersByOrganisationenAndRollen(personenkontexteIds);
-        return serviceProviders.map(
-            (serviceProvider: ServiceProvider<true>) => new ServiceProviderResponse(serviceProvider),
-        );
     }
 
     @Get(':angebotId/logo')
@@ -414,6 +393,34 @@ export class ProviderController {
             serviceProviderWithOrganisationRollenAndErweiterungen.rollen,
             serviceProviderWithOrganisationRollenAndErweiterungen.rollenerweiterungen.length > 0,
             serviceProviderWithOrganisationRollenAndErweiterungen.relevantSystemrechte,
+        );
+    }
+
+    // Declared after the single-segment static routes (e.g. 'manageable') so it does not shadow them.
+    @Get(':personId')
+    @ApiOperation({
+        description:
+            'Get service-providers for a person. Returns the available service-providers when the logged-in user requests their own, otherwise the assigned service-providers of another person (admin).',
+    })
+    @ApiOkResponse({
+        description: 'The service-providers were successfully returned.',
+        type: [ServiceProviderResponse],
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get service providers for the person.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get service-providers for the person.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting the service-providers.' })
+    public async getServiceProvidersByPersonId(
+        @Permissions() permissions: PersonPermissions,
+        @Param() params: ServiceProviderByPersonIdParams,
+    ): Promise<ServiceProviderResponse[]> {
+        const result: Result<ServiceProvider<true>[], DomainError> =
+            await this.serviceProviderService.getServiceProvidersByPersonId(params.personId, permissions);
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return result.value.map(
+            (serviceProvider: ServiceProvider<true>) => new ServiceProviderResponse(serviceProvider),
         );
     }
 

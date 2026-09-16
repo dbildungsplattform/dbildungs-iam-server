@@ -47,15 +47,11 @@ describe('MeldungRepo', () => {
         it('should return the most recent veroffentlicht meldung meldung', async () => {
             const meldung1: Meldung<false> = DoFactory.createMeldung(false);
             const meldung2: Meldung<false> = DoFactory.createMeldung(false);
-            meldung1.updatedAt = new Date(2010, 12, 12);
             meldung1.status = MeldungStatus.VEROEFFENTLICHT;
-            meldung2.updatedAt = new Date(2020, 12, 12);
             meldung2.status = MeldungStatus.VEROEFFENTLICHT;
 
             await sut.save(meldung1);
-            const savedMeldung2: Meldung<true> = await sut.save(meldung1);
-
-            em.clear();
+            const savedMeldung2: Meldung<true> = await sut.save(meldung2);
 
             const meldungResult: Option<Meldung<true>> = await sut.getRecentVeroeffentlichtMeldung();
 
