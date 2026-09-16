@@ -77,7 +77,7 @@ export class ApplyRollenerweiterungForRolleService {
         }
         const hasSystemrechtAtOrganisationMpt: boolean = await permissions.hasSystemrechtAtOrganisation(
             orgaId,
-            RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
         );
 
         const organisation: Option<Organisation<true>> = await this.organisationRepo.findById(orgaId);

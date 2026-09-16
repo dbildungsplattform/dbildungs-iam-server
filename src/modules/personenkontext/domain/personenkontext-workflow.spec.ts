@@ -909,7 +909,7 @@ describe('PersonenkontextWorkflow', () => {
             expect(result.value).toBeUndefined();
         });
 
-        it('should return an error for MPT rollen without MPT_ROLLEN_VERWALTEN permission', async () => {
+        it('should return an error for MPT rollen without MPT_ROLLEN_ZUORDNEN permission', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
@@ -938,7 +938,7 @@ describe('PersonenkontextWorkflow', () => {
             expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
                 2,
                 'orgId',
-                RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
             );
         });
 
