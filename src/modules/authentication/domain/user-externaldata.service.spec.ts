@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { Test, TestingModule } from '@nestjs/testing';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
@@ -24,6 +25,7 @@ import { ServiceProvider } from '../../service-provider/domain/service-provider.
 import { UserExternalData, UserExternaldataService } from './user-externaldata.service.js';
 
 describe('UserExternaldataService', () => {
+    let module: TestingModule;
     let sut: UserExternaldataService;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let personRepositoryMock: DeepMocked<PersonRepository>;
@@ -41,26 +43,37 @@ describe('UserExternaldataService', () => {
         ...props,
     });
 
-    const callGetExternalData = (
-        person: Person<true>,
-        client: string,
-        includeEmailAddress: boolean,
-    ): Promise<Result<UserExternalData, DomainError>> => {
-        personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+    beforeAll(async () => {
+        module = await Test.createTestingModule({
+            providers: [
+                UserExternaldataService,
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: createMock<DBiamPersonenkontextRepo>(DBiamPersonenkontextRepo),
+                },
+                {
+                    provide: PersonRepository,
+                    useValue: createMock<PersonRepository>(PersonRepository),
+                },
+                {
+                    provide: EmailResolverService,
+                    useValue: createMock<EmailResolverService>(EmailResolverService),
+                },
+            ],
+        }).compile();
 
-        return sut.getExternalData(person.keycloakUserId, client, includeEmailAddress);
-    };
+        sut = module.get(UserExternaldataService);
+        personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
+        personRepositoryMock = module.get(PersonRepository);
+        emailResolverServiceMock = module.get(EmailResolverService);
+    });
 
-    beforeEach(() => {
+    afterEach(() => {
         vi.resetAllMocks();
+    });
 
-        personenkontextRepoMock = createMock<DBiamPersonenkontextRepo>(DBiamPersonenkontextRepo);
-        personRepositoryMock = createMock<PersonRepository>(PersonRepository);
-        emailResolverServiceMock = createMock<EmailResolverService>(EmailResolverService);
-
-        personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
-
-        sut = new UserExternaldataService(personenkontextRepoMock, personRepositoryMock, emailResolverServiceMock);
+    afterAll(async () => {
+        await module.close();
     });
 
     it('should be defined', () => {
@@ -68,301 +81,409 @@ describe('UserExternaldataService', () => {
     });
 
     describe('getExternalData', () => {
-        it('should return EntityNotFoundError when no person is found for the given keycloak sub', async () => {
-            personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(undefined);
-
-            const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
-                faker.string.uuid(),
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(false);
-            if (!result.ok) {
-                expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            }
-            expect(personenkontextRepoMock.findExternalPkData).not.toHaveBeenCalled();
-        });
-
-        it('should return MissingPermissionsError when no Personenkontext grants permission for the Angebot', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                createExternalPkData({
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
-                }),
-            ]);
-
-            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                person,
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(false);
-            if (!result.ok) {
-                expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            }
-        });
-
-        it('should ignore Personenkontexte without kennung or rollenart', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                createExternalPkData({
-                    kennung: undefined,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                }),
-                createExternalPkData({
-                    rollenart: undefined,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                }),
-            ]);
-
-            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                person,
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(false);
-            if (!result.ok) {
-                expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            }
-        });
-
-        it('should return only the Schulzuordnungen for which a permission exists via direct service provider assignment', async () => {
+        // shared by every scenario that needs a person with exactly one permitted Personenkontext
+        const setupPermittedPerson = (): { person: Person<true>; permittedPk: ExternalPkData } => {
             const person: Person<true> = DoFactory.createPerson(true);
             const permittedPk: ExternalPkData = createExternalPkData({
-                kennung: 'permitted-kennung',
-                rollenart: RollenArt.LEHR,
                 serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
             });
-            const unrelatedPk: ExternalPkData = createExternalPkData({
-                kennung: 'unrelated-kennung',
-                serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
+
+            personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk]);
+
+            return { person, permittedPk };
+        };
+
+        describe('when no person is found for the given keycloak sub', () => {
+            const setup = (): { keycloakSub: string } => {
+                const keycloakSub: string = faker.string.uuid();
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(undefined);
+
+                return { keycloakSub };
+            };
+
+            it('should return EntityNotFoundError and not query Personenkontexte', async () => {
+                const { keycloakSub }: { keycloakSub: string } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    keycloakSub,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(false);
+                if (!result.ok) {
+                    expect(result.error).toBeInstanceOf(EntityNotFoundError);
+                }
+                expect(personenkontextRepoMock.findExternalPkData).not.toHaveBeenCalled();
             });
-
-            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
-
-            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                person,
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(true);
-            if (result.ok) {
-                expect(result.value.personId).toBe(person.id);
-                expect(result.value.vorname).toBe(person.vorname);
-                expect(result.value.nachname).toBe(person.familienname);
-                expect(result.value.rollenart).toBe(RollenArt.LEHR);
-                expect(result.value.personenkontexte).toEqual([
-                    { dienststellennr: 'permitted-kennung', rolleId: permittedPk.rolleId },
-                ]);
-                expect(result.value.emailAdresse).toBeUndefined();
-                expect(result.value.oxLoginId).toBeUndefined();
-            }
         });
 
-        it('should grant permission via Rollenerweiterung when Personenkontext has no own service providers', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            const pk: ExternalPkData = createExternalPkData({ serviceProvider: undefined });
-            const erweiterterServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                keycloakClientId,
-            });
-
-            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([pk]);
-            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([
-                {
-                    personenkontext: DoFactory.createPersonenkontext(true, { id: pk.pkId }),
-                    serviceProvider: erweiterterServiceProvider,
-                },
-            ]);
-
-            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                person,
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(true);
-        });
-
-        it('should return MultipleRollenartenError when permitted Personenkontexte have different Rollenarten', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                createExternalPkData({
-                    rollenart: RollenArt.LEHR,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                }),
-                createExternalPkData({
-                    rollenart: RollenArt.LERN,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                }),
-            ]);
-
-            const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                person,
-                keycloakClientId,
-                false,
-            );
-
-            expect(result.ok).toBe(false);
-            if (!result.ok) {
-                expect(result.error).toBeInstanceOf(MultipleRollenartenError);
-            }
-        });
-
-        describe('when includeEmailAddress is false', () => {
-            it('should not call the email resolver', async () => {
+        describe('when no Personenkontext grants permission for the Angebot', () => {
+            const setup = (): { person: Person<true> } => {
                 const person: Person<true> = DoFactory.createPerson(true);
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
                 personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                     createExternalPkData({
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
+                    }),
+                ]);
+
+                return { person };
+            };
+
+            it('should return MissingPermissionsError', async () => {
+                const { person }: { person: Person<true> } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    person.keycloakUserId!,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(false);
+                if (!result.ok) {
+                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
+                }
+            });
+        });
+
+        describe('when Personenkontexte are missing kennung or rollenart', () => {
+            const setup = (): { person: Person<true> } => {
+                const person: Person<true> = DoFactory.createPerson(true);
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
+                    createExternalPkData({
+                        kennung: undefined,
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                    }),
+                    createExternalPkData({
+                        rollenart: undefined,
                         serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                     }),
                 ]);
 
-                await callGetExternalData(person, keycloakClientId, false);
+                return { person };
+            };
+
+            it('should ignore them and return MissingPermissionsError', async () => {
+                const { person }: { person: Person<true> } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    person.keycloakUserId!,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(false);
+                if (!result.ok) {
+                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
+                }
+            });
+        });
+
+        describe('when permission exists via direct service provider assignment', () => {
+            const setup = (): { person: Person<true>; permittedPk: ExternalPkData } => {
+                const person: Person<true> = DoFactory.createPerson(true);
+                const permittedPk: ExternalPkData = createExternalPkData({
+                    kennung: 'permitted-kennung',
+                    rollenart: RollenArt.LEHR,
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                });
+                const unrelatedPk: ExternalPkData = createExternalPkData({
+                    kennung: 'unrelated-kennung',
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
+                });
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
+
+                return { person, permittedPk };
+            };
+
+            it('should return only the Schulzuordnungen for which a permission exists', async () => {
+                const { person, permittedPk }: { person: Person<true>; permittedPk: ExternalPkData } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    person.keycloakUserId!,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(true);
+                if (result.ok) {
+                    expect(result.value.personId).toBe(person.id);
+                    expect(result.value.vorname).toBe(person.vorname);
+                    expect(result.value.nachname).toBe(person.familienname);
+                    expect(result.value.rollenart).toBe(RollenArt.LEHR);
+                    expect(result.value.personenkontexte).toEqual([
+                        { dienststellennr: 'permitted-kennung', rolleId: permittedPk.rolleId },
+                    ]);
+                    expect(result.value.emailAdresse).toBeUndefined();
+                    expect(result.value.oxLoginId).toBeUndefined();
+                }
+            });
+        });
+
+        describe('when a Personenkontext has no own service providers but a Rollenerweiterung grants permission', () => {
+            const setup = (): { person: Person<true> } => {
+                const person: Person<true> = DoFactory.createPerson(true);
+                const pk: ExternalPkData = createExternalPkData({ serviceProvider: undefined });
+                const erweiterterServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                    keycloakClientId,
+                });
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([pk]);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([
+                    {
+                        personenkontext: DoFactory.createPersonenkontext(true, { id: pk.pkId }),
+                        serviceProvider: erweiterterServiceProvider,
+                    },
+                ]);
+
+                return { person };
+            };
+
+            it('should grant permission', async () => {
+                const { person }: { person: Person<true> } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    person.keycloakUserId!,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(true);
+            });
+        });
+
+        describe('when permitted Personenkontexte have different Rollenarten', () => {
+            const setup = (): { person: Person<true> } => {
+                const person: Person<true> = DoFactory.createPerson(true);
+
+                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
+                    createExternalPkData({
+                        rollenart: RollenArt.LEHR,
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                    }),
+                    createExternalPkData({
+                        rollenart: RollenArt.LERN,
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                    }),
+                ]);
+
+                return { person };
+            };
+
+            it('should return MultipleRollenartenError', async () => {
+                const { person }: { person: Person<true> } = setup();
+
+                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                    person.keycloakUserId!,
+                    keycloakClientId,
+                    false,
+                );
+
+                expect(result.ok).toBe(false);
+                if (!result.ok) {
+                    expect(result.error).toBeInstanceOf(MultipleRollenartenError);
+                }
+            });
+        });
+
+        describe('when includeEmailAddress is false', () => {
+            const setup = (): { person: Person<true> } => setupPermittedPerson();
+
+            it('should not call the email resolver', async () => {
+                const { person }: { person: Person<true> } = setup();
+
+                await sut.getExternalData(person.keycloakUserId!, keycloakClientId, false);
 
                 expect(emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse).not.toHaveBeenCalled();
             });
         });
 
         describe('when includeEmailAddress is true and email microservice is used', () => {
-            const setup = (): void => {
-                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                    createExternalPkData({
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
-                ]);
-            };
+            describe('when email is ACTIVE', () => {
+                const setup = (): { person: Person<true>; emailAddress: EmailAddress<true>; oxLoginId: string } => {
+                    const { person }: { person: Person<true> } = setupPermittedPerson();
+                    const oxLoginId: string = faker.string.uuid();
+                    const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
+                        spshPersonId: person.id,
+                        externalId: oxLoginId,
+                        sortedStatuses: [{ status: EmailAddressStatusEnum.ACTIVE }],
+                    });
+                    const response: EmailAddressResponse = new EmailAddressResponse(
+                        emailAddress,
+                        emailAddress.getStatus()!,
+                        oxContextId,
+                    );
 
-            it('should set emailAdresse and oxLoginId when email is ACTIVE', async () => {
-                const person: Person<true> = DoFactory.createPerson(true);
-                setup();
-                const oxLoginId: string = faker.string.uuid();
-                const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
-                    spshPersonId: person.id,
-                    externalId: oxLoginId,
-                    sortedStatuses: [{ status: EmailAddressStatusEnum.ACTIVE }],
+                    emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                        Ok(response),
+                    );
+
+                    return { person, emailAddress, oxLoginId };
+                };
+
+                it('should set emailAdresse and oxLoginId', async () => {
+                    const { person, emailAddress, oxLoginId }: { person: Person<true>; emailAddress: EmailAddress<true>; oxLoginId: string } =
+                        setup();
+
+                    const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                        person.keycloakUserId!,
+                        keycloakClientId,
+                        true,
+                    );
+
+                    expect(result.ok).toBe(true);
+                    if (result.ok) {
+                        expect(result.value.emailAdresse).toBe(emailAddress.address);
+                        expect(result.value.oxLoginId).toBe(`${oxLoginId}@${oxContextId}`);
+                    }
                 });
-                const response: EmailAddressResponse = new EmailAddressResponse(
-                    emailAddress,
-                    emailAddress.getStatus()!,
-                    oxContextId,
-                );
-                emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
-                    Ok(response),
-                );
-
-                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                    person,
-                    keycloakClientId,
-                    true,
-                );
-
-                expect(result.ok).toBe(true);
-                if (result.ok) {
-                    expect(result.value.emailAdresse).toBe(emailAddress.address);
-                    expect(result.value.oxLoginId).toBe(`${oxLoginId}@${oxContextId}`);
-                }
             });
 
-            it('should omit emailAdresse and oxLoginId when email is SUSPENDED', async () => {
-                const person: Person<true> = DoFactory.createPerson(true);
-                setup();
-                const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
-                    spshPersonId: person.id,
-                    sortedStatuses: [{ status: EmailAddressStatusEnum.SUSPENDED }],
+            describe('when email is SUSPENDED', () => {
+                const setup = (): { person: Person<true> } => {
+                    const { person }: { person: Person<true> } = setupPermittedPerson();
+                    const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
+                        spshPersonId: person.id,
+                        sortedStatuses: [{ status: EmailAddressStatusEnum.SUSPENDED }],
+                    });
+                    const response: EmailAddressResponse = new EmailAddressResponse(
+                        emailAddress,
+                        emailAddress.getStatus()!,
+                        oxContextId,
+                    );
+
+                    emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                        Ok(response),
+                    );
+
+                    return { person };
+                };
+
+                it('should omit emailAdresse and oxLoginId', async () => {
+                    const { person }: { person: Person<true> } = setup();
+
+                    const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                        person.keycloakUserId!,
+                        keycloakClientId,
+                        true,
+                    );
+
+                    expect(result.ok).toBe(true);
+                    if (result.ok) {
+                        expect(result.value.emailAdresse).toBeUndefined();
+                        expect(result.value.oxLoginId).toBeUndefined();
+                    }
                 });
-                const response: EmailAddressResponse = new EmailAddressResponse(
-                    emailAddress,
-                    emailAddress.getStatus()!,
-                    oxContextId,
-                );
-                emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
-                    Ok(response),
-                );
-
-                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                    person,
-                    keycloakClientId,
-                    true,
-                );
-
-                expect(result.ok).toBe(true);
-                if (result.ok) {
-                    expect(result.value.emailAdresse).toBeUndefined();
-                    expect(result.value.oxLoginId).toBeUndefined();
-                }
             });
 
-            it('should set oxLoginId but not emailAdresse when email is DEACTIVE', async () => {
-                const person: Person<true> = DoFactory.createPerson(true);
-                setup();
-                const oxLoginId: string = faker.string.uuid();
-                const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
-                    spshPersonId: person.id,
-                    externalId: oxLoginId,
-                    sortedStatuses: [{ status: EmailAddressStatusEnum.DEACTIVE }],
+            describe('when email is DEACTIVE', () => {
+                const setup = (): { person: Person<true>; oxLoginId: string } => {
+                    const { person }: { person: Person<true> } = setupPermittedPerson();
+                    const oxLoginId: string = faker.string.uuid();
+                    const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
+                        spshPersonId: person.id,
+                        externalId: oxLoginId,
+                        sortedStatuses: [{ status: EmailAddressStatusEnum.DEACTIVE }],
+                    });
+                    const response: EmailAddressResponse = new EmailAddressResponse(
+                        emailAddress,
+                        emailAddress.getStatus()!,
+                        oxContextId,
+                    );
+
+                    emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                        Ok(response),
+                    );
+
+                    return { person, oxLoginId };
+                };
+
+                it('should set oxLoginId but not emailAdresse', async () => {
+                    const { person, oxLoginId }: { person: Person<true>; oxLoginId: string } = setup();
+
+                    const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                        person.keycloakUserId!,
+                        keycloakClientId,
+                        true,
+                    );
+
+                    expect(result.ok).toBe(true);
+                    if (result.ok) {
+                        expect(result.value.emailAdresse).toBeUndefined();
+                        expect(result.value.oxLoginId).toBe(`${oxLoginId}@${oxContextId}`);
+                    }
                 });
-                const response: EmailAddressResponse = new EmailAddressResponse(
-                    emailAddress,
-                    emailAddress.getStatus()!,
-                    oxContextId,
-                );
-                emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
-                    Ok(response),
-                );
-
-                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                    person,
-                    keycloakClientId,
-                    true,
-                );
-
-                expect(result.ok).toBe(true);
-                if (result.ok) {
-                    expect(result.value.emailAdresse).toBeUndefined();
-                    expect(result.value.oxLoginId).toBe(`${oxLoginId}@${oxContextId}`);
-                }
             });
 
-            it('should return {} when no email address exists for the person', async () => {
-                const person: Person<true> = DoFactory.createPerson(true);
-                setup();
-                emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
-                    Ok(undefined),
-                );
+            describe('when no email address exists for the person', () => {
+                const setup = (): { person: Person<true> } => {
+                    const { person }: { person: Person<true> } = setupPermittedPerson();
 
-                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                    person,
-                    keycloakClientId,
-                    true,
-                );
+                    emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                        Ok(undefined),
+                    );
 
-                expect(result.ok).toBe(true);
-                if (result.ok) {
-                    expect(result.value.emailAdresse).toBeUndefined();
-                    expect(result.value.oxLoginId).toBeUndefined();
-                }
+                    return { person };
+                };
+
+                it('should return without emailAdresse and oxLoginId', async () => {
+                    const { person }: { person: Person<true> } = setup();
+
+                    const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                        person.keycloakUserId!,
+                        keycloakClientId,
+                        true,
+                    );
+
+                    expect(result.ok).toBe(true);
+                    if (result.ok) {
+                        expect(result.value.emailAdresse).toBeUndefined();
+                        expect(result.value.oxLoginId).toBeUndefined();
+                    }
+                });
             });
 
-            it('should propagate the error from the email microservice', async () => {
-                const person: Person<true> = DoFactory.createPerson(true);
-                setup();
-                const error: EmailAddressNotFoundError = new EmailAddressNotFoundError();
-                emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Err(error));
+            describe('when the email microservice returns an error', () => {
+                const setup = (): { person: Person<true>; error: EmailAddressNotFoundError } => {
+                    const { person }: { person: Person<true> } = setupPermittedPerson();
+                    const error: EmailAddressNotFoundError = new EmailAddressNotFoundError();
 
-                const result: Result<UserExternalData, DomainError> = await callGetExternalData(
-                    person,
-                    keycloakClientId,
-                    true,
-                );
+                    emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(
+                        Err(error),
+                    );
 
-                expect(result.ok).toBe(false);
-                if (!result.ok) {
-                    expect(result.error).toBe(error);
-                }
+                    return { person, error };
+                };
+
+                it('should propagate the error', async () => {
+                    const { person, error }: { person: Person<true>; error: EmailAddressNotFoundError } = setup();
+
+                    const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
+                        person.keycloakUserId!,
+                        keycloakClientId,
+                        true,
+                    );
+
+                    expect(result.ok).toBe(false);
+                    if (!result.ok) {
+                        expect(result.error).toBe(error);
+                    }
+                });
             });
         });
     });

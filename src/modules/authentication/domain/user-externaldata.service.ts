@@ -54,8 +54,6 @@ export class UserExternaldataService {
         private readonly emailResolverService: EmailResolverService,
     ) {}
 
-    // Decorator an controller um MissingPermissionsError auf 403 zu mappend
-
     public async getExternalData(
         keycloakSub: string,
         keycloakClientId: string,
