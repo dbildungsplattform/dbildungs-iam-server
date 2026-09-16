@@ -4420,6 +4420,116 @@
             "vorname": "David",
             "familienname": "Othman",
             "personalnummer": "7000157"
+        },
+        {
+            "id": 700,
+            "username": "alehmann2",
+            "password": "SPSHtest1!",
+            "vorname": "Alina",
+            "familienname": "Lehmann"
+        },
+        {
+            "id": 701,
+            "username": "bbecker2",
+            "password": "SPSHtest1!",
+            "vorname": "Benjamin",
+            "familienname": "Becker"
+        },
+        {
+            "id": 702,
+            "username": "csommer3",
+            "password": "SPSHtest1!",
+            "vorname": "Claudia",
+            "familienname": "Sommer",
+            "personalnummer": "7000158"
+        },
+        {
+            "id": 703,
+            "username": "dfalk",
+            "password": "SPSHtest1!",
+            "vorname": "Daniela",
+            "familienname": "Falk"
+        },
+        {
+            "id": 704,
+            "username": "eschaefer",
+            "password": "SPSHtest1!",
+            "vorname": "Eva",
+            "familienname": "Schäfer"
+        },
+        {
+            "id": 705,
+            "username": "friedrich3",
+            "password": "SPSHtest1!",
+            "vorname": "Felix",
+            "familienname": "Riedrich",
+            "personalnummer": "7000159"
+        },
+        {
+            "id": 706,
+            "username": "gkrause2",
+            "password": "SPSHtest1!",
+            "vorname": "Greta",
+            "familienname": "Krause"
+        },
+        {
+            "id": 707,
+            "username": "hkoehler",
+            "password": "SPSHtest1!",
+            "vorname": "Henrik",
+            "familienname": "Köhler"
+        },
+        {
+            "id": 708,
+            "username": "irichter2",
+            "password": "SPSHtest1!",
+            "vorname": "Ines",
+            "familienname": "Richter",
+            "personalnummer": "7000160"
+        },
+        {
+            "id": 709,
+            "username": "jbrandt",
+            "password": "SPSHtest1!",
+            "vorname": "Jana",
+            "familienname": "Brandt"
+        },
+        {
+            "id": 710,
+            "username": "kfuchs",
+            "password": "SPSHtest1!",
+            "vorname": "Konrad",
+            "familienname": "Fuchs"
+        },
+        {
+            "id": 711,
+            "username": "lbremer",
+            "password": "SPSHtest1!",
+            "vorname": "Lara",
+            "familienname": "Bremer",
+            "personalnummer": "7000161"
+        },
+        {
+            "id": 712,
+            "username": "mmarx",
+            "password": "SPSHtest1!",
+            "vorname": "Maren",
+            "familienname": "Marx"
+        },
+        {
+            "id": 713,
+            "username": "nsommer",
+            "password": "SPSHtest1!",
+            "vorname": "Nils",
+            "familienname": "Sommer"
+        },
+        {
+            "id": 714,
+            "username": "oberg",
+            "password": "SPSHtest1!",
+            "vorname": "Olga",
+            "familienname": "Berg",
+            "personalnummer": "7000162"
         }
     ]
 }
