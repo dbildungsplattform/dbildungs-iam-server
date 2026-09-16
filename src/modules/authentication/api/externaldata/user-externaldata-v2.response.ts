@@ -20,7 +20,6 @@ export class UserExternalDataV2Response {
     @ApiProperty({ type: [UserExternalDataV2PersonenkontextResponse] })
     public personenkontexte: UserExternalDataV2PersonenkontextResponse[];
 
-    // Redundant to personenkontexte, provided flat so Keycloak mappers don't need to parse the array.
     @ApiProperty({ type: [String] })
     public dienststellenNummern: string[];
 
