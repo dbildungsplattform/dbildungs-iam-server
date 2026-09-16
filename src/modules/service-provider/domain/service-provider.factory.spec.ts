@@ -55,7 +55,7 @@ describe('ServiceProviderFactory', () => {
                 example.vidisAngebotId,
                 example.merkmale,
                 example.rollenartenWhitelist,
-                example.keycloakClient,
+                example.keycloakClientId,
             );
             expectOkResult(serviceProvider);
             expect(serviceProvider.value.rollenartenWhitelist).toEqual(example.rollenartenWhitelist);
@@ -110,7 +110,7 @@ describe('ServiceProviderFactory', () => {
                 example.vidisAngebotId,
                 example.merkmale,
                 example.rollenartenWhitelist,
-                example.keycloakClient,
+                example.keycloakClientId,
             );
             expectErrResult(serviceProvider);
             expect(serviceProvider.error).toBeInstanceOf(InvalidLogoCombinationError);
@@ -141,7 +141,7 @@ describe('ServiceProviderFactory', () => {
                 example.vidisAngebotId,
                 example.merkmale,
                 example.rollenartenWhitelist,
-                example.keycloakClient,
+                example.keycloakClientId,
             );
             expectOkResult(serviceProvider);
             expect(serviceProvider.value.rollenartenWhitelist).toEqual(example.rollenartenWhitelist);
@@ -190,7 +190,7 @@ describe('ServiceProviderFactory', () => {
                 example.vidisAngebotId,
                 example.merkmale,
                 example.rollenartenWhitelist,
-                example.keycloakClient,
+                example.keycloakClientId,
             );
             expectErrResult(serviceProvider);
             expect(serviceProvider.error).toBeInstanceOf(InvalidLogoCombinationError);

@@ -58,7 +58,7 @@ export class UserExternaldataService {
 
     public async getExternalData(
         keycloakSub: string,
-        keycloakClient: string,
+        keycloakClientId: string,
         includeEmailAddress: boolean,
     ): Promise<Result<UserExternalData, DomainError>> {
         const person: Option<Person<true>> = await this.personRepository.findByKeycloakUserId(keycloakSub);
@@ -68,12 +68,12 @@ export class UserExternaldataService {
 
         const permittedPersonenkontexte: PermittedPersonenkontext[] = await this.findPermittedPersonenkontexte(
             person.id,
-            keycloakClient,
+            keycloakClientId,
         );
         const permissionCheckResult: Result<void, MissingPermissionsError> = this.checkPermission(
             permittedPersonenkontexte,
             person.id,
-            keycloakClient,
+            keycloakClientId,
         );
         if (!permissionCheckResult.ok) {
             return permissionCheckResult;
@@ -108,12 +108,12 @@ export class UserExternaldataService {
     private checkPermission(
         permittedPersonenkontexte: PermittedPersonenkontext[],
         personId: PersonID,
-        keycloakClient: string,
+        keycloakClientId: string,
     ): Result<void, MissingPermissionsError> {
         if (permittedPersonenkontexte.length === 0) {
             return Err(
                 new MissingPermissionsError(
-                    `Person ${personId} has no permission for Angebot with keycloakClient ${keycloakClient}`,
+                    `Person ${personId} has no permission for Angebot with keycloakClientId ${keycloakClientId}`,
                 ),
             );
         }
@@ -134,7 +134,7 @@ export class UserExternaldataService {
 
     private async findPermittedPersonenkontexte(
         personId: PersonID,
-        keycloakClient: string,
+        keycloakClientId: string,
     ): Promise<PermittedPersonenkontext[]> {
         const [externalPkData, erweiterteSP]: [ExternalPkData[], ErweiterterServiceProviderForPK[]] = await Promise.all(
             [
@@ -145,13 +145,13 @@ export class UserExternaldataService {
 
         const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = this.groupErweiterteSPByPkId(erweiterteSP);
 
-        return this.filterPermittedPersonenkontexte(externalPkData, erweiterungenByPkId, keycloakClient);
+        return this.filterPermittedPersonenkontexte(externalPkData, erweiterungenByPkId, keycloakClientId);
     }
 
     private filterPermittedPersonenkontexte(
         externalPkData: ExternalPkData[],
         erweiterungenByPkId: Map<string, ServiceProvider<true>[]>,
-        keycloakClient: string,
+        keycloakClientId: string,
     ): PermittedPersonenkontext[] {
         const pkDataWithRequiredFields: ExternalPkDataWithRequiredFields[] = externalPkData.filter(
             (pk: ExternalPkData): pk is ExternalPkDataWithRequiredFields => Boolean(pk.kennung && pk.rollenart),
@@ -159,7 +159,7 @@ export class UserExternaldataService {
 
         const permittedPkData: ExternalPkDataWithRequiredFields[] = pkDataWithRequiredFields.filter(
             (pk: ExternalPkDataWithRequiredFields) =>
-                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClient),
+                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
         );
 
         const permittedPersonenkontexte: PermittedPersonenkontext[] = permittedPkData.map(
@@ -190,11 +190,11 @@ export class UserExternaldataService {
     private isPermittedForAngebot(
         pk: ExternalPkData,
         erweiterteServiceProvider: ServiceProvider<true>[],
-        keycloakClient: string,
+        keycloakClientId: string,
     ): boolean {
         const serviceProviders: ServiceProvider<true>[] = [...(pk.serviceProvider ?? []), ...erweiterteServiceProvider];
 
-        return serviceProviders.some((sp: ServiceProvider<true>) => sp.keycloakClient === keycloakClient);
+        return serviceProviders.some((sp: ServiceProvider<true>) => sp.keycloakClientId === keycloakClientId);
     }
 
     private getSingleRollenart(

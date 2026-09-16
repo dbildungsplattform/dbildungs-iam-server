@@ -37,7 +37,7 @@ export class ServiceProviderFile {
 
     public vidisAngebotId?: string;
 
-    public keycloakClient?: string;
+    public keycloakClientId?: string;
 
     public merkmale?: ServiceProviderMerkmal[];
 

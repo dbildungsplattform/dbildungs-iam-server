@@ -550,7 +550,7 @@ describe('KeycloakInternalController', () => {
         it('should return external data for the Angebot the person is permitted for', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
             const pkExternalData: ExternalPkData[] = [
@@ -559,7 +559,7 @@ describe('KeycloakInternalController', () => {
                     rolleId: faker.string.uuid(),
                     rollenart: RollenArt.LEHR,
                     kennung: faker.lorem.word(),
-                    serviceProvider: [createMock<ServiceProvider<true>>(ServiceProvider<true>, { keycloakClient })],
+                    serviceProvider: [createMock<ServiceProvider<true>>(ServiceProvider<true>, { keycloakClientId })],
                 },
                 {
                     pkId: faker.string.uuid(),
@@ -568,7 +568,7 @@ describe('KeycloakInternalController', () => {
                     kennung: faker.lorem.word(),
                     serviceProvider: [
                         createMock<ServiceProvider<true>>(ServiceProvider<true>, {
-                            keycloakClient: faker.string.alphanumeric(10),
+                            keycloakClientId: faker.string.alphanumeric(10),
                         }),
                     ],
                 },
@@ -580,7 +580,7 @@ describe('KeycloakInternalController', () => {
 
             const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
                 sub: keycloakSub,
-                keycloakClient,
+                keycloakClientId,
             });
 
             expect(result).toBeInstanceOf(UserExternalDataV2Response);
@@ -599,7 +599,7 @@ describe('KeycloakInternalController', () => {
         it('should throw MissingPermissionsError when no Personenkontext grants permission for the Angebot', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
             personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
@@ -607,14 +607,14 @@ describe('KeycloakInternalController', () => {
             dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
 
             await expect(
-                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClient }),
+                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClientId }),
             ).rejects.toBeInstanceOf(MissingPermissionsError);
         });
 
-        it('should throw MissingPermissionsError when all Personenkontexte belong to a different keycloakClient', async () => {
+        it('should throw MissingPermissionsError when all Personenkontexte belong to a different keycloakClientId', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
             const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData()];
@@ -624,19 +624,19 @@ describe('KeycloakInternalController', () => {
             dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
 
             await expect(
-                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClient }),
+                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClientId }),
             ).rejects.toBeInstanceOf(MissingPermissionsError);
         });
 
         it('should throw MultipleRollenartenError when the person has multiple Rollenarten for the permitted Personenkontexte', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
             const pkExternalData: ExternalPkData[] = [
-                DoFactory.createExternalPkData({ rollenart: RollenArt.LEHR, keycloakClient }),
-                DoFactory.createExternalPkData({ rollenart: RollenArt.LERN, keycloakClient }),
+                DoFactory.createExternalPkData({ rollenart: RollenArt.LEHR, keycloakClientId }),
+                DoFactory.createExternalPkData({ rollenart: RollenArt.LERN, keycloakClientId }),
             ];
 
             personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
@@ -644,17 +644,17 @@ describe('KeycloakInternalController', () => {
             dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
 
             await expect(
-                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClient }),
+                keycloakinternalController.getExternalDataV2({ sub: keycloakSub, keycloakClientId }),
             ).rejects.toBeInstanceOf(MultipleRollenartenError);
         });
 
         it('should include the email address when includeEmailAddress is true and the email is active', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
-            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClientId })];
 
             const emailAddressResponseMock: EmailAddressResponse =
                 createMock<EmailAddressResponse>(EmailAddressResponse);
@@ -671,7 +671,7 @@ describe('KeycloakInternalController', () => {
 
             const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
                 sub: keycloakSub,
-                keycloakClient,
+                keycloakClientId,
                 includeEmailAddress: true,
             });
 
@@ -684,10 +684,10 @@ describe('KeycloakInternalController', () => {
         it('should not include the email address when includeEmailAddress is false', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
-            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClientId })];
 
             personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
             dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
@@ -695,7 +695,7 @@ describe('KeycloakInternalController', () => {
 
             const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
                 sub: keycloakSub,
-                keycloakClient,
+                keycloakClientId,
                 includeEmailAddress: false,
             });
 
@@ -706,10 +706,10 @@ describe('KeycloakInternalController', () => {
         it('should not include the email address when the email account is suspended, even if requested', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
-            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClientId })];
 
             const emailAddressResponseMock: EmailAddressResponse =
                 createMock<EmailAddressResponse>(EmailAddressResponse);
@@ -726,7 +726,7 @@ describe('KeycloakInternalController', () => {
 
             const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
                 sub: keycloakSub,
-                keycloakClient,
+                keycloakClientId,
                 includeEmailAddress: true,
             });
 
@@ -737,10 +737,10 @@ describe('KeycloakInternalController', () => {
         it('should not include the email address when the email account is not active', async () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
-            const keycloakClient: string = faker.string.alphanumeric(10);
+            const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
 
-            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClient })];
+            const pkExternalData: ExternalPkData[] = [DoFactory.createExternalPkData({ keycloakClientId })];
 
             const emailAddressResponseMock: EmailAddressResponse =
                 createMock<EmailAddressResponse>(EmailAddressResponse);
@@ -757,7 +757,7 @@ describe('KeycloakInternalController', () => {
 
             const result: UserExternalDataV2Response = await keycloakinternalController.getExternalDataV2({
                 sub: keycloakSub,
-                keycloakClient,
+                keycloakClientId,
                 includeEmailAddress: true,
             });
 
@@ -772,7 +772,7 @@ describe('KeycloakInternalController', () => {
             await expect(
                 keycloakinternalController.getExternalDataV2({
                     sub: keycloakSub,
-                    keycloakClient: faker.string.alphanumeric(10),
+                    keycloakClientId: faker.string.alphanumeric(10),
                 }),
             ).rejects.toBeInstanceOf(EntityNotFoundError);
         });

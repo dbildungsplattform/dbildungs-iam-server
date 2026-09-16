@@ -175,7 +175,7 @@ export class DoFactory {
             requires2fa: true,
             merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
             rollenartenWhitelist: [RollenArt.LEHR],
-            keycloakClient: faker.string.alphanumeric(10),
+            keycloakClientId: faker.string.alphanumeric(10),
         };
         return Object.assign(
             Object.create(ServiceProvider.prototype) as ServiceProvider<boolean>,
@@ -186,9 +186,9 @@ export class DoFactory {
 
     public static createExternalPkData(
         this: void,
-        props?: Partial<ExternalPkData> & { keycloakClient?: string },
+        props?: Partial<ExternalPkData> & { keycloakClientId?: string },
     ): ExternalPkData {
-        const keycloakClient: string | undefined = props?.keycloakClient;
+        const keycloakClientId: string | undefined = props?.keycloakClientId;
         const externalPkData: ExternalPkData = {
             pkId: props?.pkId ?? faker.string.uuid(),
             rolleId: props?.rolleId ?? faker.string.uuid(),
@@ -196,7 +196,7 @@ export class DoFactory {
             kennung: props?.kennung ?? faker.lorem.word(),
             serviceProvider:
                 props?.serviceProvider ??
-                [DoFactory.createServiceProvider(true, keycloakClient ? { keycloakClient } : undefined)],
+                [DoFactory.createServiceProvider(true, keycloakClientId ? { keycloakClientId } : undefined)],
         };
         return externalPkData;
     }

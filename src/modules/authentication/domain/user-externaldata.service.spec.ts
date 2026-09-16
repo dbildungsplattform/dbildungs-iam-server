@@ -30,7 +30,7 @@ describe('UserExternaldataService', () => {
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
 
     const oxContextId: string = 'test-context-id';
-    const keycloakClient: string = 'the-angebot-client';
+    const keycloakClientId: string = 'the-angebot-client';
 
     const createExternalPkData = (props?: Partial<ExternalPkData>): ExternalPkData => ({
         pkId: faker.string.uuid(),
@@ -73,7 +73,7 @@ describe('UserExternaldataService', () => {
 
             const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
                 faker.string.uuid(),
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -88,13 +88,13 @@ describe('UserExternaldataService', () => {
             const person: Person<true> = DoFactory.createPerson(true);
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                 createExternalPkData({
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient: 'other-client' })],
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
                 }),
             ]);
 
             const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -109,17 +109,17 @@ describe('UserExternaldataService', () => {
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                 createExternalPkData({
                     kennung: undefined,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 }),
                 createExternalPkData({
                     rollenart: undefined,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 }),
             ]);
 
             const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -134,18 +134,18 @@ describe('UserExternaldataService', () => {
             const permittedPk: ExternalPkData = createExternalPkData({
                 kennung: 'permitted-kennung',
                 rollenart: RollenArt.LEHR,
-                serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
             });
             const unrelatedPk: ExternalPkData = createExternalPkData({
                 kennung: 'unrelated-kennung',
-                serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient: 'other-client' })],
+                serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
             });
 
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
 
             const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -167,7 +167,7 @@ describe('UserExternaldataService', () => {
             const person: Person<true> = DoFactory.createPerson(true);
             const pk: ExternalPkData = createExternalPkData({ serviceProvider: undefined });
             const erweiterterServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                keycloakClient,
+                keycloakClientId,
             });
 
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([pk]);
@@ -180,7 +180,7 @@ describe('UserExternaldataService', () => {
 
             const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -192,17 +192,17 @@ describe('UserExternaldataService', () => {
             personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                 createExternalPkData({
                     rollenart: RollenArt.LEHR,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 }),
                 createExternalPkData({
                     rollenart: RollenArt.LERN,
-                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 }),
             ]);
 
             const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                 person,
-                keycloakClient,
+                keycloakClientId,
                 false,
             );
 
@@ -217,11 +217,11 @@ describe('UserExternaldataService', () => {
                 const person: Person<true> = DoFactory.createPerson(true);
                 personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                     createExternalPkData({
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                     }),
                 ]);
 
-                await callGetExternalData(person, keycloakClient, false);
+                await callGetExternalData(person, keycloakClientId, false);
 
                 expect(emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse).not.toHaveBeenCalled();
             });
@@ -231,7 +231,7 @@ describe('UserExternaldataService', () => {
             const setup = (): void => {
                 personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                     createExternalPkData({
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClient })],
+                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                     }),
                 ]);
             };
@@ -256,7 +256,7 @@ describe('UserExternaldataService', () => {
 
                 const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
-                    keycloakClient,
+                    keycloakClientId,
                     true,
                 );
 
@@ -285,7 +285,7 @@ describe('UserExternaldataService', () => {
 
                 const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
-                    keycloakClient,
+                    keycloakClientId,
                     true,
                 );
 
@@ -316,7 +316,7 @@ describe('UserExternaldataService', () => {
 
                 const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
-                    keycloakClient,
+                    keycloakClientId,
                     true,
                 );
 
@@ -336,7 +336,7 @@ describe('UserExternaldataService', () => {
 
                 const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
-                    keycloakClient,
+                    keycloakClientId,
                     true,
                 );
 
@@ -355,7 +355,7 @@ describe('UserExternaldataService', () => {
 
                 const result: Result<UserExternalData, DomainError> = await callGetExternalData(
                     person,
-                    keycloakClient,
+                    keycloakClientId,
                     true,
                 );
 

@@ -75,7 +75,7 @@ export class ServiceProviderEntity extends TimestampedEntity {
     public vidisAngebotId?: string;
 
     @Property({ nullable: true })
-    public keycloakClient?: string;
+    public keycloakClientId?: string;
 
     @OneToMany({
         entity: () => ServiceProviderMerkmalEntity,

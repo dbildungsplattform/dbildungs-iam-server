@@ -3603,8 +3603,8 @@
           "mappedType": "enum",
           "nativeEnumName": "service_provider_kategorie_enum"
         },
-        "keycloak_client": {
-          "name": "keycloak_client",
+        "keycloak_client_id": {
+          "name": "keycloak_client_id",
           "type": "varchar(255)",
           "unsigned": false,
           "autoincrement": false,

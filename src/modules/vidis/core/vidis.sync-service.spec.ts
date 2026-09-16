@@ -822,7 +822,7 @@ describe('VidisSyncService', () => {
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ]);
-            expect(createdServiceProvider.keycloakClient).toBe(vidisKeycloakClientId);
+            expect(createdServiceProvider.keycloakClientId).toBe(vidisKeycloakClientId);
         });
 
         it('should skip VIDIS Angebote that already exist as non-school-provided Angebote in the database', async () => {

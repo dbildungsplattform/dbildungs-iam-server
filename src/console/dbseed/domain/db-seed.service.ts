@@ -259,7 +259,7 @@ export class DbSeedService {
                 file.vidisAngebotId,
                 file.merkmale ?? [],
                 file.rollenartenWhitelist ?? [],
-                file.keycloakClient,
+                file.keycloakClientId,
             );
             if (!serviceProvider.ok) {
                 throw serviceProvider.error;

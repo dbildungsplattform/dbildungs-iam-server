@@ -8,7 +8,7 @@ export class UserExternalDataV2BodyParams {
 
     @IsString()
     @ApiProperty({ required: true, description: 'Unique identifier of the Angebot to check the permission for.' })
-    public keycloakClient!: string;
+    public keycloakClientId!: string;
 
     @IsOptional()
     @IsBoolean()

@@ -38,7 +38,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
         public vidisAngebotId: string | undefined,
         public merkmale: ServiceProviderMerkmal[],
         public rollenartenWhitelist: RollenArt[],
-        public keycloakClient: string | undefined,
+        public keycloakClientId: string | undefined,
     ) {
         this.merkmale = ServiceProvider.removeDependentMerkmaleWithoutVerfuegbarFuerRollenerweiterung(merkmale);
     }
@@ -62,7 +62,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
         rollenartenWhitelist: RollenArt[],
-        keycloakClient: string | undefined,
+        keycloakClientId: string | undefined,
     ): ServiceProvider<WasPersisted> {
         return new ServiceProvider(
             id,
@@ -83,7 +83,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
             vidisAngebotId,
             merkmale,
             rollenartenWhitelist,
-            keycloakClient,
+            keycloakClientId,
         );
     }
 
@@ -103,7 +103,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
         vidisAngebotId: string | undefined,
         merkmale: ServiceProviderMerkmal[],
         rollenartenWhitelist: RollenArt[],
-        keycloakClient: string | undefined,
+        keycloakClientId: string | undefined,
     ): ServiceProvider<false> {
         return new ServiceProvider(
             undefined,
@@ -124,7 +124,7 @@ export class ServiceProvider<WasPersisted extends boolean> {
             vidisAngebotId,
             merkmale,
             rollenartenWhitelist,
-            keycloakClient,
+            keycloakClientId,
         );
     }
 
