@@ -830,6 +830,7 @@ describe('Provider Controller Test', () => {
                 undefined,
                 body.merkmale,
                 body.rollenartenWhitelist,
+                undefined,
             );
             expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
                 personPermissionsMock,
@@ -882,6 +883,7 @@ describe('Provider Controller Test', () => {
                 undefined,
                 body.merkmale,
                 [],
+                undefined,
             );
             expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
                 personPermissionsMock,
