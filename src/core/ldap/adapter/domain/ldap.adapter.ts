@@ -22,6 +22,13 @@ import { LdapSearchError } from './error/ldap-search.error.js';
 import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEntityType, LdapPersonEntry } from './ldap.types.js';
+import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
+import { LdapUpdateGroupError } from './error/ldap-update-group.error.js';
+import { LdapUserNotFoundError } from './error/ldap-user-not-found.error.js';
+import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { LdapExecuteWithRetryError } from './error/ldap-execute-with-retry.error.js';
+import { LdapGroupNotFound } from './error/ldap-group-not-found.error.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -295,7 +302,7 @@ export class LdapAdapter {
         } catch (err) {
             this.logger.logUnknownAsError(`Could not connect to LDAP`, err);
 
-            return { ok: false, error: new Error('LDAP bind FAILED') };
+            return { ok: false, error: new LdapBindError() };
         }
     }
 
@@ -826,7 +833,7 @@ export class LdapAdapter {
             if (!groupEntries) {
                 const errMsg: string = `LDAP: Fetching groups failed, personId:${personId}, username:${username}`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new Error(errMsg) };
+                return { ok: false, error: new LdapFetchGroupsError(username, personId) };
             }
 
             if (groupEntries.length === 0) {
@@ -864,7 +871,7 @@ export class LdapAdapter {
         if (!groupEntries) {
             const errMsg: string = `LDAP: Error while searching for groups for person: ${oldUsername}`;
             this.logger.error(errMsg);
-            return { ok: false, error: new Error(errMsg) };
+            return { ok: false, error: new LdapFetchGroupsError(oldUsername) };
         }
 
         if (groupEntries.length === 0) {
@@ -911,7 +918,7 @@ export class LdapAdapter {
                     .catch((err: Error) => {
                         const errMsg: string = `LDAP: Error while updating member data for group: ${groupDn}, errMsg: ${String(err)}`;
                         this.logger.error(errMsg);
-                        return { ok: false, error: new Error(errMsg) };
+                        return { ok: false, error: new LdapUpdateGroupError(groupDn, [err]) };
                     });
                 this.logger.info(`LDAP: Updated member data for group: ${groupDn}`);
             }),
@@ -939,7 +946,7 @@ export class LdapAdapter {
                 if (failIfUserNotFound) {
                     return {
                         ok: false,
-                        error: new Error(`User not found: ${username}`),
+                        error: new LdapUserNotFoundError(username),
                     };
                 }
                 this.logger.info(`LDAP: user to delete not found: ${username}`);
@@ -1291,7 +1298,7 @@ export class LdapAdapter {
             if (!searchResultOrgUnit.searchEntries[0]) {
                 const errMsg: string = `LDAP: Group ${groupId} not found`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new Error(errMsg) };
+                return { ok: false, error: new LdapGroupNotFound(groupId) };
             }
 
             if (!this.isPersonInSearchResult(searchResultOrgUnit.searchEntries[0], lehrerUid)) {
@@ -1452,7 +1459,7 @@ export class LdapAdapter {
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,
-            error: new Error('executeWithRetry default fallback'),
+            error: new LdapExecuteWithRetryFallbackError(),
         };
 
         while (currentAttempt <= retries) {
@@ -1462,7 +1469,7 @@ export class LdapAdapter {
                 if (result.ok) {
                     return result;
                 } else {
-                    throw new Error(`Function returned error: ${result.error.message}`);
+                    throw new LdapExecuteWithRetryError(result.error.message);
                 }
             } catch (error) {
                 this.logger.logUnknownAsError(

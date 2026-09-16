@@ -1,4 +1,6 @@
 import { faker } from '@faker-js/faker';
+import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { Request } from 'express';
 import {
     BaseClient,
     ClientMetadata,
@@ -6,6 +8,7 @@ import {
     IssuerMetadata,
     UserinfoResponse as OidcUserinfoResponse,
 } from 'openid-client';
+import { Observable } from 'rxjs';
 import { UserinfoResponse } from '../../src/modules/authentication/api/userinfo.response.js';
 import {
     PermittedOrgas,
@@ -13,17 +16,13 @@ import {
     PersonFields,
     PersonPermissions,
 } from '../../src/modules/authentication/domain/person-permissions.js';
-import { IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
-import { createMock, DeepMocked } from './createMock.js';
-import { PassportUser } from '../../src/modules/authentication/types/user.js';
-import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { Request } from 'express';
-import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
-import { Personenkontext } from '../../src/modules/personenkontext/domain/personenkontext.js';
-import { RollenSystemRecht } from '../../src/modules/rolle/domain/systemrecht.js';
-import { RolleID } from '../../src/shared/types/aggregate-ids.types.js';
 import { StepUpLevel } from '../../src/modules/authentication/passport/oidc.strategy.js';
+import { PassportUser } from '../../src/modules/authentication/types/user.js';
+import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
+import { RollenSystemRecht } from '../../src/modules/rolle/domain/systemrecht.js';
+import { IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
+import { RolleID } from '../../src/shared/types/aggregate-ids.types.js';
+import { createMock, DeepMocked } from './createMock.js';
 
 export class PersonPermissionsMock implements IPersonPermissions {
     public id: string;
@@ -45,6 +44,7 @@ export class PersonPermissionsMock implements IPersonPermissions {
         _systemrechte: RollenSystemRecht[],
         _matchAll?: boolean,
     ): Promise<boolean> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getOrgIdsWithSystemrecht(
@@ -52,18 +52,19 @@ export class PersonPermissionsMock implements IPersonPermissions {
         _withChildren: boolean,
         _matchAll?: boolean,
     ): Promise<PermittedOrgas> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getRoleIds(): Promise<RolleID[]> {
-        throw new Error('Method not implemented.');
-    }
-    public getPersonenkontextIds(): Promise<Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[]> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public getPersonenkontexteWithRolesAndOrgs(): Promise<PersonenkontextRolleWithOrganisation[]> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public hasOrgVerwaltenRechtAtOrga(_typ: OrganisationsTyp, _administriertVon?: string): Promise<boolean> {
+        // eslint-disable-next-line no-restricted-syntax
         throw new Error('Method not implemented.');
     }
     public hasSystemrechteAtOrganisation(): Promise<boolean> {
