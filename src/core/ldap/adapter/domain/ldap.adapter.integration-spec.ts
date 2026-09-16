@@ -34,6 +34,8 @@ import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-
 import { LdapSearchError } from './error/ldap-search.error.js';
 import { LdapAdapter, LdapPersonAttributes, PersonData } from './ldap.adapter.js';
 import { LdapEntityType } from './ldap.types.js';
+import { LdapBindError } from '../../../../email/modules/ldap/adapter/domain/error/ldap-bind.error.js';
+import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
         _func: () => Promise<Result<T>>,
@@ -1822,10 +1824,7 @@ describe('LDAP Adapter', () => {
                         `LDAP: Successfully created empty PersonEntry, DN:${lehrerUid}`,
                     );
                     expect(result.ok).toBeFalsy();
-                    expect(result).toEqual({
-                        ok: false,
-                        error: new Error('LDAP bind FAILED'),
-                    });
+                    expect(result).toEqual({ error: new LdapBindError(), ok: false });
                 });
             });
 
@@ -2331,10 +2330,7 @@ describe('LDAP Adapter', () => {
 
                 expect(loggerMock.error).toHaveBeenCalledWith(errMsg);
                 expect(result.ok).toBeFalsy();
-                expect(result).toEqual({
-                    ok: false,
-                    error: new Error(errMsg),
-                });
+                expect(result).toEqual({ error: new LdapFetchGroupsError(username, personId), ok: false });
             });
         });
 
@@ -3154,7 +3150,7 @@ describe('LDAP Adapter', () => {
                 const kennung: string = faker.string.numeric(7);
 
                 const promise: Promise<Result<string>> = ldapClientAdapter.deleteOrganisation(kennung);
-                await expect(promise).resolves.toEqual(Err(new Error('LDAP bind FAILED')));
+                await expect(promise).resolves.toEqual({ error: new LdapBindError(), ok: false });
             });
         });
 
