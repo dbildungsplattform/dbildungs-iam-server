@@ -3557,7 +3557,8 @@
           "enumItems": [
             "NONE",
             "EMAIL",
-            "ITSLEARNING"
+            "ITSLEARNING",
+            "UEM"
           ],
           "mappedType": "enum",
           "nativeEnumName": "service_provider_system_enum"
@@ -3754,6 +3755,7 @@
           "comment": null,
           "collation": null,
           "enumItems": [
+            "NONE",
             "URL",
             "EMAIL",
             "SCHULPORTAL_ADMINISTRATION"
@@ -4402,13 +4404,15 @@
       "items": [
         "NONE",
         "EMAIL",
-        "ITSLEARNING"
+        "ITSLEARNING",
+        "UEM"
       ]
     },
     "service_provider_target_enum": {
       "name": "service_provider_target_enum",
       "schema": "public",
       "items": [
+        "NONE",
         "URL",
         "EMAIL",
         "SCHULPORTAL_ADMINISTRATION"
