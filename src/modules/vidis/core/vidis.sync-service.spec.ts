@@ -1164,6 +1164,7 @@ describe('VidisSyncService', () => {
             isNameChanged: boolean;
             isUrlChanged: boolean;
             isLogoChanged: boolean;
+            isKeycloakClientIdChanged: boolean;
         };
         type UpdateServiceProviderResult = Awaited<ReturnType<ServiceProviderModificationService['update']>>;
 
@@ -1184,6 +1185,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
@@ -1221,6 +1223,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: true,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
@@ -1261,6 +1264,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Err(resultError) as UpdateServiceProviderResult,
@@ -1314,6 +1318,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1345,6 +1350,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1376,6 +1382,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1407,7 +1414,75 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: true,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             });
+        });
+
+        it('should report a keycloakClientId change for pre-existing offers created without one', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.keycloakClientId = undefined;
+            angebotInDb.logo = Buffer.from(tinyPngBase64, 'base64');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, angebotInDb.name),
+                offerLink: angebotInDb.url ?? '',
+                offerLogo: tinyPngBase64,
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+                isKeycloakClientIdChanged: true,
+            });
+        });
+
+        it('should backfill keycloakClientId on pre-existing offers created without one', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.keycloakClientId = undefined;
+            const angebotInVidis: VidisApiResponseAngebotBySchool = createAngebot(1, angebotInDb.name);
+            const needsDbUpdate: NeedsDbAngebotUpdateResult = {
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+                isKeycloakClientIdChanged: true,
+            };
+            serviceProviderModificationServiceMock.update.mockResolvedValue(
+                Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
+            );
+
+            await (
+                sut as unknown as {
+                    updateAngebotToMatchVidis: (
+                        needsDbUpdate: NeedsDbAngebotUpdateResult,
+                        angebotInDb: ServiceProvider<true>,
+                        matchingAngebotInVidis: VidisApiResponseAngebotBySchool,
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).updateAngebotToMatchVidis(needsDbUpdate, angebotInDb, angebotInVidis, permissionsMock);
+
+            expect(angebotInDb.keycloakClientId).toBe(vidisKeycloakClientId);
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledWith(permissionsMock, angebotInDb);
         });
     });
 
