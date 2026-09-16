@@ -1,15 +1,15 @@
 import 'reflect-metadata';
 
 /* eslint-disable no-console */
+import { VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { NestLogger } from '../core/logging/nest-logger.js';
 import { FrontendConfig, JsonConfig, KeycloakConfig } from '../shared/config/index.js';
+import { GlobalPagingHeadersInterceptor } from '../shared/paging/index.js';
 import { GlobalValidationPipe } from '../shared/validation/index.js';
 import { ServerModule } from './server.module.js';
-import { GlobalPagingHeadersInterceptor } from '../shared/paging/index.js';
-import { VersioningType } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
     const app: NestExpressApplication = await NestFactory.create<NestExpressApplication>(ServerModule);
@@ -51,7 +51,7 @@ async function bootstrap(): Promise<void> {
     app.useGlobalInterceptors(new GlobalPagingHeadersInterceptor());
     app.useGlobalPipes(new GlobalValidationPipe());
     app.setGlobalPrefix('api', {
-        exclude: ['health', 'metrics', 'keycloakinternal/externaldata'],
+        exclude: ['health', 'metrics', 'keycloakinternal/externaldata', 'v2/keycloakinternal/externaldata'],
     });
 
     let redirectUrl: string;
