@@ -12,11 +12,11 @@ import { uniq } from 'lodash-es';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
-import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterungen-service.js';
+import { ApplyRollenerweiterungForAngebotService } from '../domain/apply-rollenerweiterungen-for-angebot-service.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
-import { ApplyRollenerweiterungPathParams } from './apply-rollenerweiterung-changes.path.params.js';
+import { ApplyRollenerweiterungForSPPathParams } from './apply-rollenerweiterung-for-sp-changes.path.params.js';
 import { ApplyRollenerweiterungMultiExceptionFilter } from './apply-rollenerweiterung-multi-exception-filter.js';
-import { ApplyRollenerweiterungRolesError } from './apply-rollenerweiterung-roles.error.js';
+import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
 import { ApplyRollenerweiterungBodyParams } from './apply-rollenerweiterung.body.params.js';
 import { DbiamApplyRollenerweiterungMultiError } from './dbiam-apply-rollenerweiterung-multi.error.js';
 import { RollenerweiterungExceptionFilter } from './rollenerweiterung-exception-filter.js';
@@ -30,7 +30,7 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 export class RollenerweiterungController {
     public constructor(
         private readonly logger: ClassLogger,
-        private readonly applyRollenerweiterungService: ApplyRollenerweiterungService,
+        private readonly applyRollenerweiterungService: ApplyRollenerweiterungForAngebotService,
     ) {}
 
     @Post('/angebot/:angebotId/organisation/:organisationId/apply')
@@ -50,7 +50,7 @@ export class RollenerweiterungController {
     })
     @HttpCode(204)
     public async applyRollenerweiterungChanges(
-        @Param() params: ApplyRollenerweiterungPathParams,
+        @Param() params: ApplyRollenerweiterungForSPPathParams,
         @Body() body: ApplyRollenerweiterungBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<void> {
@@ -61,11 +61,11 @@ export class RollenerweiterungController {
         const orgaId: string = params.organisationId;
         const result: Result<
             null,
-            | ApplyRollenerweiterungRolesError
+            | ApplyRollenerweiterungError
             | EntityNotFoundError
             | MissingPermissionsError
             | MissingMerkmalVerfuegbarFuerRollenerweiterungError
-        > = await this.applyRollenerweiterungService.applyRollenerweiterungChanges(
+        > = await this.applyRollenerweiterungService.applyRollenerweiterungChangesForAngebot(
             orgaId,
             angebotId,
             body,
@@ -73,11 +73,11 @@ export class RollenerweiterungController {
         );
         if (!result.ok) {
             const err:
-                | ApplyRollenerweiterungRolesError
+                | ApplyRollenerweiterungError
                 | EntityNotFoundError
                 | MissingPermissionsError
                 | MissingMerkmalVerfuegbarFuerRollenerweiterungError = result.error;
-            if (err instanceof ApplyRollenerweiterungRolesError) {
+            if (err instanceof ApplyRollenerweiterungError) {
                 this.logger.error(
                     `applyRollenerweiterungChanges called by ${permissions.personFields.username} - ${permissions.personFields.id} for angebotId ${params.angebotId} and organisationId ${params.organisationId} completed with error for rollen: ${err.errors
                         .map((e: { id: string | undefined; error: DomainError }) => `${e.id} (${e.error.message})`)
