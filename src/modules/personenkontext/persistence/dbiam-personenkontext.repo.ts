@@ -1,6 +1,7 @@
 import { Cursor, FilterQuery, Loaded, QueryOrder, raw, sql } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
@@ -12,6 +13,7 @@ import {
     RolleID,
     ServiceProviderID,
 } from '../../../shared/types/index.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
@@ -172,6 +174,19 @@ export class DBiamPersonenkontextRepo {
         }
 
         return { ok: true, value: true };
+    }
+
+    public async findByPersonAuthorized(
+        personId: PersonID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Personenkontext<true>[], MissingPermissionsError>> {
+        const hasPermission: boolean = await permissions.canModifyPerson(personId);
+        if (!hasPermission) {
+            return Err(new MissingPermissionsError('Not authorized to manage person'));
+        }
+
+        const personenkontexte: Personenkontext<true>[] = await this.findByPerson(personId);
+        return Ok(personenkontexte);
     }
 
     public hasPersonAnyReadableKontext(
