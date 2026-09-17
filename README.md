@@ -26,6 +26,7 @@
 5. run `npm run setup` to initialize the DB and seed data
 6. Run `npm run start` to start the server
 7. Server runs on the url printed in the console
+    - Some Keycloak protocol mappers in `dev-realm-spsh.json` (also used to set up feature-branch/dev realms in Kubernetes) fetch data from `http://backend:9090`. Locally, `compose.yaml` maps the `backend` hostname to your host via `extra_hosts: host-gateway` on the `keycloak` service, so the backend must be reachable on port `9090` on the host, whether it is started via `npm run start` (default) or as the containerized `backend` service (its port is published to the host too).
 8. The client and how to run it is described in the [client repo](https://github.com/dBildungsplattform/schulportal-client)
 
 ## Scripts for Development

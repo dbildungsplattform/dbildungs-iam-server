@@ -26,6 +26,9 @@ services:
       - INTERNAL_COMMUNICATION_API_KEY=api-key
     env_file:
       - .env
+    # Lets the "backend:9090" mapper URLs in dev-realm-spsh.json (shared with the k8s feature-branch realm import) also resolve to a locally started backend
+    extra_hosts:
+      - 'backend:host-gateway'
     entrypoint: '/opt/keycloak/bin/kc.sh start-dev'
     command:
       # Internal DB but still persisted in container
