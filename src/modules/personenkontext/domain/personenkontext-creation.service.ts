@@ -44,11 +44,14 @@ export class PersonenkontextCreationService {
     ): Promise<Result<PersonPersonenkontext, DomainError>> {
         if (
             personalnummer &&
-            !(await this.dBiamPersonenkontextService.IsPersonalnummerRequiredByRoleIds(
+            !(await this.dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds(
                 createPersonenkontexte.map((personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId)
             ))
         ) {
-            throw new PersonalnummerWithoutKoperspflichtError();
+            return {
+                 ok: false,
+                 error: new PersonalnummerWithoutKoperspflichtError(),
+            };
         }
 
         const personOrError: Person<false> | DomainError = await this.personFactory.createNew({

@@ -134,7 +134,7 @@ describe('PersonenkontextCreationService', () => {
 
     describe('createPersonWithPersonenkontexte', () => {
         it('should return DomainError if personalnummer is passed, but no Role requires a Kopersnummer', async () => {
-            dBiamPersonenkontextService.IsPersonalnummerRequiredByRoleIds.mockResolvedValueOnce(false);
+            dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds.mockResolvedValueOnce(false);
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
                 personpermissionsMock,
@@ -146,6 +146,7 @@ describe('PersonenkontextCreationService', () => {
                         rolleId: faker.string.uuid(),
                     },
                 ],
+                faker.string.uuid(),
             );
             expect(result.ok).toBeFalsy();
             if (!result.ok) {

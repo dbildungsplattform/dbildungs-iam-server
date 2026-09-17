@@ -60,10 +60,10 @@ export class DBiamPersonenkontextService {
         const personenkontexte: Personenkontext<true>[] = await this.dBiamPersonenkontextRepo.findByPerson(personId);
         const roleIds: RolleID[] = personenkontexte.map((pk: Personenkontext<true>) => pk.rolleId)
 
-        return await this.IsPersonalnummerRequiredByRoleIds(roleIds)
+        return await this.isPersonalnummerRequiredByRoleIds(roleIds)
     }
 
-    public async IsPersonalnummerRequiredByRoleIds(roleIds: string[]): Promise<boolean> {
+    public async isPersonalnummerRequiredByRoleIds(roleIds: string[]): Promise<boolean> {
         const uniqueRolleIds: Set<string> = new Set(roleIds);
         const foundRollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(Array.from(uniqueRolleIds));
 

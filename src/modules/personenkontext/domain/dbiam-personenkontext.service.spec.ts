@@ -131,7 +131,7 @@ describe('DBiamPersonenkontextService', () => {
                 mapRollen.set('2', DoFactory.createRolle(true, { rollenart: RollenArt.LEIT, merkmale: [], id: '2' }));
                 rolleRepoMock.findByIds.mockResolvedValueOnce(mapRollen);
 
-                const result: boolean = await sut.IsPersonalnummerRequiredByRoleIds(['1', '2']);
+                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);
                 expect(result).toBeTruthy();
             });
         });
@@ -150,7 +150,7 @@ describe('DBiamPersonenkontextService', () => {
                 mapRollen.set('2', DoFactory.createRolle(true, { rollenart: RollenArt.LEIT, merkmale: [], id: '2' }));
                 rolleRepoMock.findByIds.mockResolvedValueOnce(mapRollen);
 
-                const result: boolean = await sut.IsPersonalnummerRequiredByRoleIds(['1', '2']);expect(result).toBeFalsy();
+                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);expect(result).toBeFalsy();
             });
         });
     });
