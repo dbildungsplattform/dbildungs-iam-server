@@ -146,6 +146,7 @@ dist
 
 # VSCode user settings
 .vscode/settings.json
+.vscode/mcp.json
 
 mariadb/
 test/secrets.test.json
