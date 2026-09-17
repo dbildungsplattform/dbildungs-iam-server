@@ -42,19 +42,7 @@ export class PersonenkontextCreationService {
         personalnummer?: string,
         befristung?: Date,
     ): Promise<Result<PersonPersonenkontext, DomainError>> {
-        if (
-            personalnummer &&
-            !(await this.dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds(
-                createPersonenkontexte.map(
-                    (personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId,
-                ),
-            ))
-        ) {
-            return {
-                ok: false,
-                error: new PersonalnummerWithoutKoperspflichtError(),
-            };
-        }
+
 
         const personOrError: Person<false> | DomainError = await this.personFactory.createNew({
             vorname: vorname,
@@ -83,6 +71,20 @@ export class PersonenkontextCreationService {
                     error: canCommit,
                 };
             }
+        }
+
+        if (
+            personalnummer &&
+            !(await this.dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds(
+                createPersonenkontexte.map(
+                    (personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId,
+                ),
+            ))
+        ) {
+            return {
+                ok: false,
+                error: new PersonalnummerWithoutKoperspflichtError(),
+            };
         }
 
         //Save Person
