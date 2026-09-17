@@ -98,7 +98,7 @@ describe('PersonenkontextCreationService', () => {
                 },
                 {
                     provide: DBiamPersonenkontextService,
-                    useValue: createMock(DBiamPersonenkontextService)
+                    useValue: createMock(DBiamPersonenkontextService),
                 },
             ],
         })
@@ -117,7 +117,7 @@ describe('PersonenkontextCreationService', () => {
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(
             personpermissionsMock as unknown as EscalatedPersonPermissions,
         );
-        dBiamPersonenkontextService = module.get(DBiamPersonenkontextService)
+        dBiamPersonenkontextService = module.get(DBiamPersonenkontextService);
     });
 
     afterAll(async () => {
@@ -152,7 +152,7 @@ describe('PersonenkontextCreationService', () => {
             if (!result.ok) {
                 expect(result.error).toBeInstanceOf(DomainError);
             }
-        })
+        });
 
         it('should return DomainError if Person Aggregate ist invalid ', async () => {
             personFactoryMock.createNew.mockResolvedValueOnce(new InvalidAttributeLengthError('name.vorname'));

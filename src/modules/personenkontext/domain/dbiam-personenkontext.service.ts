@@ -58,9 +58,9 @@ export class DBiamPersonenkontextService {
 
     public async isPersonalnummerRequiredForAnyPersonenkontextForPerson(personId: string): Promise<boolean> {
         const personenkontexte: Personenkontext<true>[] = await this.dBiamPersonenkontextRepo.findByPerson(personId);
-        const roleIds: RolleID[] = personenkontexte.map((pk: Personenkontext<true>) => pk.rolleId)
+        const roleIds: RolleID[] = personenkontexte.map((pk: Personenkontext<true>) => pk.rolleId);
 
-        return await this.isPersonalnummerRequiredByRoleIds(roleIds)
+        return await this.isPersonalnummerRequiredByRoleIds(roleIds);
     }
 
     public async isPersonalnummerRequiredByRoleIds(roleIds: string[]): Promise<boolean> {

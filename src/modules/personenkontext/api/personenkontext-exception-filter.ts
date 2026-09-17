@@ -56,8 +56,8 @@ export class PersonenkontextExceptionFilter implements ExceptionFilter<Personenk
             new DbiamPersonenkontextError({
                 code: 400,
                 i18nKey: PersonenkontextSpecificationErrorI18nTypes.PERSON_HAT_KEINE_KOPERSPFLICHTIGE_ROLLE,
-            })
-        ]
+            }),
+        ],
     ]);
 
     public catch(exception: PersonenkontextSpecificationError, host: ArgumentsHost): void {

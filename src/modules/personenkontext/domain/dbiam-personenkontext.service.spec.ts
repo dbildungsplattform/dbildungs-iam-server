@@ -118,7 +118,6 @@ describe('DBiamPersonenkontextService', () => {
     describe('IsPersonalnummerRequiredByRoleIds', () => {
         describe('when any rolle has koperspflichtig merkmal', () => {
             it('should return true', async () => {
-
                 const mapRollen: Map<string, Rolle<true>> = new Map();
                 mapRollen.set(
                     '1',
@@ -150,7 +149,8 @@ describe('DBiamPersonenkontextService', () => {
                 mapRollen.set('2', DoFactory.createRolle(true, { rollenart: RollenArt.LEIT, merkmale: [], id: '2' }));
                 rolleRepoMock.findByIds.mockResolvedValueOnce(mapRollen);
 
-                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);expect(result).toBeFalsy();
+                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);
+                expect(result).toBeFalsy();
             });
         });
     });

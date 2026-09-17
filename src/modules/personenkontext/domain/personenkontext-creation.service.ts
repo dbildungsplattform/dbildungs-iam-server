@@ -45,12 +45,14 @@ export class PersonenkontextCreationService {
         if (
             personalnummer &&
             !(await this.dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds(
-                createPersonenkontexte.map((personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId)
+                createPersonenkontexte.map(
+                    (personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId,
+                ),
             ))
         ) {
             return {
-                 ok: false,
-                 error: new PersonalnummerWithoutKoperspflichtError(),
+                ok: false,
+                error: new PersonalnummerWithoutKoperspflichtError(),
             };
         }
 
