@@ -103,6 +103,8 @@ export class UserExternaldataService {
         return Ok(userExternalData);
     }
 
+    // ----
+
     private async findPermittedPersonenkontexte(
         personId: PersonID,
         keycloakClientId: string,
@@ -117,55 +119,6 @@ export class UserExternaldataService {
         const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = this.groupErweiterteSPByPkId(erweiterteSP);
 
         return this.filterPermittedPersonenkontexte(externalPkData, erweiterungenByPkId, keycloakClientId);
-    }
-
-    private groupErweiterteSPByPkId(
-        erweiterteSP: ErweiterterServiceProviderForPK[],
-    ): Map<string, ServiceProvider<true>[]> {
-        const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = new Map();
-        for (const erweiterung of erweiterteSP) {
-            const serviceProviders: ServiceProvider<true>[] =
-                erweiterungenByPkId.get(erweiterung.personenkontext.id) ?? [];
-            serviceProviders.push(erweiterung.serviceProvider);
-            erweiterungenByPkId.set(erweiterung.personenkontext.id, serviceProviders);
-        }
-
-        return erweiterungenByPkId;
-    }
-
-    private filterPermittedPersonenkontexte(
-        externalPkData: ExternalPkData[],
-        erweiterungenByPkId: Map<string, ServiceProvider<true>[]>,
-        keycloakClientId: string,
-    ): PermittedPersonenkontext[] {
-        const pkDataWithRequiredFields: ExternalPkDataWithRequiredFields[] = externalPkData.filter(
-            (pk: ExternalPkData): pk is ExternalPkDataWithRequiredFields => Boolean(pk.kennung && pk.rollenart),
-        );
-
-        const permittedPkData: ExternalPkDataWithRequiredFields[] = pkDataWithRequiredFields.filter(
-            (pk: ExternalPkDataWithRequiredFields) =>
-                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
-        );
-
-        const permittedPersonenkontexte: PermittedPersonenkontext[] = permittedPkData.map(
-            (pk: ExternalPkDataWithRequiredFields): PermittedPersonenkontext => ({
-                dienststellennr: pk.kennung,
-                rolleId: pk.rolleId,
-                rollenart: pk.rollenart,
-            }),
-        );
-
-        return permittedPersonenkontexte;
-    }
-
-    private isPermittedForAngebot(
-        pk: ExternalPkData,
-        erweiterteServiceProvider: ServiceProvider<true>[],
-        keycloakClientId: string,
-    ): boolean {
-        const serviceProviders: ServiceProvider<true>[] = [...(pk.serviceProvider ?? []), ...erweiterteServiceProvider];
-
-        return serviceProviders.some((sp: ServiceProvider<true>) => sp.keycloakClientId === keycloakClientId);
     }
 
     private checkPermission(
@@ -229,14 +182,6 @@ export class UserExternaldataService {
         });
     }
 
-    private isActiveEmail(response: EmailAddressInfo): boolean {
-        return response.status === EmailAddressStatusEnum.ACTIVE;
-    }
-
-    private isNotSuspendedEmail(response: EmailAddressInfo): boolean {
-        return response.status !== EmailAddressStatusEnum.SUSPENDED;
-    }
-
     private mapToPersonenkontexte(
         permittedPersonenkontexte: PermittedPersonenkontext[],
     ): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[] {
@@ -246,5 +191,66 @@ export class UserExternaldataService {
                 rolleId: pk.rolleId,
             }),
         );
+    }
+
+    // ----
+
+    private filterPermittedPersonenkontexte(
+        externalPkData: ExternalPkData[],
+        erweiterungenByPkId: Map<string, ServiceProvider<true>[]>,
+        keycloakClientId: string,
+    ): PermittedPersonenkontext[] {
+        const pkDataWithRequiredFields: ExternalPkDataWithRequiredFields[] = externalPkData.filter(
+            (pk: ExternalPkData): pk is ExternalPkDataWithRequiredFields => Boolean(pk.kennung && pk.rollenart),
+        );
+
+        const permittedPkData: ExternalPkDataWithRequiredFields[] = pkDataWithRequiredFields.filter(
+            (pk: ExternalPkDataWithRequiredFields) =>
+                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
+        );
+
+        const permittedPersonenkontexte: PermittedPersonenkontext[] = permittedPkData.map(
+            (pk: ExternalPkDataWithRequiredFields): PermittedPersonenkontext => ({
+                dienststellennr: pk.kennung,
+                rolleId: pk.rolleId,
+                rollenart: pk.rollenart,
+            }),
+        );
+
+        return permittedPersonenkontexte;
+    }
+
+    private groupErweiterteSPByPkId(
+        erweiterteSP: ErweiterterServiceProviderForPK[],
+    ): Map<string, ServiceProvider<true>[]> {
+        const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = new Map();
+        for (const erweiterung of erweiterteSP) {
+            const serviceProviders: ServiceProvider<true>[] =
+                erweiterungenByPkId.get(erweiterung.personenkontext.id) ?? [];
+            serviceProviders.push(erweiterung.serviceProvider);
+            erweiterungenByPkId.set(erweiterung.personenkontext.id, serviceProviders);
+        }
+
+        return erweiterungenByPkId;
+    }
+
+    private isActiveEmail(response: EmailAddressInfo): boolean {
+        return response.status === EmailAddressStatusEnum.ACTIVE;
+    }
+
+    private isNotSuspendedEmail(response: EmailAddressInfo): boolean {
+        return response.status !== EmailAddressStatusEnum.SUSPENDED;
+    }
+
+    // ----
+
+    private isPermittedForAngebot(
+        pk: ExternalPkData,
+        erweiterteServiceProvider: ServiceProvider<true>[],
+        keycloakClientId: string,
+    ): boolean {
+        const serviceProviders: ServiceProvider<true>[] = [...(pk.serviceProvider ?? []), ...erweiterteServiceProvider];
+
+        return serviceProviders.some((sp: ServiceProvider<true>) => sp.keycloakClientId === keycloakClientId);
     }
 }
