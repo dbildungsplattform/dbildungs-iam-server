@@ -135,6 +135,8 @@ describe('PersonenkontextCreationService', () => {
 
     describe('createPersonWithPersonenkontexte', () => {
         it('should return DomainError if personalnummer is passed, but no Role requires a Kopersnummer', async () => {
+            personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
+            personpermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
             dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds.mockResolvedValueOnce(false);
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
