@@ -103,33 +103,6 @@ export class UserExternaldataService {
         return Ok(userExternalData);
     }
 
-    private checkPermission(
-        permittedPersonenkontexte: PermittedPersonenkontext[],
-        personId: PersonID,
-        keycloakClientId: string,
-    ): Result<void, MissingPermissionsError> {
-        if (permittedPersonenkontexte.length === 0) {
-            return Err(
-                new MissingPermissionsError(
-                    `Person ${personId} has no permission for Angebot with keycloakClientId ${keycloakClientId}`,
-                ),
-            );
-        }
-
-        return Ok(undefined);
-    }
-
-    private mapToPersonenkontexte(
-        permittedPersonenkontexte: PermittedPersonenkontext[],
-    ): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[] {
-        return permittedPersonenkontexte.map(
-            (pk: PermittedPersonenkontext): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'> => ({
-                dienststellennr: pk.dienststellennr,
-                rolleId: pk.rolleId,
-            }),
-        );
-    }
-
     private async findPermittedPersonenkontexte(
         personId: PersonID,
         keycloakClientId: string,
@@ -144,6 +117,20 @@ export class UserExternaldataService {
         const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = this.groupErweiterteSPByPkId(erweiterteSP);
 
         return this.filterPermittedPersonenkontexte(externalPkData, erweiterungenByPkId, keycloakClientId);
+    }
+
+    private groupErweiterteSPByPkId(
+        erweiterteSP: ErweiterterServiceProviderForPK[],
+    ): Map<string, ServiceProvider<true>[]> {
+        const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = new Map();
+        for (const erweiterung of erweiterteSP) {
+            const serviceProviders: ServiceProvider<true>[] =
+                erweiterungenByPkId.get(erweiterung.personenkontext.id) ?? [];
+            serviceProviders.push(erweiterung.serviceProvider);
+            erweiterungenByPkId.set(erweiterung.personenkontext.id, serviceProviders);
+        }
+
+        return erweiterungenByPkId;
     }
 
     private filterPermittedPersonenkontexte(
@@ -171,20 +158,6 @@ export class UserExternaldataService {
         return permittedPersonenkontexte;
     }
 
-    private groupErweiterteSPByPkId(
-        erweiterteSP: ErweiterterServiceProviderForPK[],
-    ): Map<string, ServiceProvider<true>[]> {
-        const erweiterungenByPkId: Map<string, ServiceProvider<true>[]> = new Map();
-        for (const erweiterung of erweiterteSP) {
-            const serviceProviders: ServiceProvider<true>[] =
-                erweiterungenByPkId.get(erweiterung.personenkontext.id) ?? [];
-            serviceProviders.push(erweiterung.serviceProvider);
-            erweiterungenByPkId.set(erweiterung.personenkontext.id, serviceProviders);
-        }
-
-        return erweiterungenByPkId;
-    }
-
     private isPermittedForAngebot(
         pk: ExternalPkData,
         erweiterteServiceProvider: ServiceProvider<true>[],
@@ -193,6 +166,22 @@ export class UserExternaldataService {
         const serviceProviders: ServiceProvider<true>[] = [...(pk.serviceProvider ?? []), ...erweiterteServiceProvider];
 
         return serviceProviders.some((sp: ServiceProvider<true>) => sp.keycloakClientId === keycloakClientId);
+    }
+
+    private checkPermission(
+        permittedPersonenkontexte: PermittedPersonenkontext[],
+        personId: PersonID,
+        keycloakClientId: string,
+    ): Result<void, MissingPermissionsError> {
+        if (permittedPersonenkontexte.length === 0) {
+            return Err(
+                new MissingPermissionsError(
+                    `Person ${personId} has no permission for Angebot with keycloakClientId ${keycloakClientId}`,
+                ),
+            );
+        }
+
+        return Ok(undefined);
     }
 
     private getSingleRollenart(
@@ -246,5 +235,16 @@ export class UserExternaldataService {
 
     private isNotSuspendedEmail(response: EmailAddressInfo): boolean {
         return response.status !== EmailAddressStatusEnum.SUSPENDED;
+    }
+
+    private mapToPersonenkontexte(
+        permittedPersonenkontexte: PermittedPersonenkontext[],
+    ): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[] {
+        return permittedPersonenkontexte.map(
+            (pk: PermittedPersonenkontext): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'> => ({
+                dienststellennr: pk.dienststellennr,
+                rolleId: pk.rolleId,
+            }),
+        );
     }
 }
