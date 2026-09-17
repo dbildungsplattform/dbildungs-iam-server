@@ -172,13 +172,8 @@ export class RollenSystemRecht {
         switch (name) {
             case RollenSystemRechtEnum.ROLLEN_VERWALTEN:
                 return RollenSystemRecht.ROLLEN_VERWALTEN;
-<<<<<<< HEAD
             case RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN:
                 return RollenSystemRecht.MPT_ROLLEN_ZUORDNEN;
-=======
-            case RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN:
-                return RollenSystemRecht.MPT_ROLLEN_VERWALTEN;
->>>>>>> 5e5b240e19a4b9448bf28dc45a303a9564c4399c
             case RollenSystemRechtEnum.PERSONEN_SOFORT_LOESCHEN:
                 return RollenSystemRecht.PERSONEN_SOFORT_LOESCHEN;
             case RollenSystemRechtEnum.PERSONEN_VERWALTEN:

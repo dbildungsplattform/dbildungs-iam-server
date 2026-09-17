@@ -61,11 +61,7 @@
             "rollenart": "LEIT",
             "merkmale": [],
             "systemrechte": [
-<<<<<<< HEAD
                 "MPT_ROLLEN_ZUORDNEN",
-=======
-                "MPT_ROLLEN_VERWALTEN",
->>>>>>> 5e5b240e19a4b9448bf28dc45a303a9564c4399c
                 "PERSONEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
                 "BULK_VERWALTEN",
