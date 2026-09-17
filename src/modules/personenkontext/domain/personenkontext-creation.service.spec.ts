@@ -34,6 +34,7 @@ import { Ok } from '../../../shared/util/result.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 
 describe('PersonenkontextCreationService', () => {
     let module: TestingModule;
@@ -150,7 +151,7 @@ describe('PersonenkontextCreationService', () => {
             );
             expect(result.ok).toBeFalsy();
             if (!result.ok) {
-                expect(result.error).toBeInstanceOf(DomainError);
+                expect(result.error).toBeInstanceOf(PersonalnummerWithoutKoperspflichtError);
             }
         });
 
