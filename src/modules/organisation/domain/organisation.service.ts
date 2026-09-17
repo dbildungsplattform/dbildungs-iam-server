@@ -190,7 +190,7 @@ export class OrganisationService {
         const schulSpecificationsError: DomainError | undefined =
             await this.validateSchulSpecifications(organisationDo);
         if (schulSpecificationsError) {
-            await this.logCreation(permissions, organisationDo, schulSpecificationsError);
+            await this.logUpdate(permissions, organisationDo, schulSpecificationsError);
             return { ok: false, error: schulSpecificationsError };
         }
 

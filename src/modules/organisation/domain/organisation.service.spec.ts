@@ -658,6 +658,34 @@ describe('OrganisationService', () => {
             });
         });
 
+        it('should update the organisation if kennung is unique except for itself', async () => {
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+            organisationRepositoryMock.findById.mockResolvedValue(organisationUser);
+
+            const name: string = faker.string.alpha();
+            const kennung: string = faker.string.numeric({ length: 7 });
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: kennung,
+                name: name,
+            });
+            // findBy returns the organisation itself (same id), e.g. because kennung was unchanged
+            const counted: Counted<Organisation<true>> = [[organisation], 1];
+            organisationRepositoryMock.findById.mockResolvedValue(organisation);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce(counted);
+            organisationRepositoryMock.save.mockResolvedValue(organisation);
+
+            const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                organisation,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: true,
+                value: organisation,
+            });
+        });
+
         it('should return a domain error when organisation cannot be found on update', async () => {
             const organisation: Organisation<true> = DoFactory.createOrganisation(true);
             organisationRepositoryMock.findById.mockResolvedValue(undefined);
