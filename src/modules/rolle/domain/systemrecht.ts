@@ -1,5 +1,6 @@
 export enum RollenSystemRechtEnum {
     ROLLEN_VERWALTEN = 'ROLLEN_VERWALTEN',
+    MPT_ROLLEN_VERWALTEN = 'MPT_ROLLEN_VERWALTEN',
     PERSONEN_SOFORT_LOESCHEN = 'PERSONEN_SOFORT_LOESCHEN', // Implicitly requires PERSONEN_VERWALTEN to be usable in the frontend
     PERSONEN_VERWALTEN = 'PERSONEN_VERWALTEN',
     LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN = 'LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN',
@@ -38,6 +39,11 @@ export class RollenSystemRecht {
     public static readonly ROLLEN_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
         false,
         RollenSystemRechtEnum.ROLLEN_VERWALTEN,
+    );
+
+    public static readonly MPT_ROLLEN_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
     );
 
     // Implicitly requires PERSONEN_VERWALTEN to be usable in the frontend
@@ -140,6 +146,7 @@ export class RollenSystemRecht {
 
     public static readonly ALL: RollenSystemRecht[] = [
         RollenSystemRecht.ROLLEN_VERWALTEN,
+        RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
         RollenSystemRecht.PERSONEN_SOFORT_LOESCHEN,
         RollenSystemRecht.PERSONEN_VERWALTEN,
         RollenSystemRecht.LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN,
@@ -165,6 +172,8 @@ export class RollenSystemRecht {
         switch (name) {
             case RollenSystemRechtEnum.ROLLEN_VERWALTEN:
                 return RollenSystemRecht.ROLLEN_VERWALTEN;
+            case RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN:
+                return RollenSystemRecht.MPT_ROLLEN_VERWALTEN;
             case RollenSystemRechtEnum.PERSONEN_SOFORT_LOESCHEN:
                 return RollenSystemRecht.PERSONEN_SOFORT_LOESCHEN;
             case RollenSystemRechtEnum.PERSONEN_VERWALTEN:
