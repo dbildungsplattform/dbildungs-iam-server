@@ -267,6 +267,7 @@ export class ServiceProviderService {
         if (rollenArten && rollenArten.length > 0) {
             const filteredServiceProviders: ServiceProvider<true>[] = serviceProviders[0].filter(
                 (sp: ServiceProvider<true>) =>
+                    sp.rollenartenWhitelist.length === 0 ||
                     sp.rollenartenWhitelist.some((ra: RollenArt) => rollenArten.includes(ra)),
             );
             return [filteredServiceProviders, filteredServiceProviders.length];

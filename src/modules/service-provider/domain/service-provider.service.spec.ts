@@ -839,7 +839,12 @@ describe('ServiceProviderService', () => {
             expect(result[1]).toBe(0);
         });
 
-        it('should filter service providers by rollenArten when provided', async () => {
+        it('should filter service providers by rollenArten and include providers with an unrestricted whitelist', async () => {
+            const unrestrictedProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            });
             const matchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 providedOnSchulstrukturknoten: organisation.id,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
@@ -851,7 +856,10 @@ describe('ServiceProviderService', () => {
                 rollenartenWhitelist: [RollenArt.LEHR],
             });
 
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[matchingProvider, nonMatchingProvider], 2]);
+            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([
+                [unrestrictedProvider, matchingProvider, nonMatchingProvider],
+                3,
+            ]);
 
             const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
                 organisation.id,
@@ -859,8 +867,9 @@ describe('ServiceProviderService', () => {
                 [RollenArt.LERN],
             );
 
-            expect(result[0]).toEqual([matchingProvider]);
-            expect(result[1]).toBe(1);
+            expect(result[0]).toEqual([unrestrictedProvider, matchingProvider]);
+            expect(result[0]).not.toContain(nonMatchingProvider);
+            expect(result[1]).toBe(2);
         });
     });
 
