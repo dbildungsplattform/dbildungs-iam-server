@@ -2,6 +2,7 @@ import { ArgumentsHost } from '@nestjs/common';
 import { Response } from 'express';
 import { PersonenkontextExceptionFilter } from './personenkontext-exception-filter.js';
 import { PersonenkontextSpecificationError } from '../specification/error/personenkontext-specification.error.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 import {
     DbiamPersonenkontextError,
     PersonenkontextSpecificationErrorI18nTypes,
@@ -36,6 +37,22 @@ describe('PersonenkontextExceptionFilter', () => {
                 expect(responseMock.json).toHaveBeenCalled();
                 expect(responseMock.status).toHaveBeenCalledWith(statusCode);
                 expect(responseMock.json).toHaveBeenCalledWith(generalBadRequestError);
+            });
+        });
+
+        describe('when filter catches PersonalnummerWithoutKoperspflichtError', () => {
+            it('should return a bad request with PERSON_HAT_KEINE_KOPERSPFLICHTIGE_ROLLE i18nKey', () => {
+                const error: PersonalnummerWithoutKoperspflichtError = new PersonalnummerWithoutKoperspflichtError();
+
+                filter.catch(error, argumentsHost);
+
+                expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+                expect(responseMock.json).toHaveBeenCalledWith(
+                    new DbiamPersonenkontextError({
+                        code: 400,
+                        i18nKey: PersonenkontextSpecificationErrorI18nTypes.PERSON_HAT_KEINE_KOPERSPFLICHTIGE_ROLLE,
+                    }),
+                );
             });
         });
     });
