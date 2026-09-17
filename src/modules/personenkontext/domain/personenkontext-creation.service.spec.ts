@@ -139,6 +139,10 @@ describe('PersonenkontextCreationService', () => {
             personFactoryMock.createNew.mockResolvedValueOnce(DoFactory.createPerson(false));
             personpermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
             dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds.mockResolvedValueOnce(false);
+            const rolleMock: MockedObject<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle(true, { rollenart: RollenArt.SYSADMIN }),
+            );
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleMock.id, rolleMock]]));
 
             const result: Result<PersonPersonenkontext, DomainError> = await sut.createPersonWithPersonenkontexte(
                 personpermissionsMock,
