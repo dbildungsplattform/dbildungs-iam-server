@@ -42,8 +42,6 @@ export class PersonenkontextCreationService {
         personalnummer?: string,
         befristung?: Date,
     ): Promise<Result<PersonPersonenkontext, DomainError>> {
-
-
         const personOrError: Person<false> | DomainError = await this.personFactory.createNew({
             vorname: vorname,
             familienname: familienname,
