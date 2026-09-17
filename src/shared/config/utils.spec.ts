@@ -1,7 +1,12 @@
-import { envToOptionalBoolean, envToOptionalInteger, envToStringArray, mapStringsToRollenArt } from './utils.js';
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
+import { envToEnumArray, envToOptionalBoolean, envToOptionalInteger, envToStringArray } from './utils.js';
 
 const TEST_KEY: string = 'CONFIG_UTIL_TEST_KEY';
+
+enum TestConfigEnum {
+    FOO = 'FOO',
+    BAR = 'BAR',
+    BAZ = 'BAZ',
+}
 
 describe('Config Utils', () => {
     describe('envToOptionalBoolean', () => {
@@ -70,24 +75,26 @@ describe('Config Utils', () => {
         });
     });
 
-    describe('mapStringsToRollenArt', () => {
-        it('should map valid RollenArt strings to enum values', () => {
-            const input: string[] = ['LERN', 'LEHR'];
-            expect(mapStringsToRollenArt(input)).toEqual([RollenArt.LERN, RollenArt.LEHR]);
-        });
+    describe('envToEnumArray', () => {
+        it.each([
+            ['', undefined],
+            ['FOO,BAR', [TestConfigEnum.FOO, TestConfigEnum.BAR]],
+            ['FOO, BAR, BAZ', [TestConfigEnum.FOO, TestConfigEnum.BAR, TestConfigEnum.BAZ]],
+            ['FOO,INVALID,BAR', [TestConfigEnum.FOO, TestConfigEnum.BAR]],
+            ['INVALID,UNKNOWN', []],
+        ])(
+            'when environment variable is "%s", should return %s',
+            (input: string | undefined, expected: TestConfigEnum[] | undefined) => {
+                process.env[TEST_KEY] = input;
 
-        it('should filter out invalid RollenArt strings', () => {
-            const input: string[] = ['LERN', 'INVALID', 'LEHR'];
-            expect(mapStringsToRollenArt(input)).toEqual([RollenArt.LERN, RollenArt.LEHR]);
-        });
+                expect(envToEnumArray(TEST_KEY, TestConfigEnum)).toEqual(expected);
+            },
+        );
 
-        it('should return an empty array if no valid RollenArt strings are provided', () => {
-            const input: string[] = ['INVALID1', 'INVALID2'];
-            expect(mapStringsToRollenArt(input)).toEqual([]);
-        });
+        it('should return undefined if the environment variable is not set', () => {
+            delete process.env[TEST_KEY];
 
-        it('should return an empty array if input is an empty array', () => {
-            expect(mapStringsToRollenArt([])).toEqual([]);
+            expect(envToEnumArray(TEST_KEY, TestConfigEnum)).toBeUndefined();
         });
     });
 });

@@ -2408,7 +2408,7 @@ describe('OrganisationRepository', () => {
             it('should succeed', async () => {
                 const orga: OrganisationEntity = Object.assign(
                     new OrganisationEntity(),
-                    DoFactory.createOrganisation<true>,
+                    DoFactory.createOrganisation<true>(true),
                 );
                 await em.persist(orga).flush();
                 const result: void | DomainError = await sut.delete(orga.id);
