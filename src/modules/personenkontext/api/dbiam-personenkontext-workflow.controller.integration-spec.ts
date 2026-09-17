@@ -6,6 +6,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
@@ -15,23 +16,17 @@ import {
     DoFactory,
     KeycloakConfigTestModule,
 } from '../../../../test/utils/index.js';
-import { GlobalValidationPipe } from '../../../shared/validation/index.js';
-import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
-
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
+import { GlobalValidationPipe } from '../../../shared/validation/index.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
+import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
 import { OrganisationResponse } from '../../organisation/api/organisation.response.js';
@@ -43,6 +38,10 @@ import { EscalatedPersonPermissions } from '../../permission/escalated-person-pe
 import { PersonFactory } from '../../person/domain/person.factory.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
@@ -52,6 +51,7 @@ import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-work
 import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
+import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
 import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
 import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';

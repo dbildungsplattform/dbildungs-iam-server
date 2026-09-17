@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { Test, TestingModule } from '@nestjs/testing';
 import { uniq } from 'lodash-es';
 import { vi } from 'vitest';
+
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DoFactory } from '../../../../test/utils/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
@@ -771,25 +772,32 @@ describe('RolleFindService', () => {
         });
 
         it('should use limited rollenarten allowlist for restricted user creation', async () => {
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.TRAEGER,
+            });
+            const schule: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.SCHULE,
             });
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+            organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
-            organisationRepoMock.findById.mockResolvedValue(organisation);
+            organisationRepoMock.findById.mockResolvedValue(schule);
 
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             vi.spyOn(
                 rolleFindService as unknown as RolleFindServiceTestAccess,
                 'getOrganisationIdsWithParents',
-            ).mockResolvedValue([organisation.id]);
+            ).mockResolvedValue([schule.id]);
 
             rolleRepoMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValue([[], 0]);
 
             await rolleFindService.findRollenAvailableForPersonenkontextCreation({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-                organisationId: organisation.id,
+                organisationId: schule.id,
             });
 
             expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenCalled();

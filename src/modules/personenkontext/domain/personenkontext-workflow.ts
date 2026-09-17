@@ -4,6 +4,7 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID, RolleID } from '../../../shared/types/index.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
@@ -19,7 +20,6 @@ import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-
 import { OperationContext } from './personenkontext.enums.js';
 import { Personenkontext } from './personenkontext.js';
 import { PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { Err, Ok } from '../../../shared/util/result.js';
 
 export class PersonenkontextWorkflowAggregate {
     public personId?: PersonID;

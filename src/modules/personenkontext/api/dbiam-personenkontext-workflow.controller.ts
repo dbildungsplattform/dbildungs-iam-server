@@ -26,6 +26,7 @@ import {
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
@@ -39,6 +40,7 @@ import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { Personenkontext } from '../domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
 import { DbiamPersonenkontexteUpdateError } from './dbiam-personenkontexte-update.error.js';
 import { DbiamCreatePersonWithPersonenkontexteBodyParams } from './param/dbiam-create-person-with-personenkontexte.body.params.js';
@@ -52,8 +54,6 @@ import { PersonenkontexteUpdateExceptionFilter } from './personenkontexte-update
 import { DBiamPersonResponse } from './response/dbiam-person.response.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
 import { PersonenkontexteUpdateResponse } from './response/personenkontexte-update.response.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 
 @UseFilters(new PersonenkontextExceptionFilter(), new PersonenkontexteUpdateExceptionFilter())
 @ApiTags('personenkontext')
@@ -92,26 +92,19 @@ export class DbiamPersonenkontextWorkflowController {
         // Initializes the aggregate with the values of the person, the selected organisation and rolle through the UI
         anlage.initialize(params.personId, params.organisationId, params.rollenIds);
 
-        // Find all possible SSKs (Possibly through name if the name was given)
+        if (params.personId) {
+            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
+                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
+            if (!findByPersonResult.ok) {
+                return new PersonenkontextWorkflowResponse([], false, params.organisationId, params.rollenIds);
+            }
+        }
+
         const organisations: Organisation<true>[] = await anlage.findAllSchulstrukturknoten(
             permissions,
             params.organisationName,
             params.limit,
         );
-
-        if (params.personId) {
-            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
-                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
-            if (!findByPersonResult.ok) {
-                return new PersonenkontextWorkflowResponse(
-                    organisations.map(
-                        (organisation: Organisation<true>) => new OrganisationResponseLegacy(organisation),
-                    ),
-                    false,
-                    params.organisationId,
-                );
-            }
-        }
         const organisationsResponse: OrganisationResponseLegacy[] = organisations.map(
             (org: Organisation<true>) => new OrganisationResponseLegacy(org),
         );
