@@ -468,5 +468,57 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             expect(err.errors[0]?.id).toBe(serviceProviderId);
             expect(err.errors[0]?.error).toBeInstanceOf(RollenartNotAllowedForSPError);
         });
+
+        it('should allow adding a service provider when rollenartenWhitelist is empty', async () => {
+            const orgaId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+
+            organisationRepo.findById.mockResolvedValue(DoFactory.createOrganisation(true, { id: orgaId }));
+
+            const rolle: Rolle<true> = createMock<Rolle<true>>(Rolle, {
+                id: rolleId,
+                merkmale: [],
+                rollenart: RollenArt.LEHR,
+            });
+
+            rolleRepo.findByIds.mockResolvedValue(new Map([[rolleId, rolle]]));
+            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValue([]);
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                id: serviceProviderId,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            });
+
+            serviceProviderRepo.findByIds.mockResolvedValue(new Map([[serviceProviderId, serviceProvider]]));
+
+            const createdRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
+                organisationId: orgaId,
+                rolleId,
+                serviceProviderId,
+            });
+
+            rollenerweiterungRepo.createAuthorized.mockResolvedValue(Ok(createdRollenerweiterung));
+
+            const body: ApplyRollenerweiterungChangesBodyParams = {
+                addErweiterungenForServiceProviderIds: [serviceProviderId],
+                removeErweiterungenForServiceProviderIds: [],
+            };
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const result: TresultType = await service.applyRollenerweiterungChangesForRolle(
+                orgaId,
+                rolleId,
+                body,
+                permissions,
+            );
+
+            expect(result.ok).toBe(true);
+            expect(rollenerweiterungRepo.createAuthorized).toHaveBeenCalledTimes(1);
+        });
     });
 });

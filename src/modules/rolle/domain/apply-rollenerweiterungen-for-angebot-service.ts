@@ -211,7 +211,10 @@ export class ApplyRollenerweiterungForAngebotService {
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
                     });
                 }
-                if (!serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)) {
+                if (
+                    serviceProvider.rollenartenWhitelist.length > 0 &&
+                    !serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)
+                ) {
                     return Promise.resolve({
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
