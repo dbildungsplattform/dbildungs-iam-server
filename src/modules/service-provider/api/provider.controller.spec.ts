@@ -572,6 +572,7 @@ describe('Provider Controller Test', () => {
                     systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
                     offset: 3,
                     limit: 25,
+                    rollenArten: [RollenArt.LEHR],
                 });
 
                 serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([
@@ -586,95 +587,6 @@ describe('Provider Controller Test', () => {
                     organisationId,
                     personPermissionsMock,
                     queryParams.rollenArten,
-                );
-                expect(result).toBeInstanceOf(RawPagedResponse);
-                expect(result.total).toBe(1);
-                expect(result.offset).toBe(3);
-                expect(result.limit).toBe(25);
-                expect(result.items).toHaveLength(1);
-                expect(result.items[0]).toBeInstanceOf(ServiceProviderResponse);
-                expect(result.items[0]?.id).toBe(serviceProvider.id);
-            });
-        });
-
-        describe('when organisationId is missing', () => {
-            beforeEach(() => {
-                vi.clearAllMocks();
-            });
-
-            it('should not use the organisation-scoped rollenerweiterung lookup', async () => {
-                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
-                Object.assign(queryParams, {
-                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
-                    offset: 4,
-                    limit: 12,
-                });
-
-                const result: RawPagedResponse<ServiceProviderResponse> =
-                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
-
-                expect(
-                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
-                ).not.toHaveBeenCalled();
-                expect(result).toBeInstanceOf(RawPagedResponse);
-                expect(result.total).toBe(0);
-                expect(result.offset).toBe(4);
-                expect(result.limit).toBe(12);
-                expect(result.items).toHaveLength(0);
-            });
-        });
-
-        describe('when systemrechte are missing', () => {
-            beforeEach(() => {
-                vi.clearAllMocks();
-            });
-
-            it('should not use the organisation-scoped rollenerweiterung lookup and should apply default paging', async () => {
-                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
-
-                const result: RawPagedResponse<ServiceProviderResponse> =
-                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
-
-                expect(
-                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
-                ).not.toHaveBeenCalled();
-                expect(result).toBeInstanceOf(RawPagedResponse);
-                expect(result.total).toBe(0);
-                expect(result.offset).toBe(0);
-                expect(result.limit).toBe(0);
-                expect(result.items).toHaveLength(0);
-            });
-        });
-    });
-
-    describe('getAvailableServiceProviders', () => {
-        describe('when organisationId and systemrecht match', () => {
-            beforeEach(() => {
-                vi.clearAllMocks();
-            });
-
-            it('should call the special rollenerweiterung provider lookup', async () => {
-                const organisationId: string = faker.string.uuid();
-                const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
-                Object.assign(queryParams, {
-                    organisationId,
-                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
-                    offset: 3,
-                    limit: 25,
-                });
-
-                serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([
-                    [serviceProvider],
-                    1,
-                ]);
-
-                const result: RawPagedResponse<ServiceProviderResponse> =
-                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
-
-                expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
-                    organisationId,
-                    personPermissionsMock,
                 );
                 expect(result).toBeInstanceOf(RawPagedResponse);
                 expect(result.total).toBe(1);
