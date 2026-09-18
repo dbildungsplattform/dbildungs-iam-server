@@ -52,7 +52,7 @@ export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParam
     @IsOptional()
     @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN])
     @ApiProperty({
-        enum: RollenSystemRechtEnum,
+        enum: [RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN],
         enumName: RollenSystemRechtEnumName,
         description: 'The systemrecht for which the available rollen should be found',
         required: false,
