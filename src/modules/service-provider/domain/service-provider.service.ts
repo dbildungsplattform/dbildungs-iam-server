@@ -212,9 +212,13 @@ export class ServiceProviderService {
             organisationId,
             ...parents.map((orga: Organisation<true>) => orga.id),
         ];
-        const result: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmal(
+        const result: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmale(
             organisationWithParentsIds,
-            ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+            // only show Angebote activated for the schulische Angebotsliste
+            [
+                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+            ],
             limit,
             offset,
         );
@@ -255,9 +259,13 @@ export class ServiceProviderService {
             organisationId,
             ...parents.map((orga: Organisation<true>) => orga.id),
         ];
-        const serviceProviders: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmal(
+        const serviceProviders: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmale(
             organisationWithParentsIds,
-            ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+            // only show Angebote activated for the schulische Rollenverwaltung
+            [
+                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+            ],
         );
 
         if (rollenArten && rollenArten.length > 0) {
