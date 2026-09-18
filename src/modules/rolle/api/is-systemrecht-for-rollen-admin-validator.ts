@@ -7,7 +7,7 @@ export function IsSystemrechtForRollenAdministration(validationOptions?: Validat
             RollenSystemRechtEnum.ROLLEN_VERWALTEN,
             RollenSystemRechtEnum.ROLLEN_ERWEITERN,
             RollenSystemRechtEnum.IMPORT_DURCHFUEHREN,
-            RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
+            RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
         ],
         {
             each: true,
