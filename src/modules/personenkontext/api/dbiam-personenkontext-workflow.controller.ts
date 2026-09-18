@@ -26,16 +26,14 @@ import {
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationResponseLegacy } from '../../organisation/api/organisation.response.legacy.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
-import { RolleFindService } from '../../rolle/domain/rolle-find.service.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
@@ -48,7 +46,7 @@ import { DbiamPersonenkontexteUpdateError } from './dbiam-personenkontexte-updat
 import { DbiamCreatePersonWithPersonenkontexteBodyParams } from './param/dbiam-create-person-with-personenkontexte.body.params.js';
 import { DbiamCreatePersonenkontextBodyParams } from './param/dbiam-create-personenkontext.body.params.js';
 import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
-import { FindDbiamPersonenkontextWorkflowBodyParams } from './param/dbiam-find-personenkontextworkflow-body.params.js';
+import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
 import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 import { DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
 import { PersonenkontextExceptionFilter } from './personenkontext-exception-filter.js';
@@ -56,7 +54,6 @@ import { PersonenkontexteUpdateExceptionFilter } from './personenkontexte-update
 import { DBiamPersonResponse } from './response/dbiam-person.response.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
 import { PersonenkontexteUpdateResponse } from './response/personenkontexte-update.response.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 
 @UseFilters(new PersonenkontextExceptionFilter(), new PersonenkontexteUpdateExceptionFilter())
 @ApiTags('personenkontext')
@@ -67,7 +64,6 @@ export class DbiamPersonenkontextWorkflowController {
     public constructor(
         private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
         private readonly personenkontextCreationService: PersonenkontextCreationService,
-        private readonly rolleFindService: RolleFindService,
         private readonly logger: ClassLogger,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
     ) {}
@@ -77,17 +73,15 @@ export class DbiamPersonenkontextWorkflowController {
     @ApiOkResponse({
         description: `Initialize or process data from the person creation form.
                       Valid combinations:
-                      - Both organisationId and rolleId are undefined: Fetch all possible organisations.
-                      - organisationId is provided, but rolleId is undefined: Fetch Rollen for the given organisation.
-                      - Both organisationId and rolleId are provided: Check if the Rolle can be committed for the organisation.
-                      Note: Providing rolleId without organisationId is invalid.`,
+                      - Both organisationId and rollenIds are undefined: Fetch all possible organisations.
+                      - Both organisationId and rollenIds are provided: Check if the Rolle can be committed for the organisation.`,
         type: PersonenkontextWorkflowResponse,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available data for personenkontext.' })
     @ApiForbiddenResponse({ description: 'Insufficient permission to get data for personenkontext.' })
     @ApiInternalServerErrorResponse({ description: 'Internal server error while getting data for personenkontext.' })
     public async processStep(
-        @Query() params: FindDbiamPersonenkontextWorkflowBodyParams,
+        @Query() params: FindDbiamPersonenkontextWorkflowQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PersonenkontextWorkflowResponse> {
         // Creates a new instance of the workflow aggregate
@@ -96,50 +90,19 @@ export class DbiamPersonenkontextWorkflowController {
         // Initializes the aggregate with the values of the person, the selected organisation and rolle through the UI
         anlage.initialize(params.personId, params.organisationId, params.rollenIds);
 
-        // Find all possible SSKs (Possibly through name if the name was given)
+        if (params.personId) {
+            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
+                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
+            if (!findByPersonResult.ok) {
+                return new PersonenkontextWorkflowResponse([], false, params.organisationId, params.rollenIds);
+            }
+        }
+
         const organisations: Organisation<true>[] = await anlage.findAllSchulstrukturknoten(
             permissions,
             params.organisationName,
             params.limit,
         );
-
-        let rollenart: RollenArt | undefined;
-        if (params.personId) {
-            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
-                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
-            if (!findByPersonResult.ok) {
-                return new PersonenkontextWorkflowResponse(
-                    organisations.map(
-                        (organisation: Organisation<true>) => new OrganisationResponseLegacy(organisation),
-                    ),
-                    [],
-                    false,
-                    params.organisationId,
-                    params.rollenIds,
-                );
-            }
-            const pks: Array<Personenkontext<true>> = findByPersonResult.value;
-            const rolle: Option<Rolle<true>> = await pks[0]?.getRolle();
-            if (rolle) {
-                rollenart = rolle.rollenart;
-            }
-        }
-
-        // Find all possible roles under the selected Organisation
-        const [rollen]: Counted<Rolle<true>> = params.organisationId
-            ? await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
-                  permissions,
-                  rollenartOfUser: rollenart,
-                  rolleName: params.rolleName,
-                  rollenIds: params.rollenIds,
-                  limit: params.limit,
-                  organisationId: params.organisationId,
-                  systemrecht: params.requestedWithSystemrecht
-                      ? RollenSystemRecht.getByName(params.requestedWithSystemrecht)
-                      : RollenSystemRecht.PERSONEN_VERWALTEN,
-              })
-            : [[], 0];
-
         const organisationsResponse: OrganisationResponseLegacy[] = organisations.map(
             (org: Organisation<true>) => new OrganisationResponseLegacy(org),
         );
@@ -158,7 +121,6 @@ export class DbiamPersonenkontextWorkflowController {
 
         const response: PersonenkontextWorkflowResponse = new PersonenkontextWorkflowResponse(
             organisationsResponse,
-            rollen,
             canCommit,
             params.organisationId,
             params.rollenIds,

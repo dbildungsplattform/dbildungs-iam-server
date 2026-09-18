@@ -1,46 +1,41 @@
 import { faker } from '@faker-js/faker';
 import { Test, TestingModule } from '@nestjs/testing';
-import { createPersonPermissionsMock, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 
-import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
-import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
-import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
-import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
-import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
-import { FindDbiamPersonenkontextWorkflowBodyParams } from './param/dbiam-find-personenkontextworkflow-body.params.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { DbiamPersonenkontextWorkflowController } from './dbiam-personenkontext-workflow.controller.js';
-import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
-import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
 import { ConfigService } from '@nestjs/config';
-import { OperationContext } from '../domain/personenkontext.enums.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
-import { PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import {
-    FindRollenForPersonenkontextCreationWithPermissionsParams,
-    RolleFindService,
-} from '../../rolle/domain/rolle-find.service.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createPersonPermissionsMock, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
+import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
+import { RolleFindService } from '../../rolle/domain/rolle-find.service.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
+import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
+import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
+import { PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
+import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
+import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
+import { OperationContext } from '../domain/personenkontext.enums.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { DbiamPersonenkontextWorkflowController } from './dbiam-personenkontext-workflow.controller.js';
+import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
+import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
+import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
+import { DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
+import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
 
 describe('DbiamPersonenkontextWorkflowController Test', () => {
     let module: TestingModule;
     let sut: DbiamPersonenkontextWorkflowController;
     let personenkontextWorkflowMock: DeepMocked<PersonenkontextWorkflowAggregate>;
     let personenkontextWorkflowFactoryMock: DeepMocked<PersonenkontextWorkflowFactory>;
-    let rolleFindServiceMock: DeepMocked<RolleFindService>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
 
     beforeAll(async () => {
@@ -66,7 +61,6 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                         PersonenkontextWorkflowAggregate.createNew(
                             null as unknown as RolleRepo,
                             null as unknown as OrganisationRepository,
-                            null as unknown as DBiamPersonenkontextRepo,
                             null as unknown as DbiamPersonenkontextFactory,
                             null as unknown as ConfigService,
                             null as unknown as PersonenkontextWorkflowSharedKernel,
@@ -87,7 +81,6 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
 
         personenkontextWorkflowMock = module.get(PersonenkontextWorkflowAggregate);
         personenkontextWorkflowFactoryMock = module.get(PersonenkontextWorkflowFactory);
-        rolleFindServiceMock = module.get(RolleFindService);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
     });
 
@@ -109,21 +102,13 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
             (operationContext: OperationContext) => {
                 it('should return selected organisation and all rollen', async () => {
                     const organisation: Organisation<true> = DoFactory.createOrganisation(true);
-                    const rolle: Rolle<true> = DoFactory.createRolle(true, {
-                        administeredBySchulstrukturknoten: organisation.id,
-                        rollenart: RollenArt.LERN,
-                    });
 
                     const personpermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([organisation]);
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValueOnce(personenkontextWorkflowMock);
-                    rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValueOnce([
-                        [rolle],
-                        1,
-                    ]);
+                    const params: FindDbiamPersonenkontextWorkflowQueryParams =
+                        new FindDbiamPersonenkontextWorkflowQueryParams();
 
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
                     Object.assign(params, {
                         operationContext,
                         organisationId: organisation.id,
@@ -145,8 +130,8 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([organisation]);
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValueOnce(personenkontextWorkflowMock);
 
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
+                    const params: FindDbiamPersonenkontextWorkflowQueryParams =
+                        new FindDbiamPersonenkontextWorkflowQueryParams();
                     Object.assign(params, {
                         operationContext,
                         organisationName: randomName,
@@ -166,9 +151,8 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
 
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([]);
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValueOnce(personenkontextWorkflowMock);
-                    rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValueOnce([[], 0]);
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
+                    const params: FindDbiamPersonenkontextWorkflowQueryParams =
+                        new FindDbiamPersonenkontextWorkflowQueryParams();
                     Object.assign(params, {
                         operationContext,
                         organisationId: organisation.id,
@@ -178,7 +162,6 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
 
                     expect(response).toBeInstanceOf(PersonenkontextWorkflowResponse);
                     expect(response.organisations).toEqual([]);
-                    expect(response.rollen).toEqual([]);
                 });
 
                 it('should set canCommit to true if canCommit returns true', async () => {
@@ -194,8 +177,8 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
 
                     const personpermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
 
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
+                    const params: FindDbiamPersonenkontextWorkflowQueryParams =
+                        new FindDbiamPersonenkontextWorkflowQueryParams();
                     Object.assign(params, {
                         operationContext,
                         organisationId,
@@ -205,53 +188,12 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                         limit: undefined,
                     });
                     personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([]);
-                    rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValue([[rolle], 0]);
                     personenkontextWorkflowMock.canCommit.mockResolvedValue(Ok(undefined));
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValue(personenkontextWorkflowMock);
 
                     const response: PersonenkontextWorkflowResponse = await sut.processStep(params, personpermissions);
 
                     expect(response).toBeInstanceOf(PersonenkontextWorkflowResponse);
-                });
-
-                it('should limit rollenarten when requestedWithSystemrecht is set', async () => {
-                    const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
-                        name: faker.company.name(),
-                    });
-
-                    const rolle: Rolle<true> = DoFactory.createRolle(true, {
-                        administeredBySchulstrukturknoten: organisation.id,
-                        rollenart: RollenArt.LEHR,
-                    });
-
-                    const personpermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-
-                    personenkontextWorkflowMock.findAllSchulstrukturknoten.mockResolvedValueOnce([organisation]);
-                    rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation.mockResolvedValue([[rolle], 0]);
-                    personenkontextWorkflowFactoryMock.createNew.mockReturnValueOnce(personenkontextWorkflowMock);
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
-                    Object.assign(params, {
-                        operationContext,
-                        organisationId: organisation.id,
-                        requestedWithSystemrecht: RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-                    });
-
-                    const response: PersonenkontextWorkflowResponse = await sut.processStep(params, personpermissions);
-
-                    const expectedParams: FindRollenForPersonenkontextCreationWithPermissionsParams = {
-                        permissions: personpermissions,
-                        rollenIds: undefined,
-                        rollenartOfUser: undefined,
-                        rolleName: undefined,
-                        limit: undefined,
-                        organisationId: organisation.id,
-                        systemrecht: RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-                    };
-                    expect(response).toBeInstanceOf(PersonenkontextWorkflowResponse);
-                    expect(rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenCalledWith(
-                        expectedParams,
-                    );
                 });
 
                 it('should return orgas, but no rollen when admin can not modify person', async () => {
@@ -267,8 +209,8 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                         Err(new MissingPermissionsError('not authorized')),
                     );
 
-                    const params: FindDbiamPersonenkontextWorkflowBodyParams =
-                        new FindDbiamPersonenkontextWorkflowBodyParams();
+                    const params: FindDbiamPersonenkontextWorkflowQueryParams =
+                        new FindDbiamPersonenkontextWorkflowQueryParams();
                     Object.assign(params, {
                         operationContext,
                         organisationId: organisation.id,
@@ -278,9 +220,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     const response: PersonenkontextWorkflowResponse = await sut.processStep(params, personpermissions);
 
                     expect(response).toBeInstanceOf(PersonenkontextWorkflowResponse);
-                    expect(response.rollen).toHaveLength(0);
                     expect(response.canCommit).toBe(false);
-                    expect(rolleFindServiceMock.findRollenAvailableForPersonenkontextCreation).not.toHaveBeenCalled();
                 });
             },
         );
