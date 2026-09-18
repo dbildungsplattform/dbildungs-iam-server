@@ -249,6 +249,7 @@ describe('OxEventHandler', () => {
     beforeEach(() => {
         sut.ENABLED = true;
         vi.resetAllMocks();
+        emailResolverService.shouldUseEmailMicroservice.mockReturnValueOnce(false);
     });
 
     describe('Ignore events when new Microservice enabled', () => {
@@ -2242,6 +2243,7 @@ describe('OxEventHandler', () => {
 
         describe('when email microservice is enabled', () => {
             it('should ignore the event when the email microservice is enabled', async () => {
+                vi.resetAllMocks();
                 emailResolverService.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
                 await sut.handleOrganisationDeletedEvent(event);
