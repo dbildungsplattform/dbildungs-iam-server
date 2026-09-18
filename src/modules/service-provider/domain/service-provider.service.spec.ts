@@ -1031,7 +1031,7 @@ describe('ServiceProviderService', () => {
                 rollenartenWhitelist: [RollenArt.LEHR],
             });
 
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([
                 [unrestrictedProvider, matchingProvider, nonMatchingProvider],
                 3,
             ]);
