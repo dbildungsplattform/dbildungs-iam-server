@@ -7,9 +7,9 @@ import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { FindRollenQueryParams } from './find-rollen-query.params.js';
 
 describe('FindRollenQueryParams', () => {
-    it('should accept MPT_ROLLEN_VERWALTEN for rollen admin queries', () => {
+    it('should accept MPT_ROLLEN_ZUORDNEN for rollen admin queries', () => {
         const queryParams: FindRollenQueryParams = plainToInstance(FindRollenQueryParams, {
-            systemrechte: [RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN],
+            systemrechte: [RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN],
         });
 
         const validationErrors: ValidationError[] = validateSync(queryParams);
