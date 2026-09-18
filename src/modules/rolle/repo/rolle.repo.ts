@@ -484,6 +484,7 @@ export class RolleRepo {
             ? await this.em.findAll(RolleEntity, {
                   where: {
                       id: { $in: params.stickyRollenIds },
+                      istTechnisch: false,
                   },
                   populate: [
                       'merkmale',
