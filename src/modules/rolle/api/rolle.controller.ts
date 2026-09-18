@@ -279,10 +279,10 @@ export class RolleController {
     }
 
     @Get('for-personenkontext-creation')
+    @UseGuards(StepUpGuard)
     @ApiOperation({ description: 'Find available rollen for personenkontext creation.' })
-    @ApiOkResponse({
-        description: 'The available rollen were successfully returned.',
-        type: [RolleResponse],
+    @ApiOkResponsePaginated(RolleResponse, {
+        description: 'The rollen were successfully returned',
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available rollen for personenkontext creation.' })
     @ApiForbiddenResponse({
@@ -294,7 +294,7 @@ export class RolleController {
     public async findAvailableRollenForPersonenkontextCreation(
         @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<PagedResponse<RolleResponse>> {
+    ): Promise<RawPagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
                 permissions,
@@ -308,12 +308,13 @@ export class RolleController {
                 limit: queryParams.limit,
                 offset: queryParams.offset,
             });
-        return new PagedResponse<RolleResponse>({
-            total,
-            offset: queryParams.offset ?? 0,
-            limit: queryParams.limit ?? rollen.length,
-            items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
-        });
+        return RawPagedResponse.fromItemsAndQuery(
+            {
+                items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+                total,
+            },
+            queryParams,
+        );
     }
 
     @Get(':rolleId')
