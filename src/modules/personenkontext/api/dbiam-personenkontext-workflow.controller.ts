@@ -73,10 +73,8 @@ export class DbiamPersonenkontextWorkflowController {
     @ApiOkResponse({
         description: `Initialize or process data from the person creation form.
                       Valid combinations:
-                      - Both organisationId and rolleId are undefined: Fetch all possible organisations.
-                      - organisationId is provided, but rolleId is undefined: Fetch Rollen for the given organisation.
-                      - Both organisationId and rolleId are provided: Check if the Rolle can be committed for the organisation.
-                      Note: Providing rolleId without organisationId is invalid.`,
+                      - Both organisationId and rollenIds are undefined: Fetch all possible organisations.
+                      - Both organisationId and rollenIds are provided: Check if the Rolle can be committed for the organisation.`,
         type: PersonenkontextWorkflowResponse,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available data for personenkontext.' })
