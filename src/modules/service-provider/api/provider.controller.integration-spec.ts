@@ -146,6 +146,7 @@ describe('ServiceProvider API', () => {
             ]);
             const query: FindServiceProviderForRolleQueryParams = {
                 schulstrukturknotenOfRolle: orga.id,
+                rollenArt: RollenArt.LEHR,
             };
 
             const response: Response = await request(app.getHttpServer() as App)
@@ -164,6 +165,7 @@ describe('ServiceProvider API', () => {
             const schulstrukturknotenOfRolle: string = faker.string.uuid();
             const query: FindServiceProviderForRolleQueryParams = {
                 schulstrukturknotenOfRolle,
+                rollenArt: RollenArt.LEHR,
             };
             permissionsMock.hasSystemrechteAtOrganisation.mockClear();
             permissionsMock.hasSystemrechteAtOrganisation.mockResolvedValueOnce(false);

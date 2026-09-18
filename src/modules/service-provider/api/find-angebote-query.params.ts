@@ -5,6 +5,7 @@ import { TransformToArray } from '../../../shared/util/array-transform.validator
 import { OrganisationID } from '../../../shared/types/index.js';
 import { IsSystemrechtForRollenAdministration } from '../../rolle/api/is-systemrecht-for-rollen-admin-validator.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../rolle/domain/systemrecht.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 export class FindAngeboteQueryParams extends PagedQueryParams {
     @IsOptional()
@@ -38,4 +39,17 @@ export class FindAngeboteQueryParams extends PagedQueryParams {
     })
     @IsSystemrechtForRollenAdministration()
     public readonly systemrechte?: RollenSystemRechtEnum[];
+
+    @IsOptional()
+    @IsEnum(RollenArt, { each: true })
+    @TransformToArray()
+    @ApiProperty({
+        enum: RollenArt,
+        enumName: 'RollenArt',
+        description: 'The rollenart of the rolle for which the service provider should be found',
+        required: false,
+        nullable: true,
+        isArray: true,
+    })
+    public readonly rollenArten?: RollenArt[];
 }

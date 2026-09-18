@@ -29,6 +29,7 @@ import {
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
     RollenerweiterungForManageableServiceProvider,
 } from './types.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 @Injectable()
 export class ServiceProviderService {
@@ -244,6 +245,7 @@ export class ServiceProviderService {
     public async findAllowedProvidersForRollenerweiterungAtOrga(
         organisationId: OrganisationID,
         permissions: IPersonPermissions,
+        rollenArten?: RollenArt[],
     ): Promise<Counted<ServiceProvider<true>>> {
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.ROLLEN_ERWEITERN],
@@ -265,6 +267,15 @@ export class ServiceProviderService {
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ],
         );
+
+        if (rollenArten && rollenArten.length > 0) {
+            const filteredServiceProviders: ServiceProvider<true>[] = serviceProviders[0].filter(
+                (sp: ServiceProvider<true>) =>
+                    sp.rollenartenWhitelist.length === 0 ||
+                    sp.rollenartenWhitelist.some((ra: RollenArt) => rollenArten.includes(ra)),
+            );
+            return [filteredServiceProviders, filteredServiceProviders.length];
+        }
 
         return serviceProviders;
     }
