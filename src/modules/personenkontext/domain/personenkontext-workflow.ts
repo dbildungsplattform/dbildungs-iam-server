@@ -248,10 +248,10 @@ export class PersonenkontextWorkflowAggregate {
         if (includesMPTRollen) {
             const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
                 organisationId,
-                RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
             );
             if (!hasSystemrecht) {
-                return Err(new MissingPermissionsError('Unauthorized to manage MPT-Rollen at the organisation'));
+                return Err(new MissingPermissionsError('Unauthorized to assign MPT-Rollen at the organisation'));
             }
         }
 

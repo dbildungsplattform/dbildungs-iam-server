@@ -247,7 +247,7 @@ export class RolleFindService {
 
         const hasMPTPermission: boolean = await params.permissions.hasSystemrechtAtOrganisation(
             params.organisationId,
-            RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
         );
         if (hasMPTPermission) {
             query.mpt = {
@@ -309,7 +309,7 @@ export class RolleFindService {
 
     public async findMptRollenAuthorized(params: FindMptRollenAuthorizedParams): Promise<Counted<Rolle<true>>> {
         const orgIdsWithRecht: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
-            [RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
+            [RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
             true,
         );
         const organisationBounds: OrganisationBounds = await this.resolveOrganisationBounds(
@@ -424,11 +424,11 @@ export class RolleFindService {
         selectedAndPermittedOrgas?: Array<OrganisationID>,
     ): Promise<boolean> {
         const wantsMptRollen: boolean = this.wantsMptRollen(requestedSystemrechte);
-        return wantsMptRollen && (await this.hasMPTRollenVerwaltenPermission(permissions, selectedAndPermittedOrgas));
+        return wantsMptRollen && (await this.hasMPTRollenZuordnenPermission(permissions, selectedAndPermittedOrgas));
     }
 
     private wantsMptRollen(requestedSystemrechte: RollenSystemRecht[] = []): boolean {
-        return requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN);
+        return requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN);
     }
 
     /**
@@ -546,19 +546,19 @@ export class RolleFindService {
         return Array.from(organisationIdsWithParents);
     }
 
-    private async hasMPTRollenVerwaltenPermission(
+    private async hasMPTRollenZuordnenPermission(
         permissions: IPersonPermissions,
         organisationIds?: Array<OrganisationID>,
     ): Promise<boolean> {
         if (organisationIds) {
             const individualOrgaPermissions: boolean[] = await Promise.all(
                 organisationIds.map((orga: OrganisationID) =>
-                    permissions.hasSystemrechtAtOrganisation(orga, RollenSystemRecht.MPT_ROLLEN_VERWALTEN),
+                    permissions.hasSystemrechtAtOrganisation(orga, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN),
                 ),
             );
             return individualOrgaPermissions.every(Boolean);
         } else {
-            return permissions.hasSystemrechteAtRootOrganisation([RollenSystemRecht.MPT_ROLLEN_VERWALTEN]);
+            return permissions.hasSystemrechteAtRootOrganisation([RollenSystemRecht.MPT_ROLLEN_ZUORDNEN]);
         }
     }
 }

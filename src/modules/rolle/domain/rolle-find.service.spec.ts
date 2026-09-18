@@ -293,12 +293,12 @@ describe('RolleFindService', () => {
             );
         });
 
-        it('should include MPT rollen when caller has MPT_ROLLEN_VERWALTEN permission and requests it', async () => {
+        it('should include MPT rollen when caller has MPT_ROLLEN_ZUORDNEN permission and requests it', async () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
             permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(true);
             const params: FindRollenWithPermissionsParams & { requestedSystemrechte?: RollenSystemRecht[] } = {
                 permissions: permissionsMock,
-                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
+                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
             };
             await rolleFindService.findRollenAvailableForErweiterung(params);
             expect(rolleRepoMock.findBy).not.toHaveBeenLastCalledWith(
@@ -308,7 +308,7 @@ describe('RolleFindService', () => {
             );
         });
 
-        it('should not include MPT rollen when caller does not have MPT_ROLLEN_VERWALTEN permission, but requests it', async () => {
+        it('should not include MPT rollen when caller does not have MPT_ROLLEN_ZUORDNEN permission, but requests it', async () => {
             const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.TRAEGER,
             });
@@ -321,7 +321,7 @@ describe('RolleFindService', () => {
             organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([OrganisationsTyp.SCHULE]);
             const params: FindRollenAvailableForErweiterungParams = {
                 permissions: permissionsMock,
-                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
+                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
             };
 
             await rolleFindService.findRollenAvailableForErweiterung(params);
@@ -333,7 +333,7 @@ describe('RolleFindService', () => {
             );
         });
 
-        it('should exclude MPT rollen when MPT_ROLLEN_VERWALTEN is not requested', async () => {
+        it('should exclude MPT rollen when MPT_ROLLEN_ZUORDNEN is not requested', async () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
             const params: FindRollenWithPermissionsParams = {
                 permissions: permissionsMock,
@@ -348,14 +348,14 @@ describe('RolleFindService', () => {
 
         it('should not return rollen when caller does not actually hold requested systemrecht', async () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockImplementation((systemrechte: RollenSystemRecht[]) => {
-                if (systemrechte.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN)) {
+                if (systemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN)) {
                     return Promise.resolve({ all: false, orgaIds: [] });
                 }
                 return Promise.resolve({ all: true });
             });
             const params: FindRollenAvailableForErweiterungParams = {
                 permissions: permissionsMock,
-                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
+                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
             };
             await rolleFindService.findRollenAvailableForErweiterung(params);
             expect(rolleRepoMock.findBy).not.toHaveBeenCalled();
@@ -636,7 +636,7 @@ describe('RolleFindService', () => {
             });
         });
 
-        describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_VERWALTEN.name}`, () => {
+        describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
             it('should query the repo correctly', async () => {
                 const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.TRAEGER,
@@ -708,7 +708,7 @@ describe('RolleFindService', () => {
             });
         });
 
-        describe(`when user does not have ${RollenSystemRecht.MPT_ROLLEN_VERWALTEN.name}`, () => {
+        describe(`when user does not have ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
             it('should query the repo correctly', async () => {
                 const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.TRAEGER,
@@ -717,7 +717,7 @@ describe('RolleFindService', () => {
                 permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
                 permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
                     (_orgaId: OrganisationID, systemrecht: RollenSystemRecht) =>
-                        Promise.resolve(systemrecht !== RollenSystemRecht.MPT_ROLLEN_VERWALTEN),
+                        Promise.resolve(systemrecht !== RollenSystemRecht.MPT_ROLLEN_ZUORDNEN),
                 );
                 organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
                 organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
@@ -966,14 +966,14 @@ describe('RolleFindService', () => {
                 });
 
                 describe.each([
-                    [`when user has ${RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN}`, true],
-                    [`when user does not have ${RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN}`, false],
+                    [`when user has ${RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN}`, true],
+                    [`when user does not have ${RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN}`, false],
                 ])('%s', (_title: string, hasPermission: boolean) => {
                     let requestedSystemrechte: RollenSystemRecht[];
                     let hasMptPermission: boolean;
 
                     const shouldExcludeMptRollen: () => boolean = () =>
-                        !(hasMptPermission && requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN));
+                        !(hasMptPermission && requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN));
 
                     const expectPersonAdministrationQueryWithExpectedMptFiltering: () => void = () => {
                         expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
@@ -998,7 +998,7 @@ describe('RolleFindService', () => {
                         hasMptPermission = hasPermission;
                         requestedSystemrechte = [
                             RollenSystemRecht.PERSONEN_VERWALTEN,
-                            RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                         ];
                         permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
                             (requestedOrganisation: OrganisationID, systemrecht: RollenSystemRecht) => {
@@ -1007,7 +1007,7 @@ describe('RolleFindService', () => {
                                         schulen.some(
                                             (schule: Organisation<true>) => schule.id === requestedOrganisation,
                                         ) &&
-                                        systemrecht === RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+                                        systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                                 );
                             },
                         );
