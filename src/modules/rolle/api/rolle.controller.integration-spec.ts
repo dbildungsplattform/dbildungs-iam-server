@@ -21,7 +21,7 @@ import { createAndPersistServiceProvider } from '../../../../test/utils/service-
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../shared/paging/index.js';
+import { PagedResponse, RawPagedResponse } from '../../../shared/paging/index.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
@@ -63,6 +63,7 @@ import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.respons
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
 import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindAvailableRollenForPKCreationQueryParams } from './find-available-rollen-for-pk-creation.query.params.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
@@ -2487,6 +2488,12 @@ describe('Rolle API', () => {
                 DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
             );
 
+            await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
             const rolle: Rolle<true> | DomainError = await rolleRepo.save(
                 DoFactory.createRolle(false, {
                     administeredBySchulstrukturknoten: organisation.id,
@@ -2504,16 +2511,21 @@ describe('Rolle API', () => {
 
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle/for-personenkontext-creation`)
-                .query({ organisationId: organisation.id })
+                .query({
+                    organisationId: organisation.id,
+                    limit: 5,
+                    offset: 1,
+                } as FindAvailableRollenForPKCreationQueryParams)
                 .send();
 
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
             expect(response.status).toBe(200);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.total).toBe(1);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.items).toHaveLength(1);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.items[0].id).toBe(rolle.id);
+            expect(body.total).toBe(2);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
+            expect(body.offset).toBe(1);
+            expect(body.limit).toBe(5);
         });
 
         it('should return empty result if user is missing permissions', async () => {
@@ -2572,16 +2584,15 @@ describe('Rolle API', () => {
                 .query({
                     organisationId: organisation.id,
                     systemrecht: RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-                })
+                } as FindAvailableRollenForPKCreationQueryParams)
                 .send();
 
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
             expect(response.status).toBe(200);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.total).toBe(1);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.items).toHaveLength(1);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            expect(response.body.items[0].id).toBe(rolle.id);
+            expect(body.total).toBe(1);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
         });
     });
 });
