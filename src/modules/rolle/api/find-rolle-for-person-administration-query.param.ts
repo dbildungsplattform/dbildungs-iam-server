@@ -30,7 +30,7 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
     @ArrayContains([RollenSystemRechtEnum.PERSONEN_VERWALTEN])
-    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN], {
+    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN], {
         each: true,
     })
     @ApiProperty({
@@ -40,7 +40,7 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
         required: false,
         isArray: true,
         description:
-            'The system right for which the roles should be available. Can only be PERSONEN_VERWALTEN and optionally MPT_ROLLEN_VERWALTEN.',
+            'The system right for which the roles should be available. Can only be PERSONEN_VERWALTEN and optionally MPT_ROLLEN_ZUORDNEN.',
     })
     public readonly systemrechte?: RollenSystemRechtEnum[];
 }

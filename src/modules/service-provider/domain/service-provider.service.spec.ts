@@ -362,7 +362,7 @@ describe('ServiceProviderService', () => {
 
             expectErrResult(result);
             expect(organisationRepo.findParentOrgasForIds).not.toHaveBeenCalled();
-            expect(serviceProviderRepo.findByOrgasWithMerkmal).not.toHaveBeenCalled();
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).not.toHaveBeenCalled();
         });
 
         it('returns authorized serviceProviders and correctly sets hasSomeVerwaltenPermission', async () => {
@@ -378,7 +378,7 @@ describe('ServiceProviderService', () => {
             organisationRepo.findByIds.mockResolvedValue(
                 new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
             );
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[serviceProvider], 1]);
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
             rolleRepo.findByServiceProviderIds.mockResolvedValue(new Map([[serviceProvider.id, [rolle]]]));
             rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValue(
@@ -390,9 +390,12 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmal).toHaveBeenCalledWith(
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
                 [organisation.id, parentOrga.id],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
                 undefined,
                 undefined,
             );
@@ -414,7 +417,7 @@ describe('ServiceProviderService', () => {
             organisationRepo.findByIds.mockResolvedValue(
                 new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
             );
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[serviceProvider], 1]);
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
             rolleRepo.findByServiceProviderIds.mockResolvedValue(new Map([[serviceProvider.id, [rolle]]]));
             rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValue(
@@ -439,7 +442,7 @@ describe('ServiceProviderService', () => {
             organisationRepo.findByIds.mockResolvedValue(
                 new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
             );
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[serviceProvider], 1]);
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
             rolleRepo.findByServiceProviderIds.mockResolvedValue(new Map([[serviceProvider.id, [rolle]]]));
             rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValue(
@@ -451,9 +454,12 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmal).toHaveBeenCalledWith(
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
                 [organisation.id, parentOrga.id],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
                 undefined,
                 undefined,
             );
@@ -476,7 +482,7 @@ describe('ServiceProviderService', () => {
             organisationRepo.findByIds.mockResolvedValue(
                 new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
             );
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[serviceProvider], 1]);
             rolleRepo.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
             rolleRepo.findByServiceProviderIds.mockResolvedValue(new Map([[serviceProvider.id, [rolle]]]));
             rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValue(
@@ -493,9 +499,12 @@ describe('ServiceProviderService', () => {
                 offset,
             );
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmal).toHaveBeenCalledWith(
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
                 [organisation.id, parentOrga.id],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
                 limit,
                 offset,
             );
@@ -947,7 +956,7 @@ describe('ServiceProviderService', () => {
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
             });
             organisationRepo.findByIds.mockResolvedValue(new Map([[organisation.id, organisation]]));
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[serviceProvider], 1]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[serviceProvider], 1]);
             permissions = createMock(PersonPermissions);
             permissions.getOrgIdsWithSystemrecht.mockResolvedValue({
                 all: false,
@@ -966,9 +975,12 @@ describe('ServiceProviderService', () => {
             );
 
             expect(organisationRepo.findParentOrgasForIds).toHaveBeenCalledWith([organisation.id]);
-            expect(serviceProviderRepo.findByOrgasWithMerkmal).toHaveBeenCalledWith(
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
                 [organisation.id, parentOrganisation.id],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+                ],
             );
             expect(result[0]).toContain(serviceProvider);
             expect(result[1]).toBe(1);
@@ -990,7 +1002,7 @@ describe('ServiceProviderService', () => {
         });
 
         it('returns empty array if no providers found', async () => {
-            serviceProviderRepo.findByOrgasWithMerkmal.mockResolvedValue([[], 0]);
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([[], 0]);
 
             const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
                 organisation.id,
