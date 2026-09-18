@@ -467,10 +467,9 @@ export class OxEventHandler {
         }
 
         if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(
+            return this.logger.info(
                 `Ignoring Event for organisationId:${event.organisationId} because email microservice is enabled`,
             );
-            return;
         }
 
         if (!event.kennung || event?.typ !== OrganisationsTyp.SCHULE) {

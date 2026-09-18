@@ -3197,6 +3197,11 @@ describe('LDAP Adapter', () => {
             const kennung: string = faker.string.numeric(7);
 
             const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
+
+            expect(clientMock.search).toHaveBeenLastCalledWith(mockLdapInstanceConfig.BASE_DN, {
+                scope: 'sub',
+                filter: `(ou=${kennung})`,
+            });
             expect(result).toEqual(Ok(true));
         });
 

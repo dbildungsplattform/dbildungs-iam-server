@@ -1366,5 +1366,20 @@ describe('LdapEventHandler', () => {
                 expect(ldapClientAdapterMock.deleteOrganisation).not.toHaveBeenCalled();
             });
         });
+
+        describe('when checking organisation existence fails', () => {
+            it('should return the error without calling the service', async () => {
+                const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+                ldapClientAdapterMock.organisationExists.mockResolvedValue({ ok: false, error });
+                const event: OrganisationDeletedEvent = OrganisationDeletedEvent.fromOrganisation(orga);
+
+                await expect(ldapEventHandler.handleOrganisationDeletedEvent(event)).resolves.toEqual({
+                    ok: false,
+                    error,
+                });
+                expect(loggerMock.info).toHaveBeenCalledWith(getReceivedLogMessage(event));
+                expect(ldapClientAdapterMock.deleteOrganisation).not.toHaveBeenCalled();
+            });
+        });
     });
 });

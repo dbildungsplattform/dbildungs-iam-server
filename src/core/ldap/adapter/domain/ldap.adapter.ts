@@ -284,6 +284,7 @@ export class LdapAdapter {
             }
 
             const searchResultOrgUnit: SearchResult = await client.search(`${this.ldapInstanceConfig.BASE_DN}`, {
+                scope: 'sub',
                 filter: `(ou=${orgaKennung})`,
             });
 

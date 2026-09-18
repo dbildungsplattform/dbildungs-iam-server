@@ -467,7 +467,11 @@ export class LdapEventHandler {
             event.kennung,
         );
 
-        if (organisationExistsResult.ok && organisationExistsResult.value) {
+        if (!organisationExistsResult.ok) {
+            return organisationExistsResult;
+        }
+
+        if (organisationExistsResult.value) {
             return this.ldapClientAdapter.deleteOrganisation(event.kennung);
         }
 
