@@ -235,6 +235,15 @@
             "merkmale": [],
             "systemrechte": [],
             "serviceProviderIds": [13, 14]
+        },
+        {
+            "id": 103,
+            "administeredBySchulstrukturknoten": 0,
+            "name": "VIDIS-Test Zugriff (smueller)",
+            "rollenart": "EXTERN",
+            "merkmale": [],
+            "systemrechte": [],
+            "serviceProviderIds": [44]
         }
     ]
 }
