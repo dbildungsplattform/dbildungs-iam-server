@@ -33,6 +33,7 @@ import {
     ManageableServiceProviderWithReferencedObjects,
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from './types.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 // helper to mock output of some repos
 function getIdMap<T>(arr: Array<T & { id: string }>): Map<string, T> {
@@ -1011,6 +1012,39 @@ describe('ServiceProviderService', () => {
 
             expect(result[0]).toHaveLength(0);
             expect(result[1]).toBe(0);
+        });
+
+        it('should filter service providers by rollenArten and include providers with an unrestricted whitelist', async () => {
+            const unrestrictedProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            });
+            const matchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const nonMatchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: organisation.id,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([
+                [unrestrictedProvider, matchingProvider, nonMatchingProvider],
+                3,
+            ]);
+
+            const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
+                organisation.id,
+                permissions,
+                [RollenArt.LERN],
+            );
+
+            expect(result[0]).toEqual([unrestrictedProvider, matchingProvider]);
+            expect(result[0]).not.toContain(nonMatchingProvider);
+            expect(result[1]).toBe(2);
         });
     });
 
