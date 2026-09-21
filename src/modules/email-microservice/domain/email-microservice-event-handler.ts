@@ -18,7 +18,7 @@ import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { uniq } from 'lodash-es';
+import { uniqBy } from 'lodash-es';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
@@ -104,25 +104,18 @@ export class EmailMicroserviceEventHandler {
             }
         }
 
-        const uniqueKennungen: string[] = uniq(
-            this.getKennungenWithEmailServiceProvider(
-                allKontexteForPerson.map((k: PersonenkontextEventKontextData) => ({
-                    orgaId: k.orgaId,
-                    orgaKennung: k.orgaKennung,
-                    rolleId: k.rolleId,
-                })),
-                rollenMap,
-            ),
+        const uniqOrganisationen: Organisation<true>[] = uniqBy(
+            this.getOrganisationenWithEmailServiceProvider(allKontexteForPerson, orgaMap, rollenMap),
+            (o: Organisation<true>) => o.id,
         );
-
-        // const uniqOrganisationen: Organisation<true>[] = uniqBy(this.getOrganisationenWithEmailServiceProvider(allKontexteForPerson), (o) => o.id)
 
         await this.emailResolverService.setEmailForSpshPerson({
             spshPersonId: event.person.id,
             spshUsername: event.person.username,
-            kennungen: uniqueKennungen,
+            organisationen: uniqOrganisationen,
             firstName: event.person.vorname,
             lastName: event.person.familienname,
+            gesperrt,
             spshServiceProviderId: emailServiceProviderId,
         });
     }
@@ -143,11 +136,21 @@ export class EmailMicroserviceEventHandler {
             throw new PersonHasNoUsernameError(event.personId);
         }
 
+        const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(event.personId);
+        const gesperrt: boolean = userLocks.length > 0;
+
         const allKontexteForPerson: KontextWithOrgaAndRolle[] =
             await this.personenkontextRepo.findByPersonWithOrgaAndRolle(event.personId);
 
+        const kontextData: { orgaId: OrganisationID; rolleId: RolleID }[] = allKontexteForPerson.map(
+            (k: KontextWithOrgaAndRolle) => ({ orgaId: k.organisation.id, rolleId: k.rolle.id }),
+        );
+
         const allRolleIds: string[] = allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.rolle.id);
         const rollenMap: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(allRolleIds);
+        const orgaMap: Map<OrganisationID, Organisation<true>> = await this.orgaRepo.findByIds(
+            allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.organisation.id),
+        );
 
         const emailServiceProviderId: string | undefined = this.getEmailServiceProviderId(
             Array.from(rollenMap.values()),
@@ -160,23 +163,18 @@ export class EmailMicroserviceEventHandler {
             return;
         }
 
-        const uniqueKennungen: string[] = uniq(
-            this.getKennungenWithEmailServiceProvider(
-                allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => ({
-                    orgaId: k.organisation.id,
-                    orgaKennung: k.organisation.kennung,
-                    rolleId: k.rolle.id,
-                })),
-                rollenMap,
-            ),
+        const uniqOrganisationen: Organisation<true>[] = uniqBy(
+            this.getOrganisationenWithEmailServiceProvider(kontextData, orgaMap, rollenMap),
+            (o: Organisation<true>) => o.id,
         );
 
         await this.emailResolverService.setEmailForSpshPerson({
             spshPersonId: event.personId,
             spshUsername: event.username,
-            kennungen: uniqueKennungen,
+            organisationen: uniqOrganisationen,
             firstName: event.vorname,
             lastName: event.familienname,
+            gesperrt,
             spshServiceProviderId: emailServiceProviderId,
         });
     }
@@ -214,8 +212,15 @@ export class EmailMicroserviceEventHandler {
         const allKontexteForPerson: KontextWithOrgaAndRolle[] =
             await this.personenkontextRepo.findByPersonWithOrgaAndRolle(event.personId);
 
+        const kontextData: { orgaId: OrganisationID; rolleId: RolleID }[] = allKontexteForPerson.map(
+            (k: KontextWithOrgaAndRolle) => ({ orgaId: k.organisation.id, rolleId: k.rolle.id }),
+        );
+
         const allRolleIds: string[] = allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.rolle.id);
         const rollenMap: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(allRolleIds);
+        const orgaMap: Map<OrganisationID, Organisation<true>> = await this.orgaRepo.findByIds(
+            allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.organisation.id),
+        );
 
         const emailServiceProviderId: string | undefined = this.getEmailServiceProviderId(
             Array.from(rollenMap.values()),
@@ -236,23 +241,19 @@ export class EmailMicroserviceEventHandler {
                 );
                 return;
             }
-            const uniqueKennungen: string[] = uniq(
-                this.getKennungenWithEmailServiceProvider(
-                    allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => ({
-                        orgaId: k.organisation.id,
-                        orgaKennung: k.organisation.kennung,
-                        rolleId: k.rolle.id,
-                    })),
-                    rollenMap,
-                ),
+
+            const uniqOrganisationen: Organisation<true>[] = uniqBy(
+                this.getOrganisationenWithEmailServiceProvider(kontextData, orgaMap, rollenMap),
+                (o: Organisation<true>) => o.id,
             );
 
             await this.emailResolverService.setEmailForSpshPerson({
                 spshPersonId: event.personId,
                 spshUsername: person.username,
-                kennungen: uniqueKennungen,
+                organisationen: uniqOrganisationen,
                 firstName: person.vorname,
                 lastName: person.familienname,
+                gesperrt,
                 spshServiceProviderId: emailServiceProviderId,
             });
         } else {
