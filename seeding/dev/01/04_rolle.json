@@ -240,7 +240,7 @@
             "id": 103,
             "administeredBySchulstrukturknoten": 0,
             "name": "VIDIS-Test Zugriff (smueller)",
-            "rollenart": "EXTERN",
+            "rollenart": "LERN",
             "merkmale": [],
             "systemrechte": [],
             "serviceProviderIds": [44]
