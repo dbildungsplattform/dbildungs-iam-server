@@ -1,53 +1,59 @@
-import { Injectable } from '@nestjs/common';
-import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
-import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
-import { ClassLogger } from '../../logging/class-logger.js';
-import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
-import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
-import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
-import { OrganisationID, PersonID, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
-import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { LdapEmailDomainError } from '../adapter/domain/error/ldap-email-domain.error.js';
-import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
-import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
-import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-person-entry-renamed.event.js';
-import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
-import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
-import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
-import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
-import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
-import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
-import { inspect } from 'util';
-import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
-import { Person } from '../../../modules/person/domain/person.js';
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
-import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
-import { LdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/ldap-email-address-deleted.event.js';
-import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
-import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
-import { LdapEntryDeletedEvent } from '../../../shared/events/ldap/ldap-entry-deleted.event.js';
-import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
-import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
-import { KafkaLdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/kafka-ldap-person-entry-renamed.event.js';
-import { KafkaLdapEntryDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-entry-deleted.event.js';
-import { LdapDeleteLehrerError } from '../adapter/domain/error/ldap-delete-lehrer.error.js';
-import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
-import { KafkaLdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-email-address-deleted.event.js';
-import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
-import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
-import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
-import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { Injectable } from '@nestjs/common';
+import { inspect } from 'util';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
-import { Ok } from '../../../shared/util/result.js';
+import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
+import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/escalated-person-permissions.factory.js';
+import { EscalatedPersonPermissions } from '../../../modules/permission/escalated-person-permissions.js';
+import { Person } from '../../../modules/person/domain/person.js';
+import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
+import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
+import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
-import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/escalated-person-permissions.factory.js';
-import { RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
-import { EscalatedPersonPermissions } from '../../../modules/permission/escalated-person-permissions.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
+import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
+import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
+import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
+import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
+import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
+import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
+import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
+import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
+import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
+import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
+import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
+import { KafkaLdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-email-address-deleted.event.js';
+import { KafkaLdapEntryDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-entry-deleted.event.js';
+import { KafkaLdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/kafka-ldap-person-entry-renamed.event.js';
+import { LdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/ldap-email-address-deleted.event.js';
+import { LdapEntryDeletedEvent } from '../../../shared/events/ldap/ldap-entry-deleted.event.js';
+import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-person-entry-renamed.event.js';
+import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
+import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
+import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
+import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
+import {
+    PersonenkontextEventKontextData,
+    PersonenkontextEventPersonData,
+} from '../../../shared/events/personenkontext-event.types.js';
+import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
+import { OrganisationID, PersonID, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
+import { Ok } from '../../../shared/util/result.js';
+import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
+import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
+import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../logging/class-logger.js';
+import { LdapDeleteLehrerError } from '../adapter/domain/error/ldap-delete-lehrer.error.js';
+import { LdapEmailDomainError } from '../adapter/domain/error/ldap-email-domain.error.js';
+import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
+import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
+import { LdapEventInvalidEmailDomainError } from './error/ldap-event-invalid-email-domain.error.js';
+import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
 
 @Injectable()
 export class LdapEventHandler {
@@ -207,115 +213,135 @@ export class LdapEventHandler {
             event.removedKontexte
                 .filter(
                     (pk: PersonenkontextEventKontextData) =>
-                        pk.rolle === RollenArt.LEHR && !this.hatZuordnungZuOrganisationNachLoeschen(event, pk),
+                        pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM) &&
+                        !this.hatZuordnungZuOrganisationNachLoeschen(event, pk),
                 )
-                .map((pk: PersonenkontextEventKontextData) => {
-                    if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
-                    }
-                    return this.getEmailDomainForOrganisationId(pk.orgaId)
-                        .catch((error: Error) => {
-                            this.logger.error(`Error in getEmailDomainForOrganisationId: ${error.message}`);
-                            return Promise.reject(error);
-                        })
-                        .then((emailDomain: Result<string>) => {
-                            if (emailDomain.ok) {
-                                this.logger.info(`Call LdapClientService because rollenArt is LEHR, pkId: ${pk.id}`);
-                                return this.ldapClientAdapter
-                                    .removePersonFromGroupByUsernameAndKennung(
-                                        event.person.username!,
-                                        pk.orgaKennung!,
-                                        emailDomain.value,
-                                    )
-                                    .then((removeFromGroupResult: Result<boolean>) => {
-                                        if (!removeFromGroupResult.ok) {
-                                            this.logger.error(removeFromGroupResult.error.message);
-                                        }
-                                        return removeFromGroupResult;
-                                    })
-                                    .catch((error: Error) => {
-                                        this.logger.error(`Error in removePersonFromGroup: ${error.message}`);
-                                        return Promise.reject(error);
-                                    });
-                            } else {
-                                this.logger.error(
-                                    `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
-                                );
-                                return Promise.reject(new Error('Invalid email domain'));
-                            }
-                        });
-                }),
+                .map((pk: PersonenkontextEventKontextData) =>
+                    this.removePersonFromLdapGroup(event.person.username!, pk),
+                ),
         );
 
-        // Create personenkontexte if rollenart === LEHR
         const newKontexteResults: PromiseSettledResult<Result<PersonData>>[] = await Promise.allSettled(
             event.newKontexte
-                .filter((pk: PersonenkontextEventKontextData) => pk.rolle === RollenArt.LEHR)
-                .map((pk: PersonenkontextEventKontextData) => {
-                    this.logger.info(`Call LdapClientService because rollenArt is LEHR`);
-                    if (!pk.orgaKennung) {
-                        return Promise.reject(new Error('Organisation has no Kennung'));
-                    }
-                    return this.getEmailDomainForOrganisationId(pk.orgaId)
-                        .catch((error: Error) => {
-                            this.logger.error(`Error in getEmailDomainForOrganisationId: ${error.message}`);
-                            return Promise.reject(error);
-                        })
-                        .then((emailDomain: Result<string>) => {
-                            if (emailDomain.ok) {
-                                return this.ldapClientAdapter
-                                    .createLehrer(event.person, emailDomain.value, pk.orgaKennung!)
-                                    .then(async (creationResult: Result<PersonData>) => {
-                                        if (!creationResult.ok) {
-                                            this.logger.error(creationResult.error.message);
-                                        } else {
-                                            const person: Option<Person<true>> = await this.personRepo.findById(
-                                                event.person.id,
-                                            );
-                                            if (!person) {
-                                                this.logger.error(
-                                                    `LdapClientService createLehrer could not find person with id:${event.person.id}, ref:${event.person.username}`,
-                                                );
-                                            } else if (creationResult.value.ldapEntryUUID) {
-                                                person.externalIds.LDAP = creationResult.value.ldapEntryUUID;
-                                                await this.personRepo.save(person);
-                                            }
-                                        }
-
-                                        return creationResult;
-                                    })
-                                    .catch((error: Error) => {
-                                        this.logger.error(`Error in createLehrer: ${error.message}`);
-                                        return Promise.reject(error);
-                                    });
-                            } else {
-                                this.logger.error(
-                                    `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
-                                );
-                                return Promise.reject(new Error('Invalid email domain'));
-                            }
-                        });
-                }),
+                .filter((pk: PersonenkontextEventKontextData) =>
+                    pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM),
+                )
+                .map((pk: PersonenkontextEventKontextData) => this.createLehrerInLdap(event.person, pk)),
         );
 
-        const combinedResults: PromiseSettledResult<Result<unknown>>[] = [...removeResults, ...newKontexteResults];
-        const failureReasons: string[] = combinedResults.reduce(
-            (acc: string[], result: PromiseSettledResult<Result<unknown, Error>>) => {
-                if (result.status === 'rejected') {
-                    acc.push(inspect(result.reason));
-                } else if (result.status === 'fulfilled' && !result.value.ok) {
-                    acc.push(inspect(result.value.error));
-                }
-                return acc;
-            },
-            [],
-        );
-
+        const failureReasons: string[] = this.collectFailureReasons([...removeResults, ...newKontexteResults]);
         if (failureReasons.length > 0) {
-            return { ok: false, error: new Error(failureReasons.join(', ')) };
+            return { ok: false, error: new LdapEventAccumulatedFailuresError(failureReasons) };
         }
 
         return { ok: true, value: null };
+    }
+
+    private async removePersonFromLdapGroup(
+        username: PersonUsername,
+        pk: PersonenkontextEventKontextData,
+    ): Promise<Result<boolean>> {
+        if (!pk.orgaKennung) {
+            throw new LdapEventOrganisationWithoutKennungError();
+        }
+
+        const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
+        if (!emailDomain.ok) {
+            this.logger.error(
+                `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
+            );
+            throw new LdapEventInvalidEmailDomainError();
+        }
+
+        this.logger.info(`Call LdapClientService because person has UEM service provider, pkId: ${pk.id}`);
+        try {
+            const removeResult: Result<boolean> =
+                await this.ldapClientAdapter.removePersonFromGroupByUsernameAndKennung(
+                    username,
+                    pk.orgaKennung,
+                    emailDomain.value,
+                );
+            if (!removeResult.ok) {
+                this.logger.error(removeResult.error.message);
+            }
+            return removeResult;
+        } catch (error: unknown) {
+            this.logger.error(
+                `Error in removePersonFromGroup: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            throw error;
+        }
+    }
+
+    private async createLehrerInLdap(
+        person: PersonenkontextEventPersonData,
+        pk: PersonenkontextEventKontextData,
+    ): Promise<Result<PersonData>> {
+        this.logger.info(`Call LdapClientService because person has UEM service provider`);
+        if (!pk.orgaKennung) {
+            throw new LdapEventOrganisationWithoutKennungError();
+        }
+
+        const emailDomain: Result<string> = await this.resolveEmailDomainOrThrow(pk.orgaId);
+        if (!emailDomain.ok) {
+            this.logger.error(
+                `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid emailDomain`,
+            );
+            throw new LdapEventInvalidEmailDomainError();
+        }
+
+        try {
+            const creationResult: Result<PersonData> = await this.ldapClientAdapter.createLehrer(
+                person,
+                emailDomain.value,
+                pk.orgaKennung,
+            );
+            if (!creationResult.ok) {
+                this.logger.error(creationResult.error.message);
+                return creationResult;
+            }
+            await this.persistLdapEntryUuid(person, creationResult.value);
+            return creationResult;
+        } catch (error: unknown) {
+            this.logger.error(`Error in createLehrer: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+
+    private async persistLdapEntryUuid(person: PersonenkontextEventPersonData, creation: PersonData): Promise<void> {
+        const persistedPerson: Option<Person<true>> = await this.personRepo.findById(person.id);
+        if (!persistedPerson) {
+            this.logger.error(
+                `LdapClientService createLehrer could not find person with id:${person.id}, ref:${person.username}`,
+            );
+            return;
+        }
+        if (creation.ldapEntryUUID) {
+            persistedPerson.externalIds.LDAP = creation.ldapEntryUUID;
+            await this.personRepo.save(persistedPerson);
+        }
+    }
+
+    private async resolveEmailDomainOrThrow(organisationId: OrganisationID): Promise<Result<string>> {
+        try {
+            return await this.getEmailDomainForOrganisationId(organisationId);
+        } catch (error: unknown) {
+            this.logger.error(
+                `Error in getEmailDomainForOrganisationId: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            throw error;
+        }
+    }
+
+    private collectFailureReasons(results: PromiseSettledResult<Result<unknown>>[]): string[] {
+        return results.reduce((acc: string[], result: PromiseSettledResult<Result<unknown, Error>>) => {
+            if (result.status === 'rejected') {
+                acc.push(inspect(result.reason));
+            } else if (!result.value.ok) {
+                acc.push(inspect(result.value.error));
+            }
+            return acc;
+        }, []);
     }
 
     @KafkaEventHandler(KafkaEmailAddressGeneratedEvent)
@@ -446,10 +472,13 @@ export class LdapEventHandler {
         personenkontextEventKontextData: PersonenkontextEventKontextData,
     ): boolean {
         const orgaId: OrganisationID = personenkontextEventKontextData.orgaId;
-        const currentOrgaIds: OrganisationID[] = personenkontextUpdatedEvent.currentKontexte.map(
-            (pk: PersonenkontextEventKontextData) => pk.orgaId,
-        );
+        // Only a remaining kontext that still carries UEM keeps the LDAP group membership justified.
+        const currentOrgaIdsWithUem: OrganisationID[] = personenkontextUpdatedEvent.currentKontexte
+            .filter((pk: PersonenkontextEventKontextData) =>
+                pk.serviceProviderExternalSystems.includes(ServiceProviderSystem.UEM),
+            )
+            .map((pk: PersonenkontextEventKontextData) => pk.orgaId);
 
-        return currentOrgaIds.includes(orgaId);
+        return currentOrgaIdsWithUem.includes(orgaId);
     }
 }

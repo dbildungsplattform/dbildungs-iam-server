@@ -1,4 +1,4 @@
-import { cloneDeep, intersection, uniq } from 'lodash-es';
+import { intersection, uniq } from 'lodash-es';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, PersonID, RolleID } from '../../../shared/types/index.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -7,8 +7,8 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { Person } from '../../person/domain/person.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 
 export type PersonFields = Pick<
@@ -167,10 +167,6 @@ export class PersonPermissions implements IPersonPermissions {
         }
 
         return this.cachedPersonenkontextsFields;
-    }
-
-    public async getPersonenkontextIds(): Promise<Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[]> {
-        return cloneDeep(await this.getPersonenkontextsFields());
     }
 
     public async getPersonenkontexteWithRolesAndOrgs(): Promise<PersonenkontextRolleWithOrganisation[]> {

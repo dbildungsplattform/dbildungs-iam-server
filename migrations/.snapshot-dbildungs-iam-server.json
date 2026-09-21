@@ -2867,7 +2867,8 @@
           "collation": null,
           "enumItems": [
             "BEFRISTUNG_PFLICHT",
-            "KOPERS_PFLICHT"
+            "KOPERS_PFLICHT",
+            "MPT_ROLLE"
           ],
           "mappedType": "enum",
           "nativeEnumName": "rollen_merkmal_enum"
@@ -3070,6 +3071,7 @@
           "collation": null,
           "enumItems": [
             "ROLLEN_VERWALTEN",
+            "MPT_ROLLEN_VERWALTEN",
             "PERSONEN_SOFORT_LOESCHEN",
             "PERSONEN_VERWALTEN",
             "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
@@ -3557,7 +3559,8 @@
           "enumItems": [
             "NONE",
             "EMAIL",
-            "ITSLEARNING"
+            "ITSLEARNING",
+            "UEM"
           ],
           "mappedType": "enum",
           "nativeEnumName": "service_provider_system_enum"
@@ -3754,6 +3757,7 @@
           "comment": null,
           "collation": null,
           "enumItems": [
+            "NONE",
             "URL",
             "EMAIL",
             "SCHULPORTAL_ADMINISTRATION"
@@ -4346,7 +4350,8 @@
       "schema": "public",
       "items": [
         "BEFRISTUNG_PFLICHT",
-        "KOPERS_PFLICHT"
+        "KOPERS_PFLICHT",
+        "MPT_ROLLE"
       ]
     },
     "rollen_system_recht_enum": {
@@ -4354,6 +4359,7 @@
       "schema": "public",
       "items": [
         "ROLLEN_VERWALTEN",
+        "MPT_ROLLEN_VERWALTEN",
         "PERSONEN_SOFORT_LOESCHEN",
         "PERSONEN_VERWALTEN",
         "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
@@ -4402,13 +4408,15 @@
       "items": [
         "NONE",
         "EMAIL",
-        "ITSLEARNING"
+        "ITSLEARNING",
+        "UEM"
       ]
     },
     "service_provider_target_enum": {
       "name": "service_provider_target_enum",
       "schema": "public",
       "items": [
+        "NONE",
         "URL",
         "EMAIL",
         "SCHULPORTAL_ADMINISTRATION"

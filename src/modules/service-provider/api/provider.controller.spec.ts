@@ -20,7 +20,6 @@ import { PersonPermissions } from '../../authentication/domain/person-permission
 import { OIDC_CLIENT } from '../../authentication/services/oidc-client.service.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rollenerweiterung-with-extended-data.response.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
@@ -42,10 +41,12 @@ import {
     ManageableServiceProviderWithReferencedObjects,
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from '../domain/types.js';
+import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderApiModule } from '../service-provider-api.module.js';
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
 import { CreateServiceProviderResponse } from './create-service-provider.response.js';
+import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
 import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
 import { ManageableServiceProvidersForOrganisationParams } from './manageable-service-providers-for-organisation.params.js';
@@ -541,46 +542,103 @@ describe('Provider Controller Test', () => {
         });
     });
 
-    describe('getAvailableServiceProviders', () => {
-        let pk: Personenkontext<true>;
-        let rolleId: string;
-        let spId: string;
-        let sp: ServiceProvider<true>;
-        let personPermissions: DeepMocked<PersonPermissions>;
+    describe('getServiceProvidersByPersonId', () => {
+        it('should throw the error returned by the service', async () => {
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            const error: MissingPermissionsError = new MissingPermissionsError('Access denied');
+            serviceProviderServiceMock.getServiceProvidersByPersonId.mockResolvedValueOnce(Err(error));
 
-        beforeEach(() => {
-            rolleId = faker.string.uuid();
-            spId = faker.string.uuid();
-            sp = DoFactory.createServiceProvider(true, { id: spId });
-            pk = DoFactory.createPersonenkontext(true, { rolleId });
-            personPermissions = createMock(PersonPermissions);
-            personPermissions.getPersonenkontextIds.mockResolvedValueOnce([
-                { organisationId: pk.organisationId, rolleId: pk.rolleId },
-            ]);
+            await expect(
+                providerController.getServiceProvidersByPersonId(personPermissions, { personId: faker.string.uuid() }),
+            ).rejects.toThrow(error);
+        });
+    });
+
+    describe('getAvailableServiceProviders', () => {
+        describe('when organisationId and systemrecht match', () => {
+            beforeEach(() => {
+                vi.clearAllMocks();
+            });
+
+            it('should call the special rollenerweiterung provider lookup', async () => {
+                const organisationId: string = faker.string.uuid();
+                const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+                Object.assign(queryParams, {
+                    organisationId,
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                    offset: 3,
+                    limit: 25,
+                });
+
+                serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([
+                    [serviceProvider],
+                    1,
+                ]);
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
+                    organisationId,
+                    personPermissionsMock,
+                );
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(1);
+                expect(result.offset).toBe(3);
+                expect(result.limit).toBe(25);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0]).toBeInstanceOf(ServiceProviderResponse);
+                expect(result.items[0]?.id).toBe(serviceProvider.id);
+            });
         });
 
-        describe.each([
-            ['found', true],
-            ['not found', false],
-        ])('when service providers were %s', (_label: string, hasFoundServiceProviders: boolean) => {
+        describe('when organisationId is missing', () => {
             beforeEach(() => {
-                serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen.mockResolvedValueOnce(
-                    hasFoundServiceProviders ? [sp] : [],
-                );
+                vi.clearAllMocks();
             });
-            it('should return list of responses', async () => {
-                const spResponse: ServiceProviderResponse[] =
-                    await providerController.getAvailableServiceProviders(personPermissions);
-                expect(spResponse).toBeDefined();
-                expect(spResponse).toBeInstanceOf(Array);
-                if (hasFoundServiceProviders) {
-                    expect(spResponse).toHaveLength(1);
-                } else {
-                    expect(spResponse).toHaveLength(0);
-                }
-                expect(serviceProviderServiceMock.getServiceProvidersByOrganisationenAndRollen).toHaveBeenCalledWith([
-                    { organisationId: pk.organisationId, rolleId: pk.rolleId },
-                ]);
+
+            it('should not use the organisation-scoped rollenerweiterung lookup', async () => {
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+                Object.assign(queryParams, {
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                    offset: 4,
+                    limit: 12,
+                });
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(
+                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
+                ).not.toHaveBeenCalled();
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(0);
+                expect(result.offset).toBe(4);
+                expect(result.limit).toBe(12);
+                expect(result.items).toHaveLength(0);
+            });
+        });
+
+        describe('when systemrechte are missing', () => {
+            beforeEach(() => {
+                vi.clearAllMocks();
+            });
+
+            it('should not use the organisation-scoped rollenerweiterung lookup and should apply default paging', async () => {
+                const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
+
+                const result: RawPagedResponse<ServiceProviderResponse> =
+                    await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
+
+                expect(
+                    serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
+                ).not.toHaveBeenCalled();
+                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result.total).toBe(0);
+                expect(result.offset).toBe(0);
+                expect(result.limit).toBe(0);
+                expect(result.items).toHaveLength(0);
             });
         });
     });
@@ -695,6 +753,36 @@ describe('Provider Controller Test', () => {
             await expect(
                 providerController.getManageableServiceProvidersForOrganisationId(permissions, params),
             ).rejects.toBeInstanceOf(MissingPermissionsError);
+        });
+
+        it('should default offset to 0 and limit to total when paging params are omitted', async () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+            const rolle: Rolle<true> = DoFactory.createRolle(true);
+            const params: ManageableServiceProvidersForOrganisationParams = { organisationId: organisation.id };
+            const total: number = 3;
+
+            const manageableObjects: ManageableServiceProviderWithReferencedObjects[] = [
+                {
+                    serviceProvider,
+                    organisation,
+                    rollen: [rolle],
+                    rollenerweiterungen: [],
+                    rollenerweiterungenWithName: [],
+                    hasSomeVerwaltenPermission: true,
+                },
+            ];
+
+            serviceProviderServiceMock.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung.mockResolvedValue(
+                Ok([manageableObjects, total]),
+            );
+
+            const result: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
+                await providerController.getManageableServiceProvidersForOrganisationId(personPermissionsMock, params);
+
+            expect(result.offset).toBe(0);
+            expect(result.limit).toBe(total);
+            expect(result.total).toBe(total);
         });
 
         it('should handle rollenerweiterungenWithName', async () => {

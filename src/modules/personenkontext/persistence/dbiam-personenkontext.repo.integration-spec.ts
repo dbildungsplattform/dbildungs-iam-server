@@ -3,7 +3,14 @@ import { Collection, EntityManager, EntityName, MikroORM } from '@mikro-orm/core
 import { Test, TestingModule } from '@nestjs/testing';
 import { Mock, vi } from 'vitest';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
+import {
+    ConfigTestModule,
+    DatabaseTestModule,
+    DoFactory,
+    expectErrResult,
+    expectOkResult,
+    LoggingTestModule,
+} from '../../../../test/utils/index.js';
 import {
     createAndPersistOrganisation,
     createAndPersistRootOrganisation,
@@ -412,6 +419,114 @@ describe('dbiam Personenkontext Repo', () => {
         });
     });
 
+    describe('findByPersonAuthorized', () => {
+        describe('when admin has permissions', () => {
+            it('should return all personenkontexte for a person', async () => {
+                const admin: Person<true> = await createPerson();
+                const rootOrga: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository))
+                    .id;
+                const adminRolle: Rolle<true> = await createRolle({
+                    administeredBySchulstrukturknoten: rootOrga,
+                    rollenart: RollenArt.SYSADMIN,
+                    systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN],
+                });
+                await personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: admin.id,
+                        organisationId: rootOrga,
+                        rolleId: adminRolle.id,
+                    }),
+                );
+
+                const permissions: IPersonPermissions = createPermissions(admin);
+
+                const personA: Person<true> = await createPerson();
+                const personB: Person<true> = await createPerson();
+                const rolle: Rolle<true> = await createRolle();
+                const organisation: Organisation<true> = await organisationRepository.save(
+                    DoFactory.createOrganisation(false, {
+                        administriertVon: rootOrga,
+                    }),
+                );
+
+                await Promise.all([
+                    personenkontextRepoInternal.save(
+                        createPersonenkontext(false, {
+                            personId: personA.id,
+                            rolleId: rolle.id,
+                            organisationId: organisation.id,
+                        }),
+                    ),
+                    personenkontextRepoInternal.save(
+                        createPersonenkontext(false, {
+                            personId: personB.id,
+                            rolleId: rolle.id,
+                            organisationId: organisation.id,
+                        }),
+                    ),
+                ]);
+
+                const result: Result<Personenkontext<true>[], MissingPermissionsError> =
+                    await sut.findByPersonAuthorized(personA.id, permissions);
+
+                expectOkResult(result);
+                expect(result.value).toHaveLength(1);
+            });
+        });
+
+        describe('when admin does not have permissions', () => {
+            it('should return error', async () => {
+                const admin: Person<true> = await createPerson();
+                const rootOrga: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository))
+                    .id;
+                const adminRolle: Rolle<true> = await createRolle({
+                    administeredBySchulstrukturknoten: rootOrga,
+                    rollenart: RollenArt.SYSADMIN,
+                    systemrechte: [],
+                });
+                await personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: admin.id,
+                        organisationId: rootOrga,
+                        rolleId: adminRolle.id,
+                    }),
+                );
+
+                const permissions: IPersonPermissions = createPermissions(admin);
+
+                const personA: Person<true> = await createPerson();
+                const personB: Person<true> = await createPerson();
+                const rolle: Rolle<true> = await createRolle();
+                const organisation: Organisation<true> = await organisationRepository.save(
+                    DoFactory.createOrganisation(false, {
+                        administriertVon: rootOrga,
+                    }),
+                );
+
+                await Promise.all([
+                    personenkontextRepoInternal.save(
+                        createPersonenkontext(false, {
+                            personId: personA.id,
+                            rolleId: rolle.id,
+                            organisationId: organisation.id,
+                        }),
+                    ),
+                    personenkontextRepoInternal.save(
+                        createPersonenkontext(false, {
+                            personId: personB.id,
+                            rolleId: rolle.id,
+                            organisationId: organisation.id,
+                        }),
+                    ),
+                ]);
+
+                const result: Result<Personenkontext<true>[], MissingPermissionsError> =
+                    await sut.findByPersonAuthorized(personA.id, permissions);
+                expectErrResult(result);
+                expect(result.error).toBeInstanceOf(MissingPermissionsError);
+            });
+        });
+    });
     describe('findByPerson', () => {
         it('should return all personenkontexte for a person', async () => {
             const personA: Person<true> = await createPerson();
@@ -1049,6 +1164,187 @@ describe('dbiam Personenkontext Repo', () => {
         });
     });
 
+    describe('hasPersonAnyManageableKontext', () => {
+        it('should return false if the person has no kontext', async () => {
+            const caller: Person<true> = await createPerson();
+            const target: Person<true> = await createPerson();
+
+            const permissions: IPersonPermissions = createPermissions(caller);
+
+            const result: Result<boolean, DomainError> = await sut.hasPersonAnyManageableKontext(
+                target.id,
+                permissions,
+            );
+
+            expect(result).toEqual({
+                ok: true,
+                value: false,
+            });
+        });
+
+        it('should return true if the caller can manage at least one kontext', async () => {
+            const caller: Person<true> = await createPerson();
+            const target: Person<true> = await createPerson();
+
+            const rootOrgaA: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository)).id;
+            const rootOrgaB: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository)).id;
+
+            const callerRole: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrgaA,
+                rollenart: RollenArt.SYSADMIN,
+                systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN],
+            });
+            const targetRoleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrgaA,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+            const targetRoleB: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrgaB,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: caller.id,
+                    organisationId: rootOrgaA,
+                    rolleId: callerRole.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: target.id,
+                    organisationId: rootOrgaA,
+                    rolleId: targetRoleA.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: target.id,
+                    organisationId: rootOrgaB,
+                    rolleId: targetRoleB.id,
+                }),
+            );
+
+            const permissions: IPersonPermissions = createPermissions(caller);
+
+            const result: Result<boolean, DomainError> = await sut.hasPersonAnyManageableKontext(
+                target.id,
+                permissions,
+            );
+
+            expect(result).toEqual({
+                ok: true,
+                value: true,
+            });
+        });
+
+        it('should check repeated kontexte at the same organisation only once', async () => {
+            const caller: Person<true> = await createPerson();
+            const target: Person<true> = await createPerson();
+
+            const rootOrga: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository)).id;
+
+            const callerRole: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrga,
+                rollenart: RollenArt.SYSADMIN,
+                systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN],
+            });
+            const targetRoleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrga,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+            const targetRoleB: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrga,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+
+            await Promise.all([
+                personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: caller.id,
+                        organisationId: rootOrga,
+                        rolleId: callerRole.id,
+                    }),
+                ),
+                personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: target.id,
+                        organisationId: rootOrga,
+                        rolleId: targetRoleA.id,
+                    }),
+                ),
+                personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: target.id,
+                        organisationId: rootOrga,
+                        rolleId: targetRoleB.id,
+                    }),
+                ),
+            ]);
+
+            const permissions: IPersonPermissions = createPermissions(caller);
+            const hasSystemrechtAtOrganisationSpy: Mock = vi.spyOn(permissions, 'hasSystemrechtAtOrganisation');
+
+            const result: Result<boolean, DomainError> = await sut.hasPersonAnyManageableKontext(
+                target.id,
+                permissions,
+            );
+
+            expect(result).toEqual({
+                ok: true,
+                value: true,
+            });
+            expect(hasSystemrechtAtOrganisationSpy).toHaveBeenCalledTimes(1);
+            expect(hasSystemrechtAtOrganisationSpy).toHaveBeenCalledWith(
+                rootOrga,
+                RollenSystemRecht.PERSONEN_VERWALTEN,
+            );
+
+            hasSystemrechtAtOrganisationSpy.mockRestore();
+        });
+
+        it('should return MissingPermissionsError if the person has kontexte but the caller cannot manage any of them', async () => {
+            const caller: Person<true> = await createPerson();
+            const target: Person<true> = await createPerson();
+
+            const rootOrga: OrganisationID = (await createAndPersistRootOrganisation(em, organisationRepository)).id;
+
+            const callerRole: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrga,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+            const targetRole: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: rootOrga,
+                rollenart: RollenArt.LEHR,
+                systemrechte: [],
+            });
+
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, { personId: caller.id, organisationId: rootOrga, rolleId: callerRole.id }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, { personId: target.id, organisationId: rootOrga, rolleId: targetRole.id }),
+            );
+
+            const permissions: IPersonPermissions = createPermissions(caller);
+
+            const result: Result<boolean, DomainError> = await sut.hasPersonAnyManageableKontext(
+                target.id,
+                permissions,
+            );
+
+            expect(result).toEqual({
+                ok: false,
+                error: new MissingPermissionsError('Access denied'),
+            });
+        });
+    });
+
     describe('isOrganisationAlreadyAssigned', () => {
         it('should return true if there is any personenkontext for an organisation', async () => {
             const person: Person<true> = await createPerson();
@@ -1302,10 +1598,14 @@ describe('dbiam Personenkontext Repo', () => {
                 }),
             );
 
+            // force a fresh read, otherwise the already-managed service-provider entity would keep its logo despite the exclude in findErweiterteSPByPersonId
+            em.clear();
             const result: ErweiterterServiceProviderForPK[] = await sut.findErweiterteSPByPersonId(person.id);
             expect(result.length).toEqual(1);
             expect(result[0]?.personenkontext.id).toEqual(pk.id);
             expect(result[0]?.serviceProvider.id).toEqual(serviceprovider.id);
+            expect(result[0]?.serviceProvider.logo).toBeUndefined();
+            expect(result[0]?.serviceProvider.logoMimeType).toBeUndefined();
         });
     });
 });

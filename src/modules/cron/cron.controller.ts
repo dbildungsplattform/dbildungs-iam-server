@@ -18,6 +18,11 @@ import { DomainError } from '../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../shared/error/missing-permissions.error.js';
 import { PersonID } from '../../shared/types/aggregate-ids.types.js';
+import { RemovePersonWithoutOrgError } from './errors/person-without-org.error.js';
+import { PersonenkontextRemoveExpiredError } from './errors/personenkontext-expired.error.js';
+import { UnlockUsersError } from './errors/unlock-error.js';
+import { UserLockError } from './errors/user-lock.error.js';
+import { VidisSyncTriggerError } from './errors/vidis-sync.error.js';
 import { Permissions } from '../authentication/api/permissions.decorator.js';
 import { EmailAddressDeletionService } from '../email/email-address-deletion/email-address-deletion.service.js';
 import { KeycloakUserService } from '../keycloak-administration/domain/keycloak-user.service.js';
@@ -78,7 +83,7 @@ export class CronController {
             });
         } catch (error) {
             this.logger.logUnknownAsError('Could not trigger VIDIS sync', error);
-            throw new Error('Failed to trigger VIDIS sync due to an internal server error.');
+            throw new VidisSyncTriggerError();
         }
     }
 
@@ -157,7 +162,7 @@ export class CronController {
             return allSuccessful;
         } catch (error) {
             this.logger.logUnknownAsError('Could not lock users', error);
-            throw new Error('Failed to lock users due to an internal server error.');
+            throw new UserLockError();
         }
     }
 
@@ -249,7 +254,7 @@ export class CronController {
             return allSuccessful;
         } catch (error) {
             this.logger.logUnknownAsError('Could not remove personenkontexte', error);
-            throw new Error('Failed to remove kontexte due to an internal server error.');
+            throw new PersonenkontextRemoveExpiredError();
         }
     }
 
@@ -344,7 +349,7 @@ export class CronController {
             return allSuccessful;
         } catch (error) {
             this.logger.logUnknownAsError('Could not remove users', error);
-            throw new Error('Failed to remove users due to an internal server error.');
+            throw new RemovePersonWithoutOrgError();
         }
     }
 
@@ -417,7 +422,7 @@ export class CronController {
             return allSuccessful;
         } catch (error) {
             this.logger.logUnknownAsError('Could not unlock users', error);
-            throw new Error('Failed to unlock users due to an internal server error.');
+            throw new UnlockUsersError();
         }
     }
 

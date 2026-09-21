@@ -1473,6 +1473,167 @@
             "zugehoerigZu": 13
         },
         {
+            "id": 1318,
+            "name": "12",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1319,
+            "name": "13",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1320,
+            "name": "14",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1321,
+            "name": "15",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1322,
+            "name": "16",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1323,
+            "name": "17",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1324,
+            "name": "18",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1325,
+            "name": "19",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1326,
+            "name": "20",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1327,
+            "name": "21",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1328,
+            "name": "22",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1329,
+            "name": "23",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1330,
+            "name": "24",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1331,
+            "name": "25",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1332,
+            "name": "26",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1333,
+            "name": "27",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1334,
+            "name": "28",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1335,
+            "name": "29",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1336,
+            "name": "30",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1337,
+            "name": "31",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1338,
+            "name": "32",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1339,
+            "name": "33",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
+            "id": 1340,
+            "name": "34",
+            "typ": "KLASSE",
+            "administriertVon": 13,
+            "zugehoerigZu": 13
+        },
+        {
             "id": 1401,
             "name": "1",
             "typ": "KLASSE",
@@ -3613,6 +3774,286 @@
             "typ": "KLASSE",
             "administriertVon": 31,
             "zugehoerigZu": 31
+        },
+        {
+            "id": 3501,
+            "name": "1",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3502,
+            "name": "1a",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3503,
+            "name": "1B",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3504,
+            "name": "2",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3505,
+            "name": "2a",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3506,
+            "name": "2B",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3507,
+            "name": "3a",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3508,
+            "name": "3B",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3509,
+            "name": "3",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3510,
+            "name": "4a",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3511,
+            "name": "4B",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3512,
+            "name": "4",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3513,
+            "name": "5",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3514,
+            "name": "5a",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3515,
+            "name": "5B",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3516,
+            "name": "Musikalisches Profil",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3517,
+            "name": "11a Geographisches Profil",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3518,
+            "name": "12",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3519,
+            "name": "13",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3520,
+            "name": "14",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3521,
+            "name": "15",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3522,
+            "name": "16",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3523,
+            "name": "17",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3524,
+            "name": "18",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3525,
+            "name": "19",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3526,
+            "name": "20",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3527,
+            "name": "21",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3528,
+            "name": "22",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3529,
+            "name": "23",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3530,
+            "name": "24",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3531,
+            "name": "25",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3532,
+            "name": "26",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3533,
+            "name": "27",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3534,
+            "name": "28",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3535,
+            "name": "29",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3536,
+            "name": "30",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3537,
+            "name": "31",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3538,
+            "name": "32",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3539,
+            "name": "33",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
+        },
+        {
+            "id": 3540,
+            "name": "34",
+            "typ": "KLASSE",
+            "administriertVon": 35,
+            "zugehoerigZu": 35
         }
 
     ]

@@ -170,6 +170,16 @@
             "keycloakGroup": "LeOniE-service",
             "keycloakRole": "LeOniE-user",
             "requires2fa": false
+        },
+        {
+            "id": 13,
+            "overrideId": "be044c68-46fe-4cd9-be0c-3c8a6bb926a7",
+            "name": "LK-Endgeräte",
+            "target": "NONE",
+            "kategorie": "VERWALTUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "externalSystem": "UEM",
+            "requires2fa": false
         }
     ]
 }

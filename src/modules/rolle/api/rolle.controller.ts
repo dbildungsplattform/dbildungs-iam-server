@@ -31,16 +31,24 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import { PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import {
+    ApiOkResponsePaginated,
+    PagedResponse,
+    PagingHeadersObject,
+    RawPagedResponse,
+} from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { Public } from '../../authentication/api/public.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { ApplyRollenerweiterungForRolleService } from '../domain/apply-rollenerweiterungen-for-rolle-service.js';
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
@@ -50,21 +58,29 @@ import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
+import { ApplyRollenerweiterungChangesBodyParams } from './apply-rollenerweiterung-changes.body.params.js';
+import { ApplyRollenerweiterungForRollePathParams } from './apply-rollenerweiterung-for-rolle-changes.path.params.js';
+import { ApplyRollenerweiterungMultiExceptionFilter } from './apply-rollenerweiterung-multi-exception-filter.js';
+import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
+import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
 import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
+import { FindRollenForMptVerwaltungQueryParams } from './param/find-rollen-for-mpt-verwaltung.query.params.js';
 import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
+import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
 
-@UseFilters(new RolleExceptionFilter())
+@UseFilters(new RolleExceptionFilter(), new ApplyRollenerweiterungMultiExceptionFilter())
 @ApiTags('rolle')
 @ApiBearerAuth()
 @ApiOAuth2(['openid'])
@@ -80,6 +96,7 @@ export class RolleController {
         private readonly logger: ClassLogger,
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
         private readonly rollenerweiterungFactory: RollenerweiterungFactory,
+        private readonly applyRollenerweiterungService: ApplyRollenerweiterungForRolleService,
     ) {}
 
     @Get()
@@ -134,6 +151,9 @@ export class RolleController {
             rollenArten: queryParams.rollenarten,
             limit: queryParams.limit,
             offset: queryParams.offset,
+            requestedSystemrechte: queryParams.systemrechte?.map((value: RollenSystemRechtEnum) =>
+                RollenSystemRecht.getByName(value),
+            ),
         });
 
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
@@ -157,11 +177,38 @@ export class RolleController {
             await this.rolleFindService.findRollenAvailableForImportPersonenkontext({
                 permissions,
                 searchStr: queryParams.searchStr,
-                organisationIds: [queryParams.organisationId],
+                organisationId: queryParams.organisationId,
                 rollenArten: queryParams.rollenarten,
                 limit: queryParams.limit,
                 offset: queryParams.offset,
             });
+
+        return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
+    }
+
+    @Get('available-for-mpt-verwaltung')
+    @ApiOperation({ description: 'List all MPT rollen the user is allowed to administer.' })
+    @ApiOkResponse({
+        description: 'The rollen were successfully returned',
+        type: [RolleWithServiceProvidersResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting rollen.' })
+    public async findRollenForMptVerwaltung(
+        @Query() queryParams: FindRollenForMptVerwaltungQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findMptRollenAuthorized({
+            permissions,
+            includeTechnische: false,
+            searchStr: queryParams.searchStr,
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+            organisationIds: queryParams.organisationenForFilter,
+            rolleIds: queryParams.rolleIds,
+        });
 
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
     }
@@ -184,11 +231,17 @@ export class RolleController {
         const administeredOrganisations: Map<string, Organisation<true>> = await this.organisationRepository.findByIds(
             rollen.map((r: Rolle<true>) => r.administeredBySchulstrukturknoten),
         );
-        const serviceProviders: ServiceProvider<true>[] = await this.serviceProviderRepo.find();
+        const uniqueServiceProviderIds: ServiceProviderID[] = Array.from(
+            new Set(rollen.flatMap((r: Rolle<true>): ServiceProviderID[] => r.serviceProviderIds)),
+        );
+        const serviceProviders: Map<
+            ServiceProviderID,
+            ServiceProvider<true>
+        > = await this.serviceProviderRepo.findByIds(uniqueServiceProviderIds);
 
         const items: RolleWithServiceProvidersResponse[] = rollen.map((r: Rolle<true>) => {
             const sps: ServiceProvider<true>[] = r.serviceProviderIds
-                .map((id: string) => serviceProviders.find((sp: ServiceProvider<true>) => sp.id === id))
+                .map((id: string) => serviceProviders.get(id))
                 .filter(Boolean);
 
             const administeredBySchulstrukturknoten: Organisation<true> | undefined = administeredOrganisations.get(
@@ -209,6 +262,43 @@ export class RolleController {
             limit: limit ?? items.length,
             items: items,
         });
+    }
+
+    @Get('for-person-administration')
+    @ApiOperation({ description: 'List rollen available for person administration.' })
+    @ApiOkResponsePaginated(RolleResponse, {
+        description: 'The rollen were successfully returned',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get available rollen for person administration.' })
+    @ApiForbiddenResponse({
+        description: 'Insufficient permissions to get available rollen for person administration.',
+    })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting available rollen for person administration.',
+    })
+    public async findRollenAvailableForPersonAdministration(
+        @Query() queryParams: FindRolleForPersonAdministrationQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<RawPagedResponse<RolleResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAvailableForPersonAdministration({
+                permissions,
+                searchStr: queryParams.searchStr,
+                organisationIds: queryParams.organisationIds,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+                requestedSystemrechte: queryParams.systemrechte?.map((systemrecht: RollenSystemRechtEnum) =>
+                    RollenSystemRecht.getByName(systemrecht),
+                ),
+            });
+
+        return RawPagedResponse.fromItemsAndQuery(
+            {
+                total,
+                items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+            },
+            queryParams,
+        );
     }
 
     @Get('systemrechte')
@@ -434,12 +524,81 @@ export class RolleController {
     private async returnRolleWithServiceProvidersResponse(
         rolle: Rolle<true>,
     ): Promise<RolleWithServiceProvidersResponse> {
-        const serviceProviders: ServiceProvider<true>[] = await this.serviceProviderRepo.find();
+        const serviceProviders: Map<
+            ServiceProviderID,
+            ServiceProvider<true>
+        > = await this.serviceProviderRepo.findByIds(rolle.serviceProviderIds);
+        return new RolleWithServiceProvidersResponse(rolle, Array.from(serviceProviders.values()));
+    }
 
-        const rolleServiceProviders: ServiceProvider<true>[] = rolle.serviceProviderIds
-            .map((id: string) => serviceProviders.find((sp: ServiceProvider<true>) => sp.id === id))
-            .filter(Boolean);
+    @Get(':rolleId/angebote-via-rollenerweiterungen')
+    @ApiOperation({ description: 'Get Erweiterte Angebote for a rolle.' })
+    @ApiOkResponse({
+        description: 'The Erweiterten Angebote were successfully returned.',
+        type: ServiceProviderResponse,
+        isArray: true,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get RollenErweiterungen.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permission to get RollenErweiterungen.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting RollenErweiterungen.' })
+    public async findRollenerweiterungenForRolleAndOrga(
+        @Param() params: FindRolleByIdParams,
+        @Query() queryParams: FindRollenerweiterungQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<ServiceProviderResponse[]> {
+        const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
+            await this.rollenerweiterungRepo.findManyByOrganisationAndRolleAuthorized(
+                queryParams.organisationId,
+                params.rolleId,
+                permissions,
+            );
+        if (!rollenerweiterungenResult.ok) {
+            throw rollenerweiterungenResult.error;
+        }
 
-        return new RolleWithServiceProvidersResponse(rolle, rolleServiceProviders);
+        const rolle: Rolle<true> | null | undefined = await this.rolleRepo.findById(params.rolleId);
+        if (!rolle) {
+            throw new EntityNotFoundError('Rolle', params.rolleId);
+        }
+
+        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
+            rollenerweiterungenResult.value.map((re: Rollenerweiterung<true>) => re.serviceProviderId),
+        );
+
+        return Array.from(serviceProviders.values()).map(
+            (sp: ServiceProvider<true>) => new ServiceProviderResponse(sp),
+        );
+    }
+
+    @Post(':rolleId/organisation/:organisationId/apply')
+    @ApiOperation({ description: 'Apply Erweiterte Angebote changes for a rolle.' })
+    @ApiOkResponse({
+        description: 'The Erweiterten Angebote were successfully updated.',
+        type: ServiceProviderResponse,
+        isArray: true,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to update RollenErweiterungen.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permission to update RollenErweiterungen.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while updating RollenErweiterungen.' })
+    public async applyRollenerweiterungChangesForRolle(
+        @Param() params: ApplyRollenerweiterungForRollePathParams,
+        @Body() body: ApplyRollenerweiterungChangesBodyParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<void> {
+        const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
+            await this.applyRollenerweiterungService.applyRollenerweiterungChangesForRolle(
+                params.organisationId,
+                params.rolleId,
+                body,
+                permissions,
+            );
+
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        this.logger.info(
+            `applyRollenerweiterungChangesForRolle called by ${permissions.personFields.username} - ${permissions.personFields.id} for rolleId ${params.rolleId} and organisationId ${params.organisationId} completed with complete success.`,
+        );
     }
 }
