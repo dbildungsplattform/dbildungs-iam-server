@@ -3071,7 +3071,7 @@
           "collation": null,
           "enumItems": [
             "ROLLEN_VERWALTEN",
-            "MPT_ROLLEN_VERWALTEN",
+            "MPT_ROLLEN_ZUORDNEN",
             "PERSONEN_SOFORT_LOESCHEN",
             "PERSONEN_VERWALTEN",
             "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
@@ -4376,7 +4376,7 @@
       "schema": "public",
       "items": [
         "ROLLEN_VERWALTEN",
-        "MPT_ROLLEN_VERWALTEN",
+        "MPT_ROLLEN_ZUORDNEN",
         "PERSONEN_SOFORT_LOESCHEN",
         "PERSONEN_VERWALTEN",
         "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
