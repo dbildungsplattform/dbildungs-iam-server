@@ -22,7 +22,7 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { RollenMerkmal } from './rolle.enums.js';
+import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 
 type TresultType = Result<
     null,
@@ -85,6 +85,7 @@ describe('ApplyRollenerweiterungForAngebotService', () => {
             DoFactory.createServiceProvider(true, {
                 id: angebotId,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
             }),
         );
 
@@ -96,6 +97,7 @@ describe('ApplyRollenerweiterungForAngebotService', () => {
         const rolleAdd: Rolle<true> = createMock<Rolle<true>>(Rolle, {
             id: rolleIdAdd,
             merkmale: [],
+            rollenart: RollenArt.LEHR,
         });
         const rolleRemove: Rolle<true> = createMock<Rolle<true>>(Rolle, {
             id: rolleIdRemove,
@@ -383,12 +385,14 @@ describe('ApplyRollenerweiterungForAngebotService', () => {
             DoFactory.createServiceProvider(true, {
                 id: angebotId,
                 merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
             }),
         );
 
         const rolleAdd: Rolle<true> = DoFactory.createRolle(true, {
             id: rolleAddId,
             merkmale: [RollenMerkmal.MPT_ROLLE],
+            rollenart: RollenArt.LEHR,
         });
         rolleRepo.findByIds.mockResolvedValue(new Map([[rolleAddId, rolleAdd]]));
 
@@ -466,5 +470,110 @@ describe('ApplyRollenerweiterungForAngebotService', () => {
             return;
         }
         expect(result.error).toBeInstanceOf(ApplyRollenerweiterungError);
+    });
+
+    it('should return error when adding Rolle with Rollenart not allowed for Angebot', async () => {
+        const rolleAddId: string = faker.string.uuid();
+
+        const orgaId: string = faker.string.uuid();
+        const angebotId: string = faker.string.uuid();
+
+        organisationRepo.findById.mockResolvedValue(DoFactory.createOrganisation(true, { id: orgaId }));
+        serviceProviderRepo.findById.mockResolvedValue(
+            DoFactory.createServiceProvider(true, {
+                id: angebotId,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            }),
+        );
+
+        const rolleAdd: Rolle<true> = DoFactory.createRolle(true, {
+            id: rolleAddId,
+            merkmale: [],
+            rollenart: RollenArt.LERN,
+        });
+        rolleRepo.findByIds.mockResolvedValue(new Map([[rolleAddId, rolleAdd]]));
+
+        const body: ApplyRollenerweiterungBodyParams = {
+            addErweiterungenForRolleIds: [rolleAddId],
+            removeErweiterungenForRolleIds: [],
+        };
+        const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+        permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+
+        const result: TresultType = await service.applyRollenerweiterungChangesForAngebot(
+            orgaId,
+            angebotId,
+            body,
+            permissions,
+        );
+
+        expect(rollenerweiterungRepo.createAuthorized).not.toHaveBeenCalled();
+
+        expect(result.ok).toBe(false);
+        if (result.ok) {
+            return;
+        }
+        expect(result.error).toBeInstanceOf(ApplyRollenerweiterungError);
+    });
+
+    it('should allow adding Rolle when Rollenart whitelist is empty', async () => {
+        const rolleAddId: string = faker.string.uuid();
+        const orgaId: string = faker.string.uuid();
+        const angebotId: string = faker.string.uuid();
+
+        organisationRepo.findById.mockResolvedValue(DoFactory.createOrganisation(true, { id: orgaId }));
+
+        serviceProviderRepo.findById.mockResolvedValue(
+            DoFactory.createServiceProvider(true, {
+                id: angebotId,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            }),
+        );
+
+        const rolleAdd: Rolle<true> = DoFactory.createRolle(true, {
+            id: rolleAddId,
+            merkmale: [],
+            rollenart: RollenArt.LERN,
+        });
+
+        rolleRepo.findByIds.mockResolvedValue(new Map([[rolleAddId, rolleAdd]]));
+
+        rollenerweiterungRepo.findManyByOrganisationIdAndServiceProviderId.mockResolvedValue([]);
+
+        const createdRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
+            organisationId: orgaId,
+            rolleId: rolleAddId,
+            serviceProviderId: angebotId,
+        });
+
+        rollenerweiterungRepo.createAuthorized.mockResolvedValue(Ok(createdRollenerweiterung));
+
+        const body: ApplyRollenerweiterungBodyParams = {
+            addErweiterungenForRolleIds: [rolleAddId],
+            removeErweiterungenForRolleIds: [],
+        };
+
+        const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+        permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+        const result: TresultType = await service.applyRollenerweiterungChangesForAngebot(
+            orgaId,
+            angebotId,
+            body,
+            permissions,
+        );
+
+        expect(rollenerweiterungRepo.createAuthorized).toHaveBeenCalledOnce();
+        expect(rollenerweiterungRepo.createAuthorized).toHaveBeenCalledWith(
+            expect.objectContaining({
+                organisationId: orgaId,
+                rolleId: rolleAddId,
+                serviceProviderId: angebotId,
+            }),
+            permissions,
+        );
+        expect(result.ok).toBe(true);
     });
 });

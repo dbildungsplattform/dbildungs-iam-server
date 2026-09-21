@@ -9,7 +9,7 @@
             "merkmale": [],
             "systemrechte": [
                 "ROLLEN_VERWALTEN",
-                "MPT_ROLLEN_VERWALTEN",
+                "MPT_ROLLEN_ZUORDNEN",
                 "PERSONEN_VERWALTEN",
                 "SCHULEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
@@ -61,7 +61,7 @@
             "rollenart": "LEIT",
             "merkmale": [],
             "systemrechte": [
-                "MPT_ROLLEN_VERWALTEN",
+                "MPT_ROLLEN_ZUORDNEN",
                 "PERSONEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
                 "BULK_VERWALTEN",
