@@ -16,6 +16,11 @@ data:
   LDAP_BASE_DN: "{{ .Values.eflkLdap.base_dn }}"
   LDAP_OEFFENTLICHE_SCHULEN_DOMAIN: "{{ .Values.eflkLdap.oeffentlicheSchulenDomain }}"
   LDAP_ERSATZSCHULEN_DOMAIN: "{{ .Values.eflkLdap.ersatzschulenDomain }}"
+  LDAP_UNDI_ENABLED: "{{ .Values.eflkLdapUndi.enabled }}"
+  LDAP_UNDI_URL: '{{ .Values.eflkLdapUndi.url | replace "spsh-xxx" .Release.Namespace }}'
+  LDAP_UNDI_BASE_DN: "{{ .Values.eflkLdapUndi.base_dn }}"
+  LDAP_UNDI_OEFFENTLICHE_SCHULEN_DOMAIN: "{{ .Values.eflkLdapUndi.oeffentlicheSchulenDomain }}"
+  LDAP_UNDI_ERSATZSCHULEN_DOMAIN: "{{ .Values.eflkLdapUndi.ersatzschulenDomain }}"
   OX_ENABLED: "{{ .Values.eflkOx.enabled }}"
   OX_USERNAME: "{{ .Values.eflkOx.username }}"
   OX_ENDPOINT: "{{ .Values.eflkOx.endpoint }}"

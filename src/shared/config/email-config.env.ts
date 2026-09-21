@@ -12,6 +12,7 @@ export type EmailAppConfig = {
     LOGGING: Partial<LoggingConfig>;
     DB: Partial<DbConfig>;
     LDAP: Partial<LdapEmailMicroserviceConfig>;
+    LDAP_UNDI: Partial<LdapEmailMicroserviceConfig>;
     OX: Partial<OxEmailMicroserviceConfig>;
     EMAIL: Partial<EmailConfig>;
     HEADER_API_KEY: Partial<HeaderApiKeyConfig>;
@@ -38,6 +39,16 @@ export function getEmailConfig(): EmailAppConfig {
             ERSATZSCHULEN_DOMAIN: process.env['LDAP_ERSATZSCHULEN_DOMAIN'],
             BASE_DN: process.env['LDAP_BASE_DN'],
             RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('RETRY_WRAPPER_DEFAULT_RETRIES'),
+        },
+        LDAP_UNDI: {
+            ENABLED: envToOptionalBoolean('LDAP_UNDI_ENABLED'),
+            URL: process.env['LDAP_UNDI_URL'],
+            BIND_DN: process.env['LDAP_UNDI_BIND_DN'],
+            ADMIN_PASSWORD: process.env['LDAP_UNDI_ADMIN_PASSWORD'],
+            OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_UNDI_OEFFENTLICHE_SCHULEN_DOMAIN'],
+            ERSATZSCHULEN_DOMAIN: process.env['LDAP_UNDI_ERSATZSCHULEN_DOMAIN'],
+            BASE_DN: process.env['LDAP_UNDI_BASE_DN'],
+            RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('LDAP_UNDI_RETRY_WRAPPER_DEFAULT_RETRIES'),
         },
         OX: {
             ENABLED: envToOptionalBoolean('OX_ENABLED'),

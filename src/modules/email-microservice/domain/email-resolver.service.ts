@@ -18,6 +18,8 @@ import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { SetEmailAddressesSuspendedBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-addresses-suspended.bodyparams.js';
 
 export interface PersonIdWithEmailResponse {
     personId: string;
@@ -137,10 +139,11 @@ export class EmailResolverService {
     public async setEmailForSpshPerson(params: {
         spshPersonId: string;
         spshUsername: string;
-        kennungen: string[];
+        organisationen: Organisation<true>[];
         firstName: string;
         lastName: string;
         spshServiceProviderId: string;
+        gesperrt: boolean;
     }): Promise<void> {
         try {
             // For now just mocking the post
@@ -148,15 +151,25 @@ export class EmailResolverService {
                 `Setting email for person ${params.spshPersonId} via email microservice with spId ${params.spshServiceProviderId}`,
             );
             this.logger.info(`Params: ${JSON.stringify(params)}`);
+
+            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = params.organisationen.map(
+                (o: Organisation<true>) => ({
+                    id: o.id,
+                    kennung: o.kennung!, // TODO: SPSH-4220
+                    name: o.name!, // TODO: SPSH-4220
+                }),
+            );
+
             await lastValueFrom(
                 this.httpService.post(
                     this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-email`,
                     {
                         spshUsername: params.spshUsername,
-                        kennungen: params.kennungen,
+                        organisationen,
                         firstName: params.firstName,
                         lastName: params.lastName,
                         spshServiceProviderId: params.spshServiceProviderId,
+                        gesperrt: params.gesperrt,
                     } satisfies SetEmailAddressForSpshPersonBodyParams,
                     {
                         headers: {
@@ -188,13 +201,15 @@ export class EmailResolverService {
         }
     }
 
-    public async setEmailsSuspendedForSpshPerson(params: { spshPersonId: string }): Promise<void> {
+    public async setEmailsSuspendedForSpshPerson(params: { spshPersonId: string; gesperrt: boolean }): Promise<void> {
         try {
             this.logger.info(`Setting emails for person ${params.spshPersonId} to suspended`);
             await lastValueFrom(
                 this.httpService.post(
                     this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-suspended`,
-                    {},
+                    {
+                        gesperrt: params.gesperrt,
+                    } satisfies SetEmailAddressesSuspendedBodyParams,
                     {
                         headers: {
                             'api-key': this.getApiKey(),

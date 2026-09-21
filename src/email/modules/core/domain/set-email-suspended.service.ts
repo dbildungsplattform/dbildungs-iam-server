@@ -23,7 +23,7 @@ export class SetEmailSuspendedService {
             config.EMAIL.NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS ?? 90;
     }
 
-    public async setEmailsSuspended(params: { spshPersonId: string }): Promise<void> {
+    public async setEmailsSuspended(params: { spshPersonId: string; gesperrt: boolean }): Promise<void> {
         this.logger.info(`Received request to set email addresses to suspended for spshPerson ${params.spshPersonId}.`);
         const addresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
             params.spshPersonId,

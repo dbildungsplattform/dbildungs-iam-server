@@ -22,6 +22,16 @@
         "OEFFENTLICHE_SCHULEN_DOMAIN": "qs.schule-sh.de",
         "ERSATZSCHULEN_DOMAIN": "qs.ersatzschule-sh.de"
     },
+    "LDAP_UNDI": {
+        "ENABLED": false,
+        "URL": "ldap://localhost",
+        "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
+        "ADMIN_PASSWORD": "admin",
+        "BASE_DN": "dc=schule-sh,dc=de",
+        "RETRY_WRAPPER_DEFAULT_RETRIES": 3,
+        "OEFFENTLICHE_SCHULEN_DOMAIN": "qs.schule-sh.de",
+        "ERSATZSCHULEN_DOMAIN": "qs.ersatzschule-sh.de"
+    },
     "OX": {
         "ENABLED": true,
         "ENDPOINT": "http://ox.dev.spsh.dbildungsplattform.de/webservices/",

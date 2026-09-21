@@ -18,12 +18,18 @@ import { EmailAddress } from './email-address.js';
 import { EmailDomain } from './email-domain.js';
 import { EmailUpdateInProgressError } from '../error/email-update-in-progress.error.js';
 import { EmailAddressGenerationAttemptsExceededError } from '../error/email-address-generation-attempts-exceeds.error.js';
-import { uniq } from 'lodash-es';
+import { uniqBy } from 'lodash-es';
 import { OxError } from '../../../../shared/error/ox.error.js';
 import { EmailAppConfig } from '../../../../shared/config/email-app.config.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
 
 const MAX_EMAIL_PRIORITY: number = 99999; // E-Mails will be created with this priority before being activated
+
+type SchoolwithKennungAndName = {
+    id: string;
+    kennung: string;
+    name: string;
+};
 
 @Injectable()
 export class SetEmailAddressForSpshPersonService {
@@ -69,9 +75,10 @@ export class SetEmailAddressForSpshPersonService {
     public async setEmailAddressForSpshPerson(params: {
         spshPersonId: string;
         spshUsername: string;
-        kennungen: string[];
+        organisations: SchoolwithKennungAndName[];
         firstName: string;
         lastName: string;
+        gesperrt: boolean;
         spshServiceProviderId: string;
     }): Promise<void> {
         this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Request Received`);
@@ -96,7 +103,10 @@ export class SetEmailAddressForSpshPersonService {
             throw new EmailUpdateInProgressError('e-mail generation already in progress');
         }
 
-        const uniqueKennungen: string[] = uniq(params.kennungen);
+        const uniqueOrganisations: SchoolwithKennungAndName[] = uniqBy(
+            params.organisations,
+            (o: SchoolwithKennungAndName) => o.id,
+        );
 
         const result: Result<void> = await this.createOrUpdateEmailWithRetries(
             this.RETRY_ATTEMPTS,
@@ -104,7 +114,7 @@ export class SetEmailAddressForSpshPersonService {
             params.lastName,
             params.spshPersonId,
             params.spshUsername,
-            uniqueKennungen,
+            uniqueOrganisations,
             emailDomain,
         );
 
@@ -119,7 +129,7 @@ export class SetEmailAddressForSpshPersonService {
         lastName: string,
         spshPersonId: string,
         spshUsername: string,
-        kennungen: string[],
+        organisations: SchoolwithKennungAndName[],
         emailDomain: EmailDomain<true>,
     ): Promise<Result<void>> {
         for (let i: number = 0; i < attempts; i++) {
@@ -132,7 +142,7 @@ export class SetEmailAddressForSpshPersonService {
                     lastName,
                     spshPersonId,
                     spshUsername,
-                    kennungen,
+                    organisations,
                     emailDomain,
                 );
 
@@ -177,7 +187,7 @@ export class SetEmailAddressForSpshPersonService {
         lastName: string,
         spshPersonId: string,
         spshUsername: string,
-        kennungen: string[],
+        organisations: SchoolwithKennungAndName[],
         emailDomain: EmailDomain<true>,
     ): Promise<Result<void>> {
         const newPrimaryEmailResult: Result<EmailAddress<true>> = await this.getOrCreateAvailableEmail({
@@ -273,6 +283,8 @@ export class SetEmailAddressForSpshPersonService {
                 await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(spshPersonId);
             alternativeEmail = mails.find((em: EmailAddress<true>) => em.priority === 1);
         }
+
+        const kennungen: string[] = organisations.map((o: SchoolwithKennungAndName) => o.kennung);
 
         // Update or create ox user
         const oxUserIdResult: Result<string> = await this.upsertOxUser(
