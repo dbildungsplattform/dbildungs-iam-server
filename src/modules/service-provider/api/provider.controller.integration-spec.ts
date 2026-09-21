@@ -146,6 +146,7 @@ describe('ServiceProvider API', () => {
             ]);
             const query: FindServiceProviderForRolleQueryParams = {
                 schulstrukturknotenOfRolle: orga.id,
+                rollenArt: RollenArt.LEHR,
             };
 
             const response: Response = await request(app.getHttpServer() as App)
@@ -164,6 +165,7 @@ describe('ServiceProvider API', () => {
             const schulstrukturknotenOfRolle: string = faker.string.uuid();
             const query: FindServiceProviderForRolleQueryParams = {
                 schulstrukturknotenOfRolle,
+                rollenArt: RollenArt.LEHR,
             };
             permissionsMock.hasSystemrechteAtOrganisation.mockClear();
             permissionsMock.hasSystemrechteAtOrganisation.mockResolvedValueOnce(false);
@@ -191,7 +193,10 @@ describe('ServiceProvider API', () => {
 
             const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                merkmale: [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+                ],
             });
 
             const response: Response = await request(app.getHttpServer() as App)
@@ -759,7 +764,10 @@ describe('ServiceProvider API', () => {
             organisation = await organisationRepo.save(DoFactory.createOrganisation(false));
             serviceProvider = await createAndPersistServiceProvider(em, {
                 providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                merkmale: [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
             });
             const rolleError: Rolle<true> | DomainError = await rolleRepo.save(
                 DoFactory.createRolle(false, {

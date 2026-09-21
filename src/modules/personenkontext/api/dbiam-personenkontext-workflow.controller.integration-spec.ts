@@ -189,7 +189,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 );
             });
 
-            describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_VERWALTEN.name}`, () => {
+            describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
                 it('should return organisation and rollen matching the selected organisation', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
@@ -472,7 +472,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 });
             });
 
-            describe(`when user does NOT have ${RollenSystemRecht.MPT_ROLLEN_VERWALTEN.name}`, () => {
+            describe(`when user does NOT have ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
                 it('should return organisation and rollen matching the selected organisation', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
@@ -546,7 +546,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     personPermissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
                         (orgaId: OrganisationID, systemrecht: RollenSystemRecht) => {
                             if (orgaId === schule.id) {
-                                if (systemrecht === RollenSystemRecht.MPT_ROLLEN_VERWALTEN) {
+                                if (systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) {
                                     return Promise.resolve(false);
                                 }
                                 return Promise.resolve(true);
@@ -605,7 +605,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     personPermissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
                         (orgaId: OrganisationID, systemrecht: RollenSystemRecht) => {
                             if (orgaId === schule.id) {
-                                if (systemrecht === RollenSystemRecht.MPT_ROLLEN_VERWALTEN) {
+                                if (systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) {
                                     return Promise.resolve(false);
                                 }
                                 return Promise.resolve(true);

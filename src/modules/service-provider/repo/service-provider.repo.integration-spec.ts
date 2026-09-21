@@ -488,7 +488,7 @@ describe('ServiceProviderRepo', () => {
         });
     });
 
-    describe('findByOrgasWithMerkmal', () => {
+    describe('findByOrgasWithMerkmale', () => {
         it('returns only service-providers for the given organisation ids that have the rollenerweiterung merkmal', async () => {
             const orgId: string = faker.string.uuid();
 
@@ -508,9 +508,9 @@ describe('ServiceProviderRepo', () => {
 
             em.clear();
 
-            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmal(
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
                 [orgId],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                 5,
                 0,
             );
@@ -518,6 +518,58 @@ describe('ServiceProviderRepo', () => {
             expect(count).toEqual(1);
             expect(result).toHaveLength(1);
             expect(result[0]!.id).toEqual(persistedWithMerkmal!.id);
+        });
+
+        it('only returns service-providers that have every requested merkmal', async () => {
+            const orgId: string = faker.string.uuid();
+
+            const [persistedWithBothMerkmale]: ServiceProvider<true>[] = await Promise.all([
+                createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    merkmale: [
+                        ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                        ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                    ],
+                }),
+                createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                }),
+            ]);
+
+            em.clear();
+
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
+                [orgId],
+                [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
+                ],
+            );
+
+            expect(count).toEqual(1);
+            expect(result).toHaveLength(1);
+            expect(result[0]!.id).toEqual(persistedWithBothMerkmale!.id);
+        });
+
+        it('returns all service-providers for the given organisation ids when no merkmale are requested', async () => {
+            const orgId: string = faker.string.uuid();
+
+            await Promise.all([
+                createAndPersistServiceProvider(em, { providedOnSchulstrukturknoten: orgId }),
+                createAndPersistServiceProvider(em, {
+                    providedOnSchulstrukturknoten: orgId,
+                    merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                }),
+                createAndPersistServiceProvider(em, { providedOnSchulstrukturknoten: faker.string.uuid() }),
+            ]);
+
+            em.clear();
+
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale([orgId], []);
+
+            expect(count).toEqual(2);
+            expect(result).toHaveLength(2);
         });
 
         it('respects limit and offset for results that match organisation ids and merkmal', async () => {
@@ -535,9 +587,9 @@ describe('ServiceProviderRepo', () => {
 
             const limit: number = 5;
             const [withoutOffsetResult, countWithoutOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrgasWithMerkmal(
+                await sut.findByOrgasWithMerkmale(
                     [orgId],
-                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                     limit,
                     0,
                 );
@@ -545,9 +597,9 @@ describe('ServiceProviderRepo', () => {
             expect(countWithoutOffset).toEqual(total);
 
             const [withOffsetResult, countWithOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrgasWithMerkmal(
+                await sut.findByOrgasWithMerkmale(
                     [orgId],
-                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                     limit,
                     5,
                 );
@@ -576,9 +628,9 @@ describe('ServiceProviderRepo', () => {
                 ),
             );
 
-            const [serviceProviderResult]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmal(
+            const [serviceProviderResult]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
                 [orgId],
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                 5,
                 0,
             );
@@ -793,6 +845,46 @@ describe('ServiceProviderRepo', () => {
                     },
                 ]),
             );
+        });
+    });
+
+    describe('findBySchulstrukturknotenWithRollenArtWhitelist', () => {
+        it('should return the service provider with rollenartenWhitelist', async () => {
+            const providedOnSchulstrukturknoten: string = faker.string.uuid();
+            const persistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten,
+                rollenartenWhitelist: [RollenArt.LEHR, RollenArt.LERN],
+            });
+            em.clear();
+            const result: ServiceProvider<true>[] = await sut.findBySchulstrukturknotenWithRollenArtWhitelist(
+                [providedOnSchulstrukturknoten],
+                RollenArt.LEHR,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result).toEqual(
+                expect.arrayContaining([
+                    {
+                        ...persistedServiceProvider,
+                        logo: undefined,
+                    },
+                ]),
+            );
+        });
+
+        it('should not return the service provider if rollenartenWhitelist does not match', async () => {
+            const providedOnSchulstrukturknoten: string = faker.string.uuid();
+            await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            em.clear();
+            const result: ServiceProvider<true>[] = await sut.findBySchulstrukturknotenWithRollenArtWhitelist(
+                [providedOnSchulstrukturknoten],
+                RollenArt.LERN,
+            );
+
+            expect(result).toHaveLength(0);
         });
     });
 

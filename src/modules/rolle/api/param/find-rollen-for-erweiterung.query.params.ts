@@ -21,7 +21,7 @@ export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQu
     @TransformToArray()
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
-    @IsIn([RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN], { each: true })
+    @IsIn([RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN], { each: true })
     @ApiProperty({
         enum: RollenSystemRechtEnum,
         nullable: true,
@@ -30,7 +30,7 @@ export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQu
         isArray: true,
         description:
             'Widens the result to the roles the requesting user administers by virtue of these systemrechte.' +
-            ' Can only be ROLLEN_ERWEITERN and optionally MPT_ROLLEN_VERWALTEN. Defaults to ROLLEN_ERWEITERN.',
+            ' Can only be ROLLEN_ERWEITERN and optionally MPT_ROLLEN_ZUORDNEN. Defaults to ROLLEN_ERWEITERN.',
     })
     public readonly systemrechte?: RollenSystemRechtEnum[];
 }

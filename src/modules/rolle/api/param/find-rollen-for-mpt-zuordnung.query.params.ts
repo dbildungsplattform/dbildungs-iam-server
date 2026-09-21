@@ -5,7 +5,7 @@ import { PagedQueryParams } from '../../../../shared/paging/index.js';
 import { OrganisationID, RolleID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 
-export class FindRollenForMptVerwaltungQueryParams extends PagedQueryParams {
+export class FindRollenForMptZuordnungQueryParams extends PagedQueryParams {
     @IsOptional()
     @IsString()
     @ApiProperty({

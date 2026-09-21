@@ -244,7 +244,7 @@ describe('Rolle API', () => {
                         createQueryWithPaginationDefaults({
                             systemrechte: [
                                 RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-                                RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
+                                RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
                             ],
                         }),
                     )
@@ -1012,7 +1012,7 @@ describe('Rolle API', () => {
             const response: Response = await request(app.getHttpServer() as App)
                 .get('/rolle/available-for-erweiterung')
                 .query({
-                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN],
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN],
                     organisationId: org.id,
                 })
                 .send();
@@ -1137,7 +1137,7 @@ describe('Rolle API', () => {
             expect(pagedResponse.items).toHaveLength(1);
         });
 
-        it('should return only MPT rollen for single MPT_ROLLEN_VERWALTEN systemrecht', async () => {
+        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht', async () => {
             const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
                 DoFactory.createRolle(false, {
@@ -1159,7 +1159,7 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle/available-for-mpt-verwaltung')
+                .get('/rolle/available-for-mpt-zuordnung')
                 .send();
 
             expect(response.status).toBe(200);
@@ -1172,7 +1172,7 @@ describe('Rolle API', () => {
             );
         });
 
-        it('should return only MPT rollen for single MPT_ROLLEN_VERWALTEN systemrecht and orgaId', async () => {
+        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht and orgaId', async () => {
             const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const otherOrga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1195,7 +1195,7 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/available-for-mpt-verwaltung?organisationenForFilter=${orga.id}`)
+                .get(`/rolle/available-for-mpt-zuordnung?organisationenForFilter=${orga.id}`)
                 .send();
 
             expect(response.status).toBe(200);
@@ -1214,7 +1214,7 @@ describe('Rolle API', () => {
             );
         });
 
-        it('should keep standard path for multiple systemrechte including MPT_ROLLEN_VERWALTEN', async () => {
+        it('should keep standard path for multiple systemrechte including MPT_ROLLEN_ZUORDNEN', async () => {
             const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
                 DoFactory.createRolle(false, {
@@ -1235,7 +1235,7 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle?systemrechte=MPT_ROLLEN_VERWALTEN&systemrechte=ROLLEN_VERWALTEN')
+                .get('/rolle?systemrechte=MPT_ROLLEN_ZUORDNEN&systemrechte=ROLLEN_VERWALTEN')
                 .send();
 
             expect(response.status).toBe(200);

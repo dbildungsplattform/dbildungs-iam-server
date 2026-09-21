@@ -70,7 +70,7 @@ import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-pe
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
 import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
-import { FindRollenForMptVerwaltungQueryParams } from './param/find-rollen-for-mpt-verwaltung.query.params.js';
+import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
 import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
@@ -186,7 +186,7 @@ export class RolleController {
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
     }
 
-    @Get('available-for-mpt-verwaltung')
+    @Get('available-for-mpt-zuordnung')
     @ApiOperation({ description: 'List all MPT rollen the user is allowed to administer.' })
     @ApiOkResponse({
         description: 'The rollen were successfully returned',
@@ -196,8 +196,8 @@ export class RolleController {
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
     @ApiInternalServerErrorResponse({ description: 'Internal server error while getting rollen.' })
-    public async findRollenForMptVerwaltung(
-        @Query() queryParams: FindRollenForMptVerwaltungQueryParams,
+    public async findRollenForMptZuordnung(
+        @Query() queryParams: FindRollenForMptZuordnungQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findMptRollenAuthorized({
