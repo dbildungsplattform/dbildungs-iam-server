@@ -66,7 +66,7 @@ import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
-import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
 import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
@@ -277,7 +277,7 @@ export class RolleController {
         description: 'Internal server error while getting available rollen for person administration.',
     })
     public async findRollenAvailableForPersonAdministration(
-        @Query() queryParams: FindRolleForPersonAdministrationQueryParams,
+        @Query() queryParams: FindRollenForPersonAdministrationQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<RawPagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =

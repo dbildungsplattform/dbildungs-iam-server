@@ -61,7 +61,7 @@ import { RolleResponse } from './rolle.response.js';
 import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
-import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
@@ -164,10 +164,10 @@ describe('Rolle API', () => {
     describe('/GET rolle/for-person-administration', () => {
         const url: string = '/rolle/for-person-administration';
         const createQueryWithPaginationDefaults: (
-            overrides?: Partial<FindRolleForPersonAdministrationQueryParams>,
-        ) => FindRolleForPersonAdministrationQueryParams = (
-            overrides: Partial<FindRolleForPersonAdministrationQueryParams> = {},
-        ): FindRolleForPersonAdministrationQueryParams => ({
+            overrides?: Partial<FindRollenForPersonAdministrationQueryParams>,
+        ) => FindRollenForPersonAdministrationQueryParams = (
+            overrides: Partial<FindRollenForPersonAdministrationQueryParams> = {},
+        ): FindRollenForPersonAdministrationQueryParams => ({
             limit: 25,
             offset: 0,
             ...overrides,

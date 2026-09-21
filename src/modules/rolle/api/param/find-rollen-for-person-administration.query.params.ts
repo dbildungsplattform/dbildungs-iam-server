@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
-import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
-import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
-import { PagedQueryParams } from '../../../shared/paging/paged.query.params.js';
+import { PagedQueryParams } from '../../../../shared/paging/index.js';
+import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
+import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
 
-export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParams {
+export class FindRollenForPersonAdministrationQueryParams extends PagedQueryParams {
     @IsOptional()
     @IsString()
     @ApiProperty({
