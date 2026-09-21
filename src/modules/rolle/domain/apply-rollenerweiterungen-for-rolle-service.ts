@@ -1,24 +1,25 @@
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RolleRepo } from '../repo/rolle.repo.js';
-import { Rolle } from './rolle.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
-import { Rollenerweiterung } from './rollenerweiterung.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Injectable } from '@nestjs/common';
-import { RollenSystemRecht } from './systemrecht.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { Err, Ok } from '../../../shared/util/result.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
+import { RolleRepo } from '../repo/rolle.repo.js';
+import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
+import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { RollenMerkmal } from './rolle.enums.js';
-import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { Rolle } from './rolle.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
+import { Rollenerweiterung } from './rollenerweiterung.js';
+import { RollenSystemRecht } from './systemrecht.js';
 
 interface TunknownResultForRolle {
     serviceProviderId: string;
@@ -37,7 +38,7 @@ interface TerrorResultForRolle {
 
 interface AddRollenerweiterungenToRolleParams {
     orgaId: string;
-    rolleId: string;
+    rolle: Rolle<true>;
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
     addErweiterungenForServiceProviderIds: string[];
     serviceProviders: Map<string, ServiceProvider<true>>;
@@ -77,7 +78,7 @@ export class ApplyRollenerweiterungForRolleService {
         }
         const hasSystemrechtAtOrganisationMpt: boolean = await permissions.hasSystemrechtAtOrganisation(
             orgaId,
-            RollenSystemRecht.MPT_ROLLEN_VERWALTEN,
+            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
         );
 
         const organisation: Option<Organisation<true>> = await this.organisationRepo.findById(orgaId);
@@ -120,7 +121,7 @@ export class ApplyRollenerweiterungForRolleService {
             Promise.all(
                 this.handleAddErweiterungen({
                     orgaId,
-                    rolleId,
+                    rolle,
                     existingErweiterungen,
                     addErweiterungenForServiceProviderIds: body.addErweiterungenForServiceProviderIds,
                     serviceProviders,
@@ -158,7 +159,7 @@ export class ApplyRollenerweiterungForRolleService {
 
     private handleAddErweiterungen({
         orgaId,
-        rolleId,
+        rolle,
         existingErweiterungen = [],
         addErweiterungenForServiceProviderIds,
         serviceProviders,
@@ -174,7 +175,7 @@ export class ApplyRollenerweiterungForRolleService {
                 const serviceProvider: Option<ServiceProvider<true>> = serviceProviders.get(serviceProviderId);
 
                 this.logger.info(
-                    `Adding Erweiterung for serviceProviderId: ${serviceProviderId}, orgaId: ${orgaId}, rolleId: ${rolleId}`,
+                    `Adding Erweiterung for serviceProviderId: ${serviceProviderId}, orgaId: ${orgaId}, rolleId: ${rolle.id}`,
                 );
 
                 if (!serviceProvider) {
@@ -184,7 +185,16 @@ export class ApplyRollenerweiterungForRolleService {
                         result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                     });
                 }
-
+                if (
+                    serviceProvider.rollenartenWhitelist.length > 0 &&
+                    !serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)
+                ) {
+                    return Promise.resolve({
+                        serviceProviderId,
+                        errorIdType: ErrorIdType.ROLLE,
+                        result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProviderId)),
+                    });
+                }
                 if (!serviceProvider.merkmale.includes(ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG)) {
                     return Promise.resolve({
                         serviceProviderId,
@@ -200,7 +210,7 @@ export class ApplyRollenerweiterungForRolleService {
                             this.rolleRepo,
                             this.serviceProviderRepo,
                             orgaId,
-                            rolleId,
+                            rolle.id,
                             serviceProviderId,
                         ),
                         permissions,

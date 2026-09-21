@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 export class FindServiceProviderForRolleQueryParams {
     @IsUUID()
@@ -8,5 +9,15 @@ export class FindServiceProviderForRolleQueryParams {
         required: true,
         nullable: false,
     })
-    public schulstrukturknotenOfRolle!: string;
+    public readonly schulstrukturknotenOfRolle!: string;
+
+    @IsEnum(RollenArt)
+    @ApiProperty({
+        enum: RollenArt,
+        enumName: 'RollenArt',
+        description: 'The rollenart of the rolle for which the service provider should be found',
+        required: true,
+        nullable: false,
+    })
+    public readonly rollenArt!: RollenArt;
 }
