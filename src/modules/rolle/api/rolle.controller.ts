@@ -127,7 +127,7 @@ export class RolleController {
                     offset: queryParams.offset,
                 });
             }
-        } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN)) {
+        } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN)) {
             rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized({
                 permissions,
                 includeTechnische: false,
@@ -138,12 +138,12 @@ export class RolleController {
                 rolleIds: queryParams.rolleIds,
             });
         } else if (
-            // covers plain [ROLLEN_ERWEITERN], and the combo [ROLLEN_ERWEITERN, MPT_ROLLEN_VERWALTEN]
+            // covers plain [ROLLEN_ERWEITERN], and the combo [ROLLEN_ERWEITERN, MPT_ROLLEN_ZUORDNEN]
             systemrechteSet.has(RollenSystemRechtEnum.ROLLEN_ERWEITERN) &&
             Array.from(systemrechteSet).every(
                 (recht: RollenSystemRechtEnum) =>
                     recht === RollenSystemRechtEnum.ROLLEN_ERWEITERN ||
-                    recht === RollenSystemRechtEnum.MPT_ROLLEN_VERWALTEN,
+                    recht === RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
             )
         ) {
             rollenAndTotal = await this.rolleFindService.findRollenAvailableForErweiterung({

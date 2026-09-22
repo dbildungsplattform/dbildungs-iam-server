@@ -387,10 +387,10 @@ export class RolleRepo {
             allowedOrganisationIds = orgIdsWithRecht.orgaIds;
         }
 
-        // we can assume that MPT_ROLLEN_VERWALTEN is not exclusive to a single orga here, since matchAll on permissions.getOrgIdsWithSystemrecht is true by default
-        const hasMptRollenVerwaltenPermission: boolean =
-            systemrechte?.includes(RollenSystemRecht.MPT_ROLLEN_VERWALTEN) ?? false;
-        const excludeMerkmale: RollenMerkmal[] | undefined = hasMptRollenVerwaltenPermission
+        // we can assume that MPT_ROLLEN_ZUORDNEN is not exclusive to a single orga here, since matchAll on permissions.getOrgIdsWithSystemrecht is true by default
+        const hasMptRollenZuordnenPermission: boolean =
+            systemrechte?.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) ?? false;
+        const excludeMerkmale: RollenMerkmal[] | undefined = hasMptRollenZuordnenPermission
             ? undefined
             : [RollenMerkmal.MPT_ROLLE];
 

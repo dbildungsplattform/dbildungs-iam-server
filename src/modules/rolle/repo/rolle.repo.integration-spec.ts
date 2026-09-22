@@ -605,7 +605,7 @@ describe('RolleRepo', () => {
             expect(rolleResult.map((rolle: Rolle<true>) => rolle.id)).not.toContain(mptRolle.id);
         });
 
-        it('should include MPT rollen when user queries with MPT_ROLLEN_VERWALTEN', async () => {
+        it('should include MPT rollen when user queries with MPT_ROLLEN_ZUORDNEN', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const organisationId: OrganisationID = organisation.id;
             const defaultRolle: Rolle<true> | DomainError = await sut.save(
@@ -629,7 +629,7 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [RollenSystemRecht.MPT_ROLLEN_VERWALTEN],
+                [RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
                 false,
                 undefined,
                 10,
