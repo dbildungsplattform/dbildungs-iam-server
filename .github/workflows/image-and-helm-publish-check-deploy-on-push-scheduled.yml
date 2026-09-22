@@ -213,6 +213,15 @@ jobs:
     with:
       branch: ${{ needs.branch_meta.outputs.branch }}
 
+  resolve_component_branches:
+    if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
+    needs:
+      - branch_meta
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/resolve-component-branches.yml@7
+    with:
+      ticket: ${{ needs.branch_meta.outputs.ticket }}
+      triggering_repository: ${{ github.repository }}
+
   deploy:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
     needs:
@@ -220,11 +229,12 @@ jobs:
       - create_branch_identifier
       - wait_for_helm_chart_to_get_published
       - build_image_on_push
+      - resolve_component_branches
     uses: dBildungsplattform/spsh-app-deploy/.github/workflows/deploy.yml@9
     with:
-      dbildungs_iam_server_branch: ${{ needs.branch_meta.outputs.ticket }}
-      schulportal_client_branch: ${{ needs.branch_meta.outputs.ticket }}
-      dbildungs_iam_keycloak_branch: ${{ needs.branch_meta.outputs.ticket }}
+      dbildungs_iam_server_branch: ${{ needs.resolve_component_branches.outputs.dbildungs_iam_server_branch }}
+      schulportal_client_branch: ${{ needs.resolve_component_branches.outputs.schulportal_client_branch }}
+      dbildungs_iam_keycloak_branch: ${{ needs.resolve_component_branches.outputs.dbildungs_iam_keycloak_branch }}
       dbildungs_iam_ldap_branch: ${{ needs.branch_meta.outputs.ticket }}
       namespace: ${{ needs.create_branch_identifier.outputs.namespace_from_branch }}
       database_recreation: "true" # to prevent database recreation this has to be set to false
