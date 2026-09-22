@@ -8,6 +8,8 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=dbildungs-iam-server
+    volumes:
+      - db-data:/var/lib/postgresql/data
 
   keycloak:
     image: ghcr.io/dbildungsplattform/dbildungs-iam-keycloak:latest
@@ -24,6 +26,9 @@ services:
       - INTERNAL_COMMUNICATION_API_KEY=api-key
     env_file:
       - .env
+    # Lets the "backend:9090" mapper URLs in dev-realm-spsh.json (shared with the k8s feature-branch realm import) also resolve to a locally started backend
+    extra_hosts:
+      - 'backend:host-gateway'
     entrypoint: '/opt/keycloak/bin/kc.sh start-dev'
     command:
       # Internal DB but still persisted in container
@@ -31,9 +36,9 @@ services:
       # No caching
       - '--cache=local'
       # External communication happens here
-      - "--hostname=http://localhost:8080"
+      - '--hostname=http://localhost:8080'
       # Internal communication happens under a different name
-      - "--hostname-backchannel-dynamic=true"
+      - '--hostname-backchannel-dynamic=true'
       # We have no way of checking for the health probe so we might just as well turn it off
       - '--health-enabled=false'
       # Import SPSH-Realm

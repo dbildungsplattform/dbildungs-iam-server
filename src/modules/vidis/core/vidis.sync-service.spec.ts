@@ -1,9 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { faker } from '@faker-js/faker';
 import { EntityManager } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import {
     EntityNotFoundError,
@@ -11,12 +12,14 @@ import {
     MissingPermissionsError,
     SharedDomainError,
 } from '../../../shared/error/index.js';
-import { Err, Ok } from '../../../shared/util/result.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
+import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -25,17 +28,14 @@ import {
 } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import type {
     VidisAngebotWithSchoolActivations,
     VidisApiResponseAngebotBySchool,
     VidisServiceResponseAngebot,
 } from '../adapter/domain/vidis.types.js';
-import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
-import { faker } from '@faker-js/faker';
-import { VidisSyncService } from './vidis.sync-service.js';
-import { VidisApiAdapter } from '../adapter/domain/vidis-api.adapter.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
-import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
+import { VidisSyncService } from './vidis.sync-service.js';
 
 type TorgaIds = {
     id: string;
@@ -69,6 +69,7 @@ describe('VidisSyncService', () => {
     type DecodedVidisLogoResult = { logo: Buffer | undefined; logoMimeType: string | undefined };
 
     const tinyPngBase64: string = 'iVBORw0KGgo=';
+    const vidisKeycloakClientId: string = 'vidis-keycloak-client';
     const vidisApiServiceProviderMock: Pick<
         VidisApiAdapter,
         'getActivatedAngeboteByRegionSH' | 'getActivatedAngeboteBySchool'
@@ -148,6 +149,7 @@ describe('VidisSyncService', () => {
             vidisAngebotId,
             [],
             [],
+            vidisKeycloakClientId,
         );
 
     const decodeVidisLogo = (offerLogo: string): DecodedVidisLogoResult =>
@@ -170,6 +172,7 @@ describe('VidisSyncService', () => {
     beforeAll(async () => {
         getOrThrowMock = vi.fn().mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         module = await Test.createTestingModule({
             providers: [
@@ -244,6 +247,7 @@ describe('VidisSyncService', () => {
         permissionsMock = createPersonPermissionsMock() as unknown as EscalatedPersonPermissions;
         getOrThrowMock.mockReturnValue({
             SYNC_SCHOOLS_PAGE_SIZE: 5,
+            KEYCLOAK_CLIENT_ID: vidisKeycloakClientId,
         });
         escalatedPersonPermissionsFactoryMock.createNew.mockReturnValue(permissionsMock);
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(permissionsMock);
@@ -818,6 +822,7 @@ describe('VidisSyncService', () => {
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ]);
+            expect(createdServiceProvider.keycloakClientId).toBe(vidisKeycloakClientId);
         });
 
         it('should skip VIDIS Angebote that already exist as non-school-provided Angebote in the database', async () => {
@@ -849,6 +854,7 @@ describe('VidisSyncService', () => {
                     '1',
                     [],
                     [],
+                    undefined,
                 ),
             ];
             serviceProviderModificationServiceMock.create.mockResolvedValue(
@@ -1158,6 +1164,7 @@ describe('VidisSyncService', () => {
             isNameChanged: boolean;
             isUrlChanged: boolean;
             isLogoChanged: boolean;
+            isKeycloakClientIdChanged: boolean;
         };
         type UpdateServiceProviderResult = Awaited<ReturnType<ServiceProviderModificationService['update']>>;
 
@@ -1178,6 +1185,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
@@ -1215,6 +1223,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: true,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
@@ -1255,6 +1264,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             };
             serviceProviderModificationServiceMock.update.mockResolvedValue(
                 Err(resultError) as UpdateServiceProviderResult,
@@ -1308,6 +1318,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1339,6 +1350,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1370,6 +1382,7 @@ describe('VidisSyncService', () => {
                 isNameChanged: false,
                 isUrlChanged: false,
                 isLogoChanged: true,
+                isKeycloakClientIdChanged: false,
             });
         });
 
@@ -1401,7 +1414,75 @@ describe('VidisSyncService', () => {
                 isNameChanged: true,
                 isUrlChanged: true,
                 isLogoChanged: false,
+                isKeycloakClientIdChanged: false,
             });
+        });
+
+        it('should report a keycloakClientId change for pre-existing offers created without one', () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.keycloakClientId = undefined;
+            angebotInDb.logo = Buffer.from(tinyPngBase64, 'base64');
+            angebotInDb.logoMimeType = 'image/png';
+            const angebotInVidis: VidisApiResponseAngebotBySchool = {
+                ...createAngebot(1, angebotInDb.name),
+                offerLink: angebotInDb.url ?? '',
+                offerLogo: tinyPngBase64,
+            };
+
+            const result: NeedsDbAngebotUpdateResult = (
+                sut as unknown as {
+                    needsDbAngebotUpdate: (
+                        angebotInDb: ServiceProvider<true>,
+                        angebotInVidis: VidisServiceResponseAngebot,
+                    ) => NeedsDbAngebotUpdateResult;
+                }
+            ).needsDbAngebotUpdate(angebotInDb, angebotInVidis);
+
+            expect(result).toEqual({
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+                isKeycloakClientIdChanged: true,
+            });
+        });
+
+        it('should backfill keycloakClientId on pre-existing offers created without one', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+            const angebotInDb: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+            angebotInDb.keycloakClientId = undefined;
+            const angebotInVidis: VidisApiResponseAngebotBySchool = createAngebot(1, angebotInDb.name);
+            const needsDbUpdate: NeedsDbAngebotUpdateResult = {
+                needUpdate: true,
+                isNameChanged: false,
+                isUrlChanged: false,
+                isLogoChanged: false,
+                isKeycloakClientIdChanged: true,
+            };
+            serviceProviderModificationServiceMock.update.mockResolvedValue(
+                Ok(angebotInDb) as unknown as UpdateServiceProviderResult,
+            );
+
+            await (
+                sut as unknown as {
+                    updateAngebotToMatchVidis: (
+                        needsDbUpdate: NeedsDbAngebotUpdateResult,
+                        angebotInDb: ServiceProvider<true>,
+                        matchingAngebotInVidis: VidisApiResponseAngebotBySchool,
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).updateAngebotToMatchVidis(needsDbUpdate, angebotInDb, angebotInVidis, permissionsMock);
+
+            expect(angebotInDb.keycloakClientId).toBe(vidisKeycloakClientId);
+            expect(serviceProviderModificationServiceMock.update).toHaveBeenCalledWith(permissionsMock, angebotInDb);
         });
     });
 
