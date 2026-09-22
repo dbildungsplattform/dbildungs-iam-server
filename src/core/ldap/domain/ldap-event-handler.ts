@@ -463,8 +463,19 @@ export class LdapEventHandler {
             );
             return Ok(undefined);
         }
+        const organisationExistsResult: Result<boolean> = await this.ldapClientAdapter.organisationExists(
+            event.kennung,
+        );
 
-        return this.ldapClientAdapter.deleteOrganisation(event.kennung);
+        if (!organisationExistsResult.ok) {
+            return organisationExistsResult;
+        }
+
+        if (organisationExistsResult.value) {
+            return this.ldapClientAdapter.deleteOrganisation(event.kennung);
+        }
+
+        return Ok(undefined);
     }
 
     public hatZuordnungZuOrganisationNachLoeschen(
