@@ -529,7 +529,7 @@
         },
         {
             "id": 44,
-            "name": "VIDIS Testumgebung (Test-Zugriff smueller)",
+            "name": "VIDIS Testumgebung (Test-Zugriff)",
             "target": "NONE",
             "kategorie": "VERWALTUNG",
             "providedOnSchulstrukturknoten": 0,
