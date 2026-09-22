@@ -37,6 +37,8 @@ export class ServiceProviderFile {
 
     public vidisAngebotId?: string;
 
+    public keycloakClientId?: string;
+
     public merkmale?: ServiceProviderMerkmal[];
 
     public rollenartenWhitelist?: RollenArt[];
