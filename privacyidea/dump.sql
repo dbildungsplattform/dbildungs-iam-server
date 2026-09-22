@@ -1207,9 +1207,9 @@ INSERT INTO `resolverconfig` VALUES
 (7,2,'Password','40a280204e5afec1cb26f96dd8e4a1ea:80e57e6205166ee894b6bf36822aaad0','password',''),
 (8,2,'Editable','True','int',''),
 (9,2,'Password_Hash_Type','SSHA256','string',''),
-(10,2,'Table','users','string',''),
+(10,2,'Table','users_service','string',''),
 (11,2,'Limit','5000','int',''),
-(12,2,'Map','{ \"userid\" : \"userid\", \"username\": \"username\"}','string','');
+(12,2,'Map','{ \"userid\" : \"id\", \"username\": \"username\"}','string','');
 /*!40000 ALTER TABLE `resolverconfig` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1636,13 +1636,13 @@ LOCK TABLES `usercache` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `users`
+-- Table structure for table `users_service`
 --
 
-DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `users_service`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `users` (
+CREATE TABLE `users_service` (
   `userid` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   PRIMARY KEY (`userid`),
@@ -1651,16 +1651,16 @@ CREATE TABLE `users` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `users`
+-- Dumping data for table `users_service`
 --
 
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES
+LOCK TABLES `users_service` WRITE;
+/*!40000 ALTER TABLE `users_service` DISABLE KEYS */;
+INSERT INTO `users_service` VALUES
 (1,'autotester'),
 (2,'faltmann'),
 (3,'test');
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
+/*!40000 ALTER TABLE `users_service` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
