@@ -245,8 +245,10 @@ jobs:
     uses: dBildungsplattform/spsh-app-deploy/.github/workflows/delete-namespace.yml@7
     with:
       namespace: ${{ needs.create_branch_identifier_for_deletion.outputs.namespace_from_branch }}
+      triggering_repository: ${{ github.repository }}
     secrets:
       SPSH_DEV_KUBECONFIG: ${{ secrets.SPSH_DEV_KUBECONFIG }}
+      GH_CROSS_REPO_TOKEN: ${{ secrets.GH_CROSS_REPO_TOKEN }}
 
   delete_successful:
     if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
