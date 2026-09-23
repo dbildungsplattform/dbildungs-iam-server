@@ -48,6 +48,7 @@ data:
   VIDIS_API_BASE_URL: '{{ .Values.vidis.url }}'
   VIDIS_API_REGION: '{{ .Values.vidis.region }}'
   VIDIS_SYNC_SCHOOLS_PAGE_SIZE: '{{ .Values.vidis.syncSchoolsPageSize }}'
+  VIDIS_KEYCLOAK_CLIENT_ID: '{{ .Values.vidis.keycloakClientId }}'
   NODE_OPTIONS: "--max-old-space-size={{ .Values.backend.env.maxOldSpaceSize }}"
   IMPORT_CSV_FILE_MAX_SIZE_IN_MB: '{{ .Values.import.csvFileMaxSizeInMB }}'
   IMPORT_CSV_MAX_NUMBER_OF_USERS: '{{ .Values.import.csvMaxNumberOfUsers }}'
