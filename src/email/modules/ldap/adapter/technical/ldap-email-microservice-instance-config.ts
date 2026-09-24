@@ -1,6 +1,6 @@
 import { Injectable, Provider } from '@nestjs/common';
-import { LdapEmailMicroserviceConfig } from '../../../../../shared/config/ldap-email-microservice.config.js';
 import { EmailAppConfig } from '../../../../../shared/config/index.js';
+import { LdapEmailMicroserviceConfig } from '../../../../../shared/config/ldap-email-microservice.config.js';
 
 @Injectable()
 export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroserviceConfig {

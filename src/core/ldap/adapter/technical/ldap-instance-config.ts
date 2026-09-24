@@ -1,7 +1,7 @@
 import { Injectable, Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LdapServerConfig } from '../../../../shared/config/ldap-server.config.js';
 import { ServerConfig } from '../../../../shared/config/index.js';
+import { LdapServerConfig } from '../../../../shared/config/ldap-server.config.js';
 
 @Injectable()
 export class LdapInstanceConfig implements LdapServerConfig {

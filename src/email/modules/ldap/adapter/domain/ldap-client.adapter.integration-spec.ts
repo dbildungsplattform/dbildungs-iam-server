@@ -14,6 +14,7 @@ import {
     expectErrResult,
     expectOkResult,
 } from '../../../../../../test/utils/index.js';
+import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
 import { EmailLdapModule } from '../../email-ldap.module.js';
@@ -23,7 +24,6 @@ import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
-import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(

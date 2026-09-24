@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { Attribute, Change, Client, SearchResult } from 'ldapts';
-import { LdapPersonEntry } from './ldap.types.js';
-import { LdapClient } from '../technical/ldap-client.js';
 import { Mutex } from 'async-mutex';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { Attribute, Change, Client, SearchResult } from 'ldapts';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { PersonExternalID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
-import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
 import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapDeletePersonError } from './error/ldap-delete-person.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
