@@ -120,7 +120,7 @@ export class RolleController {
             queryParams.searchStr,
             queryParams.limit,
             queryParams.offset,
-            queryParams.organisationenForFilter,
+            queryParams.organisationIds,
             queryParams.rolleIds,
             queryParams.merkmale,
             queryParams.rollenarten,
@@ -206,7 +206,7 @@ export class RolleController {
             searchStr: queryParams.searchStr,
             limit: queryParams.limit,
             offset: queryParams.offset,
-            organisationIds: queryParams.organisationenForFilter,
+            organisationIds: queryParams.organisationIds,
             rolleIds: queryParams.rolleIds,
         });
 
@@ -264,7 +264,7 @@ export class RolleController {
         });
     }
 
-    @Get('for-person-administration')
+    @Get('available-for-person-administration')
     @ApiOperation({ description: 'List rollen available for person administration.' })
     @ApiOkResponsePaginated(RolleResponse, {
         description: 'The rollen were successfully returned',
@@ -276,6 +276,8 @@ export class RolleController {
     @ApiInternalServerErrorResponse({
         description: 'Internal server error while getting available rollen for person administration.',
     })
+    // Returns RolleResponse rather than RolleWithServiceProvidersResponse like the other rollen endpoints:
+    // this list can get large and the service providers would cost an extra lookup per request without being used.
     public async findRollenAvailableForPersonAdministration(
         @Query() queryParams: FindRollenForPersonAdministrationQueryParams,
         @Permissions() permissions: IPersonPermissions,

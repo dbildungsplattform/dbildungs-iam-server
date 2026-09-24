@@ -1,21 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayMaxSize, ArrayUnique, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsEnum, IsOptional, IsUUID } from 'class-validator';
 
-import { PagedQueryParams } from '../../../../shared/paging/index.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 import { RollenArt, RollenArtTypName, RollenMerkmal, RollenMerkmalTypName } from '../../domain/rolle.enums.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
+import { FindRollenBaseQueryParams } from './find-rollen-base.query.params.js';
 
-export class FindRollenQueryParams extends PagedQueryParams {
-    @IsOptional()
-    @IsString()
-    @ApiProperty({
-        description: 'The name for the role.',
-        required: false,
-    })
-    public readonly searchStr?: string;
-
+export class FindRollenQueryParams extends FindRollenBaseQueryParams {
     @IsOptional()
     @IsUUID(undefined, { each: true })
     @TransformToArray()
@@ -26,7 +18,7 @@ export class FindRollenQueryParams extends PagedQueryParams {
         nullable: true,
         isArray: true,
     })
-    public readonly organisationenForFilter?: OrganisationID[];
+    public readonly organisationIds?: OrganisationID[];
 
     @IsOptional()
     @IsUUID(undefined, { each: true })

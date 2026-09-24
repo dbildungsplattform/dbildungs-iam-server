@@ -29,7 +29,8 @@ export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQu
         required: false,
         isArray: true,
         description:
-            'Widens the result to the roles the requesting user administers by virtue of these systemrechte.' +
+            "Systemrechte the requesting user's permissions are evaluated against." +
+            ' Including MPT_ROLLEN_ZUORDNEN additionally returns MPT roles.' +
             ' Can only be ROLLEN_ERWEITERN and optionally MPT_ROLLEN_ZUORDNEN. Defaults to ROLLEN_ERWEITERN.',
     })
     public readonly systemrechte?: RollenSystemRechtEnum[];

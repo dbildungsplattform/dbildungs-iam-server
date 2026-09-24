@@ -162,7 +162,7 @@ describe('Rolle API', () => {
     });
 
     describe('/GET rolle/for-person-administration', () => {
-        const url: string = '/rolle/for-person-administration';
+        const url: string = '/rolle/available-for-person-administration';
         const createQueryWithPaginationDefaults: (
             overrides?: Partial<FindRollenForPersonAdministrationQueryParams>,
         ) => FindRollenForPersonAdministrationQueryParams = (
@@ -1195,7 +1195,7 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/available-for-mpt-zuordnung?organisationenForFilter=${orga.id}`)
+                .get(`/rolle/available-for-mpt-zuordnung?organisationIds=${orga.id}`)
                 .send();
 
             expect(response.status).toBe(200);
@@ -1251,7 +1251,7 @@ describe('Rolle API', () => {
             );
         });
 
-        it('should return rollen filtered by organisationenForFilter', async () => {
+        it('should return rollen filtered by organisationIds', async () => {
             const orgaA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const orgaB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
 
@@ -1272,7 +1272,7 @@ describe('Rolle API', () => {
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle`)
                 .query({
-                    organisationenForFilter: orgaA.id,
+                    organisationIds: orgaA.id,
                 })
                 .send();
 
@@ -1428,11 +1428,11 @@ describe('Rolle API', () => {
             ).toBe(true);
         });
 
-        it('should return 400 when organisationenForFilter is not a uuid', async () => {
+        it('should return 400 when organisationIds is not a uuid', async () => {
             const response: Response = await request(app.getHttpServer() as App)
                 .get(`/rolle`)
                 .query({
-                    organisationenForFilter: 'not-a-uuid',
+                    organisationIds: 'not-a-uuid',
                 })
                 .send();
 

@@ -1,19 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayUnique, IsOptional, IsUUID } from 'class-validator';
 
-import { PagedQueryParams } from '../../../../shared/paging/index.js';
 import { OrganisationID, RolleID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
+import { FindRollenBaseQueryParams } from './find-rollen-base.query.params.js';
 
-export class FindRollenForMptZuordnungQueryParams extends PagedQueryParams {
-    @IsOptional()
-    @IsString()
-    @ApiProperty({
-        description: 'The name for the role.',
-        required: false,
-    })
-    public readonly searchStr?: string;
-
+export class FindRollenForMptZuordnungQueryParams extends FindRollenBaseQueryParams {
     @IsOptional()
     @IsUUID(undefined, { each: true })
     @TransformToArray()
@@ -24,7 +16,7 @@ export class FindRollenForMptZuordnungQueryParams extends PagedQueryParams {
         nullable: true,
         isArray: true,
     })
-    public readonly organisationenForFilter?: OrganisationID[];
+    public readonly organisationIds?: OrganisationID[];
 
     @IsOptional()
     @IsUUID(undefined, { each: true })
