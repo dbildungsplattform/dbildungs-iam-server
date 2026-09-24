@@ -3,6 +3,7 @@ import { OrganisationID, RollenerweiterungID, ServiceProviderID } from '../../..
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { Rolle } from './rolle.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 
 @Injectable()
 export class RollenerweiterungFactory {
@@ -20,8 +21,8 @@ export class RollenerweiterungFactory {
     public createNew(
         organisationId: OrganisationID,
         rolle: Rolle<true>,
-        serviceProviderId: ServiceProviderID,
+        serviceProvider: ServiceProvider<true>,
     ): Result<Rollenerweiterung<false>, NoRedundantRollenerweiterungError> {
-        return Rollenerweiterung.createNew(organisationId, rolle, serviceProviderId);
+        return Rollenerweiterung.createNew(organisationId, rolle, serviceProvider);
     }
 }
