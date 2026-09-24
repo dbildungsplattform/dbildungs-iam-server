@@ -1,22 +1,21 @@
-import { Dictionary, FilterQuery, Loaded, PopulatePath, RequiredEntityData, Subquery } from '@mikro-orm/core';
+import {
+    Dictionary,
+    FilterQuery,
+    Loaded,
+    PopulatePath,
+    RequiredEntityData,
+    Subquery,
+    UniqueConstraintViolationException,
+} from '@mikro-orm/core';
 import { EntityManager, QueryBuilder } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { DomainError } from '../../../shared/error/domain.error.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
-import { Err, Ok } from '../../../shared/util/result.js';
-import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
+import { Ok } from '../../../shared/util/result.js';
 import { RollenArt } from '../domain/rolle.enums.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
-import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { RollenerweiterungEntity } from '../entity/rollenerweiterung.entity.js';
-import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
-import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
-import { NoRedundantRollenerweiterung } from '../specification/no-redundant-rollenerweiterung.specification.js';
-import { ServiceProviderVerfuegbarFuerRollenerweiterung } from '../specification/service-provider-verfuegbar-fuer-rollenerweiterung.specification.js';
 
 type RollenerweiterungIds = {
     organisationId: OrganisationID;
@@ -52,84 +51,78 @@ export class RollenerweiterungRepo {
         );
     }
 
-    public async exists({ organisationId, rolleId, serviceProviderId }: RollenerweiterungIds): Promise<boolean> {
-        const count: number = await this.em.count(RollenerweiterungEntity, {
-            organisationId: organisationId,
-            rolleId: rolleId,
-            serviceProviderId: serviceProviderId,
-        });
-        return count > 0;
-    }
-
-    /**
-     * WARNING: Requires manual checks for consistency!
-     * @param rollenerweiterung
-     * @returns
-     */
-    public async create(rollenerweiterung: Rollenerweiterung<false>): Promise<Rollenerweiterung<true>> {
-        const rollenerweiterungEntity: RollenerweiterungEntity = this.em.create(
-            RollenerweiterungEntity,
-            this.mapAggregateToEntityData(rollenerweiterung),
-        );
-
-        await this.em.persist(rollenerweiterungEntity).flush();
-
-        return this.mapEntityToAggregate(rollenerweiterungEntity);
-    }
-
-    public async createAuthorized(
-        rollenerweiterung: Rollenerweiterung<false>,
-        permissions: IPersonPermissions,
-    ): Promise<Result<Rollenerweiterung<true>, DomainError>> {
-        const permissionError: Option<MissingPermissionsError> = await this.checkPermissions(
-            permissions,
-            rollenerweiterung.organisationId,
-        );
-        if (permissionError) {
-            return { ok: false, error: permissionError };
-        }
-
-        const referenceError: Option<EntityNotFoundError> = await rollenerweiterung.checkReferences();
-        if (referenceError) {
-            return { ok: false, error: referenceError };
-        }
-
-        const noRedundantRollenerweiterung: NoRedundantRollenerweiterung = new NoRedundantRollenerweiterung();
-        if (!(await noRedundantRollenerweiterung.isSatisfiedBy(rollenerweiterung))) {
-            return { ok: false, error: new NoRedundantRollenerweiterungError() };
-        }
-
-        const serviceProviderVerfuegbarFuerRollenerweiterung: ServiceProviderVerfuegbarFuerRollenerweiterung =
-            new ServiceProviderVerfuegbarFuerRollenerweiterung();
-        const result: boolean = await serviceProviderVerfuegbarFuerRollenerweiterung.isSatisfiedBy(rollenerweiterung);
-        if (!result) {
-            return { ok: false, error: new ServiceProviderNichtVerfuegbarFuerRollenerweiterungError() };
-        }
-
-        const rollenerweiterungEntity: RollenerweiterungEntity = this.em.create(
-            RollenerweiterungEntity,
-            this.mapAggregateToEntityData(rollenerweiterung),
-        );
-        await this.em.persist(rollenerweiterungEntity).flush();
-
+    private getComposedIdFilter({
+        organisationId,
+        rolleId,
+        serviceProviderId,
+    }: RollenerweiterungIds): FilterQuery<RollenerweiterungEntity> {
         return {
-            ok: true,
-            value: this.mapEntityToAggregate(rollenerweiterungEntity),
+            organisationId,
+            rolleId,
+            serviceProviderId,
         };
     }
 
-    private async checkPermissions(
-        permissions: IPersonPermissions,
-        organisationId: OrganisationID,
-    ): Promise<Option<DomainError>> {
-        const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
-            [RollenSystemRecht.ROLLEN_ERWEITERN],
-            true,
+    public async exists(ids: RollenerweiterungIds): Promise<boolean> {
+        const count: number = await this.em.count(RollenerweiterungEntity, this.getComposedIdFilter(ids));
+
+        return count > 0;
+    }
+
+    public async findByComposedId(ids: RollenerweiterungIds): Promise<Rollenerweiterung<true> | undefined> {
+        const entity: Loaded<RollenerweiterungEntity> | null = await this.em.findOne(
+            RollenerweiterungEntity,
+            this.getComposedIdFilter(ids),
         );
-        if (permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId)) {
+
+        if (!entity) {
             return undefined;
         }
-        return new MissingPermissionsError(`Missing systemrecht ${RollenSystemRecht.ROLLEN_ERWEITERN.name}.`);
+
+        return this.mapEntityToAggregate(entity);
+    }
+
+    /**
+     * Persistiert eine Rollenerweiterung ohne Berechtigungs- oder
+     * Konsistenzprüfung.
+     *
+     * Existiert die Rollenerweiterung bereits, wird das vorhandene
+     * Aggregate zurückgegeben.
+     */
+    public async create(rollenerweiterung: Rollenerweiterung<false>): Promise<Rollenerweiterung<true>> {
+        const ids: RollenerweiterungIds = {
+            organisationId: rollenerweiterung.organisationId,
+            rolleId: rollenerweiterung.rolleId,
+            serviceProviderId: rollenerweiterung.serviceProviderId,
+        };
+
+        const existingRollenerweiterung: Rollenerweiterung<true> | undefined = await this.findByComposedId(ids);
+
+        if (existingRollenerweiterung) {
+            return existingRollenerweiterung;
+        }
+
+        const rollenerweiterungEntity: RollenerweiterungEntity = this.em.create(
+            RollenerweiterungEntity,
+            this.mapAggregateToEntityData(rollenerweiterung),
+        );
+
+        try {
+            await this.em.persist(rollenerweiterungEntity).flush();
+
+            return this.mapEntityToAggregate(rollenerweiterungEntity);
+        } catch (error: unknown) {
+            if (error instanceof UniqueConstraintViolationException) {
+                const concurrentlyCreatedRollenerweiterung: Rollenerweiterung<true> | undefined =
+                    await this.findByComposedId(ids);
+
+                if (concurrentlyCreatedRollenerweiterung) {
+                    return concurrentlyCreatedRollenerweiterung;
+                }
+            }
+
+            throw error;
+        }
     }
 
     public async findManyByOrganisationAndRolle(
@@ -147,25 +140,6 @@ export class RollenerweiterungRepo {
             ),
         });
         return rollenerweiterungen.map((entity: Loaded<RollenerweiterungEntity>) => this.mapEntityToAggregate(entity));
-    }
-
-    public async findManyByOrganisationAndRolleAuthorized(
-        organisationId: OrganisationID,
-        rolleId: RolleID,
-        permissions: IPersonPermissions,
-    ): Promise<Result<Rollenerweiterung<true>[], MissingPermissionsError>> {
-        const isAuthorized: boolean = await permissions.hasSystemrechtAtOrganisation(
-            organisationId,
-            RollenSystemRecht.ROLLEN_ERWEITERN,
-        );
-        if (!isAuthorized) {
-            return Err(new MissingPermissionsError(`Missing systemrecht ${RollenSystemRecht.ROLLEN_ERWEITERN.name}.`));
-        }
-
-        const rollenerweiterungen: Rollenerweiterung<true>[] = await this.findManyByOrganisationAndRolle([
-            { organisationId, rolleId },
-        ]);
-        return Ok(rollenerweiterungen);
     }
 
     public async findManyByRolleId(rolleId: RolleID): Promise<Array<Rollenerweiterung<true>>> {
@@ -216,36 +190,16 @@ export class RollenerweiterungRepo {
         );
     }
 
-    public async deleteByComposedId(props: {
-        organisationId: OrganisationID;
-        rolleId: RolleID;
-        serviceProviderId: ServiceProviderID;
-    }): Promise<Result<null, DomainError>> {
-        if (!(await this.exists(props))) {
-            return Err(new EntityNotFoundError(`Rollenerweiterung ${JSON.stringify(props)}`));
-        }
+    public async deleteByComposedId(ids: RollenerweiterungIds): Promise<Result<null, DomainError>> {
+        await this.em.nativeDelete(RollenerweiterungEntity, this.getComposedIdFilter(ids));
 
-        await this.em.nativeDelete(RollenerweiterungEntity, {
-            serviceProviderId: props.serviceProviderId,
-            organisationId: props.organisationId,
-            rolleId: props.rolleId,
-        });
         return Ok(null);
     }
 
     public async deleteByOrganisationIdAndServiceProviderIds(
         organisationId: OrganisationID,
         serviceProviderIds: ServiceProviderID[],
-        permissions: IPersonPermissions,
     ): Promise<Result<null, DomainError>> {
-        const isCanDelete: boolean = await permissions.hasSystemrechtAtOrganisation(
-            organisationId,
-            RollenSystemRecht.ROLLEN_ERWEITERN,
-        );
-        if (!isCanDelete) {
-            return Err(new MissingPermissionsError(`Missing systemrecht ${RollenSystemRecht.ROLLEN_ERWEITERN.name}.`));
-        }
-
         if (serviceProviderIds.length === 0) {
             return Ok(null);
         }
