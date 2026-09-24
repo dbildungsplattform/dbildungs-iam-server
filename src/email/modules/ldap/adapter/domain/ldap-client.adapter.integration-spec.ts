@@ -293,7 +293,20 @@ describe('LDAP Client Adapter', () => {
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
             vi.useFakeTimers();
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 3;
+            // Build the config without the retry-count arg so the constructor default drives the retries; only the delay is overridden for speed.
+            const defaultRetriesConfig: LdapEmailMicroserviceInstanceConfig = new LdapEmailMicroserviceInstanceConfig(
+                instanceConfig.ENABLED,
+                instanceConfig.URL,
+                instanceConfig.BIND_DN,
+                instanceConfig.ADMIN_PASSWORD,
+                instanceConfig.BASE_DN,
+                instanceConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
+                instanceConfig.ERSATZSCHULEN_DOMAIN,
+                undefined,
+                1,
+            );
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = defaultRetriesConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
+            instanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS = defaultRetriesConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
