@@ -64,6 +64,7 @@ describe('LDAP Adapter', () => {
         OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
         ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
         RETRY_WRAPPER_DEFAULT_RETRIES: 2,
+        RETRY_WRAPPER_RETRY_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',

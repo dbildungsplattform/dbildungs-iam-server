@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "jira": {
+      "command": "poetry",
+      "args": [
+        "run",
+        "python",
+        "server.py"
+      ],
+      "cwd": "~/Repositories/jira-mcp",
+      "env": {}
+    }
+  }
+}

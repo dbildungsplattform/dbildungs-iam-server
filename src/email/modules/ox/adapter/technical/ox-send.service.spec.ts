@@ -1,22 +1,22 @@
-import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
 import { Test, TestingModule } from '@nestjs/testing';
+import assert from 'assert';
 import { AxiosResponse } from 'axios';
+import { plainToInstance } from 'class-transformer';
 import { of, throwError } from 'rxjs';
-import { OxErrorType, OxSendService } from './ox-send.service.js';
-import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/index.js';
-import { OxBaseAction } from './actions/ox-base-action.js';
+import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { EmailAppConfig } from '../../../../../shared/config/email-app.config.js';
 import { DomainError } from '../../../../../shared/error/index.js';
 import { OxError } from '../../../../../shared/error/ox.error.js';
-import { OxPrimaryMailNotEqualEmail1Error } from '../domain/error/ox-primary-mail-not-equal-email1.error.js';
-import { faker } from '@faker-js/faker';
-import assert from 'assert';
 import { OxMemberAlreadyInGroupError } from '../domain/error/ox-member-already-in-group.error.js';
+import { OxPrimaryMailNotEqualEmail1Error } from '../domain/error/ox-primary-mail-not-equal-email1.error.js';
 import { AddMemberToGroupAction } from './actions/group/add-member-to-group.action.js';
-import { EmailAppConfig } from '../../../../../shared/config/email-app.config.js';
-import { plainToInstance } from 'class-transformer';
+import { OxBaseAction } from './actions/ox-base-action.js';
+import { OxErrorType, OxSendService } from './ox-send.service.js';
 
 class MockAction extends OxBaseAction<unknown, string> {
     public override action: string = 'http://soap.admin.openexchange.com/mockAction';
@@ -81,6 +81,10 @@ describe('OxSendService', () => {
         vi.resetAllMocks();
     });
 
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('should be defined', () => {
         expect(sut).toBeDefined();
     });
@@ -127,7 +131,6 @@ describe('OxSendService', () => {
 
         it('should return result if a retry succeeds', async () => {
             vi.useFakeTimers();
-
             const mockAction: DeepMocked<MockAction> = createMock(MockAction);
             mockAction.buildRequest.mockReturnValueOnce({});
             mockAction.parseResponse.mockReturnValueOnce({ ok: true, value: 'TestResult' });
@@ -139,10 +142,8 @@ describe('OxSendService', () => {
             httpServiceMock.post.mockReturnValueOnce(of({} as AxiosResponse)); // Succeed on retry
 
             const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
-            await vi.advanceTimersByTimeAsync(15000);
+            await vi.runAllTimersAsync();
             const result: Result<string, DomainError> = await resultPromise;
-
-            vi.useRealTimers();
 
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                 'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 1',
@@ -156,17 +157,14 @@ describe('OxSendService', () => {
 
         it('should return OxError if request failed and response is NOT a specific OX-Error-response', async () => {
             vi.useFakeTimers();
-
             const error: Error = new Error('AxiosError');
             const mockAction: DeepMocked<MockAction> = createMock(MockAction);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error));
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Retry
 
             const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
-            await vi.advanceTimersByTimeAsync(15000);
+            await vi.runAllTimersAsync();
             const result: Result<string, DomainError> = await resultPromise;
-
-            vi.useRealTimers();
 
             expect(result).toEqual({
                 ok: false,
@@ -175,6 +173,7 @@ describe('OxSendService', () => {
         });
 
         it('should return specific OxError and log error if request failed and response is a specific OX-Error-response', async () => {
+            vi.useFakeTimers();
             const faultString: string = 'primarymail must have the same value as email1; exceptionId 1826201806-2';
             const error: OxErrorType = {
                 message: faker.string.alphanumeric(),
@@ -203,10 +202,8 @@ describe('OxSendService', () => {
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Retry
 
             const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
-            await vi.advanceTimersByTimeAsync(15000);
+            await vi.runAllTimersAsync();
             const result: Result<string, DomainError> = await resultPromise;
-
-            vi.useRealTimers();
 
             expect(result).toEqual({
                 ok: false,
@@ -215,6 +212,7 @@ describe('OxSendService', () => {
         });
 
         it('should return specific general OxError and log error if request failed and response could NOT be parsed', async () => {
+            vi.useFakeTimers();
             const faultyErrorWithMissingFaultString: OxErrorType = {
                 message: faker.string.alphanumeric(),
                 code: faker.string.numeric(),
@@ -239,10 +237,8 @@ describe('OxSendService', () => {
             httpServiceMock.post.mockReturnValueOnce(throwError(() => faultyErrorWithMissingFaultString)); // Retry
 
             const resultPromise: Promise<Result<string, DomainError>> = sut.send(mockAction);
-            await vi.advanceTimersByTimeAsync(15000);
+            await vi.runAllTimersAsync();
             const result: Result<string, DomainError> = await resultPromise;
-
-            vi.useRealTimers();
 
             expect(loggerMock.error).toHaveBeenCalledWith(`OX-response could not be parsed after error occurred`);
             expect(result).toEqual({

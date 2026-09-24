@@ -33,4 +33,9 @@ export class LdapEmailMicroserviceConfig {
     @IsInt()
     @IsOptional()
     public readonly RETRY_WRAPPER_DEFAULT_RETRIES?: number;
+
+    @Min(0)
+    @IsInt()
+    @IsOptional()
+    public readonly RETRY_WRAPPER_RETRY_DELAY_IN_MS?: number;
 }

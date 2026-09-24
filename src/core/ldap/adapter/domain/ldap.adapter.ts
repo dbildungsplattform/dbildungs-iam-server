@@ -52,6 +52,8 @@ export type PersonData = {
 export class LdapAdapter {
     public static readonly FALLBACK_RETRIES: number = 3; // e.g. FALLBACK_RETRIES = 3 will produce retry sequence: 1sek, 8sek, 27sek (1000ms * retrycounter^3)
 
+    public static readonly FALLBACK_RETRY_DELAY_IN_MS: number = 15000;
+
     public static readonly OEFFENTLICHE_SCHULEN_DOMAIN_DEFAULT: string = 'schule-sh.de';
 
     public static readonly ERSATZ_SCHULEN_DOMAIN_DEFAULT: string = 'ersatzschule-sh.de';
@@ -312,6 +314,10 @@ export class LdapAdapter {
         return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES != null
             ? this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES
             : LdapAdapter.FALLBACK_RETRIES;
+    }
+
+    private getRetryDelayInMs(): number {
+        return this.ldapInstanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS ?? LdapAdapter.FALLBACK_RETRY_DELAY_IN_MS;
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -1482,7 +1488,7 @@ export class LdapAdapter {
     private async executeWithRetry<T>(
         func: () => Promise<Result<T>>,
         retries: number,
-        delay: number = 15000,
+        delay: number = this.getRetryDelayInMs(),
     ): Promise<Result<T>> {
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {

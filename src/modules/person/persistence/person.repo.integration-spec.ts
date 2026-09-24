@@ -141,6 +141,8 @@ describe('PersonRepository Integration', () => {
             .useValue(createMock(ClassLogger))
             .compile();
         sut = module.get(PersonRepository);
+        // Avoid real wait time for privacyIDEA sync during rename in tests
+        (sut as unknown as { RENAME_WAITING_TIME_IN_SECONDS: number }).RENAME_WAITING_TIME_IN_SECONDS = 0;
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         personPermissionsMock = createPersonPermissionsMock();
