@@ -1,6 +1,7 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { LdapRetryConfig } from './ldap-retry.config.js';
 
-export class LdapEmailMicroserviceConfig {
+export class LdapEmailMicroserviceConfig extends LdapRetryConfig {
     @IsBoolean()
     @IsNotEmpty()
     public readonly ENABLED!: boolean;
@@ -28,14 +29,4 @@ export class LdapEmailMicroserviceConfig {
     @IsString()
     @IsNotEmpty()
     public readonly BASE_DN!: string;
-
-    @Min(0)
-    @IsInt()
-    @IsOptional()
-    public readonly RETRY_WRAPPER_DEFAULT_RETRIES?: number;
-
-    @Min(0)
-    @IsInt()
-    @IsOptional()
-    public readonly RETRY_WRAPPER_RETRY_DELAY_IN_MS?: number;
 }

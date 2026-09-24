@@ -12,8 +12,8 @@ export class LdapInstanceConfig implements LdapServerConfig {
         public BASE_DN: string,
         public OEFFENTLICHE_SCHULEN_DOMAIN?: string,
         public ERSATZSCHULEN_DOMAIN?: string,
-        public RETRY_WRAPPER_DEFAULT_RETRIES?: number,
-        public RETRY_WRAPPER_RETRY_DELAY_IN_MS?: number,
+        public RETRY_WRAPPER_DEFAULT_RETRIES: number = 3,
+        public RETRY_WRAPPER_RETRY_DELAY_IN_MS: number = 15000,
     ) {}
 
     public static fromConfigService(): Provider {

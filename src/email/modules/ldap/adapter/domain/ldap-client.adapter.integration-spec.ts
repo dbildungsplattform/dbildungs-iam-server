@@ -293,7 +293,7 @@ describe('LDAP Client Adapter', () => {
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
             vi.useFakeTimers();
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 3;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
