@@ -82,13 +82,6 @@ export class RollenerweiterungRepo {
         return this.mapEntityToAggregate(entity);
     }
 
-    /**
-     * Persistiert eine Rollenerweiterung ohne Berechtigungs- oder
-     * Konsistenzprüfung.
-     *
-     * Existiert die Rollenerweiterung bereits, wird das vorhandene
-     * Aggregate zurückgegeben.
-     */
     public async create(rollenerweiterung: Rollenerweiterung<false>): Promise<Rollenerweiterung<true>> {
         const ids: RollenerweiterungIds = {
             organisationId: rollenerweiterung.organisationId,
