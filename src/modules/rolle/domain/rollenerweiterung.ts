@@ -1,22 +1,16 @@
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import {
     OrganisationID,
     RolleID,
     RollenerweiterungID,
     ServiceProviderID,
 } from '../../../shared/types/aggregate-ids.types.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { RolleRepo } from '../repo/rolle.repo.js';
+import { Err, Ok } from '../../../shared/util/result.js';
+import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
+import { NoRedundantRollenerweiterung } from '../specification/no-redundant-rollenerweiterung.specification.js';
 import { Rolle } from './rolle.js';
 
 export class Rollenerweiterung<WasPersisted extends boolean> {
     private constructor(
-        private readonly organisationRepo: OrganisationRepository,
-        private readonly rolleRepo: RolleRepo,
-        private readonly serviceProviderRepo: ServiceProviderRepo,
         public readonly id: Persisted<RollenerweiterungID, WasPersisted>,
         public readonly createdAt: Persisted<Date, WasPersisted>,
         public readonly updatedAt: Persisted<Date, WasPersisted>,
@@ -25,87 +19,37 @@ export class Rollenerweiterung<WasPersisted extends boolean> {
         public readonly serviceProviderId: ServiceProviderID,
     ) {}
 
-    public static construct<WasPersisted extends boolean = false>(
-        organisationRepo: OrganisationRepository,
-        rolleRepo: RolleRepo,
-        serviceProviderRepo: ServiceProviderRepo,
+    public static construct(
         id: RollenerweiterungID,
         createdAt: Date,
         updatedAt: Date,
         organisationId: OrganisationID,
         rolleId: RolleID,
         serviceProviderId: ServiceProviderID,
-    ): Rollenerweiterung<WasPersisted> {
-        return new Rollenerweiterung<WasPersisted>(
-            organisationRepo,
-            rolleRepo,
-            serviceProviderRepo,
-            id,
-            createdAt,
-            updatedAt,
-            organisationId,
-            rolleId,
-            serviceProviderId,
-        );
+    ): Rollenerweiterung<true> {
+        return new Rollenerweiterung<true>(id, createdAt, updatedAt, organisationId, rolleId, serviceProviderId);
     }
 
     public static createNew(
-        organisationRepo: OrganisationRepository,
-        rolleRepo: RolleRepo,
-        serviceProviderRepo: ServiceProviderRepo,
         organisationId: OrganisationID,
-        rolleId: RolleID,
+        rolle: Rolle<true>,
         serviceProviderId: ServiceProviderID,
-    ): Rollenerweiterung<false> {
-        return new Rollenerweiterung<false>(
-            organisationRepo,
-            rolleRepo,
-            serviceProviderRepo,
+    ): Result<Rollenerweiterung<false>, NoRedundantRollenerweiterungError> {
+        const rollenerweiterung: Rollenerweiterung<false> = new Rollenerweiterung<false>(
             undefined,
             undefined,
             undefined,
             organisationId,
-            rolleId,
+            rolle.id,
             serviceProviderId,
         );
-    }
 
-    public async checkReferences(): Promise<Option<EntityNotFoundError>> {
-        const [organisation, rolle, serviceProvider]: [
-            Option<Organisation<true>>,
-            Option<Rolle<true>>,
-            Option<ServiceProvider<true>>,
-        ] = await Promise.all([
-            this.organisationRepo.findById(this.organisationId),
-            this.rolleRepo.findById(this.rolleId),
-            this.serviceProviderRepo.findById(this.serviceProviderId),
-        ]);
-        if (!organisation) {
-            return new EntityNotFoundError('Organisation', this.organisationId);
-        }
-        if (!rolle) {
-            return new EntityNotFoundError('Rolle', this.rolleId);
+        const noRedundantRollenerweiterung: NoRedundantRollenerweiterung = new NoRedundantRollenerweiterung();
+
+        if (!noRedundantRollenerweiterung.isSatisfiedBy(rollenerweiterung, rolle)) {
+            return Err(new NoRedundantRollenerweiterungError());
         }
 
-        if (!(await rolle.canBeAssignedToOrga(organisation)).ok) {
-            return new EntityNotFoundError('Rolle', this.rolleId);
-        }
-
-        if (!serviceProvider) {
-            return new EntityNotFoundError('ServiceProvider', this.serviceProviderId);
-        }
-        return undefined;
-    }
-
-    public async getOrganisation(): Promise<Option<Organisation<true>>> {
-        return this.organisationRepo.findById(this.organisationId);
-    }
-
-    public async getRolle(): Promise<Option<Rolle<true>>> {
-        return this.rolleRepo.findById(this.rolleId);
-    }
-
-    public async getServiceProvider(): Promise<Option<ServiceProvider<true>>> {
-        return this.serviceProviderRepo.findById(this.serviceProviderId);
+        return Ok(rollenerweiterung);
     }
 }
