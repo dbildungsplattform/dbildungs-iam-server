@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
+import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
-import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { DomainError, EntityCouldNotBeUpdated, MissingPermissionsError } from '../../../shared/error/index.js';
@@ -637,7 +637,12 @@ describe('OrganisationService', () => {
                 kennung: kennung,
                 name: name,
             });
-            const counted: Counted<Organisation<true>> = [[organisation], 1];
+            const otherOrganisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: kennung,
+                name: faker.string.alpha(),
+            });
+            const counted: Counted<Organisation<true>> = [[otherOrganisation], 1];
             organisationRepositoryMock.findById.mockResolvedValue(organisation);
             organisationRepositoryMock.findBy.mockResolvedValueOnce(counted);
             organisationRepositoryMock.save.mockResolvedValue(organisation);
@@ -650,6 +655,34 @@ describe('OrganisationService', () => {
             expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new SchuleKennungEindeutigError(),
+            });
+        });
+
+        it('should update the organisation if kennung is unique except for itself', async () => {
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+            organisationRepositoryMock.findById.mockResolvedValue(organisationUser);
+
+            const name: string = faker.string.alpha();
+            const kennung: string = faker.string.numeric({ length: 7 });
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: kennung,
+                name: name,
+            });
+            // findBy returns the organisation itself (same id), e.g. because kennung was unchanged
+            const counted: Counted<Organisation<true>> = [[organisation], 1];
+            organisationRepositoryMock.findById.mockResolvedValue(organisation);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce(counted);
+            organisationRepositoryMock.save.mockResolvedValue(organisation);
+
+            const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                organisation,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: true,
+                value: organisation,
             });
         });
 
