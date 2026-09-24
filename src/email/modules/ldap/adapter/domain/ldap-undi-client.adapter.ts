@@ -8,6 +8,8 @@ import { LdapUndiEmailMicroserviceInstanceConfig } from '../technical/ldap-undi-
 import { LdapBindError } from './error/ldap-bind.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { Ok } from '../../../../../shared/util/result.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -81,6 +83,17 @@ export class LdapUndiClientAdapter {
     // UpsertPerson (takes in person and group data)
     // DeletePerson
     // UpdateGroup (for renamed events)
+
+    /**
+     * Updates the group in ldap, if it exists (kennung must not be updated!)
+     * @param id
+     * @param name
+     * @returns
+     */
+    public async updateGroup(id: string, name: string): Promise<Result<void, LdapEmailDomainError>> {
+        // TODO
+        return Ok();
+    }
 
     public useLdap(): boolean {
         return this.ldapInstanceConfig.ENABLED;
