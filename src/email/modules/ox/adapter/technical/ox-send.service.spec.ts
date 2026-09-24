@@ -195,8 +195,6 @@ describe('OxSendService', () => {
                 },
             };
 
-            vi.useFakeTimers();
-
             const mockAction: DeepMocked<MockAction> = createMock(MockAction);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error));
             httpServiceMock.post.mockReturnValueOnce(throwError(() => error)); // Retry
@@ -229,8 +227,6 @@ describe('OxSendService', () => {
                         '</soap:Envelope>',
                 },
             };
-
-            vi.useFakeTimers();
 
             const mockAction: DeepMocked<MockAction> = createMock(MockAction);
             httpServiceMock.post.mockReturnValueOnce(throwError(() => faultyErrorWithMissingFaultString));
