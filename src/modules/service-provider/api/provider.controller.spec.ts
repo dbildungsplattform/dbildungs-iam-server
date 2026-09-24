@@ -500,13 +500,14 @@ describe('Provider Controller Test', () => {
                 const spResponse: ServiceProviderResponse[] =
                     await providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: orga.id,
+                        rollenArt: RollenArt.LEHR,
                     });
                 expect(spResponse).toBeDefined();
                 expect(spResponse).toBeInstanceOf(Array);
                 expect(spResponse).toHaveLength(1);
                 expect(
                     serviceProviderFindServiceMock.findServiceProvidersForRolleBySchulstrukturknotenAuthorized,
-                ).toHaveBeenCalledWith(personPermissionsMock, orga.id);
+                ).toHaveBeenCalledWith(personPermissionsMock, orga.id, RollenArt.LEHR);
             });
         });
 
@@ -520,6 +521,7 @@ describe('Provider Controller Test', () => {
                 const spResponse: ServiceProviderResponse[] =
                     await providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: orgaId,
+                        rollenArt: RollenArt.LEHR,
                     });
                 expect(spResponse).toBeDefined();
                 expect(spResponse).toBeInstanceOf(Array);
@@ -536,6 +538,7 @@ describe('Provider Controller Test', () => {
                 await expect(
                     providerController.getAssignableServiceProvidersForRolle(personPermissionsMock, {
                         schulstrukturknotenOfRolle: faker.string.uuid(),
+                        rollenArt: RollenArt.LEHR,
                     }),
                 ).rejects.toBeInstanceOf(MissingPermissionsError);
             });
@@ -582,6 +585,7 @@ describe('Provider Controller Test', () => {
                 expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
                     organisationId,
                     personPermissionsMock,
+                    queryParams.rollenArten,
                 );
                 expect(result).toBeInstanceOf(RawPagedResponse);
                 expect(result.total).toBe(1);
@@ -1010,6 +1014,7 @@ describe('Provider Controller Test', () => {
                 undefined,
                 body.merkmale,
                 body.rollenartenWhitelist,
+                undefined,
             );
             expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
                 personPermissionsMock,
@@ -1062,6 +1067,7 @@ describe('Provider Controller Test', () => {
                 undefined,
                 body.merkmale,
                 [],
+                undefined,
             );
             expect(serviceProviderModificationServiceMock.create).toHaveBeenCalledWith(
                 personPermissionsMock,

@@ -54,6 +54,7 @@ function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         externalSystem: serviceProvider.externalSystem,
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
+        keycloakClientId: serviceProvider.keycloakClientId,
         merkmale,
         rollenartenWhitelist,
     };
@@ -86,6 +87,7 @@ function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProvider<bo
         entity.vidisAngebotId,
         merkmale,
         rollenartenWhitelist,
+        entity.keycloakClientId,
     );
 }
 
@@ -339,6 +341,28 @@ export class ServiceProviderRepo {
             await this.em.find(
                 ServiceProviderEntity,
                 { providedOnSchulstrukturknoten: { $in: organisationIds } },
+                {
+                    exclude,
+                },
+            )
+        ).map(mapEntityToAggregate);
+    }
+
+    public async findBySchulstrukturknotenWithRollenArtWhitelist(
+        organisationIds: Array<OrganisationID>,
+        rollenArt: RollenArt,
+    ): Promise<Array<ServiceProvider<true>>> {
+        const exclude: readonly ['logo'] | undefined = ['logo'];
+        return (
+            await this.em.find(
+                ServiceProviderEntity,
+                {
+                    providedOnSchulstrukturknoten: { $in: organisationIds },
+                    $or: [
+                        { rollenartenWhitelist: { rollenart: rollenArt } },
+                        { rollenartenWhitelist: { $exists: false } },
+                    ],
+                },
                 {
                     exclude,
                 },

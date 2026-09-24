@@ -122,6 +122,7 @@ export class ProviderController {
             await this.serviceProviderFindService.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                 permissions,
                 query.schulstrukturknotenOfRolle,
+                query.rollenArt,
             );
 
         if (!result.ok) {
@@ -148,7 +149,6 @@ export class ProviderController {
         @Permissions() permissions: PersonPermissions,
     ): Promise<RawPagedResponse<ServiceProviderResponse>> {
         let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
-
         if (
             queryParams.systemrechte?.length === 1 &&
             queryParams.systemrechte[0] === RollenSystemRechtEnum.ROLLEN_ERWEITERN &&
@@ -157,6 +157,7 @@ export class ProviderController {
             angeboteAndTotal = await this.serviceProviderService.findAllowedProvidersForRollenerweiterungAtOrga(
                 queryParams.organisationId,
                 permissions,
+                queryParams.rollenArten,
             );
         }
 
@@ -504,6 +505,7 @@ export class ProviderController {
             undefined, // vidisAngebotId
             body.merkmale,
             body.rollenartenWhitelist ?? [],
+            undefined, // keycloakClientId
         );
         if (!serviceProvider.ok) {
             throw serviceProvider.error;
