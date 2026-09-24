@@ -49,7 +49,6 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { ApplyRollenerweiterungForRolleService } from '../domain/apply-rollenerweiterungen-for-rolle-service.js';
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
@@ -77,6 +76,7 @@ import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
 
 @UseFilters(new RolleExceptionFilter(), new ApplyRollenerweiterungMultiExceptionFilter())
 @ApiTags('rolle')
@@ -94,7 +94,7 @@ export class RolleController {
         private readonly logger: ClassLogger,
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
         private readonly rollenerweiterungFactory: RollenerweiterungFactory,
-        private readonly applyRollenerweiterungService: ApplyRollenerweiterungForRolleService,
+        private readonly applyRollenerweiterungService: ApplyRollenerweiterungService,
     ) {}
 
     @Get()
