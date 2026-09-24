@@ -41,7 +41,7 @@ export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParam
     @IsOptional()
     @TransformToArray()
     @ApiProperty({
-        description: 'The rollenIds for which the available rollen should be found',
+        description: 'The rollenIds that are currently selected and should always be returned.',
         required: false,
         nullable: true,
         type: [String],
