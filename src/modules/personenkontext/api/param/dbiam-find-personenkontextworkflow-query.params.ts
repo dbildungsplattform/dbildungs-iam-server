@@ -27,7 +27,7 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsUUID()
     @IsOptional()
     @ApiProperty({
-        description: 'ID of the organisation to filter the rollen later',
+        description: 'ID of the organisation where the Personenkontexte should be created',
         required: false,
         nullable: true,
     })
@@ -58,7 +58,7 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsNumber()
     @IsOptional()
     @ApiProperty({
-        description: 'The limit of items for the request.',
+        description: 'The limit for the returned organisations.',
         required: false,
         nullable: false,
     })
