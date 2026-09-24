@@ -255,7 +255,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         .query({
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
-                            requestedWithSystemrecht: RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
                         } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);

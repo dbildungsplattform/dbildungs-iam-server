@@ -1,9 +1,8 @@
-import { ArrayUnique, IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
-import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../../rolle/domain/systemrecht.js';
-import { OperationContext } from '../../domain/personenkontext.enums.js';
+import { ArrayUnique, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PersonID } from '../../../../shared/types/aggregate-ids.types.js';
+import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
+import { OperationContext } from '../../domain/personenkontext.enums.js';
 
 export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsEnum(OperationContext)
@@ -18,7 +17,7 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsUUID()
     @IsOptional()
     @ApiProperty({
-        description: 'ID of the person to be modified, will restrict the returned roles',
+        description: 'ID of the person to be modified',
         required: false,
         nullable: true,
     })
@@ -38,7 +37,7 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
     @IsOptional()
     @TransformToArray()
     @ApiProperty({
-        description: 'IDs of the rollen.',
+        description: 'IDs of the selected rollen.',
         required: false,
         nullable: true,
         isArray: true,
@@ -63,20 +62,4 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
         nullable: false,
     })
     public readonly limit?: number;
-
-    @IsEnum(RollenSystemRechtEnum)
-    @IsOptional()
-    @IsIn([
-        RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-        RollenSystemRechtEnum.PERSONEN_ANLEGEN,
-        RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-    ])
-    @ApiProperty({
-        enum: RollenSystemRechtEnum,
-        enumName: RollenSystemRechtEnumName,
-        description: `The systemrecht used to filter for rollen in personenkontext. Must be one of ${RollenSystemRechtEnum.PERSONEN_VERWALTEN}, ${RollenSystemRechtEnum.PERSONEN_ANLEGEN} or ${RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN}. Defaults to ${RollenSystemRechtEnum.PERSONEN_VERWALTEN}`,
-        required: false,
-        nullable: true,
-    })
-    public readonly requestedWithSystemrecht?: RollenSystemRechtEnum;
 }
