@@ -43,7 +43,7 @@
             "rollenart": "LEHR",
             "merkmale": ["KOPERS_PFLICHT"],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 15, 16, 17, 43]
+            "serviceProviderIds": [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 15, 16, 17, 43, 44]
         },
         {
             "id": 3,
@@ -235,6 +235,15 @@
             "merkmale": [],
             "systemrechte": [],
             "serviceProviderIds": [13, 14]
+        },
+        {
+            "id": 103,
+            "administeredBySchulstrukturknoten": 0,
+            "name": "VIDIS-Test Zugriff (smueller)",
+            "rollenart": "LERN",
+            "merkmale": [],
+            "systemrechte": [],
+            "serviceProviderIds": [44]
         }
     ]
 }

@@ -57,6 +57,7 @@ type NeedsDbAngebotUpdateResult = {
     isNameChanged: boolean;
     isUrlChanged: boolean;
     isLogoChanged: boolean;
+    isKeycloakClientIdChanged: boolean;
 };
 
 @Injectable()
@@ -445,7 +446,8 @@ export class VidisSyncService {
             `Updating VIDIS Angebot with id ${angebotInDb.id} in DB because it differs from VIDIS API. ` +
                 `Name changed: ${needsDbUpdate.isNameChanged}${needsDbUpdate.isNameChanged ? ` (before: "${angebotInDb.name}", after: "${matchingAngebotInVidis.offerTitle.toString()}")` : ''}, ` +
                 `URL changed: ${needsDbUpdate.isUrlChanged}${needsDbUpdate.isUrlChanged ? ` (before: "${angebotInDb.url}", after: "${matchingAngebotInVidis.offerLink}")` : ''}, ` +
-                `Logo changed: ${needsDbUpdate.isLogoChanged}`,
+                `Logo changed: ${needsDbUpdate.isLogoChanged}, ` +
+                `Keycloak Client Id changed: ${needsDbUpdate.isKeycloakClientIdChanged}`,
         );
         if (needsDbUpdate.isNameChanged) {
             angebotInDb.name = matchingAngebotInVidis.offerTitle.toString();
@@ -459,6 +461,9 @@ export class VidisSyncService {
             );
             angebotInDb.logo = logo;
             angebotInDb.logoMimeType = logoMimeType;
+        }
+        if (needsDbUpdate.isKeycloakClientIdChanged) {
+            angebotInDb.keycloakClientId = this.vidisConfig.KEYCLOAK_CLIENT_ID;
         }
 
         const updateResult: Result<
@@ -501,11 +506,14 @@ export class VidisSyncService {
             isLogoChanged = true;
         }
 
+        const isKeycloakClientIdChanged: boolean = angebotInDb.keycloakClientId !== this.vidisConfig.KEYCLOAK_CLIENT_ID;
+
         return {
-            needUpdate: isNameChanged || isUrlChanged || isLogoChanged,
+            needUpdate: isNameChanged || isUrlChanged || isLogoChanged || isKeycloakClientIdChanged,
             isNameChanged,
             isUrlChanged,
             isLogoChanged,
+            isKeycloakClientIdChanged,
         };
     }
 
@@ -531,6 +539,7 @@ export class VidisSyncService {
             angebot.offerId.toString(),
             VidisSyncService.DEFAULT_VIDIS_SERVICE_PROVIDER_MERKMALE,
             [],
+            this.vidisConfig.KEYCLOAK_CLIENT_ID,
         );
     }
 
