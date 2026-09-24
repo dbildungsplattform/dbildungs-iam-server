@@ -23,6 +23,7 @@ data:
   LDAP_OEFFENTLICHE_SCHULEN_DOMAIN: "{{ .Values.ldap.oeffentlicheSchulenDomain }}"
   LDAP_ERSATZSCHULEN_DOMAIN: "{{ .Values.ldap.ersatzschulenDomain }}"
   RETRY_WRAPPER_DEFAULT_RETRIES: "{{ .Values.ldap.retryWrapperDefaultRetries }}"
+  RETRY_WRAPPER_RETRY_DELAY_IN_MS: "{{ .Values.ldap.retryWrapperRetryDelayInMs }}"
   STATUS_REDIRECT_URL: "{{ .Values.status.url }}"
   PI_BASE_URL:  "{{ .Values.privacyidea.url }}"
   PI_RENAME_WAITING_TIME:  "{{ .Values.privacyidea.renameWaitingTime }}"

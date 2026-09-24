@@ -64,6 +64,7 @@ export default (): Config => ({
         ERSATZSCHULEN_DOMAIN: process.env['LDAP_ERSATZSCHULEN_DOMAIN'],
         BASE_DN: process.env['LDAP_BASE_DN'],
         RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('RETRY_WRAPPER_DEFAULT_RETRIES'),
+        RETRY_WRAPPER_RETRY_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_RETRY_DELAY_IN_MS'),
     },
     FRONTEND: {
         SESSION_SECRET: process.env['FRONTEND_SESSION_SECRET'],
