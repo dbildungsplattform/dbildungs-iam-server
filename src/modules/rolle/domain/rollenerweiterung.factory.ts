@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OrganisationID, RollenerweiterungID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
-import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
-import { Rolle } from './rolle.js';
-import { Rollenerweiterung } from './rollenerweiterung.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { Rolle } from './rolle.js';
+import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
 
 @Injectable()
 export class RollenerweiterungFactory {
@@ -22,7 +21,7 @@ export class RollenerweiterungFactory {
         organisationId: OrganisationID,
         rolle: Rolle<true>,
         serviceProvider: ServiceProvider<true>,
-    ): Result<Rollenerweiterung<false>, NoRedundantRollenerweiterungError> {
+    ): Result<Rollenerweiterung<false>, CreateRollenerweiterungError> {
         return Rollenerweiterung.createNew(organisationId, rolle, serviceProvider);
     }
 }

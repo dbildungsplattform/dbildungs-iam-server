@@ -43,7 +43,7 @@ export class Rollenerweiterung<WasPersisted extends boolean> {
         organisationId: OrganisationID,
         rolle: Rolle<true>,
         serviceProvider: ServiceProvider<true>,
-    ): Result<Rollenerweiterung<false>, NoRedundantRollenerweiterungError> {
+    ): Result<Rollenerweiterung<false>, CreateRollenerweiterungError> {
         const rollenerweiterung: Rollenerweiterung<false> = new Rollenerweiterung<false>(
             undefined,
             undefined,
