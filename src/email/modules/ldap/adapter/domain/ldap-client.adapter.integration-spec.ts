@@ -14,6 +14,7 @@ import {
     expectErrResult,
     expectOkResult,
 } from '../../../../../../test/utils/index.js';
+import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
 import { EmailLdapModule } from '../../email-ldap.module.js';
@@ -23,7 +24,6 @@ import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
-import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
@@ -52,6 +52,7 @@ describe('LDAP Client Adapter', () => {
         OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
         ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
         RETRY_WRAPPER_DEFAULT_RETRIES: 2,
+        RETRY_WRAPPER_RETRY_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',
@@ -291,17 +292,34 @@ describe('LDAP Client Adapter', () => {
         });
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
+            vi.useFakeTimers();
+            // Build the config without the retry-count arg so the constructor default drives the retries; only the delay is overridden for speed.
+            const defaultRetriesConfig: LdapEmailMicroserviceInstanceConfig = new LdapEmailMicroserviceInstanceConfig(
+                instanceConfig.ENABLED,
+                instanceConfig.URL,
+                instanceConfig.BIND_DN,
+                instanceConfig.ADMIN_PASSWORD,
+                instanceConfig.BASE_DN,
+                instanceConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
+                instanceConfig.ERSATZSCHULEN_DOMAIN,
+                undefined,
+                1,
+            );
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = defaultRetriesConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
+            instanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS = defaultRetriesConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(30000);
+            const result: Result<boolean> = await resultPromise;
+            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(3);
@@ -321,16 +339,20 @@ describe('LDAP Client Adapter', () => {
         });
 
         it('when operation fails and throws Error it should automatically retry the operation with nr of retries set via env', async () => {
+            vi.useFakeTimers();
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error());
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<boolean> = await resultPromise;
+            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);

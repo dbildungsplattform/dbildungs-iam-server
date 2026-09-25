@@ -1,6 +1,7 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { LdapRetryConfig } from './ldap-retry.config.js';
 
-export class LdapServerConfig {
+export class LdapServerConfig extends LdapRetryConfig {
     @IsString()
     @IsNotEmpty()
     public readonly URL!: string;
@@ -24,9 +25,4 @@ export class LdapServerConfig {
     @IsString()
     @IsNotEmpty()
     public readonly BASE_DN!: string;
-
-    @Min(0)
-    @IsInt()
-    @IsOptional()
-    public readonly RETRY_WRAPPER_DEFAULT_RETRIES?: number;
 }

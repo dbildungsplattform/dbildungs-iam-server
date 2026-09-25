@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { Attribute, Change, Client, SearchResult } from 'ldapts';
-import { LdapPersonEntry } from './ldap.types.js';
-import { LdapClient } from '../technical/ldap-client.js';
 import { Mutex } from 'async-mutex';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { Attribute, Change, Client, SearchResult } from 'ldapts';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { PersonExternalID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
-import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
 import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapDeletePersonError } from './error/ldap-delete-person.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -32,8 +32,6 @@ export type PersonData = {
 
 @Injectable()
 export class LdapClientAdapter {
-    public static readonly FALLBACK_RETRIES: number = 3; // e.g. FALLBACK_RETRIES = 3 will produce retry sequence: 1sek, 8sek, 27sek (1000ms * retrycounter^3)
-
     public static readonly OEFFENTLICHE_SCHULEN_DOMAIN_DEFAULT: string = 'schule-sh.de';
 
     public static readonly ERSATZ_SCHULEN_DOMAIN_DEFAULT: string = 'ersatzschule-sh.de';
@@ -126,9 +124,7 @@ export class LdapClientAdapter {
     //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
 
     private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES != null
-            ? this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES
-            : LdapClientAdapter.FALLBACK_RETRIES;
+        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -442,7 +438,7 @@ export class LdapClientAdapter {
     private async executeWithRetry<T>(
         func: () => Promise<Result<T>>,
         retries: number,
-        delay: number = 15000,
+        delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
     ): Promise<Result<T>> {
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {

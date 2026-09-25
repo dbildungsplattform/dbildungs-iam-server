@@ -1,6 +1,6 @@
 import { Injectable, Provider } from '@nestjs/common';
-import { LdapEmailMicroserviceConfig } from '../../../../../shared/config/ldap-email-microservice.config.js';
 import { EmailAppConfig } from '../../../../../shared/config/index.js';
+import { LdapEmailMicroserviceConfig } from '../../../../../shared/config/ldap-email-microservice.config.js';
 
 @Injectable()
 export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroserviceConfig {
@@ -12,7 +12,8 @@ export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroservic
         public BASE_DN: string,
         public OEFFENTLICHE_SCHULEN_DOMAIN?: string,
         public ERSATZSCHULEN_DOMAIN?: string,
-        public RETRY_WRAPPER_DEFAULT_RETRIES?: number,
+        public RETRY_WRAPPER_DEFAULT_RETRIES: number = 3,
+        public RETRY_WRAPPER_RETRY_DELAY_IN_MS: number = 15000,
     ) {}
 
     public static fromConfigService(): Provider {
@@ -30,6 +31,7 @@ export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroservic
                     ldapConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
                     ldapConfig.ERSATZSCHULEN_DOMAIN,
                     ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES,
+                    ldapConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
                 );
             },
             inject: [EmailAppConfig],

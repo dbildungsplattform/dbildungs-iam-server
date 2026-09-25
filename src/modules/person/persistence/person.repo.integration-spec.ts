@@ -141,6 +141,8 @@ describe('PersonRepository Integration', () => {
             .useValue(createMock(ClassLogger))
             .compile();
         sut = module.get(PersonRepository);
+        // Avoid real wait time for privacyIDEA sync during rename in tests
+        (sut as unknown as { RENAME_WAITING_TIME_IN_SECONDS: number }).RENAME_WAITING_TIME_IN_SECONDS = 0;
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         personPermissionsMock = createPersonPermissionsMock();
@@ -963,6 +965,7 @@ describe('PersonRepository Integration', () => {
                     );
                     await expect(sut.update(personConstructed)).resolves.toBeInstanceOf(Person<true>);
                     const result: Person<true> | DomainError = await sut.update(personConstructed);
+
                     expect(result).not.toBeInstanceOf(DomainError);
                     if (result instanceof DomainError) {
                         return;
@@ -1196,7 +1199,9 @@ describe('PersonRepository Integration', () => {
                 );
                 usernameGeneratorService.generateUsername.mockResolvedValue({ ok: true, value: 'newtestusername' });
                 vi.spyOn(sut, 'getUsername').mockReturnValueOnce(undefined);
+
                 const result: Person<true> | DomainError = await sut.update(personConstructed);
+
                 expect(result).toBeInstanceOf(Person);
                 if (result instanceof Person) {
                     expect(result.username).toEqual('newtestusername');
