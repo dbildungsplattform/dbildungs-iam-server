@@ -502,9 +502,6 @@ export class RolleFindService {
         }
 
         const selectedOrgasWithParents: OrganisationID[] = await this.getOrganisationIdsWithParents(narrowedSelection);
-        if (selectedOrgasWithParents.length === 0) {
-            return { kind: OrganisationBoundsKind.EMPTY };
-        }
 
         return {
             selectedAndPermittedOrgas: narrowedSelection,

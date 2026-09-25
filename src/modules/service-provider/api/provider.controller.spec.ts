@@ -572,6 +572,7 @@ describe('Provider Controller Test', () => {
                     systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
                     offset: 3,
                     limit: 25,
+                    rollenArten: [RollenArt.LEHR],
                 });
 
                 serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([
