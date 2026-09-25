@@ -95,6 +95,16 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
+    /**
+     * Delete a group in ldap
+     * @param id
+     * @returns
+     */
+    public async deleteGroup(id: string): Promise<Result<void, LdapEmailDomainError>> {
+        // TODO
+        return Ok();
+    }
+
     public useLdap(): boolean {
         return this.ldapInstanceConfig.ENABLED;
     }
