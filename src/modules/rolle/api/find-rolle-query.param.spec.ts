@@ -4,7 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { ValidationError, validateSync } from 'class-validator';
 
 import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
-import { FindRollenQueryParams } from './find-rollen-query.params.js';
+import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 
 describe('FindRollenQueryParams', () => {
     it('should accept MPT_ROLLEN_ZUORDNEN for rollen admin queries', () => {
