@@ -51,6 +51,20 @@ interface RemoveRollenerweiterungParams {
     errorIdType: ErrorIdType;
 }
 
+interface OrganisationAndRolleContext {
+    organisation: Organisation<true>;
+    rolle: Rolle<true>;
+}
+
+interface OrganisationAndServiceProviderContext {
+    organisation: Organisation<true>;
+    serviceProvider: ServiceProvider<true>;
+}
+
+interface CreateRollenerweiterungContext extends OrganisationAndRolleContext {
+    serviceProvider: ServiceProvider<true>;
+}
+
 type ApplyChangesResult = Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError>;
 
 function isErrorResult(
@@ -83,30 +97,19 @@ export class ApplyRollenerweiterungService {
             return permissionResult;
         }
 
-        const organisation: Option<Organisation<true>> = await this.organisationRepo.findById(organisationId);
-        if (!organisation) {
+        const contextResult: Result<OrganisationAndRolleContext, EntityNotFoundError> =
+            await this.loadOrganisationAndRolle(organisationId, rolleId);
+        if (!contextResult.ok) {
             this.logger.error(
                 `applyRollenerweiterungChangesForRolle called by ` +
                     `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `organisation ${organisationId}`,
+                    `${permissions.personFields.id}. ` +
+                    `Error: ${contextResult.error.message}`,
             );
 
-            return Err(new EntityNotFoundError('Orga', organisationId));
+            return contextResult;
         }
-
-        const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds([rolleId]);
-        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-        if (!rolle) {
-            this.logger.error(
-                `applyRollenerweiterungChangesForRolle called by ` +
-                    `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `rolle ${rolleId}`,
-            );
-
-            return Err(new EntityNotFoundError('Rolle', rolleId));
-        }
+        const { organisation, rolle }: OrganisationAndRolleContext = contextResult.value;
 
         const mptPermissionResult: Result<null, MissingPermissionsError> = await this.checkMptPermissionForRolle(
             permissions,
@@ -171,33 +174,19 @@ export class ApplyRollenerweiterungService {
             return permissionResult;
         }
 
-        const [organisation, serviceProvider]: [Option<Organisation<true>>, Option<ServiceProvider<true>>] =
-            await Promise.all([
-                this.organisationRepo.findById(organisationId),
-                this.serviceProviderRepo.findById(angebotId),
-            ]);
-
-        if (!organisation) {
+        const contextResult: Result<OrganisationAndServiceProviderContext, EntityNotFoundError> =
+            await this.loadOrganisationAndServiceProvider(organisationId, angebotId);
+        if (!contextResult.ok) {
             this.logger.error(
                 `applyRollenerweiterungChangesForAngebot called by ` +
                     `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `organisation ${organisationId}`,
+                    `${permissions.personFields.id}. ` +
+                    `Error: ${contextResult.error.message}`,
             );
 
-            return Err(new EntityNotFoundError('Orga', organisationId));
+            return contextResult;
         }
-
-        if (!serviceProvider) {
-            this.logger.error(
-                `applyRollenerweiterungChangesForAngebot called by ` +
-                    `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `angebot ${angebotId}`,
-            );
-
-            return Err(new EntityNotFoundError('Angebot', angebotId));
-        }
+        const { organisation, serviceProvider }: OrganisationAndServiceProviderContext = contextResult.value;
 
         const existingErweiterungen: Rollenerweiterung<true>[] =
             await this.rollenerweiterungRepo.findManyByOrganisationIdAndServiceProviderId(organisationId, angebotId);
@@ -249,48 +238,19 @@ export class ApplyRollenerweiterungService {
             return permissionResult;
         }
 
-        const [organisation, rollen, serviceProvider]: [
-            Option<Organisation<true>>,
-            Map<string, Rolle<true>>,
-            Option<ServiceProvider<true>>,
-        ] = await Promise.all([
-            this.organisationRepo.findById(organisationId),
-            this.rolleRepo.findByIds([rolleId]),
-            this.serviceProviderRepo.findById(serviceProviderId),
-        ]);
-        if (!organisation) {
+        const contextResult: Result<CreateRollenerweiterungContext, EntityNotFoundError> =
+            await this.loadCreateRollenerweiterungContext(organisationId, rolleId, serviceProviderId);
+        if (!contextResult.ok) {
             this.logger.error(
                 `createRollenerweiterung called by ` +
                     `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `organisation ${organisationId}`,
+                    `${permissions.personFields.id}. ` +
+                    `Error: ${contextResult.error.message}`,
             );
 
-            return Err(new EntityNotFoundError('Orga', organisationId));
+            return contextResult;
         }
-
-        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-        if (!rolle) {
-            this.logger.error(
-                `createRollenerweiterung called by ` +
-                    `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `rolle ${rolleId}`,
-            );
-
-            return Err(new EntityNotFoundError('Rolle', rolleId));
-        }
-
-        if (!serviceProvider) {
-            this.logger.error(
-                `createRollenerweiterung called by ` +
-                    `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id} for not existing ` +
-                    `serviceProvider ${serviceProviderId}`,
-            );
-
-            return Err(new EntityNotFoundError('ServiceProvider', serviceProviderId));
-        }
+        const { organisation, rolle, serviceProvider }: CreateRollenerweiterungContext = contextResult.value;
 
         const mptPermissionResult: Result<null, MissingPermissionsError> = await this.checkMptPermissionForRolle(
             permissions,
@@ -317,17 +277,10 @@ export class ApplyRollenerweiterungService {
             return permissionResult;
         }
 
-        const [organisation, rollen]: [Option<Organisation<true>>, Map<string, Rolle<true>>] = await Promise.all([
-            this.organisationRepo.findById(organisationId),
-            this.rolleRepo.findByIds([rolleId]),
-        ]);
-        if (!organisation) {
-            return Err(new EntityNotFoundError('Orga', organisationId));
-        }
-
-        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-        if (!rolle) {
-            return Err(new EntityNotFoundError('Rolle', rolleId));
+        const contextResult: Result<OrganisationAndRolleContext, EntityNotFoundError> =
+            await this.loadOrganisationAndRolle(organisationId, rolleId);
+        if (!contextResult.ok) {
+            return contextResult;
         }
 
         const rollenerweiterungen: Rollenerweiterung<true>[] =
@@ -354,6 +307,88 @@ export class ApplyRollenerweiterungService {
         );
 
         return Ok(Array.from(serviceProviders.values()));
+    }
+
+    /*
+    private functions
+    */
+
+    private async loadOrganisationAndRolle(
+        organisationId: OrganisationID,
+        rolleId: RolleID,
+    ): Promise<Result<OrganisationAndRolleContext, EntityNotFoundError>> {
+        const [organisation, rollen]: [Option<Organisation<true>>, Map<string, Rolle<true>>] = await Promise.all([
+            this.organisationRepo.findById(organisationId),
+            this.rolleRepo.findByIds([rolleId]),
+        ]);
+        if (!organisation) {
+            return Err(new EntityNotFoundError('Organisation', organisationId));
+        }
+
+        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
+        if (!rolle) {
+            return Err(new EntityNotFoundError('Rolle', rolleId));
+        }
+
+        return Ok({
+            organisation,
+            rolle,
+        });
+    }
+
+    private async loadOrganisationAndServiceProvider(
+        organisationId: OrganisationID,
+        serviceProviderId: ServiceProviderID,
+    ): Promise<Result<OrganisationAndServiceProviderContext, EntityNotFoundError>> {
+        const [organisation, serviceProvider]: [Option<Organisation<true>>, Option<ServiceProvider<true>>] =
+            await Promise.all([
+                this.organisationRepo.findById(organisationId),
+                this.serviceProviderRepo.findById(serviceProviderId),
+            ]);
+        if (!organisation) {
+            return Err(new EntityNotFoundError('Organisation', organisationId));
+        }
+        if (!serviceProvider) {
+            return Err(new EntityNotFoundError('Angebot', serviceProviderId));
+        }
+
+        return Ok({
+            organisation,
+            serviceProvider,
+        });
+    }
+
+    private async loadCreateRollenerweiterungContext(
+        organisationId: OrganisationID,
+        rolleId: RolleID,
+        serviceProviderId: ServiceProviderID,
+    ): Promise<Result<CreateRollenerweiterungContext, EntityNotFoundError>> {
+        const [organisation, rollen, serviceProvider]: [
+            Option<Organisation<true>>,
+            Map<string, Rolle<true>>,
+            Option<ServiceProvider<true>>,
+        ] = await Promise.all([
+            this.organisationRepo.findById(organisationId),
+            this.rolleRepo.findByIds([rolleId]),
+            this.serviceProviderRepo.findById(serviceProviderId),
+        ]);
+        if (!organisation) {
+            return Err(new EntityNotFoundError('Orga', organisationId));
+        }
+
+        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
+        if (!rolle) {
+            return Err(new EntityNotFoundError('Rolle', rolleId));
+        }
+        if (!serviceProvider) {
+            return Err(new EntityNotFoundError('ServiceProvider', serviceProviderId));
+        }
+
+        return Ok({
+            organisation,
+            rolle,
+            serviceProvider,
+        });
     }
 
     private async createAndPersistRollenerweiterung(
@@ -401,7 +436,6 @@ export class ApplyRollenerweiterungService {
             }
 
             const serviceProvider: ServiceProvider<true> | undefined = serviceProviders.get(serviceProviderId);
-
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
@@ -457,7 +491,6 @@ export class ApplyRollenerweiterungService {
             }
 
             const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-
             if (!rolle) {
                 results.push({
                     id: rolleId,
@@ -527,7 +560,6 @@ export class ApplyRollenerweiterungService {
 
         for (const serviceProviderId of serviceProviderIds) {
             const serviceProvider: ServiceProvider<true> | undefined = serviceProviders.get(serviceProviderId);
-
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
@@ -569,7 +601,6 @@ export class ApplyRollenerweiterungService {
 
         for (const rolleId of rolleIds) {
             const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-
             if (!rolle) {
                 results.push({
                     id: rolleId,
@@ -638,7 +669,6 @@ export class ApplyRollenerweiterungService {
             organisationId,
             RollenSystemRecht.ROLLEN_ERWEITERN,
         );
-
         if (!isAuthorized) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
@@ -659,7 +689,6 @@ export class ApplyRollenerweiterungService {
             organisationId,
             RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
         );
-
         if (!isAuthorized) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
