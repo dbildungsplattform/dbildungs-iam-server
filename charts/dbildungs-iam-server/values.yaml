@@ -325,7 +325,7 @@ status:
 cronjobs:
   enabled: true
   image:
-    tag: "1.2.2"
+    tag: "latest"
     repository: ghcr.io/dbildungsplattform/cron-tools
     pullPolicy: IfNotPresent
   port: 5656
@@ -370,7 +370,7 @@ cronjobs:
 cronjobsEmail:
   enabled: true
   image:
-    tag: "1.2.2"
+    tag: "latest"
     repository: ghcr.io/dbildungsplattform/cron-tools
     pullPolicy: IfNotPresent
   port: 5656
