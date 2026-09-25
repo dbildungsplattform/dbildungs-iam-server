@@ -53,11 +53,9 @@ import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
-import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { ApplyRollenerweiterungChangesBodyParams } from './apply-rollenerweiterung-changes.body.params.js';
 import { ApplyRollenerweiterungForRollePathParams } from './apply-rollenerweiterung-for-rolle-changes.path.params.js';
 import { ApplyRollenerweiterungMultiExceptionFilter } from './apply-rollenerweiterung-multi-exception-filter.js';
@@ -92,8 +90,6 @@ export class RolleController {
         private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         private readonly organisationRepository: OrganisationRepository,
         private readonly logger: ClassLogger,
-        private readonly rollenerweiterungRepo: RollenerweiterungRepo,
-        private readonly rollenerweiterungFactory: RollenerweiterungFactory,
         private readonly applyRollenerweiterungService: ApplyRollenerweiterungService,
     ) {}
 
@@ -460,24 +456,31 @@ export class RolleController {
         @Body() params: CreateRollenerweiterungBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<RollenerweiterungResponse> {
-        const rollenerweiterung: Rollenerweiterung<false> = this.rollenerweiterungFactory.createNew(
+        const result: Result<
+            Rollenerweiterung<true>,
+            DomainError
+        > = await this.applyRollenerweiterungService.createRollenerweiterung(
             params.organisationId,
             params.rolleId,
             params.serviceProviderId,
-        );
-
-        const result: Result<Rollenerweiterung<true>, DomainError> = await this.rollenerweiterungRepo.createAuthorized(
-            rollenerweiterung,
             permissions,
         );
+
         if (!result.ok) {
             this.logger.error(
-                `Admin: ${permissions.personFields.id}) hat versucht eine Rolle ${params.rolleId} zu erweitern. Fehler: ${result.error.message}.`,
+                `Admin: ${permissions.personFields.id} hat versucht, ` +
+                    `die Rolle ${params.rolleId} zu erweitern. ` +
+                    `Fehler: ${result.error.message}.`,
             );
+
             throw result.error;
         }
+
         this.logger.info(
-            `Admin: ${permissions.personFields.id}) hat eine Rolle erweitert. organisationId: ${result.value.organisationId} rolleId: ${result.value.rolleId} serviceProviderId: ${result.value.serviceProviderId}.`,
+            `Admin: ${permissions.personFields.id} hat eine Rolle erweitert. ` +
+                `organisationId: ${result.value.organisationId} ` +
+                `rolleId: ${result.value.rolleId} ` +
+                `serviceProviderId: ${result.value.serviceProviderId}.`,
         );
 
         return new RollenerweiterungResponse(result.value);
@@ -508,27 +511,19 @@ export class RolleController {
         @Query() queryParams: FindRollenerweiterungQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<ServiceProviderResponse[]> {
-        const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
-            await this.rollenerweiterungRepo.findManyByOrganisationAndRolleAuthorized(
+        const result: Result<ServiceProvider<true>[], MissingPermissionsError | EntityNotFoundError> =
+            await this.applyRollenerweiterungService.findRollenerweiterungenForRolleAndOrganisation(
                 queryParams.organisationId,
                 params.rolleId,
                 permissions,
             );
-        if (!rollenerweiterungenResult.ok) {
-            throw rollenerweiterungenResult.error;
+        if (!result.ok) {
+            throw result.error;
         }
 
-        const rolle: Rolle<true> | null | undefined = await this.rolleRepo.findById(params.rolleId);
-        if (!rolle) {
-            throw new EntityNotFoundError('Rolle', params.rolleId);
-        }
-
-        const serviceProviders: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
-            rollenerweiterungenResult.value.map((re: Rollenerweiterung<true>) => re.serviceProviderId),
-        );
-
-        return Array.from(serviceProviders.values()).map(
-            (sp: ServiceProvider<true>) => new ServiceProviderResponse(sp),
+        return result.value.map(
+            (serviceProvider: ServiceProvider<true>): ServiceProviderResponse =>
+                new ServiceProviderResponse(serviceProvider),
         );
     }
 
