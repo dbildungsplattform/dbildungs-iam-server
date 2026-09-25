@@ -21,11 +21,13 @@ import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-upd
 import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
 import { KlasseCreatedEvent } from '../../../shared/events/klasse-created.event.js';
 import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { SchuleCreatedEvent } from '../../../shared/events/schule-created.event.js';
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
@@ -680,11 +682,32 @@ export class OrganisationRepository {
         if (organisationEntity.version !== organisation.version) {
             throw new OrganisationUpdateOutdatedError();
         }
+        const oldName: string | undefined = organisationEntity.name;
+        const oldKennung: string | undefined = organisationEntity.kennung;
         organisationEntity.version += 1;
 
         organisationEntity.assign(mapOrgaAggregateToData(organisation));
 
         await this.em.persist(organisationEntity).flush();
+
+        if (organisationEntity.typ === OrganisationsTyp.SCHULE) {
+            this.eventService.publish(
+                new SchuleUpdatedEvent(
+                    organisationEntity.id,
+                    oldName,
+                    organisationEntity.name,
+                    oldKennung,
+                    organisationEntity.kennung,
+                ),
+                new KafkaSchuleUpdatedEvent(
+                    organisationEntity.id,
+                    oldName,
+                    organisationEntity.name,
+                    oldKennung,
+                    organisationEntity.kennung,
+                ),
+            );
+        }
 
         return mapOrgaEntityToAggregate(organisationEntity);
     }

@@ -1410,6 +1410,77 @@ describe('OrganisationRepository', () => {
                 );
             });
         });
+
+        describe('When update is called', () => {
+            it('should publish SchuleUpdatedEvent with old and new values', async () => {
+                const oldName: string = faker.company.name();
+                const newName: string = faker.company.name();
+                const oldKennung: string = faker.string.numeric();
+                const newKennung: string = faker.string.numeric();
+                const schule: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                    typ: OrganisationsTyp.SCHULE,
+                    name: oldName,
+                    kennung: oldKennung,
+                });
+                const schuleEntity: OrganisationEntity = em.create(
+                    OrganisationEntity,
+                    mapOrgaAggregateToData(schule),
+                );
+                await em.persist(schuleEntity).flush();
+                schule.name = newName;
+                schule.kennung = newKennung;
+
+                await sut.save(schule);
+
+                expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        organisationId: schule.id,
+                        oldName,
+                        newName,
+                        oldKennung,
+                        newKennung,
+                    }),
+                    expect.objectContaining({
+                        organisationId: schule.id,
+                        oldName,
+                        newName,
+                        oldKennung,
+                        newKennung,
+                        kafkaKey: schule.id,
+                    }),
+                );
+            });
+
+            it('should publish SchuleUpdatedEvent when name and kennung are unchanged', async () => {
+                const schule: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                    typ: OrganisationsTyp.SCHULE,
+                });
+                const schuleEntity: OrganisationEntity = em.create(
+                    OrganisationEntity,
+                    mapOrgaAggregateToData(schule),
+                );
+                await em.persist(schuleEntity).flush();
+
+                await sut.save(schule);
+
+                expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        organisationId: schule.id,
+                        oldName: schule.name,
+                        newName: schule.name,
+                        oldKennung: schule.kennung,
+                        newKennung: schule.kennung,
+                    }),
+                    expect.objectContaining({
+                        organisationId: schule.id,
+                        oldName: schule.name,
+                        newName: schule.name,
+                        oldKennung: schule.kennung,
+                        newKennung: schule.kennung,
+                    }),
+                );
+            });
+        });
     });
 
     describe('isOrgaAParentOfOrgaB', () => {
