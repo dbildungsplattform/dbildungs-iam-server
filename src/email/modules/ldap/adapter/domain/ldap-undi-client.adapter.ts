@@ -9,7 +9,8 @@ import { LdapBindError } from './error/ldap-bind.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
 import { DomainError } from '../../../../../shared/error/domain.error.js';
-import { Ok } from '../../../../../shared/util/result.js';
+import { Err, Ok } from '../../../../../shared/util/result.js';
+import { LdapDeleteGroupError } from './error/ldap-delete-group.error.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -90,7 +91,7 @@ export class LdapUndiClientAdapter {
      * @param name
      * @returns
      */
-    public async updateGroup(id: string, name: string): Promise<Result<void, LdapEmailDomainError>> {
+    public async updateGroup(id: string, name: string): Promise<Result<void>> {
         // TODO
         return Ok();
     }
@@ -100,9 +101,8 @@ export class LdapUndiClientAdapter {
      * @param id
      * @returns
      */
-    public async deleteGroup(id: string): Promise<Result<void, LdapEmailDomainError>> {
-        // TODO
-        return Ok();
+    public async deleteGroup(id: string): Promise<Result<void>> {
+        return this.executeWithRetry(() => this.deleteGroupInternal(id), this.getNrOfRetries());
     }
 
     public useLdap(): boolean {
@@ -237,10 +237,37 @@ export class LdapUndiClientAdapter {
         // Search for group
         // group doesn't exist?
         // - nothing to do
-        // group exists and person is last remaining member?
-        // - delete group (groupOfNames can't be empty)
-        // else
+        // group exists and person is member of group
         // - remove person from group
+    }
+
+    private async deleteGroupInternal(id: string): Promise<Result<void>> {
+        return this.mutex.runExclusive(async () => {
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+
+            const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+                filter: `(cn=${id}&objectClass=groupOfNames)`,
+            });
+
+            if (!searchResultOrgUnit.searchEntries[0]) {
+                // No group exists, no need to delete
+                return Ok();
+            }
+
+            const dn: string = searchResultOrgUnit.searchEntries[0].dn;
+
+            try {
+                await client.del(dn);
+            } catch (err) {
+                return Err(new LdapDeleteGroupError(id, [err]));
+            }
+
+            return Ok();
+        });
     }
 
     private async executeWithRetry<T>(
