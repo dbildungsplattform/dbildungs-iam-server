@@ -202,7 +202,6 @@ export class RolleController {
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findMptRollenAuthorized({
             permissions,
-            includeTechnische: false,
             searchStr: queryParams.searchStr,
             limit: queryParams.limit,
             offset: queryParams.offset,

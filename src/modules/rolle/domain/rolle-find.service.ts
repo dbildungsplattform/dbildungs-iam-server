@@ -42,7 +42,6 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
 
 export interface FindMptRollenAuthorizedParams {
     permissions: IPersonPermissions;
-    includeTechnische: boolean;
     searchStr?: string;
     limit?: number;
     offset?: number;
@@ -91,7 +90,12 @@ export type FindRollenAvailableForErweiterungParams = FindRollenWithPermissionsP
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
-export type FindRollenAvailableForPersonAdministrationParams = FindRollenWithPermissionsParams & {
+export interface FindRollenAvailableForPersonAdministrationParams {
+    permissions: IPersonPermissions;
+    searchStr?: string;
+    organisationIds?: Array<OrganisationID>;
+    limit?: number;
+    offset?: number;
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
@@ -319,7 +323,7 @@ export class RolleFindService {
 
         const sharedParams: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'> =
             {
-                includeTechnische: params.includeTechnische,
+                includeTechnische: false,
                 searchStr: params.searchStr,
                 limit: params.limit,
                 offset: params.offset,
