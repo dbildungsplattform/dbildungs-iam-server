@@ -97,7 +97,7 @@ export interface FindRollenAvailableForPersonAdministrationParams {
     limit?: number;
     offset?: number;
     requestedSystemrechte?: RollenSystemRecht[];
-};
+}
 
 @Injectable()
 export class RolleFindService {
