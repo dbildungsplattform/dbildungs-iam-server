@@ -526,6 +526,16 @@
             "externalSystem": "UEM",
             "requires2fa": false,
             "merkmale": []
+        },
+        {
+            "id": 44,
+            "name": "VIDIS Testumgebung (Test-Zugriff)",
+            "target": "NONE",
+            "kategorie": "VERWALTUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "keycloakClientId": "vidis-test",
+            "merkmale": []
         }
     ]
 }

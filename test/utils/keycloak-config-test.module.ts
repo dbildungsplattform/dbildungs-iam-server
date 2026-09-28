@@ -29,7 +29,17 @@ export class KeycloakConfigTestModule implements OnModuleDestroy {
                                     },
                                 ])
                                 .withExposedPorts(8080)
-                                .withEnvironment({ KEYCLOAK_ADMIN: 'admin', KEYCLOAK_ADMIN_PASSWORD: 'admin' })
+                                .withEnvironment({
+                                    KEYCLOAK_ADMIN: 'admin',
+                                    KEYCLOAK_ADMIN_PASSWORD: 'admin',
+                                    // Referenced as ${...} placeholders by dev-realm-spsh.json; without them the realm import fails validation and Keycloak exits immediately
+                                    VIDIS_CLIENT_SECRET: 'irgendein-secret',
+                                    VIDIS_KEYCLOAK_CLIENT_ID: 'vidis-test',
+                                    VIDIS_REDIRECT_URI: 'https://vidis.example/*',
+                                    VIDIS_LOCAL_BACKCHANNEL_LOGOUT_URL: 'https://vidis.example/auth',
+                                    KC_NEXTCLOUD_CLIENT_ID: 'nextcloud',
+                                    KC_NEXTCLOUD_CLIENT_SECRET: 'irgendein-secret',
+                                })
                                 .withCommand(['start-dev', '--import-realm'])
                                 .withStartupTimeout(240000)
                                 .withName(`testcontainer-kc-${randomInt(0, 10000)}`)

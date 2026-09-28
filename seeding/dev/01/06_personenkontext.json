@@ -12,6 +12,21 @@
             "rolleId": 0
         },
         {
+            "personId": 3,
+            "organisationId": 0,
+            "rolleId": 0
+        },
+        {
+            "personId": 4,
+            "organisationId": 0,
+            "rolleId": 0
+        },
+        {
+            "personId": 5,
+            "organisationId": 0,
+            "rolleId": 0
+        },
+        {
             "personId": 666,
             "organisationId": 8,
             "rolleId": 1
@@ -20,6 +35,11 @@
             "personId": 666,
             "organisationId": 801,
             "rolleId": 1
+        },
+        {
+            "personId": 666,
+            "organisationId": 8,
+            "rolleId": 103
         },
         {
             "personId": 667,

@@ -16,6 +16,27 @@
             "familienname": "Lay-Wright-Test-Admin"
         },
         {
+            "id": 3,
+            "username": "playwrighttestadmin1",
+            "password": "SPSHtest1!",
+            "vorname": "Paul",
+            "familienname": "Lay-Wright-Test-Admin"
+        },
+        {
+            "id": 4,
+            "username": "playwrighttestadmin2",
+            "password": "SPSHtest1!",
+            "vorname": "Paul",
+            "familienname": "Lay-Wright-Test-Admin"
+        },
+        {
+            "id": 5,
+            "username": "playwrighttestadmin3",
+            "password": "SPSHtest1!",
+            "vorname": "Paul",
+            "familienname": "Lay-Wright-Test-Admin"
+        },
+        {
             "id": 666,
             "username": "smueller",
             "password": "SPSHtest1!",
