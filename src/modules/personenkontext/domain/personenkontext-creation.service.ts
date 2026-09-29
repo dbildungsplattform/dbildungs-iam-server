@@ -15,6 +15,8 @@ import { EscalatedPermissionAtOrga } from '../../permission/escalated-person-per
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 
 export type PersonPersonenkontext = {
@@ -30,6 +32,7 @@ export class PersonenkontextCreationService {
         private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
+        private readonly dBiamPersonenkontextService: DBiamPersonenkontextService,
     ) {}
 
     public async createPersonWithPersonenkontexte(
@@ -61,6 +64,20 @@ export class PersonenkontextCreationService {
             if (!canCommit.ok) {
                 return canCommit;
             }
+        }
+
+        if (
+            personalnummer &&
+            !(await this.dBiamPersonenkontextService.isPersonalnummerRequiredByRoleIds(
+                createPersonenkontexte.map(
+                    (personKontext: DbiamCreatePersonenkontextBodyParams) => personKontext.rolleId,
+                ),
+            ))
+        ) {
+            return {
+                ok: false,
+                error: new PersonalnummerWithoutKoperspflichtError(),
+            };
         }
 
         //Save Person
