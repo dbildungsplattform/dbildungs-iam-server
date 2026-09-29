@@ -5,6 +5,7 @@ import { AxiosResponse } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
+import { UpdateOrganisationBodyParams } from '../../../email/modules/core/api/dtos/params/update-organisation.bodyparams.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { EmailMicroserviceConfig } from '../../../shared/config/email-microservice.config.js';
@@ -198,6 +199,52 @@ export class EmailResolverService {
             );
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to delete emails for person ${params.spshPersonId}`, error);
+        }
+    }
+
+    public async deleteSchool(params: { organisationId: string }): Promise<void> {
+        try {
+            this.logger.info(`Deleting school ${params.organisationId} via email microservice`);
+            await lastValueFrom(
+                this.httpService.delete(
+                    this.getEndpoint() +
+                        `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    {
+                        headers: {
+                            'api-key': this.getApiKey(),
+                        },
+                    },
+                ),
+            );
+        } catch (error) {
+            this.logger.logUnknownAsError(`Failed to delete school ${params.organisationId}`, error);
+        }
+    }
+
+    public async updateSchool(params: {
+        organisationId: string;
+        name?: string;
+        kennung?: string;
+    }): Promise<void> {
+        try {
+            this.logger.info(`Updating school ${params.organisationId} via email microservice`);
+            await lastValueFrom(
+                this.httpService.patch(
+                    this.getEndpoint() +
+                        `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    {
+                        name: params.name,
+                        kennung: params.kennung,
+                    } satisfies UpdateOrganisationBodyParams,
+                    {
+                        headers: {
+                            'api-key': this.getApiKey(),
+                        },
+                    },
+                ),
+            );
+        } catch (error) {
+            this.logger.logUnknownAsError(`Failed to update school ${params.organisationId}`, error);
         }
     }
 

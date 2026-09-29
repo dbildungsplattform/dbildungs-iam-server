@@ -96,22 +96,16 @@ export class LdapUndiClientAdapter {
         return this.executeWithRetry(() => this.upsertPersonInternal(person, groups), this.getNrOfRetries());
     }
 
-    /**
-     * Updates the group in ldap, if it exists (kennung must not be updated!)
-     * @param id
-     * @param name
-     * @returns
-     */
-    public async updateGroup(id: string, name: string): Promise<Result<void>> {
+    public updateGroup(
+        id: string,
+        name: string | undefined,
+        kennung: string | undefined,
+    ): Promise<Result<void>> {
         // TODO
-        return Ok();
+        this.logger.info(`Updating group with id: ${id}, name: ${name}, kennung: ${kennung}`);
+        return Promise.resolve(Ok());
     }
 
-    /**
-     * Delete a group in ldap
-     * @param id
-     * @returns
-     */
     public async deleteGroup(id: string): Promise<Result<void>> {
         return this.executeWithRetry(() => this.deleteGroupInternal(id), this.getNrOfRetries());
     }

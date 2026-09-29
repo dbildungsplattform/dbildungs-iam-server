@@ -33,6 +33,11 @@ import { UserLockRepository } from '../../keycloak-administration/repository/use
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
 import { LocksForPersonChangedEvent } from '../../../shared/events/locks-for-person-changed.event.js';
+import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 
 @Injectable()
 export class EmailMicroserviceEventHandler {
@@ -193,6 +198,49 @@ export class EmailMicroserviceEventHandler {
             return;
         }
         await this.emailResolverService.deleteEmailsForSpshPerson({ spshPersonId: event.personId });
+    }
+
+    @KafkaEventHandler(KafkaOrganisationDeletedEvent)
+    @EventHandler(OrganisationDeletedEvent)
+    @EnsureRequestContext()
+    public async handleOrganisationDeletedEvent(event: KafkaOrganisationDeletedEvent | OrganisationDeletedEvent): Promise<void> {
+        this.logger.info(
+            `Received KafkaOrganisationDeletedEvent, organisationId:${event.organisationId}, typ:${event.typ}`,
+        );
+
+        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(
+                `Ignoring Event for organisationId:${event.organisationId} because email microservice is disabled`,
+            );
+            return;
+        }
+
+        if (event.typ !== OrganisationsTyp.SCHULE) {
+            this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because it is not a school`);
+            return;
+        }
+
+        await this.emailResolverService.deleteSchool({ organisationId: event.organisationId });
+    }
+
+    @KafkaEventHandler(KafkaSchuleUpdatedEvent)
+    @EventHandler(SchuleUpdatedEvent)
+    @EnsureRequestContext()
+    public async handleSchuleUpdatedEvent(event: KafkaSchuleUpdatedEvent | SchuleUpdatedEvent): Promise<void> {
+        this.logger.info(`Received KafkaSchuleUpdatedEvent, organisationId:${event.organisationId}`);
+
+        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(
+                `Ignoring Event for organisationId:${event.organisationId} because email microservice is disabled`,
+            );
+            return;
+        }
+
+        await this.emailResolverService.updateSchool({
+            organisationId: event.organisationId,
+            name: event.newName,
+            kennung: event.newKennung,
+        });
     }
 
     @KafkaEventHandler(KafkaPersonExternalSystemsSyncEvent)
