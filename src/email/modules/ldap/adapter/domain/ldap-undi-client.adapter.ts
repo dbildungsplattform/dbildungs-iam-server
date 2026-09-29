@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Mutex } from 'async-mutex';
-import { Client, SearchResult } from 'ldapts';
+import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { OrganisationID, PersonID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
 import { LdapUndiClient } from '../technical/ldap-undi-client.js';
@@ -11,6 +11,8 @@ import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-ret
 import { DomainError } from '../../../../../shared/error/domain.error.js';
 import { Err, Ok } from '../../../../../shared/util/result.js';
 import { LdapDeleteGroupError } from './error/ldap-delete-group.error.js';
+import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
+import { difference, differenceBy, differenceWith } from 'lodash-es';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -60,6 +62,8 @@ export class LdapUndiClientAdapter {
     public static readonly USER_PASSWORD: string = 'userPassword';
 
     public static readonly MEMBER: string = 'member';
+
+    public static readonly MEMBER_OF: string = 'memberOf';
 
     public static readonly ENTRY_UUID: string = 'entryUUID';
 
@@ -187,20 +191,73 @@ export class LdapUndiClientAdapter {
         // - delete person
     }
 
-    private async setPersonGroupsInternal() {
+    private async setPersonGroupsInternal(personDN: string, groups: GroupData[]) {
         // TODO: SPSH-4220
         // Search for groups of person
         // call addPersonToGroupInternal for missing groups
         // call removePersonFromGroupInternal for superfluous groups
+
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(dn=${personDN})`,
+            attributes: [LdapUndiClientAdapter.MEMBER_OF],
+        });
+
+        if (!searchResultPerson.searchEntries[0]) {
+            return Err(new Error('TODO!'));
+        }
+
+        const personGroups: string[] = this.getEntryAttributeAsStringArray(
+            searchResultPerson.searchEntries[0],
+            LdapUndiClientAdapter.MEMBER_OF,
+        );
+
+        // Find additional/missing groups
+        const groupsToAdd: GroupData[] = differenceWith(
+            groups,
+            personGroups,
+            (group: GroupData, dn: string) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === dn,
+        );
+        const groupsToRemove: string[] = differenceWith(
+            personGroups,
+            groups,
+            (groupDN: string, group: GroupData) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === groupDN,
+        );
+
+        const addResult: Result<void>[] = await Promise.all(
+            groupsToAdd.map((group: GroupData) => this.addPersonToGroupInternal(personDN, group)),
+        );
+
+        const removeResult: Result<void>[] = await Promise.all(
+            groupsToRemove.map((groupDN: string) => this.removePersonFromGroupInternal(personDN, groupDN)),
+        );
+
+        const errors: Error[] = addResult
+            .concat(removeResult)
+            .filter((r: Result<void>) => !r.ok)
+            .map((r: { ok: false; error: Error }) => r.error);
+
+        if (errors.length > 0) {
+            // TODO
+            return Err(new Error('TODO'));
+        }
+
+        return Ok();
     }
 
-    private async addPersonToGroupInternal(personUID: string, groupData: GroupData) {
+    private async addPersonToGroupInternal(personDN: string, groupData: GroupData): Promise<Result<void>> {
         // TODO: SPSH-4220
         // Search for group
         // create or update group?
         // - create with person
         // - update group then add person
 
+        const groupDn: string = `cn=${groupData.id},${this.ldapInstanceConfig.BASE_DN}`;
         const groupName: string = `lehrer-${groupData.kennung}`;
 
         const client: Client = this.ldapClient.getClient();
@@ -210,11 +267,10 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(cn=${groupData.id}&objectClass=groupOfNames)`,
+            filter: `(${groupDn}&objectClass=groupOfNames)`,
         });
 
         if (!searchResultOrgUnit.searchEntries[0]) {
-            const groupDn: string = `cn=${groupData.id}`;
             // GroupOfNames doesnt exist
             const newOrgUnit: Record<string, string | string[]> = {
                 objectclass: ['groupOfNames'],
@@ -222,23 +278,104 @@ export class LdapUndiClientAdapter {
                 description: groupName,
                 o: groupData.name,
                 ou: groupData.kennung,
-                member: [personUID],
+                member: [personDN],
             };
             try {
                 await client.add(groupDn, newOrgUnit);
             } catch (_e) {
                 // TODO
+                return Err(new Error('TODO'));
             }
         }
+
+        try {
+            await client.modify(groupDn, [
+                new Change({
+                    operation: 'add',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.MEMBER,
+                        values: [personDN],
+                    }),
+                }),
+            ]);
+        } catch (_e) {
+            // TODO
+            return Err(new Error('TODO'));
+        }
+
+        return Ok();
     }
 
-    private async removePersonFromGroupInternal(personUID: string, groupData: GroupData) {
-        // TODO: SPSH-4220
-        // Search for group
-        // group doesn't exist?
-        // - nothing to do
-        // group exists and person is member of group
-        // - remove person from group
+    private async removePersonFromGroupInternal(personDN: string, groupDN: string): Promise<Result<void>> {
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(${groupDN}&objectClass=groupOfNames)`,
+        });
+
+        if (!searchResultOrgUnit.searchEntries[0]) {
+            // Group doesn't exist, no need to remove person
+            return Ok();
+        }
+
+        if (
+            !this.entryAttributeContainsValue(
+                searchResultOrgUnit.searchEntries[0],
+                LdapUndiClientAdapter.MEMBER,
+                personDN,
+            )
+        ) {
+            // Person is not member of group, no need to remove
+            return Ok();
+        }
+
+        try {
+            await client.modify(groupDN, [
+                new Change({
+                    operation: 'delete',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.MEMBER,
+                        values: [personDN],
+                    }),
+                }),
+            ]);
+        } catch (err) {
+            return { ok: false, error: new LdapRemovePersonFromGroupError() };
+        }
+
+        return Ok();
+    }
+
+    private getEntryAttributeAsStringArray(entry: Entry, attribute: string): string[] {
+        const attributeValue: string | string[] | Buffer | Buffer[] | undefined = entry[attribute];
+
+        if (typeof attributeValue === 'string') {
+            return [attributeValue];
+        }
+
+        if (Buffer.isBuffer(attributeValue)) {
+            return [attributeValue.toString()];
+        }
+
+        if (Array.isArray(attributeValue)) {
+            return attributeValue.map((entry: string | Buffer) => {
+                if (typeof entry === 'string') {
+                    return entry;
+                } else {
+                    return entry.toString();
+                }
+            });
+        }
+
+        return [];
+    }
+
+    private entryAttributeContainsValue(entry: Entry, attribute: string, value: string): boolean {
+        return this.getEntryAttributeAsStringArray(entry, attribute).includes(value);
     }
 
     private async deleteGroupInternal(id: string): Promise<Result<void>> {
