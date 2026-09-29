@@ -93,13 +93,13 @@ export class OrganisationController {
             throw new MissingPermissionsError('Not authorized to manage this organisation');
         }
         const organisation: Organisation<false> | DomainError = Organisation.createNew(
+            params.name,
+            params.typ,
             params.administriertVon,
             params.zugehoerigZu,
             params.kennung,
-            params.name,
             params.namensergaenzung,
             params.kuerzel,
-            params.typ,
             params.traegerschaft,
             undefined,
             params.emailAdress,
