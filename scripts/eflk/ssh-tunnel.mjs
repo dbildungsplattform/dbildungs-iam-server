@@ -2,43 +2,54 @@
 // No dependency on any specific caller - just spawns/tears down `ssh -L ...`.
 
 import { writeFile, unlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-function waitForPort(port, child, timeoutMs = 15000) {
+// Fixed, non-writable candidate locations for the ssh binary - avoids relying on PATH resolution.
+const SSH_BINARY_CANDIDATES = ['/usr/bin/ssh', '/bin/ssh', '/usr/local/bin/ssh', '/opt/homebrew/bin/ssh'];
+
+const DEFAULT_WAIT_TIMEOUT_MS = 15000;
+const PORT_POLL_INTERVAL_MS = 300;
+const SIGKILL_GRACE_PERIOD_MS = 2000;
+
+function resolveSshBinary() {
+    const found = SSH_BINARY_CANDIDATES.find((path) => existsSync(path));
+    if (!found) {
+        throw new Error(`ssh-Binary wurde in keinem der bekannten Pfade gefunden (${SSH_BINARY_CANDIDATES.join(', ')})`);
+    }
+    return found;
+}
+
+function waitForPort(port, child, timeoutMs = DEFAULT_WAIT_TIMEOUT_MS) {
     return new Promise((resolve, reject) => {
-        let settled = false;
         const start = Date.now();
-        const onExit = (code) => {
-            if (!settled) {
-                settled = true;
-                reject(new Error(`SSH-Tunnel wurde vorzeitig beendet (Exit-Code ${code})`));
-            }
+        let settled = false;
+        // Ensures resolve/reject and the exit-listener cleanup happen exactly once, no matter which path wins.
+        const settle = (action) => {
+            if (settled) return;
+            settled = true;
+            child.off('exit', onExit);
+            action();
         };
+        const onExit = (code) => settle(() => reject(new Error(`SSH-Tunnel wurde vorzeitig beendet (Exit-Code ${code})`)));
         child.once('exit', onExit);
+
         const tryConnect = () => {
             const socket = net.connect(port, '127.0.0.1');
             socket.once('connect', () => {
                 socket.end();
-                if (!settled) {
-                    settled = true;
-                    child.off('exit', onExit);
-                    resolve();
-                }
+                settle(resolve);
             });
             socket.once('error', () => {
                 socket.destroy();
                 if (Date.now() - start > timeoutMs) {
-                    if (!settled) {
-                        settled = true;
-                        child.off('exit', onExit);
-                        reject(new Error('Timeout beim Warten auf den SSH-Tunnel'));
-                    }
+                    settle(() => reject(new Error('Timeout beim Warten auf den SSH-Tunnel')));
                     return;
                 }
-                setTimeout(tryConnect, 300);
+                setTimeout(tryConnect, PORT_POLL_INTERVAL_MS);
             });
         };
         tryConnect();
@@ -96,7 +107,7 @@ export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost,
     const env = askPassScript
         ? { ...process.env, SSH_ASKPASS: askPassScript, SSH_ASKPASS_REQUIRE: 'force', SSH_KEY_PASSPHRASE: passphrase }
         : process.env;
-    const child = spawn('ssh', sshArgs, { stdio: ['ignore', 'ignore', 'pipe'], env });
+    const child = spawn(resolveSshBinary(), sshArgs, { stdio: ['ignore', 'ignore', 'pipe'], env });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
         stderr += chunk.toString();
@@ -118,13 +129,13 @@ export async function closeSshTunnel(tunnel) {
     if (!tunnel || tunnel.closed) return;
     tunnel.closed = true;
 
-    if (tunnel.child.exitCode === null && tunnel.child.signalCode === null) {
+    if (isChildRunning(tunnel.child)) {
         tunnel.child.kill('SIGTERM');
         await new Promise((resolve) => {
             const timer = setTimeout(() => {
                 tunnel.child.kill('SIGKILL');
                 resolve();
-            }, 2000);
+            }, SIGKILL_GRACE_PERIOD_MS);
             tunnel.child.once('exit', () => {
                 clearTimeout(timer);
                 resolve();
@@ -133,6 +144,10 @@ export async function closeSshTunnel(tunnel) {
     }
 
     if (tunnel.askPassScript) await unlink(tunnel.askPassScript).catch(() => {});
+}
+
+function isChildRunning(child) {
+    return child.exitCode === null && child.signalCode === null;
 }
 
 // Safety net so the tunnel is still closed on Ctrl+C/SIGTERM/a crash - these run outside of
