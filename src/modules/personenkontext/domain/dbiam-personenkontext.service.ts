@@ -11,6 +11,7 @@ import { CheckRollenartSpecification } from '../specification/nur-gleiche-rolle.
 import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
 @Injectable()
 export class DBiamPersonenkontextService {
@@ -57,7 +58,13 @@ export class DBiamPersonenkontextService {
 
     public async isPersonalnummerRequiredForAnyPersonenkontextForPerson(personId: string): Promise<boolean> {
         const personenkontexte: Personenkontext<true>[] = await this.dBiamPersonenkontextRepo.findByPerson(personId);
-        const uniqueRolleIds: Set<string> = new Set(personenkontexte.map((pk: Personenkontext<true>) => pk.rolleId));
+        const roleIds: RolleID[] = personenkontexte.map((pk: Personenkontext<true>) => pk.rolleId);
+
+        return await this.isPersonalnummerRequiredByRoleIds(roleIds);
+    }
+
+    public async isPersonalnummerRequiredByRoleIds(roleIds: string[]): Promise<boolean> {
+        const uniqueRolleIds: Set<string> = new Set(roleIds);
         const foundRollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(Array.from(uniqueRolleIds));
 
         return Array.from(foundRollen.values()).some((rolle: Rolle<true>) =>
