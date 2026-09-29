@@ -1,18 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Mutex } from 'async-mutex';
 import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
+import { differenceWith } from 'lodash-es';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { OrganisationID, PersonID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
+import { Err, Ok } from '../../../../../shared/util/result.js';
 import { LdapUndiClient } from '../technical/ldap-undi-client.js';
 import { LdapUndiEmailMicroserviceInstanceConfig } from '../technical/ldap-undi-email-microservice-instance-config.js';
 import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapDeleteGroupError } from './error/ldap-delete-group.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
-import { DomainError } from '../../../../../shared/error/domain.error.js';
-import { Err, Ok } from '../../../../../shared/util/result.js';
-import { LdapDeleteGroupError } from './error/ldap-delete-group.error.js';
 import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
-import { difference, differenceBy, differenceWith } from 'lodash-es';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -29,6 +28,10 @@ export type PersonData = {
     firstName: string;
     lastName: string;
     username: PersonUsername;
+    mailPrimaryAddress: string;
+    mailSecondaryAddress?: string;
+    deaktiviert: boolean;
+    gesperrt: boolean;
 };
 
 export type GroupData = {
@@ -88,6 +91,10 @@ export class LdapUndiClientAdapter {
     // UpsertPerson (takes in person and group data)
     // DeletePerson
     // UpdateGroup (for renamed events)
+
+    public async upsertPerson(person: PersonData, groups: GroupData[]): Promise<Result<void>> {
+        return this.executeWithRetry(() => this.upsertPersonInternal(person, groups), this.getNrOfRetries());
+    }
 
     /**
      * Updates the group in ldap, if it exists (kennung must not be updated!)
@@ -172,7 +179,7 @@ export class LdapUndiClientAdapter {
         return rootName;
     }
 
-    private async upsertPersonInternal() {
+    private async upsertPersonInternal(person: PersonData, groups: GroupData[]): Promise<Result<void>> {
         // TODO: SPSH-4220
         // Search for person
         // person doesn't exist?
@@ -180,18 +187,140 @@ export class LdapUndiClientAdapter {
         // person exists?
         // - update person attributes
         // call setPersonGroupsInternal
+
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const personDN: string = `uid=${person.uid},DETERMINE_BRANCH,${this.ldapInstanceConfig.BASE_DN}`;
+
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(${personDN})`,
+            attributes: [LdapUndiClientAdapter.MEMBER_OF],
+        });
+
+        if (!searchResultPerson.searchEntries[0]) {
+            // Create
+
+            try {
+                await client.add(personDN, {
+                    uid: person.uid,
+                    cn: person.username,
+                    givenName: person.firstName,
+                    sn: person.lastName,
+                    mailPrimaryAddress: person.mailPrimaryAddress,
+                    mailAlternativeAddress: person.mailSecondaryAddress ?? '',
+                    deaktiviert: person.deaktiviert ? 'TRUE' : 'FALSE',
+                    gesperrt: person.gesperrt ? 'TRUE' : 'FALSE',
+
+                    mailBoxType: '1',
+                    hideFromAddressLists: 'FALSE',
+                });
+            } catch (_e) {
+                // TODO
+            }
+        } else {
+            try {
+                const changes: Change[] = [
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({ type: 'cn', values: [person.username] }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({ type: 'givenName', values: [person.firstName] }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({ type: 'sn', values: [person.lastName] }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: 'mailPrimaryAddress',
+                            values: [person.mailPrimaryAddress],
+                        }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: 'mailAlternativeAddress',
+                            values: [person.mailSecondaryAddress].filter(Boolean),
+                        }),
+                    }),
+
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: 'deaktiviert',
+                            values: [person.deaktiviert ? 'TRUE' : 'FALSE'],
+                        }),
+                    }),
+
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({ type: 'gesperrt', values: [person.gesperrt ? 'TRUE' : 'FALSE'] }),
+                    }),
+                ];
+
+                await client.modify(personDN, changes);
+            } catch (_e) {
+                // TODO
+            }
+        }
+
+        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(personDN, groups);
+        if (!setGroupsResult.ok) {
+            // TODO
+            return setGroupsResult;
+        }
+
+        return Ok();
     }
 
-    private async deletePersonInternal() {
+    private async deletePersonInternal(personUid: string) {
         // TODO: SPSH-4220
         // Search for person
         // person doesn't exist?
         // - done, nothing to do
         // person exists?
         // - delete person
+
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(uid=${personUid})`,
+            attributes: [LdapUndiClientAdapter.MEMBER_OF],
+        });
+
+        if (!searchResultPerson.searchEntries[0]) {
+            // Person does not exist
+            return Ok();
+        }
+
+        const personDN: string = searchResultPerson.searchEntries[0].dn;
+
+        const setGroupsResult = await this.setPersonGroupsInternal(personDN, []);
+        if (!setGroupsResult.ok) {
+            // ? Ask if LDAP is configured to automatically remove dangling references
+        }
+
+        try {
+            await client.del(personDN);
+        } catch (_e) {
+            return Err(new Error('TODO'));
+        }
+
+        return Ok();
     }
 
-    private async setPersonGroupsInternal(personDN: string, groups: GroupData[]) {
+    private async setPersonGroupsInternal(personDN: string, groups: GroupData[]): Promise<Result<void>> {
         // TODO: SPSH-4220
         // Search for groups of person
         // call addPersonToGroupInternal for missing groups
