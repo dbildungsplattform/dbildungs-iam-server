@@ -167,6 +167,7 @@ function promptHidden(promptText) {
                     break;
             }
         };
+
         process.stdin.on('data', onData);
     });
 }
