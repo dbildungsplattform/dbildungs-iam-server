@@ -26,9 +26,7 @@ export async function queryOrganisationParentChain(client, organisationId) {
     return rows;
 }
 
-export async function queryPersonsWithEmail(client, limit) {
-    const limitClause = Number.isFinite(limit) ? 'LIMIT $1' : '';
-    const params = Number.isFinite(limit) ? [limit] : [];
+export async function queryPersonsWithEmail(client) {
     const { rows } = await client.query(
         `SELECT p.id, p.username, p.vorname, p.familienname, p.org_unassignment_date
          FROM public.person p
@@ -45,9 +43,7 @@ export async function queryPersonsWithEmail(client, limit) {
                AND a.priority IN (0, 1)
                AND latest.status IN ('ACTIVE', 'DEACTIVE')
          )
-         ORDER BY p.id
-         ${limitClause}`,
-        params,
+         ORDER BY p.id`,
     );
 
     return rows;

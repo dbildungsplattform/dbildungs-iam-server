@@ -38,7 +38,6 @@ function parseArgs(argv) {
         out: undefined,
         baseDn: DEFAULT_BASE_DN,
         rootOrganisationId: undefined,
-        limit: undefined,
         pgUser: undefined,
         pgDatabase: undefined,
         sshHost: undefined,
@@ -61,9 +60,6 @@ function parseArgs(argv) {
                 break;
             case '--root-organisation-id':
                 args.rootOrganisationId = next();
-                break;
-            case '--limit':
-                args.limit = Number.parseInt(next(), 10);
                 break;
             case '--pg-user':
                 args.pgUser = next();
@@ -111,11 +107,10 @@ function parseArgs(argv) {
 function printHelp() {
     console.log(`Export aller Personen mit E-Mail nach EFLK-Ziel-LDIF
 
-Alle Optionen sind Pflicht (kein Fallback/Default), ausser --limit, --local-port, --base-dn und --db-port:
+Alle Optionen sind Pflicht (kein Fallback/Default), ausser --local-port, --base-dn und --db-port:
   --out <datei>                   Ausgabedatei
   --base-dn <dn>                  Basis-DN (Default: ${DEFAULT_BASE_DN})
   --root-organisation-id <uuid>   ROOT_ORGANISATION_ID (siehe config/config.json)
-  --limit <n>                     Nur die ersten n Personen exportieren (fuer Testlaeufe, optional)
 
   Postgres-Zugangsdaten:
   --pg-user <user>                 Postgres-Benutzer
@@ -226,8 +221,32 @@ async function createAskPassScript() {
     return scriptPath;
 }
 
+// Rejects if something is already listening on localPort - otherwise waitForPort() could
+// happily connect to a stale/stuck tunnel from an earlier run instead of our fresh one.
+function assertLocalPortIsFree(port) {
+    return new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.once('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                reject(new Error(
+                    `Lokaler Port ${port} ist bereits belegt (evtl. ein haengengebliebener SSH-Tunnel `
+                    + `aus einem frueheren Lauf - pruefen mit 'lsof -iTCP:${port}' und ggf. beenden, `
+                    + `oder --local-port <anderer-port> verwenden).`,
+                ));
+                return;
+            }
+            reject(err);
+        });
+        server.listen(port, '127.0.0.1', () => {
+            server.close(resolve);
+        });
+    });
+}
+
 // Sets up a local SSH port forward (analogous to the "SSH Tunnel" tab in pgAdmin).
 async function openSshTunnel(args, localPort, passphrase) {
+    await assertLocalPortIsFree(localPort);
+
     const askPassScript = passphrase ? await createAskPassScript() : undefined;
 
     const sshArgs = [
@@ -261,9 +280,25 @@ async function openSshTunnel(args, localPort, passphrase) {
     return { child, askPassScript };
 }
 
+// Terminates the tunnel, escalating to SIGKILL if it doesn't exit gracefully. Safe to call twice.
 async function closeSshTunnel(tunnel) {
-    if (!tunnel) return;
-    tunnel.child.kill();
+    if (!tunnel || tunnel.closed) return;
+    tunnel.closed = true;
+
+    if (tunnel.child.exitCode === null && tunnel.child.signalCode === null) {
+        tunnel.child.kill('SIGTERM');
+        await new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                tunnel.child.kill('SIGKILL');
+                resolve();
+            }, 2000);
+            tunnel.child.once('exit', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+        });
+    }
+
     if (tunnel.askPassScript) await unlink(tunnel.askPassScript).catch(() => {});
 }
 
@@ -294,8 +329,8 @@ async function classifyOrganisation(client, organisationId, roots, cache) {
 }
 
 // Persons with at least one priority 0/1 email address whose latest status is ACTIVE/DEACTIVE.
-async function fetchPersonsWithEmail(client, limit) {
-    const personRows = await queryPersonsWithEmail(client, limit);
+async function fetchPersonsWithEmail(client) {
+    const personRows = await queryPersonsWithEmail(client);
 
     if (personRows.length === 0) {
         return [];
@@ -343,6 +378,7 @@ async function main() {
 
     console.log(`Baue SSH-Tunnel auf: ${args.sshUser}@${args.sshHost}:${args.sshPort} -> ${args.dbHost}:${args.dbPort} (lokal: ${args.localPort})`);
     const sshTunnel = await openSshTunnel(args, args.localPort, sshPassphrase);
+    activeSshTunnel = sshTunnel;
 
     const clientConfig = {
         host: '127.0.0.1',
@@ -350,14 +386,27 @@ async function main() {
         user: args.pgUser,
         database: args.pgDatabase,
         password: await promptHidden('PGPASSWORD: '),
+        connectionTimeoutMillis: 15000,
     };
 
     const client = new Client(clientConfig);
-    await client.connect();
 
     try {
+        console.log('Verbinde mit Postgres ueber den Tunnel...');
+        await client.connect();
+        console.log('Verbunden.');
+
         const roots = await resolveRootChildren(client, args.rootOrganisationId);
-        const persons = await fetchPersonsWithEmail(client, args.limit);
+        const persons = await fetchPersonsWithEmail(client);
+
+        // Diagnostic cross-check: "hat E-Mail" (email.address priority 0/1) is checked independently
+        // of "hat Personenkontext mit E-Mail Service-Provider" (organisationIds) - a high count here
+        // can mean many persons have qualifying address rows without an active E-Mail-Rolle.
+        const personsWithoutEmailServiceProviderKontext = persons.filter((p) => p.organisationIds.length === 0).length;
+        console.log(
+            `${persons.length} Personen erfuellen 'hat E-Mail' (email.address, priority 0/1, Status ACTIVE/DEACTIVE); `
+            + `davon ${personsWithoutEmailServiceProviderKontext} ohne Personenkontext mit E-Mail-Service-Provider.`,
+        );
 
         const allOrganisationIds = [...new Set(persons.flatMap((p) => p.organisationIds))];
         const organisationen = await fetchOrganisationen(client, allOrganisationIds);
@@ -405,12 +454,39 @@ async function main() {
         await writeFile(args.out, outputLines.join('\n'));
         console.log(`${persons.length} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);
     } finally {
-        await client.end();
+        // .end() can itself throw if .connect() never succeeded - don't let that hide the real error.
+        await client.end().catch(() => {});
         await closeSshTunnel(sshTunnel);
     }
+}
+
+// Tracks the currently open tunnel so it can be closed from signal/crash handlers below,
+// which run outside of main()'s own try/finally (e.g. on Ctrl+C or an uncaught error).
+let activeSshTunnel;
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+        console.error(`\n${signal} empfangen, schliesse SSH-Tunnel...`);
+        closeSshTunnel(activeSshTunnel)
+            .catch((err) => console.error(err))
+            .finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
+    });
+}
+
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+    process.on(event, (err) => {
+        console.error(err);
+        closeSshTunnel(activeSshTunnel)
+            .catch((cleanupErr) => console.error(cleanupErr))
+            .finally(() => process.exit(1));
+    });
 }
 
 main().catch((err) => {
     console.error(err);
     process.exitCode = 1;
+}).finally(() => {
+    // The spawned ssh tunnel process (with its piped stdio) can keep the event loop
+    // alive even after kill() - force-exit once our own cleanup has run.
+    process.exit(process.exitCode ?? 0);
 });

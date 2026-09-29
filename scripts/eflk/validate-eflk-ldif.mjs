@@ -10,13 +10,13 @@ import { dirname, basename, extname, join } from 'node:path';
 import { needsBase64 } from './ldif-format.mjs';
 
 function parseArgs(argv) {
-    const args = { in: undefined };
+    const args = { file: undefined };
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
         const next = () => argv[++i];
         switch (arg) {
-            case '--in':
-                args.in = next();
+            case '--file':
+                args.file = next();
                 break;
             case '--help':
                 printHelp();
@@ -26,8 +26,8 @@ function parseArgs(argv) {
                 throw new Error(`Unbekannte Option: ${arg} (siehe --help)`);
         }
     }
-    if (!args.in) {
-        throw new Error('Fehlende Pflicht-Option: --in (siehe --help)');
+    if (!args.file) {
+        throw new Error('Fehlende Pflicht-Option: --file (siehe --help)');
     }
     return args;
 }
@@ -42,7 +42,7 @@ function reportPathFor(inPath) {
 function printHelp() {
     console.log(`Validiert ein EFLK-Ziel-LDIF auf invalide Datenkonstellationen
 
-  --in <datei>    Zu pruefende LDIF-Datei (z.B. Ausgabe von export-eflk-ldif.mjs)
+  --file <datei>  Zu pruefende LDIF-Datei (z.B. Ausgabe von export-eflk-ldif.mjs)
                   Report wird automatisch nach '<datei ohne Endung>-report.txt' geschrieben
   --help          Diese Hilfe anzeigen
 
@@ -460,14 +460,14 @@ function formatReport({ issues, stats }, inFile) {
 
 async function main() {
     const args = parseArgs(process.argv.slice(2));
-    const outPath = reportPathFor(args.in);
+    const outPath = reportPathFor(args.file);
 
-    const raw = await readFile(args.in, 'utf8');
+    const raw = await readFile(args.file, 'utf8');
     const logicalLines = foldLogicalLines(raw);
     const records = buildRecords(logicalLines);
     const result = validate(records);
 
-    await writeFile(outPath, formatReport(result, args.in));
+    await writeFile(outPath, formatReport(result, args.file));
 
     const errorCount = result.issues.filter((i) => i.severity === 'ERROR').length;
     const warnCount = result.issues.filter((i) => i.severity === 'WARN').length;
