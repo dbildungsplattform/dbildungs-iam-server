@@ -5,6 +5,7 @@ import { PersonPermissions } from '../domain/person-permissions.js';
 import winston, { format, Logger } from 'winston';
 import { localFormatter } from '../../../core/logging/module-logger.js';
 import { inspect } from 'util';
+import { NoPassportUserInRequestError } from '../domain/no-passport-user.error.js';
 
 const loggerFormat: winston.Logform.Format = format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
@@ -30,7 +31,7 @@ export const Permissions: (
         const passportUser: PassportUser | undefined = request.passportUser;
 
         if (!passportUser) {
-            return Promise.reject(new Error('No PassportUser found on request'));
+            return Promise.reject(new NoPassportUserInRequestError());
         } else {
             if (!passportUser.personPermissions || typeof passportUser.personPermissions !== 'function') {
                 const passportUserString: string = inspect(passportUser, {

@@ -7,6 +7,7 @@ import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
+import { UpdateUsernameMissingError } from '../error/event-username-missing.error.js';
 
 @Injectable()
 export class PrivacyIdeaAdministrationServiceHandler {
@@ -25,7 +26,7 @@ export class PrivacyIdeaAdministrationServiceHandler {
     public async handlePersonRenamedEvent(event: PersonRenamedEvent | KafkaPersonRenamedEvent): Promise<void> {
         this.logger.info(`Received PersonRenamedEvent, personId:${event.personId}`);
         if (!event.username) {
-            throw new Error('Username is missing');
+            throw new UpdateUsernameMissingError();
         }
 
         await this.privacyIdeaAdministrationService.updateUsername(event.oldUsername, event.username);

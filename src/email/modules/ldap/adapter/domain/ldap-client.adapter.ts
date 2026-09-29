@@ -9,6 +9,9 @@ import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { PersonExternalID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
+import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapDeletePersonError } from './error/ldap-delete-person.error.js';
+import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -144,7 +147,7 @@ export class LdapClientAdapter {
         } catch (err) {
             this.logger.logUnknownAsError(`Could not connect to LDAP`, err);
 
-            return { ok: false, error: new Error('LDAP bind FAILED') };
+            return { ok: false, error: new LdapBindError() };
         }
     }
 
@@ -226,7 +229,7 @@ export class LdapClientAdapter {
             } catch (err) {
                 this.logger.logUnknownAsError(`LDAP: Deleting person FAILED, uid:${personUid}`, err);
 
-                return { ok: false, error: new Error() };
+                return { ok: false, error: new LdapDeletePersonError() };
             }
         });
     }
@@ -444,7 +447,7 @@ export class LdapClientAdapter {
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,
-            error: new Error('executeWithRetry default fallback'),
+            error: new LdapExecuteWithRetryFallbackError(),
         };
 
         while (currentAttempt <= retries) {
@@ -454,7 +457,7 @@ export class LdapClientAdapter {
                 if (result.ok) {
                     return result;
                 } else {
-                    throw new Error(`Function returned error: ${result.error.message}`);
+                    throw result.error;
                 }
             } catch (error) {
                 this.logger.logUnknownAsError(

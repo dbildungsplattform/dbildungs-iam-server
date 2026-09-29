@@ -1,6 +1,7 @@
 import { AnyEntity, EntityName, QueryOrderMap, EntityKey, FilterObject } from '@mikro-orm/core';
 import { EntityManager, QBFilterQuery, QueryBuilder, SelectQueryBuilder } from '@mikro-orm/postgresql';
 import { ScopeOrder, ScopeOperator } from './scope.enums.js';
+import { ScopeBaseNestedError } from './error/scope-base-nested.error.js';
 
 export abstract class ScopeBase<T extends AnyEntity> {
     private readonly queryFilters: FilterObject<T>[] = [];
@@ -17,7 +18,7 @@ export abstract class ScopeBase<T extends AnyEntity> {
 
     public setScopeWhereOperator(operator: ScopeOperator): this {
         if (this.scopeWhereOperator) {
-            throw new Error('Scope where operator is already set. Scope Operator can not be nested');
+            throw new ScopeBaseNestedError();
         }
         this.scopeWhereOperator = operator;
         return this;

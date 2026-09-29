@@ -26,6 +26,7 @@ import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-ex
 import { PersonID } from '../../../shared/types/index.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Person } from '../../person/domain/person.js';
+import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
 
 @Injectable()
 export class EmailMicroserviceEventHandler {
@@ -56,7 +57,7 @@ export class EmailMicroserviceEventHandler {
             return;
         }
         if (!event.person.username) {
-            throw new Error(`Person with id:${event.person.id} has no username, cannot resolve email.`);
+            throw new PersonHasNoUsernameError(event.person.id);
         }
 
         //Current Kontexte can be used here because it includes also the new Kontexte
@@ -122,7 +123,7 @@ export class EmailMicroserviceEventHandler {
             return;
         }
         if (!event.username) {
-            throw new Error(`Person with id:${event.personId} has no username, cannot resolve email.`);
+            throw new PersonHasNoUsernameError(event.personId);
         }
 
         const allKontexteForPerson: KontextWithOrgaAndRolle[] =

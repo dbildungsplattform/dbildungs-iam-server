@@ -11,6 +11,7 @@ import { PersonID } from '../../shared/types/index.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';
 import { isPersonPermissions } from '../authentication/domain/person-permissions.js';
 import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
+import { NotPersonPermissionError } from './error/not-person-permission.error.js';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class EscalatedPersonPermissionsFactory {
@@ -57,7 +58,7 @@ export class EscalatedPersonPermissionsFactory {
                 this.logger,
             );
         } else {
-            throw new Error('Provided permissions are neither PersonPermissions nor EscalatedPersonPermissions');
+            throw new NotPersonPermissionError();
         }
     }
 }

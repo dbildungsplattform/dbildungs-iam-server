@@ -12,6 +12,7 @@ import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderFindService } from './service-provider-find.service.js';
 import { ServiceProvider } from './service-provider.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 describe('ServiceProviderFindService', () => {
     let sut: ServiceProviderFindService;
@@ -36,6 +37,7 @@ describe('ServiceProviderFindService', () => {
                 await sut.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                     permissionsMock,
                     schulstrukturknotenId,
+                    RollenArt.LEHR,
                 );
 
             expectErrResult(result);
@@ -53,16 +55,20 @@ describe('ServiceProviderFindService', () => {
             const parentOrga: Organisation<true> = DoFactory.createOrganisation(true);
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 providedOnSchulstrukturknoten: parentOrga.id,
+                rollenartenWhitelist: [RollenArt.LEHR, RollenArt.LERN],
             });
 
             permissionsMock.hasSystemrechteAtOrganisation.mockResolvedValueOnce(true);
             organisationRepoMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([parentOrga]);
-            serviceProviderRepoMock.findBySchulstrukturknoten.mockResolvedValueOnce([serviceProvider]);
+            serviceProviderRepoMock.findBySchulstrukturknotenWithRollenArtWhitelist.mockResolvedValueOnce([
+                serviceProvider,
+            ]);
 
             const result: Result<ServiceProvider<true>[], MissingPermissionsError> =
                 await sut.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                     permissionsMock,
                     schulstrukturknotenId,
+                    RollenArt.LEHR,
                 );
 
             expectOkResult(result);
@@ -70,7 +76,10 @@ describe('ServiceProviderFindService', () => {
             expect(organisationRepoMock.findParentOrgasForIdSortedByDepthAsc).toHaveBeenCalledWith(
                 schulstrukturknotenId,
             );
-            expect(serviceProviderRepoMock.findBySchulstrukturknoten).toHaveBeenCalledWith([parentOrga.id]);
+            expect(serviceProviderRepoMock.findBySchulstrukturknotenWithRollenArtWhitelist).toHaveBeenCalledWith(
+                [parentOrga.id],
+                RollenArt.LEHR,
+            );
         });
 
         it('should return empty list when user is authorized and no service providers were found', async () => {
@@ -79,17 +88,21 @@ describe('ServiceProviderFindService', () => {
 
             permissionsMock.hasSystemrechteAtOrganisation.mockResolvedValueOnce(true);
             organisationRepoMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([parentOrga]);
-            serviceProviderRepoMock.findBySchulstrukturknoten.mockResolvedValueOnce([]);
+            serviceProviderRepoMock.findBySchulstrukturknotenWithRollenArtWhitelist.mockResolvedValueOnce([]);
 
             const result: Result<ServiceProvider<true>[], MissingPermissionsError> =
                 await sut.findServiceProvidersForRolleBySchulstrukturknotenAuthorized(
                     permissionsMock,
                     schulstrukturknotenId,
+                    RollenArt.LEHR,
                 );
 
             expectOkResult(result);
             expect(result.value).toEqual([]);
-            expect(serviceProviderRepoMock.findBySchulstrukturknoten).toHaveBeenCalledWith([parentOrga.id]);
+            expect(serviceProviderRepoMock.findBySchulstrukturknotenWithRollenArtWhitelist).toHaveBeenCalledWith(
+                [parentOrga.id],
+                RollenArt.LEHR,
+            );
         });
     });
 });

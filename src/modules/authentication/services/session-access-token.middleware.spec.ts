@@ -118,7 +118,7 @@ describe('sessionAccessTokenMiddleware', () => {
                     createResponseMock(),
                     vi.fn(),
                 );
-                expect(client.introspect).toHaveBeenCalledWith(originalAccessToken);
+                expect(client.introspect).toHaveBeenCalledWith(originalAccessToken, 'access_token');
 
                 expect(request.passportUser?.access_token).toStrictEqual(originalAccessToken);
             });
@@ -153,8 +153,8 @@ describe('sessionAccessTokenMiddleware', () => {
                         vi.fn(),
                     );
                     expect(client.introspect).toHaveBeenCalledTimes(2);
-                    expect(client.introspect).toHaveBeenNthCalledWith(1, originalAccessToken);
-                    expect(client.introspect).toHaveBeenNthCalledWith(2, originalRefreshToken);
+                    expect(client.introspect).toHaveBeenNthCalledWith(1, originalAccessToken, 'access_token');
+                    expect(client.introspect).toHaveBeenNthCalledWith(2, originalRefreshToken, 'refresh_token');
                     expect(client.refresh).toHaveBeenCalledWith(originalRefreshToken);
 
                     expect(request.passportUser?.access_token).toStrictEqual(newAccessToken);
@@ -182,8 +182,8 @@ describe('sessionAccessTokenMiddleware', () => {
                     vi.fn(),
                 );
                 expect(client.introspect).toHaveBeenCalledTimes(2);
-                expect(client.introspect).toHaveBeenNthCalledWith(1, originalAccessToken);
-                expect(client.introspect).toHaveBeenNthCalledWith(2, originalRefreshToken);
+                expect(client.introspect).toHaveBeenNthCalledWith(1, originalAccessToken, 'access_token');
+                expect(client.introspect).toHaveBeenNthCalledWith(2, originalRefreshToken, 'refresh_token');
                 expect(client.refresh).not.toHaveBeenCalled();
 
                 expect(request.passportUser?.access_token).toStrictEqual(originalAccessToken);

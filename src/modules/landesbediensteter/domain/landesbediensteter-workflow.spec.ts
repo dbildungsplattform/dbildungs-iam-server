@@ -28,6 +28,7 @@ import { LandesbediensteterWorkflowFactory } from './landesbediensteter-workflow
 import { LandesbediensteterWorkflowAggregate } from './landesbediensteter-workflow.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflow.mocks.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { MockedObject } from 'vitest';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
@@ -262,7 +263,7 @@ describe('LandesbediensteterWorkflow', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(orga);
             rolleRepoMock.findByName.mockResolvedValueOnce([rolle]);
 
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(undefined);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok());
 
             sut.initialize(faker.string.uuid(), []);
 
@@ -285,10 +286,10 @@ describe('LandesbediensteterWorkflow', () => {
             rolleRepoMock.findByRollenArten.mockResolvedValueOnce(rollen);
 
             // One of the rollen is not assignable
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValueOnce(undefined);
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValueOnce(undefined);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValueOnce(Ok());
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValueOnce(Ok());
             personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValueOnce(
-                new RolleNurAnPassendeOrganisationError(),
+                Err(new RolleNurAnPassendeOrganisationError()),
             );
 
             sut.initialize(faker.string.uuid(), []);
@@ -310,7 +311,7 @@ describe('LandesbediensteterWorkflow', () => {
 
             rolleRepoMock.findByRollenArten.mockResolvedValueOnce([allowedRolle, explicitlySelectedRolle]);
 
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(undefined);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok());
 
             rolleRepoMock.findByIds.mockResolvedValueOnce(
                 new Map([[explicitlySelectedRolle.id, explicitlySelectedRolle]]),
@@ -334,7 +335,7 @@ describe('LandesbediensteterWorkflow', () => {
     describe('canCommit', () => {
         it('should return no error if checks pass', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(undefined);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok());
             mockCheckPermissions(permissions, true);
             sut.initialize(faker.string.uuid(), [faker.string.uuid()]);
 
@@ -346,7 +347,7 @@ describe('LandesbediensteterWorkflow', () => {
         it('should return error if rolle can not be assigned', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(
-                new RolleNurAnPassendeOrganisationError(),
+                Err(new RolleNurAnPassendeOrganisationError()),
             );
             sut.initialize(faker.string.uuid(), [faker.string.uuid()]);
 
@@ -358,7 +359,7 @@ describe('LandesbediensteterWorkflow', () => {
 
         it('should return error if permissions are missing', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(undefined);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok());
             mockCheckPermissions(permissions, false);
             sut.initialize(faker.string.uuid(), [faker.string.uuid()]);
 

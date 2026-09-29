@@ -9,18 +9,25 @@ import { generatePassword } from '../../../../shared/util/password-generator.js'
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { EventRoutingLegacyKafkaService } from '../../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../logging/class-logger.js';
+import { LdapClient } from '../technical/ldap-client.js';
+import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
+import { LdapBindError } from './error/ldap-bind.error.js';
 import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
 import { LdapDeleteOrganisationError } from './error/ldap-delete-organisation.error.js';
 import { LdapEmailAddressError } from './error/ldap-email-address.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
+import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { LdapExecuteWithRetryError } from './error/ldap-execute-with-retry.error.js';
 import { LdapFetchAttributeError } from './error/ldap-fetch-attribute.error.js';
+import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
+import { LdapGroupNotFound } from './error/ldap-group-not-found.error.js';
 import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
 import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
 import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
 import { LdapSearchError } from './error/ldap-search.error.js';
-import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
-import { LdapClient } from '../technical/ldap-client.js';
+import { LdapUpdateGroupError } from './error/ldap-update-group.error.js';
+import { LdapUserNotFoundError } from './error/ldap-user-not-found.error.js';
 import { LdapEntityType, LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
@@ -263,6 +270,34 @@ export class LdapAdapter {
         return this.executeWithRetry(() => this.deleteOrganisationInternal(kennung), this.getNrOfRetries());
     }
 
+    public async organisationExists(kennung: string): Promise<Result<boolean>> {
+        return this.executeWithRetry(() => this.organisationExistsInternal(kennung), this.getNrOfRetries());
+    }
+
+    private async organisationExistsInternal(orgaKennung: string): Promise<Result<boolean, Error>> {
+        return this.addPersonToGroupMutex.runExclusive(async () => {
+            this.logger.info(`LDAP: Checking if organisation ${orgaKennung} exists in LDAP`);
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+
+            const searchResultOrgUnit: SearchResult = await client.search(`${this.ldapInstanceConfig.BASE_DN}`, {
+                scope: 'sub',
+                filter: `(ou=${orgaKennung})`,
+            });
+
+            if (!searchResultOrgUnit.searchEntries[0]) {
+                this.logger.info(`LDAP: organizationalUnit ${orgaKennung} not found`);
+
+                return { ok: true, value: false };
+            }
+
+            return { ok: true, value: true };
+        });
+    }
+
     //** BELOW ONLY PUBLIC HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
 
     public createNewLehrerUidFromOldUid(oldUid: string, newUsername: PersonUsername): string {
@@ -295,7 +330,7 @@ export class LdapAdapter {
         } catch (err) {
             this.logger.logUnknownAsError(`Could not connect to LDAP`, err);
 
-            return { ok: false, error: new Error('LDAP bind FAILED') };
+            return { ok: false, error: new LdapBindError() };
         }
     }
 
@@ -826,7 +861,7 @@ export class LdapAdapter {
             if (!groupEntries) {
                 const errMsg: string = `LDAP: Fetching groups failed, personId:${personId}, username:${username}`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new Error(errMsg) };
+                return { ok: false, error: new LdapFetchGroupsError(username, personId) };
             }
 
             if (groupEntries.length === 0) {
@@ -864,7 +899,7 @@ export class LdapAdapter {
         if (!groupEntries) {
             const errMsg: string = `LDAP: Error while searching for groups for person: ${oldUsername}`;
             this.logger.error(errMsg);
-            return { ok: false, error: new Error(errMsg) };
+            return { ok: false, error: new LdapFetchGroupsError(oldUsername) };
         }
 
         if (groupEntries.length === 0) {
@@ -911,7 +946,7 @@ export class LdapAdapter {
                     .catch((err: Error) => {
                         const errMsg: string = `LDAP: Error while updating member data for group: ${groupDn}, errMsg: ${String(err)}`;
                         this.logger.error(errMsg);
-                        return { ok: false, error: new Error(errMsg) };
+                        return { ok: false, error: new LdapUpdateGroupError(groupDn, [err]) };
                     });
                 this.logger.info(`LDAP: Updated member data for group: ${groupDn}`);
             }),
@@ -939,7 +974,7 @@ export class LdapAdapter {
                 if (failIfUserNotFound) {
                     return {
                         ok: false,
-                        error: new Error(`User not found: ${username}`),
+                        error: new LdapUserNotFoundError(username),
                     };
                 }
                 this.logger.info(`LDAP: user to delete not found: ${username}`);
@@ -1291,7 +1326,7 @@ export class LdapAdapter {
             if (!searchResultOrgUnit.searchEntries[0]) {
                 const errMsg: string = `LDAP: Group ${groupId} not found`;
                 this.logger.error(errMsg);
-                return { ok: false, error: new Error(errMsg) };
+                return { ok: false, error: new LdapGroupNotFound(groupId) };
             }
 
             if (!this.isPersonInSearchResult(searchResultOrgUnit.searchEntries[0], lehrerUid)) {
@@ -1452,7 +1487,7 @@ export class LdapAdapter {
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,
-            error: new Error('executeWithRetry default fallback'),
+            error: new LdapExecuteWithRetryFallbackError(),
         };
 
         while (currentAttempt <= retries) {
@@ -1462,7 +1497,7 @@ export class LdapAdapter {
                 if (result.ok) {
                     return result;
                 } else {
-                    throw new Error(`Function returned error: ${result.error.message}`);
+                    throw new LdapExecuteWithRetryError(result.error.message);
                 }
             } catch (error) {
                 this.logger.logUnknownAsError(

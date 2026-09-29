@@ -19,6 +19,7 @@ import { KeycloakUserNotFoundError } from '../domain/keycloak-user-not-found.err
 import { Request } from 'express';
 import { decode, JwtPayload } from 'jsonwebtoken';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { PermissionsNotLoadedError } from '../domain/permissions-not-loaded.error.js';
 
 export interface CustomJwtPayload extends JwtPayload {
     acr: StepUpLevel;
@@ -124,7 +125,7 @@ export class OpenIdConnectStrategy extends PassportStrategy(Strategy, 'oidc') {
             access_token: accessToken,
             refresh_token: refreshToken,
             userinfo: userinfo,
-            personPermissions: () => Promise.reject(new Error('Permissions not loaded')),
+            personPermissions: () => Promise.reject(new PermissionsNotLoadedError()),
             redirect_uri: req.session?.redirectUrl,
             stepUpLevel: stepUpLevel,
         };

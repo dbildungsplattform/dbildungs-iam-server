@@ -6,6 +6,18 @@ import type { Linter } from 'eslint';
 
 const tsconfigRootDir = __dirname;
 
+const customRulesNotForTests: Partial<Linter.RulesRecord> = {
+    '@typescript-eslint/no-empty-function': ['error'],
+    '@typescript-eslint/unbound-method': ['error'],
+    'no-restricted-syntax': [
+        'warn',
+        {
+            selector: "NewExpression[callee.name='Error']",
+            message: 'Use a DomainError implementation instead of `new Error(...)`.',
+        },
+    ],
+};
+
 const customRules: Partial<Linter.RulesRecord> = {
     'class-methods-use-this': ['off'],
     curly: ['error', 'all'],
@@ -42,12 +54,10 @@ const customRules: Partial<Linter.RulesRecord> = {
             variableDeclarationIgnoreFunction: true,
         },
     ],
-    '@typescript-eslint/unbound-method': ['error'],
     '@typescript-eslint/explicit-member-accessibility': ['error'],
     '@typescript-eslint/explicit-function-return-type': ['error'],
     '@typescript-eslint/no-explicit-any': ['error'],
     '@typescript-eslint/no-useless-constructor': ['error'],
-    '@typescript-eslint/no-empty-function': ['error'],
     '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -61,6 +71,10 @@ const customRules: Partial<Linter.RulesRecord> = {
         },
     ],
     '@typescript-eslint/no-empty-interface': ['error', { allowSingleExtends: true }],
+};
+
+const customRulesTestsOnly: Partial<Linter.RulesRecord> = {
+    '@typescript-eslint/unbound-method': 'off',
 };
 
 export default defineConfig(
@@ -77,7 +91,7 @@ export default defineConfig(
     // Main TS files
     {
         files: ['**/*.ts'],
-        ignores: ['test-migrations/**/*.ts', 'migrations/**/*.ts', 'dist/**'],
+        ignores: ['**/*spec.ts', 'test-migrations/**/*.ts', 'migrations/**/*.ts', 'dist/**'],
         extends: [tseslint.configs.recommendedTypeChecked],
         plugins: { tseslint, import: importPlugin },
         languageOptions: {
@@ -89,7 +103,7 @@ export default defineConfig(
                 ecmaVersion: 2022,
             },
         },
-        rules: customRules,
+        rules: { ...customRules, ...customRulesNotForTests },
     },
 
     // Test files
@@ -106,10 +120,6 @@ export default defineConfig(
                 ecmaVersion: 2022,
             },
         },
-        rules: {
-            ...customRules,
-            '@typescript-eslint/unbound-method': 'off',
-            '@typescript-eslint/no-empty-function': 'off',
-        },
+        rules: { ...customRules, ...customRulesTestsOnly },
     },
 );

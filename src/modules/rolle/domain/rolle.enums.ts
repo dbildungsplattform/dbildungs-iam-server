@@ -15,4 +15,5 @@ export enum RollenArt {
 export enum RollenMerkmal {
     BEFRISTUNG_PFLICHT = 'BEFRISTUNG_PFLICHT',
     KOPERS_PFLICHT = 'KOPERS_PFLICHT',
+    MPT_ROLLE = 'MPT_ROLLE',
 }
