@@ -23,7 +23,7 @@ import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-del
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { OrganisationID, PersonID, RolleID } from '../../../shared/types/index.js';
+import { OrganisationID, RolleID } from '../../../shared/types/index.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
@@ -31,6 +31,8 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
+import { LocksForPersonChangedEvent } from '../../../shared/events/locks-for-person-changed.event.js';
 
 @Injectable()
 export class EmailMicroserviceEventHandler {
@@ -199,7 +201,30 @@ export class EmailMicroserviceEventHandler {
     public async handlePersonExternalSystemsSyncEvent(
         event: PersonExternalSystemsSyncEvent | KafkaPersonExternalSystemsSyncEvent,
     ): Promise<void> {
-        const personId: PersonID = event.personId;
+        await this.syncPerson(event.personId);
+    }
+
+    @KafkaEventHandler(KafkaLocksForPersonChangedEvent)
+    @EventHandler(LocksForPersonChangedEvent)
+    @EnsureRequestContext()
+    public async handleLocksForPersonChangedEvent(
+        event: LocksForPersonChangedEvent | KafkaLocksForPersonChangedEvent,
+    ): Promise<void> {
+        await this.syncPerson(event.personId);
+    }
+
+    private getEmailServiceProviderId(rollen: Rolle<true>[]): string | undefined {
+        const spshServiceProviderId: string | undefined = rollen
+            .flatMap((rolle: Rolle<true>) => rolle.serviceProviderData)
+            .find(
+                (serviceProvider: ServiceProvider<true>) =>
+                    serviceProvider.externalSystem === ServiceProviderSystem.EMAIL,
+            )?.id;
+
+        return spshServiceProviderId;
+    }
+
+    private async syncPerson(personId: string): Promise<void>{;
         this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
         if (!this.emailResolverService.shouldUseEmailMicroservice()) {
             this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);
@@ -210,7 +235,7 @@ export class EmailMicroserviceEventHandler {
         const gesperrt: boolean = userLocks.length > 0;
 
         const allKontexteForPerson: KontextWithOrgaAndRolle[] =
-            await this.personenkontextRepo.findByPersonWithOrgaAndRolle(event.personId);
+            await this.personenkontextRepo.findByPersonWithOrgaAndRolle(personId);
 
         const kontextData: { orgaId: OrganisationID; rolleId: RolleID }[] = allKontexteForPerson.map(
             (k: KontextWithOrgaAndRolle) => ({ orgaId: k.organisation.id, rolleId: k.rolle.id }),
@@ -248,7 +273,7 @@ export class EmailMicroserviceEventHandler {
             );
 
             await this.emailResolverService.setEmailForSpshPerson({
-                spshPersonId: event.personId,
+                spshPersonId: personId,
                 spshUsername: person.username,
                 organisationen: uniqOrganisationen,
                 firstName: person.vorname,
@@ -262,33 +287,6 @@ export class EmailMicroserviceEventHandler {
             );
             await this.emailResolverService.setEmailsSuspendedForSpshPerson({ spshPersonId: personId, gesperrt });
         }
-    }
-
-    private getEmailServiceProviderId(rollen: Rolle<true>[]): string | undefined {
-        const spshServiceProviderId: string | undefined = rollen
-            .flatMap((rolle: Rolle<true>) => rolle.serviceProviderData)
-            .find(
-                (serviceProvider: ServiceProvider<true>) =>
-                    serviceProvider.externalSystem === ServiceProviderSystem.EMAIL,
-            )?.id;
-
-        return spshServiceProviderId;
-    }
-
-    private getKennungenWithEmailServiceProvider(
-        kontexte: { orgaId: string; orgaKennung: string | undefined; rolleId: string }[],
-        rollenMap: Map<string, Rolle<true>>,
-    ): string[] {
-        return kontexte
-            .filter((kontext: { orgaId: string; orgaKennung: string | undefined; rolleId: string }) =>
-                rollenMap
-                    .get(kontext.rolleId)
-                    ?.serviceProviderData.some(
-                        (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.EMAIL,
-                    ),
-            )
-            .map((kontext: { orgaId: string; orgaKennung: string | undefined; rolleId: string }) => kontext.orgaKennung)
-            .filter((kennung: string | undefined): kennung is string => !!kennung);
     }
 
     private getOrganisationenWithEmailServiceProvider(
