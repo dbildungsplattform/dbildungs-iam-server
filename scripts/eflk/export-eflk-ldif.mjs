@@ -236,8 +236,9 @@ async function fetchOrganisationen(client, organisationIds) {
     }
 
     const rows = await queryOrganisationsByIds(client, organisationIds);
+    const organisationenById = new Map(rows.map((r) => [r.id, r]));
 
-    return new Map(rows.map((r) => [r.id, r]));
+    return organisationenById;
 }
 
 async function main() {
