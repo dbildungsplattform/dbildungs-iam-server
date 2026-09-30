@@ -193,7 +193,7 @@ The basic structure of the repo integration test:
 ```TypeScript
  import { EntityManager, MikroORM } from '@mikro-orm/core';
  import { Test, TestingModule } from '@nestjs/testing';
- import { ConfigTestModule, DatabaseTestModule } from '../../../shared/testing/index.js';
+ import { ConfigTestModule, DatabaseTestModule } from '../../../../test/utils/index.js';
  import { PersonRepo } from './person.repo.js';
 
  let sut: PersonRepo;
@@ -203,7 +203,7 @@ The basic structure of the repo integration test:
 
     beforeAll(async () => {
      module = await Test.createTestingModule({                                                            (1)
-             imports: [ConfigTestModule, DatabaseTestModule.register({ isDatabaseRequired: true })],      (1.1)
+             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true })],       (1.1)
              providers: [PersonRepo],                                                                     (1.2)
       }).compile();
       sut = module.get(PersonRepo);                                                                       (2)
@@ -245,11 +245,11 @@ docker volume prune -f
 
 #### Entity Factories
 
-To fill the database we use factories. They are located in `\src\shared\testing`. If you create a new one, please add it to the index.ts in that folder.
+To fill the database we use factories. They are located in `test/utils`. If you create a new one, please add it to the index.ts in that folder.
 
 #### Test Modules
 
-Test modules are located in `\src\shared\testing`. If you create a new one, please add it to the index.ts in that folder and refer to `database-test.module.ts`.
+Test modules are located in `test/utils`. If you create a new one, please add it to the index.ts in that folder and refer to `database-test.module.ts`.
 
 #### Identity Map (`em.clear()`)
 
