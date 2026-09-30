@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { Collection, EntityManager, MikroORM, ref, RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
@@ -100,14 +100,23 @@ describe('PersonRepository Integration', () => {
     let organisationRepository: OrganisationRepository;
     let loggerMock: DeepMocked<ClassLogger>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
+    let configServiceMock: DeepMocked<ConfigService>;
 
     beforeAll(async () => {
+        configServiceMock = createMock(ConfigService);
+        configServiceMock.getOrThrow.mockReturnValue({
+            RENAME_WAITING_TIME_IN_SECONDS: 0,
+            ROOT_ORGANISATION_ID: 'd39cb7cf-2f9b-45f1-849f-973661f2f057',
+        });
         module = await Test.createTestingModule({
             imports: [LoggingTestModule, ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true })],
             providers: [
                 PersonRepository,
                 OrganisationRepository,
-                ConfigService,
+                {
+                    provide: ConfigService,
+                    useValue: configServiceMock,
+                },
                 {
                     provide: EmailResolverService,
                     useValue: createMock(EmailResolverService),
@@ -141,8 +150,6 @@ describe('PersonRepository Integration', () => {
             .useValue(createMock(ClassLogger))
             .compile();
         sut = module.get(PersonRepository);
-        // Avoid real wait time for privacyIDEA sync during rename in tests
-        (sut as unknown as { RENAME_WAITING_TIME_IN_SECONDS: number }).RENAME_WAITING_TIME_IN_SECONDS = 0;
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         personPermissionsMock = createPersonPermissionsMock();
@@ -168,6 +175,10 @@ describe('PersonRepository Integration', () => {
     beforeEach(async () => {
         await DatabaseTestModule.clearDatabase(orm);
         vi.resetAllMocks();
+        configServiceMock.getOrThrow.mockReturnValue({
+            RENAME_WAITING_TIME_IN_SECONDS: 0,
+            ROOT_ORGANISATION_ID: 'd39cb7cf-2f9b-45f1-849f-973661f2f057',
+        });
     });
 
     it('should be defined', () => {
