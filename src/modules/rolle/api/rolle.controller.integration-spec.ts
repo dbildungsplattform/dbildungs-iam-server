@@ -462,7 +462,9 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
-            const response: Response = await request(app.getHttpServer() as App).post('/rolle').send(params);
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/rolle')
+                .send(params);
 
             expect(response.status).toBe(201);
             const created: RolleResponse = response.body as RolleResponse;
@@ -472,7 +474,9 @@ describe('Rolle API', () => {
             expect(rolle.merkmale).toEqual(expect.arrayContaining(merkmale));
             expect(rolle.merkmale).toHaveLength(merkmale.length);
             expect(rolle.systemrechte).toEqual(
-                expect.arrayContaining(systemrechte.map((name: RollenSystemRechtEnum) => ({ name, isTechnical: false }))),
+                expect.arrayContaining(
+                    systemrechte.map((name: RollenSystemRechtEnum) => ({ name, isTechnical: false })),
+                ),
             );
             expect(rolle.systemrechte).toHaveLength(systemrechte.length);
             expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
@@ -1761,7 +1765,9 @@ describe('Rolle API', () => {
         ])(
             'should persist adding and removing %s and its system right on an existing rolle',
             async (merkmal: RollenMerkmal, systemrecht: RollenSystemRecht) => {
-                const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+                const organisation: Organisation<true> = await organisationRepo.save(
+                    DoFactory.createOrganisation(false),
+                );
                 const existing: Rolle<true> = await rolleRepo.create(
                     DoFactory.createRolle(false, {
                         administeredBySchulstrukturknoten: organisation.id,
