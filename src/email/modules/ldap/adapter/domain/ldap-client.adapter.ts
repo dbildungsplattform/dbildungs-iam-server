@@ -185,6 +185,21 @@ export class LdapClientAdapter {
         return rootName;
     }
 
+    private withBoundClient<T>(
+        logMessage: string,
+        operation: (client: Client) => Promise<Result<T>>,
+    ): Promise<Result<T>> {
+        return this.mutex.runExclusive(async () => {
+            this.logger.info(logMessage);
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+            return operation(client);
+        });
+    }
+
     public async deletePerson(externalId: string, domain: string): Promise<Result<void>> {
         return this.executeWithRetry(() => this.deletePersonInternal(externalId, domain), this.getNrOfRetries());
     }
@@ -199,13 +214,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.mutex.runExclusive(async () => {
-            this.logger.info(`LDAP: deletePerson by externalId ${externalId}`);
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
+        return await this.withBoundClient(`LDAP: deletePerson by externalId ${externalId}`, async (client: Client) => {
             const personUid: string = this.getPersonUid(externalId, rootName.value);
             try {
                 const ouBaseDn: string = `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`;
@@ -242,14 +251,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return await this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: createPerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        return await this.withBoundClient('LDAP: createPerson', async (client: Client) => {
             const searchResultPerson: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {
@@ -298,14 +300,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return await this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: updatePerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        return await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const changes: Change[] = [
                 new Change({
                     operation: 'replace',
@@ -365,14 +360,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: updatePerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        return await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const personDn: string = this.getPersonUid(personUid, rootName.value);
 
             const changes: Change[] = [
@@ -414,14 +402,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: isPersonExisting');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        return await this.withBoundClient('LDAP: isPersonExisting', async (client: Client) => {
             const searchResultLehrer: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {

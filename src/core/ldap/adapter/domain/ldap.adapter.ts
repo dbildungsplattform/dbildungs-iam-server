@@ -604,28 +604,7 @@ export class LdapAdapter {
                 returnAttributeValues: true,
             });
             if (!searchResult.searchEntries[0]) {
-                this.logger.warning(
-                    `Fetching person-attributes FAILED, no entry for username:${username}, personId:${personId}`,
-                );
-                const creationResult: Result<string> = await this.createEmptyPersonEntry(username, emailDomain);
-                if (!creationResult.ok) {
-                    return creationResult;
-                }
-
-                const entryUUIDResult: Result<string> = await this.getEntryUUID(client, personId, username);
-                if (!entryUUIDResult.ok) {
-                    this.logger.error(
-                        `Could not fetch entryUUID after creation of empty PersonEntry, personId:${personId}, username:${username}`,
-                    );
-                }
-
-                return {
-                    ok: true,
-                    value: {
-                        entryUUID: entryUUIDResult.ok ? entryUUIDResult.value : undefined,
-                        dn: creationResult.value,
-                    },
-                };
+                return this.createMissingPersonEntry(client, personId, username, emailDomain);
             }
 
             const givenName: Result<string> = this.getAttributeAsStringOrError(
@@ -682,6 +661,36 @@ export class LdapAdapter {
 
             return { ok: true, value: personAttributes };
         });
+    }
+
+    private async createMissingPersonEntry(
+        client: Client,
+        personId: PersonID,
+        username: PersonUsername,
+        emailDomain: string,
+    ): Promise<Result<LdapPersonAttributes>> {
+        this.logger.warning(
+            `Fetching person-attributes FAILED, no entry for username:${username}, personId:${personId}`,
+        );
+        const creationResult: Result<string> = await this.createEmptyPersonEntry(username, emailDomain);
+        if (!creationResult.ok) {
+            return creationResult;
+        }
+
+        const entryUUIDResult: Result<string> = await this.getEntryUUID(client, personId, username);
+        if (!entryUUIDResult.ok) {
+            this.logger.error(
+                `Could not fetch entryUUID after creation of empty PersonEntry, personId:${personId}, username:${username}`,
+            );
+        }
+
+        return {
+            ok: true,
+            value: {
+                entryUUID: entryUUIDResult.ok ? entryUUIDResult.value : undefined,
+                dn: creationResult.value,
+            },
+        };
     }
 
     private getAttributeAsStringOrError(
