@@ -36,6 +36,7 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { VidisSyncService } from './vidis.sync-service.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 
 type TorgaIds = {
     id: string;
@@ -896,7 +897,10 @@ describe('VidisSyncService', () => {
                 createExistingVidisServiceProvider(orga.id, '1'),
                 staleServiceProvider,
             ];
-            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValue(Ok(null));
+
+            permissionsMock.hasSystemrechteAtOrganisation = vi.fn().mockResolvedValue(true);
+            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(Ok(null));
+            serviceProviderRepoMock.deleteByIdAuthorized.mockResolvedValueOnce(Ok(undefined));
 
             await (
                 sut as unknown as {
@@ -910,10 +914,17 @@ describe('VidisSyncService', () => {
                 }
             ).syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock);
 
+            expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
+                RollenSystemRecht.ANGEBOTE_VERWALTEN,
+                RollenSystemRecht.ROLLEN_ERWEITERN,
+            ]);
             expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).toHaveBeenCalledWith(
                 orga.id,
                 [staleServiceProvider.id],
+            );
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).toHaveBeenCalledWith(
                 permissionsMock,
+                staleServiceProvider.id,
             );
             expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
         });
