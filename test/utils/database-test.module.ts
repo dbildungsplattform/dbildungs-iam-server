@@ -60,8 +60,7 @@ export class DatabaseTestModule implements OnModuleDestroy {
 
                         let clientUrl: string = config.CLIENT_URL;
                         if (options?.isDatabaseRequired) {
-                            const container: StartedPostgreSqlContainer =
-                                await DatabaseTestModule.getSharedContainer();
+                            const container: StartedPostgreSqlContainer = await DatabaseTestModule.getSharedContainer();
                             await DatabaseTestModule.createDatabase(container, dbName);
                             clientUrl = container.getConnectionUri();
                         }
