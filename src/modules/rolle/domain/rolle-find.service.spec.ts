@@ -788,7 +788,7 @@ describe('RolleFindService', () => {
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.PERSONEN_ANLEGEN,
                 organisationId: schule.id,
-                rollenartOfUser: RollenArt.SYSADMIN,
+                rollenartForPerson: RollenArt.SYSADMIN,
             });
 
             expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).not.toHaveBeenCalled();

@@ -20,11 +20,11 @@ export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParam
     @ApiProperty({
         enum: RollenArt,
         enumName: RollenArtTypName,
-        description: 'The rollenart of the user for which the available rollen should be found',
+        description: 'The rollenart of the person for whom the available rollen should be found',
         required: false,
         nullable: true,
     })
-    public readonly rollenartOfUser?: RollenArt;
+    public readonly rollenartForPerson?: RollenArt;
 
     @IsString()
     @IsOptional()

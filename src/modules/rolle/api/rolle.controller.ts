@@ -302,7 +302,7 @@ export class RolleController {
                     ? RollenSystemRecht.getByName(queryParams.systemrecht)
                     : RollenSystemRecht.getByName(RollenSystemRechtEnum.PERSONEN_VERWALTEN),
                 organisationId: queryParams.organisationId,
-                rollenartOfUser: queryParams.rollenartOfUser,
+                rollenartForPerson: queryParams.rollenartForPerson,
                 rolleName: queryParams.rolleName,
                 rollenIds: queryParams.rollenIds,
                 limit: queryParams.limit,
