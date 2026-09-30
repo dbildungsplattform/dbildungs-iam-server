@@ -929,6 +929,54 @@ describe('VidisSyncService', () => {
             expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
         });
 
+        it('should skip stale Angebote deletion when required permissions are missing', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+
+            const staleServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '2');
+
+            const permissionErrorMessage: string =
+                'Systemrechte ANGEBOTE_VERWALTEN and ROLLEN_ERWEITERN required for deleting VIDIS Angebote.';
+
+            permissionsMock.hasSystemrechteAtOrganisation = vi.fn().mockResolvedValue(false);
+
+            await (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).syncForSchoolInternal(
+                orga.id,
+                [createAngebot(1, 'Existing Angebot')],
+                [createExistingVidisServiceProvider(orga.id, '1'), staleServiceProvider],
+                [],
+                permissionsMock,
+            );
+
+            expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
+                RollenSystemRecht.ANGEBOTE_VERWALTEN,
+                RollenSystemRecht.ROLLEN_ERWEITERN,
+            ]);
+            expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).not.toHaveBeenCalled();
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).not.toHaveBeenCalled();
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `VIDIS sync for organisation ${orga.id} finished with 1 failed operations.`,
+            );
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `VIDIS sync operation for organisation ${orga.id} rejected`,
+                expect.objectContaining({
+                    message: permissionErrorMessage,
+                }),
+            );
+        });
+
         it('should wait for stale rollenerweiterung cleanup before deleting stale service providers', async () => {
             const orga: TorgaIds = {
                 id: faker.string.uuid(),
