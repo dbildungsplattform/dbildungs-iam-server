@@ -199,7 +199,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info(`LDAP: deletePerson by externalId ${externalId}`);
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -242,7 +242,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: createPerson');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -298,7 +298,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: updatePerson');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -365,7 +365,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: updatePerson');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -414,7 +414,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: isPersonExisting');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();

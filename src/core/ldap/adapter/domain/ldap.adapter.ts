@@ -273,7 +273,7 @@ export class LdapAdapter {
     }
 
     private async organisationExistsInternal(orgaKennung: string): Promise<Result<boolean, Error>> {
-        return this.addPersonToGroupMutex.runExclusive(async () => {
+        return await this.addPersonToGroupMutex.runExclusive(async () => {
             this.logger.info(`LDAP: Checking if organisation ${orgaKennung} exists in LDAP`);
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -389,7 +389,7 @@ export class LdapAdapter {
         }
 
         const lehrerUid: string = this.getLehrerUid(username, rootName.value);
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: createLehrer');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -453,7 +453,7 @@ export class LdapAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: isLehrerExisting');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -480,7 +480,7 @@ export class LdapAdapter {
         newSn?: string,
         newUsername?: PersonUsername,
     ): Promise<Result<PersonUsername>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: modifyPersonAttributes');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -581,7 +581,7 @@ export class LdapAdapter {
         username: PersonUsername,
         emailDomain: string,
     ): Promise<Result<LdapPersonAttributes>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: getPersonAttributes');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -779,7 +779,7 @@ export class LdapAdapter {
         username: PersonUsername,
         newMailAlternativeAddress: string,
     ): Promise<Result<PersonID>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: setMailAlternativeAddress');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -825,7 +825,7 @@ export class LdapAdapter {
     }
 
     private async getGroupsForPersonInternal(personId: PersonID, username: PersonUsername): Promise<Result<string[]>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: getGroupsForPerson');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -954,7 +954,7 @@ export class LdapAdapter {
         username: PersonUsername,
         failIfUserNotFound: boolean,
     ): Promise<Result<string | null>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: deleteLehrerByUsernameInternal');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -996,7 +996,7 @@ export class LdapAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: deleteLehrer by person');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -1044,7 +1044,7 @@ export class LdapAdapter {
         alternativEmailAddress?: string,
     ): Promise<Result<PersonID>> {
         // Converted to avoid PersonRepository-ref, UEM-password-generation
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: changeEmailAddress');
             const splitted: string[] = newEmailAddress.split('@');
             if (!splitted || !splitted[1]) {
@@ -1128,7 +1128,7 @@ export class LdapAdapter {
         username: PersonUsername,
         address: string,
     ): Promise<Result<boolean>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: removeMailAlternativeAddress');
             const splitted: string[] = address.split('@');
             if (!splitted || !splitted[1]) {
@@ -1218,7 +1218,7 @@ export class LdapAdapter {
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return this.addPersonToGroupMutex.runExclusive(async () => {
+        return await this.addPersonToGroupMutex.runExclusive(async () => {
             const groupId: string = 'lehrer-' + orgaKennung;
             this.logger.info(`LDAP: Adding person ${personUid} to group ${groupId}`);
             const client: Client = this.ldapClient.getClient();
@@ -1304,7 +1304,7 @@ export class LdapAdapter {
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return this.deletePersonFromGroupMutex.runExclusive(async () => {
+        return await this.deletePersonFromGroupMutex.runExclusive(async () => {
             const groupId: string = 'lehrer-' + orgaKennung;
             this.logger.info(`LDAP: Removing person ${username} from group ${groupId}`);
             const client: Client = this.ldapClient.getClient();
@@ -1386,7 +1386,7 @@ export class LdapAdapter {
         // Converted to avoid PersonRepository-ref, UEM-password-generation
         const userPassword: string = generatePassword();
 
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: changeUserPassword');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -1441,7 +1441,7 @@ export class LdapAdapter {
     }
 
     private async deleteOrganisationInternal(kennung: string): Promise<Result<string>> {
-        return this.mutex.runExclusive(async () => {
+        return await this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
             if (!bindResult.ok) {
