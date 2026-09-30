@@ -152,6 +152,8 @@ describe('PersonenkontexteUpdate', () => {
             .useValue(createMock(EmailRepo))
             .overrideProvider(EmailResolverService)
             .useValue(createMock(EmailResolverService))
+            .overrideProvider(EventRoutingLegacyKafkaService)
+            .useValue(createMock(EventRoutingLegacyKafkaService))
             .compile();
         dBiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         dBiamPersonenkontextRepoInternalMock = module.get(DBiamPersonenkontextRepoInternal);
@@ -492,11 +494,7 @@ describe('PersonenkontexteUpdate', () => {
                 dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(null); //mock pk1 is not found => therefore handled as new
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]); //person has no existing PKs
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]); //CheckRollenartLernSpecification: person has no existing PKs
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map()); //CheckRollenartLernSpecification
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map()); //CheckRollenartLernSpecification
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+                rolleRepoMock.findByIds.mockResolvedValue(new Map());
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([pk1, pk2]); // mock while checking the existing PKs
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([pk1, pk2]);
                 const newPerson: Person<true> = DoFactory.createPerson(true);

@@ -178,7 +178,7 @@ export class PersonenkontexteUpdate {
                         pk.personId === existingPK.personId &&
                         pk.organisationId === existingPK.organisationId &&
                         pk.rolleId === existingPK.rolleId &&
-                        pk.befristung === existingPK.befristung,
+                        pk.befristung?.getTime() === existingPK.befristung?.getTime(),
                 )
             ) {
                 modifiedPKs.push(existingPK);
@@ -192,7 +192,7 @@ export class PersonenkontexteUpdate {
                         pk.personId === sentPK.personId &&
                         pk.organisationId === sentPK.organisationId &&
                         pk.rolleId === sentPK.rolleId &&
-                        pk.befristung === sentPK.befristung,
+                        pk.befristung?.getTime() === sentPK.befristung?.getTime(),
                 )
             ) {
                 modifiedPKs.push(sentPK);
