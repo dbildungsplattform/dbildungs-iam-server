@@ -202,29 +202,36 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.withBoundClient(`LDAP: deletePerson by externalId ${externalId}`, async (client: Client) => {
-            const personUid: string = this.getPersonUid(externalId, rootName.value);
-            try {
-                const ouBaseDn: string = `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`;
-                this.logger.debug(`LDAP: Trying to find person, uid:${personUid}, ouBaseDn:${ouBaseDn} for deletion`);
-                const searchResultLehrer: SearchResult = await client.search(ouBaseDn, {
-                    filter: `(uid=${externalId})`,
-                });
-                if (!searchResultLehrer.searchEntries[0]) {
-                    this.logger.info(`LDAP: Person ${personUid} does not exist, nothing to delete`);
+        const result: Result<void> = await this.withBoundClient(
+            `LDAP: deletePerson by externalId ${externalId}`,
+            async (client: Client) => {
+                const personUid: string = this.getPersonUid(externalId, rootName.value);
+                try {
+                    const ouBaseDn: string = `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`;
+                    this.logger.debug(
+                        `LDAP: Trying to find person, uid:${personUid}, ouBaseDn:${ouBaseDn} for deletion`,
+                    );
+                    const searchResultLehrer: SearchResult = await client.search(ouBaseDn, {
+                        filter: `(uid=${externalId})`,
+                    });
+                    if (!searchResultLehrer.searchEntries[0]) {
+                        this.logger.info(`LDAP: Person ${personUid} does not exist, nothing to delete`);
+
+                        return { ok: true, value: undefined };
+                    }
+                    await client.del(personUid);
+                    this.logger.info(`LDAP: Successfully deleted person ${personUid}`);
 
                     return { ok: true, value: undefined };
+                } catch (err) {
+                    this.logger.logUnknownAsError(`LDAP: Deleting person FAILED, uid:${personUid}`, err);
+
+                    return { ok: false, error: new LdapDeletePersonError() };
                 }
-                await client.del(personUid);
-                this.logger.info(`LDAP: Successfully deleted person ${personUid}`);
+            },
+        );
 
-                return { ok: true, value: undefined };
-            } catch (err) {
-                this.logger.logUnknownAsError(`LDAP: Deleting person FAILED, uid:${personUid}`, err);
-
-                return { ok: false, error: new LdapDeletePersonError() };
-            }
-        });
+        return result;
     }
 
     private async createPersonInternal(
@@ -239,7 +246,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return await this.withBoundClient('LDAP: createPerson', async (client: Client) => {
+        const result: Result<PersonData> = await this.withBoundClient('LDAP: createPerson', async (client: Client) => {
             const searchResultPerson: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {
@@ -274,6 +281,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapCreatePersonError() };
             }
         });
+
+        return result;
     }
 
     private async updatePersonInternal(
@@ -288,7 +297,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
+        const result: Result<PersonData> = await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const changes: Change[] = [
                 new Change({
                     operation: 'replace',
@@ -335,6 +344,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapModifyPersonError() };
             }
         });
+
+        return result;
     }
 
     private async updatePersonEmailsInternal(
@@ -348,7 +359,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
+        const result: Result<string> = await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const personDn: string = this.getPersonUid(personUid, rootName.value);
 
             const changes: Change[] = [
@@ -382,6 +393,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapModifyPersonError() };
             }
         });
+
+        return result;
     }
 
     private async isPersonExistingInternal(uid: string, domain: string): Promise<Result<boolean>> {
@@ -390,7 +403,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return await this.withBoundClient('LDAP: isPersonExisting', async (client: Client) => {
+        const result: Result<boolean> = await this.withBoundClient('LDAP: isPersonExisting', async (client: Client) => {
             const searchResultLehrer: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {
@@ -402,6 +415,8 @@ export class LdapClientAdapter {
             }
             return { ok: true, value: false };
         });
+
+        return result;
     }
 
     private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
