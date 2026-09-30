@@ -7,6 +7,7 @@ import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { Paged } from '../../../shared/paging/paged.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
@@ -15,21 +16,24 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationService } from '../../organisation/domain/organisation.service.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { ApplyRollenerweiterungForRolleService } from '../domain/apply-rollenerweiterungen-for-rolle-service.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
 import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing-space.error.js';
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
+import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
 import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { RolleController } from './rolle.controller.js';
 import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
@@ -39,7 +43,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
     let rolleController: RolleController;
     let organisationServiceMock: DeepMocked<OrganisationService>;
     let rolleFindServiceMock: DeepMocked<RolleFindService>;
-    let rollenerweiterungRepoMock: DeepMocked<RollenerweiterungRepo>;
+    let applyRollenerweiterungServiceMock: DeepMocked<ApplyRollenerweiterungService>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -78,12 +82,8 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
                     useValue: createMock(OrganisationService),
                 },
                 {
-                    provide: RollenerweiterungRepo,
-                    useValue: createMock(RollenerweiterungRepo),
-                },
-                {
-                    provide: ApplyRollenerweiterungForRolleService,
-                    useValue: createMock(ApplyRollenerweiterungForRolleService),
+                    provide: ApplyRollenerweiterungService,
+                    useValue: createMock(ApplyRollenerweiterungService),
                 },
                 RolleController,
                 RolleFactory,
@@ -94,8 +94,8 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
         rolleRepoMock = module.get(RolleRepo);
         rolleController = module.get(RolleController);
         organisationServiceMock = module.get(OrganisationService);
-        rollenerweiterungRepoMock = module.get(RollenerweiterungRepo);
         rolleFindServiceMock = module.get(RolleFindService);
+        applyRollenerweiterungServiceMock = module.get(ApplyRollenerweiterungService);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {
@@ -132,6 +132,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
         describe('createRollenerweiterung', () => {
             let createRollenerweiterungParams: CreateRollenerweiterungBodyParams;
             let permissions: IPersonPermissions;
+
             beforeEach(() => {
                 createRollenerweiterungParams = new CreateRollenerweiterungBodyParams();
                 Object.assign(createRollenerweiterungParams, {
@@ -142,15 +143,45 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
                 permissions = createPersonPermissionsMock();
             });
 
-            it('should return the response', async () => {
-                rollenerweiterungRepoMock.createAuthorized.mockResolvedValueOnce({
+            it('should delegate creation to ApplyRollenerweiterungService', async () => {
+                const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(
+                    true,
+                    createRollenerweiterungParams,
+                );
+
+                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
                     ok: true,
-                    value: DoFactory.createRollenerweiterung<true>(true, createRollenerweiterungParams),
+                    value: persistedRollenerweiterung,
                 });
+
+                await rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions);
+
+                expect(applyRollenerweiterungServiceMock.createRollenerweiterung).toHaveBeenCalledOnce();
+
+                expect(applyRollenerweiterungServiceMock.createRollenerweiterung).toHaveBeenCalledWith(
+                    createRollenerweiterungParams.organisationId,
+                    createRollenerweiterungParams.rolleId,
+                    createRollenerweiterungParams.serviceProviderId,
+                    permissions,
+                );
+            });
+
+            it('should return a RollenerweiterungResponse', async () => {
+                const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(
+                    true,
+                    createRollenerweiterungParams,
+                );
+
+                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
+                    ok: true,
+                    value: persistedRollenerweiterung,
+                });
+
                 const result: RollenerweiterungResponse = await rolleController.createRollenerweiterung(
                     createRollenerweiterungParams,
                     permissions,
                 );
+
                 expect(result).toBeInstanceOf(RollenerweiterungResponse);
                 expect(result).toEqual(
                     expect.objectContaining({
@@ -161,14 +192,33 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
                 );
             });
 
-            it('should throw an HTTP exception when rollenerweiterung can not be created', async () => {
-                rollenerweiterungRepoMock.createAuthorized.mockResolvedValueOnce({
+            it('should throw when ApplyRollenerweiterungService returns a domain error', async () => {
+                const error: MissingPermissionsError = new MissingPermissionsError('dummy error');
+
+                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
                     ok: false,
-                    error: new MissingPermissionsError('dummy error'),
+                    error,
                 });
+
                 await expect(
                     rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions),
                 ).rejects.toThrow(MissingPermissionsError);
+            });
+
+            it('should throw EntityNotFoundError returned by ApplyRollenerweiterungService', async () => {
+                const error: EntityNotFoundError = new EntityNotFoundError(
+                    'Rolle',
+                    createRollenerweiterungParams.rolleId,
+                );
+
+                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
+                    ok: false,
+                    error,
+                });
+
+                await expect(
+                    rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions),
+                ).rejects.toThrow(EntityNotFoundError);
             });
         });
     });
@@ -284,6 +334,114 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
             rolleRepoMock.deleteAuthorized.mockResolvedValueOnce(error);
 
             await expect(rolleController.deleteRolle(params, permissions)).rejects.toThrow(MissingPermissionsError);
+        });
+    });
+
+    describe('GET rolle/:rolleId/erweiterungen', () => {
+        describe('findRollenerweiterungenForRolleAndOrga', () => {
+            let params: FindRolleByIdParams;
+            let queryParams: FindRollenerweiterungQueryParams;
+            let permissions: IPersonPermissions;
+
+            beforeEach(() => {
+                params = {
+                    rolleId: faker.string.uuid(),
+                };
+
+                queryParams = {
+                    organisationId: faker.string.uuid(),
+                };
+
+                permissions = createPersonPermissionsMock();
+            });
+
+            it('should delegate loading to ApplyRollenerweiterungService', async () => {
+                const serviceProviders: ServiceProvider<true>[] = [DoFactory.createServiceProvider(true)];
+
+                applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation.mockResolvedValueOnce({
+                    ok: true,
+                    value: serviceProviders,
+                });
+
+                await rolleController.findRollenerweiterungenForRolleAndOrga(params, queryParams, permissions);
+
+                expect(
+                    applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation,
+                ).toHaveBeenCalledOnce();
+                expect(
+                    applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation,
+                ).toHaveBeenCalledWith(queryParams.organisationId, params.rolleId, permissions);
+            });
+
+            it('should return ServiceProviderResponses', async () => {
+                const serviceProviders: ServiceProvider<true>[] = [
+                    DoFactory.createServiceProvider(true),
+                    DoFactory.createServiceProvider(true),
+                ];
+
+                applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation.mockResolvedValueOnce({
+                    ok: true,
+                    value: serviceProviders,
+                });
+
+                const result: ServiceProviderResponse[] = await rolleController.findRollenerweiterungenForRolleAndOrga(
+                    params,
+                    queryParams,
+                    permissions,
+                );
+
+                expect(result).toHaveLength(serviceProviders.length);
+                expect(
+                    result.every(
+                        (response: ServiceProviderResponse): boolean => response instanceof ServiceProviderResponse,
+                    ),
+                ).toBe(true);
+                expect(result).toHaveLength(serviceProviders.length);
+                expect(
+                    result.every((response: ServiceProviderResponse) => response instanceof ServiceProviderResponse),
+                ).toBe(true);
+            });
+
+            it('should return an empty array when no Rollenerweiterungen exist', async () => {
+                applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation.mockResolvedValueOnce({
+                    ok: true,
+                    value: [],
+                });
+
+                const result: ServiceProviderResponse[] = await rolleController.findRollenerweiterungenForRolleAndOrga(
+                    params,
+                    queryParams,
+                    permissions,
+                );
+
+                expect(result).toEqual([]);
+            });
+
+            it('should throw MissingPermissionsError returned by ApplyRollenerweiterungService', async () => {
+                const error: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+
+                applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation.mockResolvedValueOnce({
+                    ok: false,
+                    error,
+                });
+
+                await expect(
+                    rolleController.findRollenerweiterungenForRolleAndOrga(params, queryParams, permissions),
+                ).rejects.toThrow(MissingPermissionsError);
+            });
+
+            it('should throw EntityNotFoundError returned by ApplyRollenerweiterungService', async () => {
+                const error: EntityNotFoundError = new EntityNotFoundError('Rolle', params.rolleId);
+
+                applyRollenerweiterungServiceMock.findRollenerweiterungenForRolleAndOrganisation.mockResolvedValueOnce({
+                    ok: false,
+                    error,
+                });
+
+                await expect(
+                    rolleController.findRollenerweiterungenForRolleAndOrga(params, queryParams, permissions),
+                ).rejects.toThrow(EntityNotFoundError);
+            });
         });
     });
 });
