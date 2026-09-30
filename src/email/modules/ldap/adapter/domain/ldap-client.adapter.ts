@@ -88,10 +88,7 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.createPersonInternal(person, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.createPersonInternal(person, domain, primaryMail, alternativeEmail));
     }
 
     public async updatePerson(
@@ -100,10 +97,7 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.updatePersonInternal(person, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.updatePersonInternal(person, domain, primaryMail, alternativeEmail));
     }
 
     public async updatePersonEmails(
@@ -112,19 +106,13 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<string>> {
-        return this.executeWithRetry(
-            () => this.updatePersonEmailsInternal(personUid, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.updatePersonEmailsInternal(personUid, domain, primaryMail, alternativeEmail),
         );
     }
 
     public async isPersonExisting(uid: string, domain: string): Promise<Result<boolean>> {
-        return this.executeWithRetry(() => this.isPersonExistingInternal(uid, domain), this.getNrOfRetries());
-    }
-    //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
-
-    private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
+        return this.executeWithRetry(() => this.isPersonExistingInternal(uid, domain));
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -201,7 +189,7 @@ export class LdapClientAdapter {
     }
 
     public async deletePerson(externalId: string, domain: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deletePersonInternal(externalId, domain), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.deletePersonInternal(externalId, domain));
     }
 
     public useLdap(): boolean {
@@ -416,11 +404,9 @@ export class LdapClientAdapter {
         });
     }
 
-    private async executeWithRetry<T>(
-        func: () => Promise<Result<T>>,
-        retries: number,
-        delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
-    ): Promise<Result<T>> {
+    private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
+        const retries: number = this.ldapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES;
+        const delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_DELAY_IN_MS;
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,

@@ -115,14 +115,11 @@ export class LdapAdapter {
         schulId: string,
         mail?: string,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.createLehrerInternal(person, domain, schulId, mail),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.createLehrerInternal(person, domain, schulId, mail));
     }
 
     public async isLehrerExisting(username: PersonUsername, domain: string): Promise<Result<boolean>> {
-        return this.executeWithRetry(() => this.isLehrerExistingInternal(username, domain), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.isLehrerExistingInternal(username, domain));
     }
 
     public async modifyPersonAttributes(
@@ -131,9 +128,8 @@ export class LdapAdapter {
         newSn?: string,
         newUsername?: PersonUsername,
     ): Promise<Result<PersonUsername>> {
-        return this.executeWithRetry(
-            () => this.modifyPersonAttributesInternal(oldUsername, newGivenName, newSn, newUsername),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.modifyPersonAttributesInternal(oldUsername, newGivenName, newSn, newUsername),
         );
     }
 
@@ -142,10 +138,7 @@ export class LdapAdapter {
         username: PersonUsername,
         domain: string,
     ): Promise<Result<LdapPersonAttributes>> {
-        return this.executeWithRetry(
-            () => this.getPersonAttributesInternal(personId, username, domain),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.getPersonAttributesInternal(personId, username, domain));
     }
 
     public async setMailAlternativeAddress(
@@ -153,14 +146,13 @@ export class LdapAdapter {
         username: PersonUsername,
         newMailAlternativeAddress: string,
     ): Promise<Result<PersonID>> {
-        return this.executeWithRetry(
-            () => this.setMailAlternativeAddressInternal(personId, username, newMailAlternativeAddress),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.setMailAlternativeAddressInternal(personId, username, newMailAlternativeAddress),
         );
     }
 
     public async getGroupsForPerson(personId: PersonID, username: PersonUsername): Promise<Result<string[]>> {
-        return this.executeWithRetry(() => this.getGroupsForPersonInternal(personId, username), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.getGroupsForPersonInternal(personId, username));
     }
 
     public async updateMemberDnInGroups(
@@ -169,9 +161,8 @@ export class LdapAdapter {
         oldUid: string,
         client: Client,
     ): Promise<Result<string>> {
-        return this.executeWithRetry(
-            () => this.updateMemberDnInGroupsInternal(oldUsername, newUsername, oldUid, client),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.updateMemberDnInGroupsInternal(oldUsername, newUsername, oldUid, client),
         );
     }
 
@@ -179,10 +170,7 @@ export class LdapAdapter {
         username: PersonUsername,
         failIfUserNotFound: boolean = false,
     ): Promise<Result<string | null>> {
-        return this.executeWithRetry(
-            () => this.deleteLehrerByUsernameInternal(username, failIfUserNotFound),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.deleteLehrerByUsernameInternal(username, failIfUserNotFound));
     }
 
     public async deleteLehrer(
@@ -190,10 +178,7 @@ export class LdapAdapter {
         orgaKennung: OrganisationKennung,
         domain: string,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.deleteLehrerInternal(person, orgaKennung, domain),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.deleteLehrerInternal(person, orgaKennung, domain));
     }
 
     public async addPersonToGroup(
@@ -201,10 +186,7 @@ export class LdapAdapter {
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return this.executeWithRetry(
-            () => this.addPersonToGroupInternal(personUid, orgaKennung, lehrerUid),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.addPersonToGroupInternal(personUid, orgaKennung, lehrerUid));
     }
 
     public async removeMailAlternativeAddress(
@@ -212,10 +194,7 @@ export class LdapAdapter {
         username: PersonUsername,
         address: string,
     ): Promise<Result<boolean>> {
-        return this.executeWithRetry(
-            () => this.removeMailAlternativeAddressInternal(personId, username, address),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.removeMailAlternativeAddressInternal(personId, username, address));
     }
 
     public async changeEmailAddressByPersonId(
@@ -224,10 +203,8 @@ export class LdapAdapter {
         newEmailAddress: string,
         alternativeEmailAddress?: string,
     ): Promise<Result<PersonID>> {
-        return this.executeWithRetry(
-            () =>
-                this.changeEmailAddressByPersonIdInternal(personId, username, newEmailAddress, alternativeEmailAddress),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.changeEmailAddressByPersonIdInternal(personId, username, newEmailAddress, alternativeEmailAddress),
         );
     }
 
@@ -236,10 +213,7 @@ export class LdapAdapter {
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return this.executeWithRetry(
-            () => this.removePersonFromGroupInternal(username, orgaKennung, lehrerUid),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.removePersonFromGroupInternal(username, orgaKennung, lehrerUid));
     }
 
     public async removePersonFromGroupByUsernameAndKennung(
@@ -258,18 +232,15 @@ export class LdapAdapter {
     }
 
     public async changeUserPasswordByPersonId(personId: PersonID, username: PersonUsername): Promise<Result<PersonID>> {
-        return this.executeWithRetry(
-            () => this.changeUserPasswordByPersonIdInternal(personId, username),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.changeUserPasswordByPersonIdInternal(personId, username));
     }
 
     public async deleteOrganisation(kennung: string): Promise<Result<string>> {
-        return this.executeWithRetry(() => this.deleteOrganisationInternal(kennung), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.deleteOrganisationInternal(kennung));
     }
 
     public async organisationExists(kennung: string): Promise<Result<boolean>> {
-        return this.executeWithRetry(() => this.organisationExistsInternal(kennung), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.organisationExistsInternal(kennung));
     }
 
     private async organisationExistsInternal(orgaKennung: string): Promise<Result<boolean, Error>> {
@@ -302,12 +273,6 @@ export class LdapAdapter {
         const splitted: string[] = oldUid.split(',');
         splitted[0] = `uid=${newUsername}`;
         return splitted.join(',');
-    }
-
-    //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
-
-    private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -783,12 +748,12 @@ export class LdapAdapter {
         };
     }
 
-    private async setMailAlternativeAddressInternal(
+    private setMailAlternativeAddressInternal(
         personId: PersonID,
         username: PersonUsername,
         newMailAlternativeAddress: string,
     ): Promise<Result<PersonID>> {
-        return await this.mutex.runExclusive(async () => {
+        return this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: setMailAlternativeAddress');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -833,8 +798,8 @@ export class LdapAdapter {
         });
     }
 
-    private async getGroupsForPersonInternal(personId: PersonID, username: PersonUsername): Promise<Result<string[]>> {
-        return await this.mutex.runExclusive(async () => {
+    private getGroupsForPersonInternal(personId: PersonID, username: PersonUsername): Promise<Result<string[]>> {
+        return this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: getGroupsForPerson');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -959,11 +924,11 @@ export class LdapAdapter {
         return { ok: true, value: `Updated member data for ${groupEntries.length} groups.` };
     }
 
-    private async deleteLehrerByUsernameInternal(
+    private deleteLehrerByUsernameInternal(
         username: PersonUsername,
         failIfUserNotFound: boolean,
     ): Promise<Result<string | null>> {
-        return await this.mutex.runExclusive(async () => {
+        return this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: deleteLehrerByUsernameInternal');
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -1046,14 +1011,14 @@ export class LdapAdapter {
         });
     }
 
-    private async changeEmailAddressByPersonIdInternal(
+    private changeEmailAddressByPersonIdInternal(
         personId: PersonID,
         username: PersonUsername,
         newEmailAddress: string,
         alternativEmailAddress?: string,
     ): Promise<Result<PersonID>> {
         // Converted to avoid PersonRepository-ref, UEM-password-generation
-        return await this.mutex.runExclusive(async () => {
+        return this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: changeEmailAddress');
             const splitted: string[] = newEmailAddress.split('@');
             if (!splitted || !splitted[1]) {
@@ -1132,12 +1097,12 @@ export class LdapAdapter {
         });
     }
 
-    private async removeMailAlternativeAddressInternal(
+    private removeMailAlternativeAddressInternal(
         personId: PersonID | undefined,
         username: PersonUsername,
         address: string,
     ): Promise<Result<boolean>> {
-        return await this.mutex.runExclusive(async () => {
+        return this.mutex.runExclusive(async () => {
             this.logger.info('LDAP: removeMailAlternativeAddress');
             const splitted: string[] = address.split('@');
             if (!splitted || !splitted[1]) {
@@ -1222,12 +1187,12 @@ export class LdapAdapter {
         });
     }
 
-    private async addPersonToGroupInternal(
+    private addPersonToGroupInternal(
         personUid: string,
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return await this.addPersonToGroupMutex.runExclusive(async () => {
+        return this.addPersonToGroupMutex.runExclusive(async () => {
             const groupId: string = 'lehrer-' + orgaKennung;
             this.logger.info(`LDAP: Adding person ${personUid} to group ${groupId}`);
             const client: Client = this.ldapClient.getClient();
@@ -1308,12 +1273,12 @@ export class LdapAdapter {
         });
     }
 
-    private async removePersonFromGroupInternal(
+    private removePersonFromGroupInternal(
         username: PersonUsername,
         orgaKennung: OrganisationKennung,
         lehrerUid: string,
     ): Promise<Result<boolean>> {
-        return await this.deletePersonFromGroupMutex.runExclusive(async () => {
+        return this.deletePersonFromGroupMutex.runExclusive(async () => {
             const groupId: string = 'lehrer-' + orgaKennung;
             this.logger.info(`LDAP: Removing person ${username} from group ${groupId}`);
             const client: Client = this.ldapClient.getClient();
@@ -1449,8 +1414,8 @@ export class LdapAdapter {
         });
     }
 
-    private async deleteOrganisationInternal(kennung: string): Promise<Result<string>> {
-        return await this.mutex.runExclusive(async () => {
+    private deleteOrganisationInternal(kennung: string): Promise<Result<string>> {
+        return this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
             if (!bindResult.ok) {
@@ -1484,11 +1449,9 @@ export class LdapAdapter {
         });
     }
 
-    private async executeWithRetry<T>(
-        func: () => Promise<Result<T>>,
-        retries: number,
-        delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
-    ): Promise<Result<T>> {
+    private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
+        const retries: number = this.ldapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES;
+        const delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_DELAY_IN_MS;
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,

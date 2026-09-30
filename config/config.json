@@ -47,7 +47,9 @@
         "URL": "ldap://localhost",
         "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
         "ADMIN_PASSWORD": "admin",
-        "BASE_DN": "dc=schule-sh,dc=de"
+        "BASE_DN": "dc=schule-sh,dc=de",
+        "RETRY_WRAPPER_NUMBER_OF_RETRIES": 3,
+        "RETRY_WRAPPER_DELAY_IN_MS": 15000
     },
     "DATA": {
         "ROOT_ORGANISATION_ID": "d39cb7cf-2f9b-45f1-849f-973661f2f057"

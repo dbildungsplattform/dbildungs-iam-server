@@ -15,7 +15,6 @@ import {
 } from '../../../../../test/utils/index.js';
 import { LdapBindError } from '../../../../email/modules/ldap/adapter/domain/error/ldap-bind.error.js';
 import { Person } from '../../../../modules/person/domain/person.js';
-import { LdapRetryConfig } from '../../../../shared/config/ldap-retry.config.js';
 import { PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
@@ -64,8 +63,8 @@ describe('LDAP Adapter', () => {
         BASE_DN: 'dc=example,dc=com',
         OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
         ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
-        RETRY_WRAPPER_DEFAULT_RETRIES: 2,
-        RETRY_WRAPPER_RETRY_DELAY_IN_MS: 1,
+        RETRY_WRAPPER_NUMBER_OF_RETRIES: 2,
+        RETRY_WRAPPER_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',
@@ -1049,9 +1048,7 @@ describe('LDAP Adapter', () => {
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
             vi.useFakeTimers();
             // Retries fall back to the LdapRetryConfig default; only the delay is overridden for speed.
-            const defaultRetriesConfig: LdapRetryConfig = new LdapRetryConfig();
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = defaultRetriesConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
-            instanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS = 1;
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 3;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
@@ -1079,7 +1076,7 @@ describe('LDAP Adapter', () => {
                 expect.stringContaining('Attempt 3 failed'),
                 expect.objectContaining({ message: 'testerror' }),
             );
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 2;
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 2;
         });
 
         it('when operation fails and throws Error it should automatically retry the operation with nr of retries set via env', async () => {

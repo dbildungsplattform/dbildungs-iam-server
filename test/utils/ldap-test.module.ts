@@ -51,8 +51,8 @@ export class LdapTestModule implements OnModuleDestroy {
                             ldapConfig.BIND_DN,
                             ldapConfig.ADMIN_PASSWORD,
                             ldapConfig.BASE_DN,
-                            ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES,
-                            ldapConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
+                            ldapConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES,
+                            ldapConfig.RETRY_WRAPPER_DELAY_IN_MS,
                         );
                     },
                     inject: [ConfigService],
