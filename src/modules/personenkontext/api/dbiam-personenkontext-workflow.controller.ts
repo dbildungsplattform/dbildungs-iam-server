@@ -201,7 +201,7 @@ export class DbiamPersonenkontextWorkflowController {
                     queryParams.personalnummer || undefined,
                 );
 
-        if (updateResult instanceof PersonenkontexteUpdateError) {
+        if (updateResult instanceof PersonenkontexteUpdateError || updateResult instanceof MissingPermissionsError) {
             throw updateResult;
         }
 

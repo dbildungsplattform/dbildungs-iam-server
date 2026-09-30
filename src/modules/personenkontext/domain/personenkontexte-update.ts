@@ -14,6 +14,7 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
@@ -213,6 +214,28 @@ export class PersonenkontexteUpdate {
 
         if (!hasPermissions) {
             return new MissingPermissionsError('Can not modify person');
+        }
+
+        const modifiedRollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds([
+            ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
+        ]);
+        const hasMptPermissions: boolean = (
+            await Promise.all(
+                modifiedPKs
+                    .filter((pk: Personenkontext<true>) =>
+                        modifiedRollen.get(pk.rolleId)?.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+                    )
+                    .map((pk: Personenkontext<true>) =>
+                        this.permissions.hasSystemrechtAtOrganisation(
+                            pk.organisationId,
+                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                        ),
+                    ),
+            )
+        ).every(Boolean);
+
+        if (!hasMptPermissions) {
+            return new MissingPermissionsError('Unauthorized to modify MPT-Rollen at the organisation');
         }
 
         return undefined;

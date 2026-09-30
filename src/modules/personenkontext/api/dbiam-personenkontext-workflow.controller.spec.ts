@@ -287,6 +287,23 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
 
         describe('/PUT commit', () => {
             describe('when errors occur', () => {
+                it('should propagate missing MPT permissions to the shared exception filter', async () => {
+                    const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
+                    const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
+                        count: 0,
+                        personenkontexte: [],
+                    };
+                    const error: MissingPermissionsError = new MissingPermissionsError(
+                        'Unauthorized to modify MPT-Rollen at the organisation',
+                    );
+                    personenkontextWorkflowMock.commit.mockResolvedValueOnce(error);
+                    personenkontextWorkflowFactoryMock.createNew.mockReturnValue(personenkontextWorkflowMock);
+
+                    await expect(
+                        sut.commit(params, {}, bodyParams, createPersonPermissionsMock()),
+                    ).rejects.toBe(error);
+                });
+
                 it('should throw BadRequestException if updateResult is an instance of PersonenkontexteUpdateError', async () => {
                     const params: DBiamFindPersonenkontexteByPersonIdParams =
                         new DBiamFindPersonenkontexteByPersonIdParams();
