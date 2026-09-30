@@ -258,6 +258,10 @@ describe('LDAP Client Adapter', () => {
             vi.restoreAllMocks(); //Needed To Reset the global executeWithRetry Mock
         });
 
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
         it('when operation succeeds should return value', async () => {
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
@@ -319,7 +323,6 @@ describe('LDAP Client Adapter', () => {
             );
             await vi.advanceTimersByTimeAsync(30000);
             const result: Result<boolean> = await resultPromise;
-            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(3);
@@ -352,7 +355,6 @@ describe('LDAP Client Adapter', () => {
             );
             await vi.advanceTimersByTimeAsync(15000);
             const result: Result<boolean> = await resultPromise;
-            vi.useRealTimers();
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);
