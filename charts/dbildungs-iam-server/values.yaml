@@ -34,8 +34,6 @@ ldap:
   oeffentlicheSchulenDomain: schule-sh.de
   ersatzschulenDomain: ersatzschule-sh.de
   base_dn: dc=schule-sh,dc=de
-  retryWrapperDefaultRetries: 3
-  retryWrapperRetryDelayInMs: 15000
 
 eflkLdap:
   enabled: false
@@ -43,8 +41,6 @@ eflkLdap:
   oeffentlicheSchulenDomain: schule-sh.de
   ersatzschulenDomain: ersatzschule-sh.de
   base_dn: dc=schule-sh,dc=de
-  retryWrapperDefaultRetries: 3
-  retryWrapperRetryDelayInMs: 15000
 
 itslearning:
   enabled: false

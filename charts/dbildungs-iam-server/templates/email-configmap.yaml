@@ -16,7 +16,6 @@ data:
   LDAP_BASE_DN: "{{ .Values.eflkLdap.base_dn }}"
   LDAP_OEFFENTLICHE_SCHULEN_DOMAIN: "{{ .Values.eflkLdap.oeffentlicheSchulenDomain }}"
   LDAP_ERSATZSCHULEN_DOMAIN: "{{ .Values.eflkLdap.ersatzschulenDomain }}"
-  RETRY_WRAPPER_RETRY_DELAY_IN_MS: "{{ .Values.eflkLdap.retryWrapperRetryDelayInMs }}"
   OX_ENABLED: "{{ .Values.eflkOx.enabled }}"
   OX_USERNAME: "{{ .Values.eflkOx.username }}"
   OX_ENDPOINT: "{{ .Values.eflkOx.endpoint }}"
