@@ -1,10 +1,10 @@
-import 'reflect-metadata'; // some decorators use reflect-metadata in the background
 import fs from 'fs';
 import { PathLike } from 'node:fs';
+import 'reflect-metadata'; // some decorators use reflect-metadata in the background
+import { Mock } from 'vitest';
 import { DeepPartial } from '../../../test/utils/index.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { JsonConfig, loadConfigFiles, loadEmailAppConfigFiles } from './index.js';
-import { Mock } from 'vitest';
 
 describe('configloader', () => {
     describe('loadConfigFiles', () => {
@@ -64,6 +64,8 @@ describe('configloader', () => {
                     URL: 'ldap://localhost',
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
                     BASE_DN: 'dc=schule-sh,dc=de',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
                 },
                 ITSLEARNING: {
                     ENABLED: true,
@@ -249,6 +251,8 @@ describe('configloader', () => {
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
                     ADMIN_PASSWORD: 'password',
                     BASE_DN: 'dc=schule-sh,dc=de',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
                 },
                 ITSLEARNING: {
                     ENABLED: true,
@@ -417,6 +421,8 @@ describe('configloader', () => {
                     URL: 'ldap://localhost',
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
                     BASE_DN: 'dc=schule-sh,dc=de',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
                 },
                 EMAIL: {
                     NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: 90,
@@ -486,6 +492,8 @@ describe('configloader', () => {
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
                     BASE_DN: 'dc=schule-sh,dc=de',
                     ADMIN_PASSWORD: 'x',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
                 },
                 EMAIL: {
                     NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: 90,
