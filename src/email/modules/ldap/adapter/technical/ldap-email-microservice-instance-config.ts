@@ -10,10 +10,10 @@ export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroservic
         public BIND_DN: string,
         public ADMIN_PASSWORD: string,
         public BASE_DN: string,
+        public RETRY_WRAPPER_DEFAULT_RETRIES: number,
+        public RETRY_WRAPPER_RETRY_DELAY_IN_MS: number,
         public OEFFENTLICHE_SCHULEN_DOMAIN?: string,
         public ERSATZSCHULEN_DOMAIN?: string,
-        public RETRY_WRAPPER_DEFAULT_RETRIES: number = 3,
-        public RETRY_WRAPPER_RETRY_DELAY_IN_MS: number = 15000,
     ) {}
 
     public static fromConfigService(): Provider {
@@ -28,10 +28,10 @@ export class LdapEmailMicroserviceInstanceConfig implements LdapEmailMicroservic
                     ldapConfig.BIND_DN,
                     ldapConfig.ADMIN_PASSWORD,
                     ldapConfig.BASE_DN,
-                    ldapConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
-                    ldapConfig.ERSATZSCHULEN_DOMAIN,
                     ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES,
                     ldapConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS,
+                    ldapConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
+                    ldapConfig.ERSATZSCHULEN_DOMAIN,
                 );
             },
             inject: [EmailAppConfig],

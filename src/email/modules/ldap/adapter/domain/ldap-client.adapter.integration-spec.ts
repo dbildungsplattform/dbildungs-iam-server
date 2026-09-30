@@ -16,6 +16,7 @@ import {
 } from '../../../../../../test/utils/index.js';
 import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { LdapRetryConfig } from '../../../../../shared/config/ldap-retry.config.js';
 import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
 import { EmailLdapModule } from '../../email-ldap.module.js';
 import { LdapClient } from '../technical/ldap-client.js';
@@ -297,20 +298,10 @@ describe('LDAP Client Adapter', () => {
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
             vi.useFakeTimers();
-            // Build the config without the retry-count arg so the constructor default drives the retries; only the delay is overridden for speed.
-            const defaultRetriesConfig: LdapEmailMicroserviceInstanceConfig = new LdapEmailMicroserviceInstanceConfig(
-                instanceConfig.ENABLED,
-                instanceConfig.URL,
-                instanceConfig.BIND_DN,
-                instanceConfig.ADMIN_PASSWORD,
-                instanceConfig.BASE_DN,
-                instanceConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
-                instanceConfig.ERSATZSCHULEN_DOMAIN,
-                undefined,
-                1,
-            );
+            // Retries fall back to the LdapRetryConfig default; only the delay is overridden for speed.
+            const defaultRetriesConfig: LdapRetryConfig = new LdapRetryConfig();
             instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = defaultRetriesConfig.RETRY_WRAPPER_DEFAULT_RETRIES;
-            instanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS = defaultRetriesConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS;
+            instanceConfig.RETRY_WRAPPER_RETRY_DELAY_IN_MS = 1;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
