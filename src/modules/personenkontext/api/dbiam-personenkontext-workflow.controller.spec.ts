@@ -299,9 +299,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     personenkontextWorkflowMock.commit.mockResolvedValueOnce(error);
                     personenkontextWorkflowFactoryMock.createNew.mockReturnValue(personenkontextWorkflowMock);
 
-                    await expect(
-                        sut.commit(params, {}, bodyParams, createPersonPermissionsMock()),
-                    ).rejects.toBe(error);
+                    await expect(sut.commit(params, {}, bodyParams, createPersonPermissionsMock())).rejects.toBe(error);
                 });
 
                 it('should throw BadRequestException if updateResult is an instance of PersonenkontexteUpdateError', async () => {
