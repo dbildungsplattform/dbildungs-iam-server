@@ -5,17 +5,50 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { defineConfig, PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { DynamicModule, Inject, OnModuleDestroy, Optional } from '@nestjs/common';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { PullPolicy } from 'testcontainers';
 import { DbConfig } from '../../src/shared/config/index.js';
+import { startReusableContainer } from './testcontainer-reuse.js';
 
 type DatabaseTestModuleOptions = {
     isDatabaseRequired?: boolean;
     databaseName?: string;
 };
 
+const SHARED_DB_CONTAINER_NAME: string = 'testcontainer-db';
+
 export class DatabaseTestModule implements OnModuleDestroy {
     private static postgres: Option<StartedPostgreSqlContainer>;
+
+    // One shared container per worker process; parallel workers share the same Docker container via reuse.
+    private static startPromise: Option<Promise<StartedPostgreSqlContainer>>;
+
+    private static async getSharedContainer(): Promise<StartedPostgreSqlContainer> {
+        // Container config is kept constant (no per-test database baked in) so the reuse hash is identical across
+        // workers and testcontainers actually deduplicates to a single container instead of colliding on the name.
+        DatabaseTestModule.startPromise ??= startReusableContainer(() =>
+            new PostgreSqlContainer('docker.io/postgres:15.3-alpine')
+                .withPullPolicy(PullPolicy.defaultPolicy())
+                .withReuse()
+                .withName(SHARED_DB_CONTAINER_NAME)
+                .start(),
+        );
+        DatabaseTestModule.postgres = await DatabaseTestModule.startPromise;
+        return DatabaseTestModule.postgres;
+    }
+
+    // Each test gets its own database inside the shared container to stay isolated from other parallel workers.
+    private static async createDatabase(container: StartedPostgreSqlContainer, dbName: string): Promise<void> {
+        const result: { exitCode: number; stderr: string; output: string } = await container.exec(
+            ['psql', '-U', container.getUsername(), '-d', container.getDatabase(), '-c', `CREATE DATABASE "${dbName}"`],
+            { env: { PGPASSWORD: container.getPassword() } },
+        );
+
+        if (result.exitCode !== 0 && !result.stderr.includes('already exists')) {
+            // eslint-disable-next-line no-restricted-syntax
+            throw new Error(`Failed to create test database "${dbName}": ${result.stderr || result.output}`);
+        }
+    }
 
     public static forRoot(options?: DatabaseTestModuleOptions): DynamicModule {
         return {
@@ -25,17 +58,16 @@ export class DatabaseTestModule implements OnModuleDestroy {
                     useFactory: async (config: DbConfig) => {
                         const dbName: string = options?.databaseName || `${config.DB_NAME}-${randomUUID()}`;
 
+                        let clientUrl: string = config.CLIENT_URL;
                         if (options?.isDatabaseRequired) {
-                            this.postgres = await new PostgreSqlContainer('docker.io/postgres:15.3-alpine')
-                                .withDatabase(dbName)
-                                .withPullPolicy(PullPolicy.defaultPolicy())
-                                .withReuse() // do not work for different containers names setted by withName()
-                                .withName(`testcontainer-db-${randomInt(0, 10000)}`)
-                                .start();
+                            const container: StartedPostgreSqlContainer =
+                                await DatabaseTestModule.getSharedContainer();
+                            await DatabaseTestModule.createDatabase(container, dbName);
+                            clientUrl = container.getConnectionUri();
                         }
 
                         return defineConfig({
-                            clientUrl: this.postgres?.getConnectionUri() || config.CLIENT_URL,
+                            clientUrl,
                             dbName,
                             dynamicImportProvider: (id: string) => import(id),
                             entities: ['./dist/**/*.entity.js'],
@@ -80,10 +112,6 @@ export class DatabaseTestModule implements OnModuleDestroy {
 
     public constructor(@Optional() @Inject(MikroORM) private orm?: MikroORM) {}
 
-    public static async stopContainer(): Promise<void> {
-        await DatabaseTestModule.postgres?.stop();
-    }
-
     public async closeOrmsConnection(): Promise<void> {
         if (this.orm?.isConnected()) {
             await this.orm.close();
@@ -91,7 +119,8 @@ export class DatabaseTestModule implements OnModuleDestroy {
     }
 
     public async onModuleDestroy(): Promise<void> {
+        // The shared, reused container is intentionally not stopped here: other test files and parallel workers
+        // rely on it. It is left running for reuse and reaped by testcontainers/Docker outside the test run.
         await this.closeOrmsConnection();
-        await DatabaseTestModule.stopContainer();
     }
 }
