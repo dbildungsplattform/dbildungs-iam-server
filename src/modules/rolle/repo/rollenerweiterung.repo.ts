@@ -23,6 +23,13 @@ type RollenerweiterungIds = {
     serviceProviderId: ServiceProviderID;
 };
 
+/**
+ * Internal persistence repository for Rollenerweiterungen.
+ *
+ * This repository performs no authorization or domain consistency checks.
+ * Calling services are responsible for authorization.
+ * Domain consistency must be checked through the Rollenerweiterung aggregate.
+ */
 @Injectable()
 export class RollenerweiterungRepo {
     public constructor(

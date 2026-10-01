@@ -320,7 +320,7 @@ export class VidisSyncService {
             try {
                 const hasRequiredPermissions: boolean = await permissions.hasSystemrechteAtOrganisation(
                     organisationId,
-                    [RollenSystemRecht.ANGEBOTE_VERWALTEN, RollenSystemRecht.ROLLEN_ERWEITERN],
+                    [RollenSystemRecht.ANGEBOTE_VERWALTEN, RollenSystemRecht.ROLLEN_ERWEITERN], //dont know if these are required here
                 );
                 if (!hasRequiredPermissions) {
                     syncOperations.push(
