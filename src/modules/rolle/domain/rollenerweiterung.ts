@@ -54,14 +54,12 @@ export class Rollenerweiterung<WasPersisted extends boolean> {
         );
 
         const noRedundantRollenerweiterung: NoRedundantRollenerweiterung = new NoRedundantRollenerweiterung();
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         if (!noRedundantRollenerweiterung.isSatisfiedBy(rollenerweiterung, rolle)) {
             return Err(new NoRedundantRollenerweiterungError());
         }
 
         const serviceProviderVerfuegbar: ServiceProviderVerfuegbarFuerRollenerweiterung =
             new ServiceProviderVerfuegbarFuerRollenerweiterung();
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         if (!serviceProviderVerfuegbar.isSatisfiedBy(rollenerweiterung, serviceProvider)) {
             return Err(new ServiceProviderNichtVerfuegbarFuerRollenerweiterungError());
         }
