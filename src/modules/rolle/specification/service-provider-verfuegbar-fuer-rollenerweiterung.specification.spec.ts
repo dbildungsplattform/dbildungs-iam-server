@@ -1,4 +1,4 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { describe, expect, it } from 'vitest';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
@@ -15,20 +15,38 @@ describe('ServiceProviderVerfuegbarFuerRollenerweiterung', () => {
                     merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                 }),
             ],
-            [false, 'not available', DoFactory.createServiceProvider(true, { merkmale: [] })],
-            [false, 'undefined', undefined],
+            [
+                false,
+                'not available',
+                DoFactory.createServiceProvider(true, {
+                    merkmale: [],
+                }),
+            ],
         ])(
             'should return %s if the service provider is %s',
-            async (expected: boolean, _label: string, sp: Option<ServiceProvider<boolean>>) => {
-                const rollenerweiterungMock: DeepMocked<Rollenerweiterung<boolean>> = createMock(
-                    Rollenerweiterung<boolean>,
-                );
-                rollenerweiterungMock.getServiceProvider.mockResolvedValue(sp);
+            (expected: boolean, _label: string, serviceProvider: ServiceProvider<true>) => {
+                const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(true, {
+                    serviceProviderId: serviceProvider.id,
+                });
 
                 const specification: ServiceProviderVerfuegbarFuerRollenerweiterung =
                     new ServiceProviderVerfuegbarFuerRollenerweiterung();
-                await expect(specification.isSatisfiedBy(rollenerweiterungMock)).resolves.toBe(expected);
+
+                expect(specification.isSatisfiedBy(rollenerweiterung, serviceProvider)).toBe(expected);
             },
         );
+
+        it('should return false if the passed service provider does not belong to the Rollenerweiterung', () => {
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+
+            const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(true);
+
+            const specification: ServiceProviderVerfuegbarFuerRollenerweiterung =
+                new ServiceProviderVerfuegbarFuerRollenerweiterung();
+
+            expect(specification.isSatisfiedBy(rollenerweiterung, serviceProvider)).toBe(false);
+        });
     });
 });
