@@ -6,6 +6,8 @@ import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailAddress } from './email-address.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
+import { Ok } from '../../../../shared/util/result.js';
 
 @Injectable()
 export class SetEmailSuspendedService {
@@ -15,6 +17,7 @@ export class SetEmailSuspendedService {
     public constructor(
         private readonly emailAddressRepo: EmailAddressRepo,
         private readonly oxAdapter: OxAdapter,
+        private readonly ldapUndiClientAdapter: LdapUndiClientAdapter,
         private readonly logger: ClassLogger,
         private readonly webhookService: WebhookService,
         config: EmailAppConfig,
@@ -72,6 +75,11 @@ export class SetEmailSuspendedService {
             );
         }
 
+        const ldapUndiUpdateResult: Result<void> = await this.ldapUndiSuspendUser(params.spshPersonId, params.gesperrt);
+        if (!ldapUndiUpdateResult.ok) {
+            this.logger.logUnknownAsError('Error while updating user in LDAP UNDI.', ldapUndiUpdateResult.error);
+        }
+
         // Webhook update
         const previousPrimaryEmail: string | undefined = eligibleAddresses.find(
             (a: EmailAddress<true>) => a.priority === 0,
@@ -86,6 +94,18 @@ export class SetEmailSuspendedService {
             newAlternativeEmail: undefined,
             previousPrimaryEmail,
             previousAlternativeEmail,
+        });
+    }
+
+    private async ldapUndiSuspendUser(personId: string, gesperrt: boolean): Promise<Result<void>> {
+        if (!this.ldapUndiClientAdapter.useLdap()) {
+            this.logger.info(`LDAP Undi is disabled -> skip suspending user - spshPersonId=${personId}`);
+            return Ok();
+        }
+
+        return this.ldapUndiClientAdapter.updatePersonPartialById(personId, {
+            deaktiviert: true, // suspended
+            gesperrt: gesperrt,
         });
     }
 }

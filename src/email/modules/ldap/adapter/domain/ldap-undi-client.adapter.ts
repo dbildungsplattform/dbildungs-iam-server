@@ -20,7 +20,7 @@ import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.j
 import { LdapCreateGroupError } from './error/ldap-create-group.error.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
 
-export type PersonData = {
+export type PersonDataUndi = {
     domain: string;
     uid: PersonID;
     firstName: string;
@@ -32,7 +32,7 @@ export type PersonData = {
     gesperrt: boolean;
 };
 
-export type GroupData = {
+export type GroupDataUndi = {
     id: OrganisationID;
     kennung: string;
     name: string;
@@ -96,12 +96,22 @@ export class LdapUndiClientAdapter {
     // DeletePerson
     // UpdateGroup (for renamed events)
 
-    public async upsertPerson(person: PersonData, groups: GroupData[]): Promise<Result<void>> {
+    public async upsertPerson(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
         return this.executeWithRetry(() => this.upsertPersonInternal(person, groups), this.getNrOfRetries());
     }
 
     public async deletePerson(personID: string): Promise<Result<void>> {
         return this.executeWithRetry(() => this.deletePersonInternal(personID), this.getNrOfRetries());
+    }
+
+    public async updatePersonPartialById(
+        personID: string,
+        updateData: Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>,
+    ): Promise<Result<void>> {
+        return this.executeWithRetry(
+            () => this.updatePersonPartialByIdInternal(personID, updateData),
+            this.getNrOfRetries(),
+        );
     }
 
     /**
@@ -170,7 +180,7 @@ export class LdapUndiClientAdapter {
         };
     }
 
-    private async upsertPersonInternal(person: PersonData, groups: GroupData[]): Promise<Result<void>> {
+    private async upsertPersonInternal(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
         const rootNameResult: Result<string> = this.getRootName(person.domain);
         if (!rootNameResult.ok) {
             return rootNameResult;
@@ -279,6 +289,62 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
+    private async updatePersonPartialByIdInternal(
+        personId: string,
+        updateData: Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>,
+    ): Promise<Result<void>> {
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(uid=${personId})`,
+            attributes: [LdapUndiClientAdapter.MEMBER_OF],
+        });
+
+        if (!searchResultPerson.searchEntries[0]) {
+            return Err(new LdapFindPersonError());
+        }
+
+        const personDN: string = searchResultPerson.searchEntries[0].dn;
+
+        try {
+            const changes: Change[] = [];
+
+            if (updateData.gesperrt !== undefined) {
+                changes.push(
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.GESPERRT,
+                            values: [updateData.gesperrt ? 'TRUE' : 'FALSE'],
+                        }),
+                    }),
+                );
+            }
+
+            if (updateData.deaktiviert !== undefined) {
+                changes.push(
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.DEAKTIVIERT,
+                            values: [updateData.deaktiviert ? 'TRUE' : 'FALSE'],
+                        }),
+                    }),
+                );
+            }
+
+            await client.modify(personDN, changes);
+        } catch (e) {
+            return Err(new LdapModifyPersonError([e]));
+        }
+
+        return Ok();
+    }
+
     private async deletePersonInternal(personUid: string): Promise<Result<void>> {
         const client: Client = this.ldapClient.getClient();
         const bindResult: Result<boolean> = await this.bind();
@@ -313,7 +379,42 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async setPersonGroupsInternal(personDN: string, groups: GroupData[]): Promise<Result<void>> {
+    private async setUserGesperrtByIdInternal(personUid: string, gesperrt: boolean): Promise<Result<void>> {
+        const client: Client = this.ldapClient.getClient();
+        const bindResult: Result<boolean> = await this.bind();
+        if (!bindResult.ok) {
+            return bindResult;
+        }
+
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(uid=${personUid})`,
+        });
+
+        if (!searchResultPerson.searchEntries[0]) {
+            // Person does not exist, no need to lock
+            return Ok();
+        }
+
+        const personDN: string = searchResultPerson.searchEntries[0].dn;
+
+        try {
+            await client.modify(personDN, [
+                new Change({
+                    operation: 'replace',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.GESPERRT,
+                        values: [gesperrt ? 'TRUE' : 'FALSE'],
+                    }),
+                }),
+            ]);
+        } catch (e) {
+            return Err(new LdapModifyPersonError([e]));
+        }
+
+        return Ok();
+    }
+
+    private async setPersonGroupsInternal(personDN: string, groups: GroupDataUndi[]): Promise<Result<void>> {
         const client: Client = this.ldapClient.getClient();
         const bindResult: Result<boolean> = await this.bind();
         if (!bindResult.ok) {
@@ -336,20 +437,20 @@ export class LdapUndiClientAdapter {
         );
 
         // Find additional/missing groups
-        const groupsToAdd: GroupData[] = differenceWith(
+        const groupsToAdd: GroupDataUndi[] = differenceWith(
             groups,
             personGroups,
-            (group: GroupData, dn: string) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === dn,
+            (group: GroupDataUndi, dn: string) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === dn,
         );
 
         const groupsToRemove: string[] = differenceWith(
             personGroups,
             groups,
-            (groupDN: string, group: GroupData) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === groupDN,
+            (groupDN: string, group: GroupDataUndi) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === groupDN,
         );
 
         const addResult: Result<void>[] = await Promise.all(
-            groupsToAdd.map((group: GroupData) => this.addPersonToGroupInternal(personDN, group)),
+            groupsToAdd.map((group: GroupDataUndi) => this.addPersonToGroupInternal(personDN, group)),
         );
 
         const removeResult: Result<void>[] = await Promise.all(
@@ -368,7 +469,7 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async addPersonToGroupInternal(personDN: string, groupData: GroupData): Promise<Result<void>> {
+    private async addPersonToGroupInternal(personDN: string, groupData: GroupDataUndi): Promise<Result<void>> {
         const groupDn: string = `cn=${groupData.id},${this.ldapInstanceConfig.BASE_DN}`;
         const groupName: string = `lehrer-${groupData.kennung}`;
 

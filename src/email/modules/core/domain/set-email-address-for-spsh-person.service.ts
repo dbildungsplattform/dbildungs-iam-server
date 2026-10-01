@@ -22,6 +22,11 @@ import { uniqBy } from 'lodash-es';
 import { OxError } from '../../../../shared/error/ox.error.js';
 import { EmailAppConfig } from '../../../../shared/config/email-app.config.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
+import {
+    GroupDataUndi,
+    LdapUndiClientAdapter,
+    PersonDataUndi,
+} from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 
 const MAX_EMAIL_PRIORITY: number = 99999; // E-Mails will be created with this priority before being activated
 
@@ -45,6 +50,7 @@ export class SetEmailAddressForSpshPersonService {
         private readonly oxAdapter: OxAdapter,
         private readonly oxSendService: OxSendService,
         private readonly ldapClientAdapter: LdapClientAdapter,
+        private readonly ldapUndiClientAdapter: LdapUndiClientAdapter,
         private readonly webhookService: WebhookService,
         config: EmailAppConfig,
     ) {
@@ -116,6 +122,7 @@ export class SetEmailAddressForSpshPersonService {
             params.spshUsername,
             uniqueOrganisations,
             emailDomain,
+            params.gesperrt,
         );
 
         if (!result.ok) {
@@ -131,6 +138,7 @@ export class SetEmailAddressForSpshPersonService {
         spshUsername: string,
         organisations: SchoolwithKennungAndName[],
         emailDomain: EmailDomain<true>,
+        gesperrt: boolean,
     ): Promise<Result<void>> {
         for (let i: number = 0; i < attempts; i++) {
             this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - Attempt ${i + 1}`);
@@ -144,6 +152,7 @@ export class SetEmailAddressForSpshPersonService {
                     spshUsername,
                     organisations,
                     emailDomain,
+                    gesperrt,
                 );
 
                 if (result.ok) {
@@ -189,6 +198,7 @@ export class SetEmailAddressForSpshPersonService {
         spshUsername: string,
         organisations: SchoolwithKennungAndName[],
         emailDomain: EmailDomain<true>,
+        gesperrt: boolean,
     ): Promise<Result<void>> {
         const newPrimaryEmailResult: Result<EmailAddress<true>> = await this.getOrCreateAvailableEmail({
             emailDomain: emailDomain,
@@ -341,6 +351,32 @@ export class SetEmailAddressForSpshPersonService {
 
         if (!ldapResult.ok) {
             this.logger.logUnknownAsError(`Error while updating/creating LDAP user`, ldapResult.error);
+
+            // Persist the e-mail as failed
+            newPrimaryEmail.setStatus(EmailAddressStatusEnum.FAILED);
+            newPrimaryEmail = await this.updateEmailIgnoreMissing(newPrimaryEmail);
+
+            return ldapResult;
+        }
+
+        // update or create LDAP user in UNDI
+        const ldapUndiResult: Result<void> = await this.upsertLdapUndiUser(
+            {
+                domain: emailDomain.domain,
+                uid: spshPersonId,
+                username: spshUsername,
+                firstName: firstName,
+                lastName: lastName,
+                deaktiviert: false,
+                gesperrt: gesperrt,
+                mailPrimaryAddress: newPrimaryEmail.address,
+                mailSecondaryAddress: alternativeEmail?.address,
+            },
+            organisations,
+        );
+
+        if (!ldapUndiResult.ok) {
+            this.logger.logUnknownAsError(`Error while updating/creating LDAP UNDI user`, ldapUndiResult.error);
 
             // Persist the e-mail as failed
             newPrimaryEmail.setStatus(EmailAddressStatusEnum.FAILED);
@@ -596,6 +632,18 @@ export class SetEmailAddressForSpshPersonService {
         }
 
         return Ok(undefined);
+    }
+
+    private async upsertLdapUndiUser(personData: PersonDataUndi, groupData: GroupDataUndi[]): Promise<Result<void>> {
+        if (!this.ldapUndiClientAdapter.useLdap()) {
+            this.logger.info(
+                `LDAP UNDI is disabled -> faking upsertLdapUser - uid=${personData.uid}, username=${personData.username}, firstName=${personData.firstName}, lastName=${personData.lastName}, primaryEmail=${personData.mailPrimaryAddress}, alternativeEmail=${personData.mailSecondaryAddress ?? 'none'}, domain=${personData.domain}`,
+            );
+
+            return Ok(undefined);
+        }
+
+        return this.ldapUndiClientAdapter.upsertPerson(personData, groupData);
     }
 
     private async updateEmailIgnoreMissing(emailAddress: EmailAddress<true>): Promise<EmailAddress<true>> {
