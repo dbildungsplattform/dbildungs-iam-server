@@ -219,6 +219,14 @@ export class PersonenkontexteUpdate {
         const modifiedRollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds([
             ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
         ]);
+
+        return this.checkMptPermissions(modifiedPKs, modifiedRollen);
+    }
+
+    private async checkMptPermissions(
+        modifiedPKs: Personenkontext<true>[],
+        modifiedRollen: Map<RolleID, Rolle<true>>,
+    ): Promise<Option<DomainError>> {
         const hasMptPermissions: boolean = (
             await Promise.all(
                 modifiedPKs
