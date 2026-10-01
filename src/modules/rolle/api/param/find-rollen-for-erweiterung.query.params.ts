@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { ArrayContains, ArrayUnique, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
 
 import { OrganisationID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
@@ -21,6 +21,7 @@ export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQu
     @TransformToArray()
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
+    @ArrayContains([RollenSystemRechtEnum.ROLLEN_ERWEITERN])
     @IsIn([RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN], { each: true })
     @ApiProperty({
         enum: RollenSystemRechtEnum,
