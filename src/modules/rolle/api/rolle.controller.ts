@@ -220,8 +220,8 @@ export class RolleController {
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         if (rollen.length === 0) {
             return new PagedResponse<RolleWithServiceProvidersResponse>({
-                total: 0,
-                offset: 0,
+                total,
+                offset: offset ?? 0,
                 limit: limit ?? 0,
                 items: [],
             });
