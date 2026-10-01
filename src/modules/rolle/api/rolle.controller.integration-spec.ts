@@ -434,6 +434,56 @@ describe('Rolle API', () => {
     });
 
     describe('/POST rolle', () => {
+        it('should persist multiple pilot attributes and system rights when creating a rolle', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const merkmale: RollenMerkmal[] = [
+                RollenMerkmal.PILOT_1_ROLLE,
+                RollenMerkmal.PILOT_2_ROLLE,
+                RollenMerkmal.PILOT_3_ROLLE,
+                RollenMerkmal.PILOT_4_ROLLE,
+                RollenMerkmal.PILOT_5_ROLLE,
+            ];
+            const systemrechte: RollenSystemRechtEnum[] = [
+                RollenSystemRechtEnum.PILOT_1_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_2_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN,
+            ];
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEHR,
+                merkmale,
+                systemrechte,
+                serviceProviderIds: [],
+            };
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/rolle')
+                .send(params);
+
+            expect(response.status).toBe(201);
+            const created: RolleResponse = response.body as RolleResponse;
+            const reloaded: Response = await request(app.getHttpServer() as App).get(`/rolle/${created.id}`);
+            expect(reloaded.status).toBe(200);
+            const rolle: RolleResponse = reloaded.body as RolleResponse;
+            expect(rolle.merkmale).toEqual(expect.arrayContaining(merkmale));
+            expect(rolle.merkmale).toHaveLength(merkmale.length);
+            expect(rolle.systemrechte).toEqual(
+                expect.arrayContaining(
+                    systemrechte.map((name: RollenSystemRechtEnum) => ({ name, isTechnical: false })),
+                ),
+            );
+            expect(rolle.systemrechte).toHaveLength(systemrechte.length);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                organisation.id,
+                RollenSystemRecht.ROLLEN_VERWALTEN,
+            );
+        });
+
         it('should return created rolle', async () => {
             const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
             const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
@@ -1624,6 +1674,68 @@ describe('Rolle API', () => {
     });
 
     describe('/PUT rolle', () => {
+        it.each([
+            [RollenMerkmal.PILOT_1_ROLLE, RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+            [RollenMerkmal.PILOT_2_ROLLE, RollenSystemRecht.PILOT_2_ROLLEN_ZUORDNEN],
+            [RollenMerkmal.PILOT_3_ROLLE, RollenSystemRecht.PILOT_3_ROLLEN_ZUORDNEN],
+            [RollenMerkmal.PILOT_4_ROLLE, RollenSystemRecht.PILOT_4_ROLLEN_ZUORDNEN],
+            [RollenMerkmal.PILOT_5_ROLLE, RollenSystemRecht.PILOT_5_ROLLEN_ZUORDNEN],
+        ])(
+            'should persist adding and removing %s and its system right on an existing rolle',
+            async (merkmal: RollenMerkmal, systemrecht: RollenSystemRecht) => {
+                const organisation: Organisation<true> = await organisationRepo.save(
+                    DoFactory.createOrganisation(false),
+                );
+                const existing: Rolle<true> = await rolleRepo.create(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: organisation.id,
+                        rollenart: RollenArt.LEHR,
+                        merkmale: [RollenMerkmal.KOPERS_PFLICHT],
+                        systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN],
+                        serviceProviderIds: [],
+                    }),
+                );
+                permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+                const params: UpdateRolleBodyParams = {
+                    name: existing.name,
+                    merkmale: [...existing.merkmale, merkmal],
+                    systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN, systemrecht.name],
+                    serviceProviderIds: [],
+                    version: existing.version,
+                };
+
+                const added: Response = await request(app.getHttpServer() as App)
+                    .put(`/rolle/${existing.id}`)
+                    .send(params);
+                expect(added.status).toBe(200);
+                const reloaded: Response = await request(app.getHttpServer() as App).get(`/rolle/${existing.id}`);
+                const rolle: RolleResponse = reloaded.body as RolleResponse;
+                expect(reloaded.status).toBe(200);
+                expect(rolle.merkmale).toEqual(expect.arrayContaining(params.merkmale));
+                expect(rolle.systemrechte).toEqual(
+                    expect.arrayContaining([{ name: systemrecht.name, isTechnical: false }]),
+                );
+
+                const removed: Response = await request(app.getHttpServer() as App)
+                    .put(`/rolle/${existing.id}`)
+                    .send({
+                        ...params,
+                        merkmale: [RollenMerkmal.KOPERS_PFLICHT],
+                        systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN],
+                        version: rolle.version,
+                    } satisfies UpdateRolleBodyParams);
+                expect(removed.status).toBe(200);
+                const afterRemoval: Response = await request(app.getHttpServer() as App).get(`/rolle/${existing.id}`);
+                expect(afterRemoval.status).toBe(200);
+                expect(afterRemoval.body).toEqual(
+                    expect.objectContaining({
+                        merkmale: [RollenMerkmal.KOPERS_PFLICHT],
+                        systemrechte: [{ name: RollenSystemRechtEnum.PERSONEN_VERWALTEN, isTechnical: false }],
+                    }),
+                );
+            },
+        );
+
         it('should return updated rolle', async () => {
             const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
             const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
