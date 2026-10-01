@@ -1,4 +1,4 @@
-import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { EntityManager, MikroORM, UniqueConstraintViolationException } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { faker } from '@faker-js/faker';
@@ -26,6 +26,7 @@ import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenerweiterungEntity } from '../entity/rollenerweiterung.entity.js';
 import { RolleRepo } from './rolle.repo.js';
 import { RollenerweiterungRepo } from './rollenerweiterung.repo.js';
+import { Mock } from 'vitest';
 
 function makeN<T>(fn: () => T, n: number): Array<T> {
     return Array.from({ length: n }, fn);
@@ -841,6 +842,10 @@ describe('RollenerweiterungRepo', () => {
             });
         });
 
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
         it('should create rollenerweiterung', async () => {
             const rollenerweiterung: Rollenerweiterung<false> = createValidRollenerweiterung(
                 organisation,
@@ -857,6 +862,34 @@ describe('RollenerweiterungRepo', () => {
                     serviceProviderId: serviceProvider.id,
                 }),
             );
+
+            expect(createResult.id).toBeDefined();
+            expect(createResult.createdAt).toBeInstanceOf(Date);
+            expect(createResult.updatedAt).toBeInstanceOf(Date);
+        });
+
+        it('should persist the created rollenerweiterung', async () => {
+            const rollenerweiterung: Rollenerweiterung<false> = createValidRollenerweiterung(
+                organisation,
+                rolle,
+                serviceProvider,
+            );
+
+            const createResult: Rollenerweiterung<true> = await sut.create(rollenerweiterung);
+
+            const persistedEntity: RollenerweiterungEntity | null = await em.findOne(RollenerweiterungEntity, {
+                id: createResult.id,
+            });
+
+            expect(persistedEntity).not.toBeNull();
+            expect(persistedEntity).toEqual(
+                expect.objectContaining({
+                    id: createResult.id,
+                }),
+            );
+            expect(persistedEntity?.organisationId.id).toBe(organisation.id);
+            expect(persistedEntity?.rolleId.id).toBe(rolle.id);
+            expect(persistedEntity?.serviceProviderId.id).toBe(serviceProvider.id);
         });
 
         it('should return the existing rollenerweiterung if it already exists', async () => {
@@ -877,14 +910,140 @@ describe('RollenerweiterungRepo', () => {
             const secondResult: Rollenerweiterung<true> = await sut.create(secondRollenerweiterung);
 
             expect(secondResult.id).toBe(firstResult.id);
+            expect(secondResult).toEqual(
+                expect.objectContaining({
+                    organisationId: organisation.id,
+                    rolleId: rolle.id,
+                    serviceProviderId: serviceProvider.id,
+                }),
+            );
 
             const count: number = await em.count(RollenerweiterungEntity, {
                 organisationId: organisation.id,
                 rolleId: rolle.id,
                 serviceProviderId: serviceProvider.id,
             });
-
             expect(count).toBe(1);
+        });
+
+        it('should create different rollenerweiterungen for different service providers', async () => {
+            const secondServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            });
+
+            const firstRollenerweiterung: Rollenerweiterung<false> = createValidRollenerweiterung(
+                organisation,
+                rolle,
+                serviceProvider,
+            );
+
+            const secondRollenerweiterung: Rollenerweiterung<false> = createValidRollenerweiterung(
+                organisation,
+                rolle,
+                secondServiceProvider,
+            );
+
+            const firstResult: Rollenerweiterung<true> = await sut.create(firstRollenerweiterung);
+
+            const secondResult: Rollenerweiterung<true> = await sut.create(secondRollenerweiterung);
+
+            expect(secondResult.id).not.toBe(firstResult.id);
+            const count: number = await em.count(RollenerweiterungEntity, {
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+            });
+
+            expect(count).toBe(2);
+        });
+
+        it('should rethrow UniqueConstraintViolationException if no concurrently created Rollenerweiterung is found', async () => {
+            const rollenerweiterung: Rollenerweiterung<false> = DoFactory.createRollenerweiterung<false>(false);
+
+            const uniqueConstraintViolationException: UniqueConstraintViolationException = Object.setPrototypeOf(
+                new Error('Unique constraint violation'),
+                UniqueConstraintViolationException.prototype,
+            ) as UniqueConstraintViolationException;
+
+            const findByComposedIdSpy: Mock = vi
+                .spyOn(sut, 'findByComposedId')
+                .mockResolvedValueOnce(undefined)
+                .mockResolvedValueOnce(undefined);
+
+            type RepoWithEntityManager = RollenerweiterungRepo & {
+                em: {
+                    flush: () => Promise<void>;
+                    clear: () => void;
+                };
+            };
+
+            const repoWithEntityManager: RepoWithEntityManager = sut as RepoWithEntityManager;
+
+            const flushSpy: Mock = vi
+                .spyOn(repoWithEntityManager.em, 'flush')
+                .mockRejectedValueOnce(uniqueConstraintViolationException);
+
+            try {
+                await expect(sut.create(rollenerweiterung)).rejects.toBe(uniqueConstraintViolationException);
+                expect(findByComposedIdSpy).toHaveBeenCalledTimes(2);
+                expect(flushSpy).toHaveBeenCalledOnce();
+            } finally {
+                repoWithEntityManager.em.clear();
+            }
+        });
+
+        it('should return concurrently created Rollenerweiterung after UniqueConstraintViolationException', async () => {
+            const rollenerweiterung: Rollenerweiterung<false> = DoFactory.createRollenerweiterung<false>(false);
+
+            const concurrentlyCreatedRollenerweiterung: Rollenerweiterung<true> =
+                DoFactory.createRollenerweiterung<true>(true, {
+                    organisationId: rollenerweiterung.organisationId,
+                    rolleId: rollenerweiterung.rolleId,
+                    serviceProviderId: rollenerweiterung.serviceProviderId,
+                });
+
+            const uniqueConstraintViolationException: UniqueConstraintViolationException = Object.setPrototypeOf(
+                new Error('Unique constraint violation'),
+                UniqueConstraintViolationException.prototype,
+            ) as UniqueConstraintViolationException;
+
+            const findByComposedIdSpy: Mock = vi
+                .spyOn(sut, 'findByComposedId')
+                .mockResolvedValueOnce(undefined)
+                .mockResolvedValueOnce(concurrentlyCreatedRollenerweiterung);
+
+            type RepoWithEntityManager = RollenerweiterungRepo & {
+                em: {
+                    flush: () => Promise<void>;
+                    clear: () => void;
+                };
+            };
+
+            const repoWithEntityManager: RepoWithEntityManager = sut as RepoWithEntityManager;
+
+            const flushSpy: Mock = vi
+                .spyOn(repoWithEntityManager.em, 'flush')
+                .mockRejectedValueOnce(uniqueConstraintViolationException);
+
+            try {
+                const result: Rollenerweiterung<true> = await sut.create(rollenerweiterung);
+
+                expect(result).toBe(concurrentlyCreatedRollenerweiterung);
+                expect(findByComposedIdSpy).toHaveBeenCalledTimes(2);
+                expect(findByComposedIdSpy).toHaveBeenNthCalledWith(1, {
+                    organisationId: rollenerweiterung.organisationId,
+                    rolleId: rollenerweiterung.rolleId,
+                    serviceProviderId: rollenerweiterung.serviceProviderId,
+                });
+                expect(findByComposedIdSpy).toHaveBeenNthCalledWith(2, {
+                    organisationId: rollenerweiterung.organisationId,
+                    rolleId: rollenerweiterung.rolleId,
+                    serviceProviderId: rollenerweiterung.serviceProviderId,
+                });
+                expect(flushSpy).toHaveBeenCalledOnce();
+            } finally {
+                repoWithEntityManager.em.clear();
+            }
         });
     });
 
