@@ -12,7 +12,6 @@ import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
 import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
@@ -23,7 +22,7 @@ import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-co
 import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, PersonID, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
 import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
 import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
@@ -32,6 +31,8 @@ import { PersonIdentifier } from '../../logging/person-identifier.js';
 import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-group-kennung-extraction.error.js';
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
+import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
+import { UemLdapOuError } from '../adapter/domain/error/uem-ldap-ou.error.js';
 
 export type LdapSyncData = {
     givenName: string;
@@ -53,17 +54,17 @@ export type LdapSyncData = {
  * and in the end this handler also shares some common data and common behavior with ItsLearningSyncEventHandler.
  */
 @Injectable()
-export class LdapSyncEventHandler {
+export class LdapSyncEventHandler extends AbstractLdapEventHandler {
     public static readonly GROUP_DN_REGEX_STR: string = `cn=lehrer-KENNUNG1,cn=groups,ou=KENNUNG2,BASE_DN`;
 
     public constructor(
-        private readonly logger: ClassLogger,
+        logger: ClassLogger,
         private readonly ldapInstanceConfig: LdapInstanceConfig,
         private readonly ldapClientAdapter: LdapAdapter,
         private readonly personRepository: PersonRepository,
-        private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
-        private readonly rolleRepo: RolleRepo,
-        private readonly organisationRepository: OrganisationRepository,
+        dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
+        rolleRepo: RolleRepo,
+        organisationRepository: OrganisationRepository,
         private readonly emailRepo: EmailRepo,
         private readonly eventService: EventRoutingLegacyKafkaService,
         private readonly emailResolverService: EmailResolverService,
@@ -71,7 +72,9 @@ export class LdapSyncEventHandler {
         // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
         // to create the request-bound EntityManager context. Removing it would break context creation.
         private readonly em: EntityManager,
-    ) {}
+    ) {
+        super(logger, organisationRepository, dBiamPersonenkontextRepo, rolleRepo);
+    }
 
     @KafkaEventHandler(KafkaPersonExternalSystemsSyncEvent)
     @EventHandler(PersonExternalSystemsSyncEvent)
@@ -176,53 +179,37 @@ export class LdapSyncEventHandler {
             this.logger.info(`skipping email resolution for personId:${personId} since email microservice is active`);
         }
 
-        // Get all PKs
-        const kontexte: Personenkontext<true>[] = await this.dBiamPersonenkontextRepo.findByPerson(personId);
+        const personKontextWithUemRolle: Personenkontext<true>[] = await this.findUemKontexts(personId);
 
-        // Find all rollen and organisations
-        const rollenIDs: RolleID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.rolleId));
-        const organisationIDs: OrganisationID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.organisationId));
-        const [rollen, organisations]: [Map<RolleID, Rolle<true>>, Map<OrganisationID, Organisation<true>>] =
-            await Promise.all([
-                this.rolleRepo.findByIds(rollenIDs),
-                this.organisationRepository.findByIds(organisationIDs),
-            ]);
+        const organisationIDs: OrganisationID[] = uniq(
+            personKontextWithUemRolle.map((pk: Personenkontext<true>) => pk.organisationId),
+        );
+        const organisations: Map<OrganisationID, Organisation<true>> = await this.organisationRepository.findByIds(
+            organisationIDs,
+        );
 
-        // Delete all rollen from map which do NOT have the UEM service provider
-        for (const [rolleId, rolle] of rollen.entries()) {
-            if (!rolle.hasUemServiceProvider()) {
-                rollen.delete(rolleId);
-            }
-        }
-
-        let emailDomain: Option<string> = null;
         // Delete all organisations from map which are NOT typ SCHULE
         for (const [orgaId, orga] of organisations.entries()) {
             if (orga.typ !== OrganisationsTyp.SCHULE) {
                 organisations.delete(orgaId);
             }
         }
-        // checking emailDomain for only the first organisation is sufficient, tree can only consist of either OeffentlicheSchulen or ErsatzSchulen.
+        // checking only the first organisation is sufficient, tree can only consist of either OeffentlicheSchulen or ErsatzSchulen.
         if (!organisationIDs[0]) {
             return this.logger.error(
                 `Could NOT fetch domain from organisations, no organisations found for person, ABORTING SYNC, personId:${personId}`,
             );
         }
-        emailDomain = await this.organisationRepository.findEmailDomainForOrganisation(organisationIDs[0]);
-        if (!emailDomain) {
+        const uemLdapOu: Result<string> = await this.resolveUemLdapOuOrThrow(organisationIDs[0]);
+        if (!uemLdapOu.ok) {
             return this.logger.error(
-                `Could NOT fetch domain from organisations, LDAP-root CANNOT be chosen, ABORTING SYNC, personId:${personId}`,
+                `Could NOT fetch LDAP OU from organisations, LDAP-root CANNOT be chosen, ABORTING SYNC, personId:${personId}`,
             );
         }
 
-        // Filter PKs for the remaining rollen with rollenArt LEHR and the remaining organisations with typ SCHULE
-        const pksWithRollenArtLehrAndOrganisationSchule: Personenkontext<true>[] = kontexte.filter(
-            (pk: Personenkontext<true>) => rollen.has(pk.rolleId) && organisations.has(pk.organisationId),
-        );
-
         const schulenDstNrList: string[] = [];
         let schule: Organisation<true> | undefined;
-        for (const pk of pksWithRollenArtLehrAndOrganisationSchule) {
+        for (const pk of personKontextWithUemRolle) {
             schule = organisations.get(pk.organisationId);
             if (!schule) {
                 return this.logger.error(`Could not find organisation, orgaId:${pk.organisationId}, pkId:${pk.id}`);
@@ -242,7 +229,7 @@ export class LdapSyncEventHandler {
         const personAttributes: Result<LdapPersonAttributes> = await this.ldapClientAdapter.getPersonAttributes(
             personId,
             person.username,
-            emailDomain,
+            uemLdapOu.value,
         );
         if (!personAttributes.ok) {
             return this.logger.error(
@@ -309,6 +296,13 @@ export class LdapSyncEventHandler {
                 this.logger.warning(
                     `Mismatch mailPrimaryAddress, person:${ldapSyncData.enabledEmailAddress}, LDAP:${currentMailPrimaryAddress}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
                 );
+                const uemLdapOu: Result<string> = await this.findUemLdapOuForPersonId(ldapSyncData.personId);
+                if (!uemLdapOu.ok) {
+                    this.logger.error(
+                        `Failed to find UEM LDAP OU for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
+                    );
+                    throw new UemLdapOuError();
+                }
                 if (!currentMailPrimaryAddress) {
                     this.logger.warning(
                         `MailPrimaryAddress undefined for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,

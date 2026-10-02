@@ -225,22 +225,22 @@ export class OrganisationRepository {
      * @param id start of search (leaf)
      * @return first found email-domain or undefined if no email-domain could be found while walking the tree upwards
      */
-    public async findEmailDomainForOrganisation(id: OrganisationID): Promise<string | undefined> {
+    public async findUemLdapOuForOrganisation(id: OrganisationID): Promise<string | undefined> {
         const organisations: Organisation<true>[] = await this.findParentOrgasForIdSortedByDepthAsc(id);
-        const emailDomain: Option<string> = this.getDomainRecursive(organisations);
+        const emailDomain: Option<string> = this.getUemLdapOuRecursive(organisations);
 
         return emailDomain ?? undefined;
     }
 
-    private getDomainRecursive(organisationsSortedByDepthAsc: Organisation<true>[]): Option<string> {
+    private getUemLdapOuRecursive(organisationsSortedByDepthAsc: Organisation<true>[]): Option<string> {
         if (!organisationsSortedByDepthAsc || organisationsSortedByDepthAsc.length === 0) {
             return undefined;
         }
-        if (organisationsSortedByDepthAsc[0] && organisationsSortedByDepthAsc[0].emailDomain) {
-            return organisationsSortedByDepthAsc[0].emailDomain;
+        if (organisationsSortedByDepthAsc[0] && organisationsSortedByDepthAsc[0].uemLdapOu) {
+            return organisationsSortedByDepthAsc[0].uemLdapOu;
         }
 
-        return this.getDomainRecursive(organisationsSortedByDepthAsc.slice(1));
+        return this.getUemLdapOuRecursive(organisationsSortedByDepthAsc.slice(1));
     }
 
     public async isOrgaAParentOfOrgaB(

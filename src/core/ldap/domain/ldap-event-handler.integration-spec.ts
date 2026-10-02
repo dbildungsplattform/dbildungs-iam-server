@@ -371,7 +371,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -411,7 +411,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(undefined);
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -453,7 +453,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -494,7 +494,7 @@ describe('LdapEventHandler', () => {
                 ],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
             expect(ldapClientAdapterMock.deleteLehrer).toHaveBeenCalledTimes(0);
         });
@@ -533,7 +533,7 @@ describe('LdapEventHandler', () => {
                 ],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
             expect(ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung).toHaveBeenCalledTimes(1);
         });
@@ -571,7 +571,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(undefined);
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -606,7 +606,7 @@ describe('LdapEventHandler', () => {
                 );
                 ldapClientAdapterMock.createLehrer.mockResolvedValueOnce({ ok: false, error: new Error('Error') });
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
 
                 await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -641,7 +641,7 @@ describe('LdapEventHandler', () => {
                 error: new Error('Error'),
             });
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -671,7 +671,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
             expect(ldapClientAdapterMock.deleteLehrer).toHaveBeenCalledTimes(0);
         });
@@ -699,7 +699,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
             expect(ldapClientAdapterMock.createLehrer).toHaveBeenCalledTimes(0);
@@ -737,7 +737,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung.mockRejectedValueOnce(
                 new Error('removePersonFromGroup error'),
             );
@@ -780,7 +780,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockRejectedValueOnce(new Error('Test'));
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce(new Error('Test'));
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -822,7 +822,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.createLehrer.mockRejectedValueOnce(new Error('createLehrer error'));
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
@@ -863,7 +863,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockRejectedValueOnce(new Error('Test'));
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce(new Error('Test'));
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -907,7 +907,7 @@ describe('LdapEventHandler', () => {
 
             const entryUUID: string = faker.string.uuid();
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.createLehrer.mockResolvedValueOnce({
                 ok: true,
                 value: {
@@ -956,7 +956,7 @@ describe('LdapEventHandler', () => {
 
             const entryUUID: string = faker.string.uuid();
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.createLehrer.mockResolvedValueOnce({
                 ok: true,
                 value: {
@@ -997,7 +997,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung.mockRejectedValueOnce('non-error reason');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
@@ -1030,7 +1030,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.createLehrer.mockRejectedValueOnce('non-error reason');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
@@ -1063,7 +1063,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockRejectedValueOnce('non-error reason');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce('non-error reason');
 
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
@@ -1095,7 +1095,7 @@ describe('LdapEventHandler', () => {
                 [],
             );
 
-            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('schule-sh.de');
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('schule-sh.de');
             ldapClientAdapterMock.createLehrer.mockResolvedValueOnce({
                 ok: true,
                 value: {} as PersonData,

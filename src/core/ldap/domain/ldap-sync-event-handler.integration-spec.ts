@@ -462,7 +462,7 @@ describe('LdapSyncEventHandler', () => {
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
                 emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(enabledEmailAddress);
                 emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([]);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValue('example.org');
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValue('example.org');
 
                 // create PKs, orgaMap and rolleMap
                 const [kontexte, orgaMap, rolleMap]: [
@@ -509,7 +509,7 @@ describe('LdapSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -542,7 +542,7 @@ describe('LdapSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
                 personAttributes = {
@@ -590,7 +590,7 @@ describe('LdapSyncEventHandler', () => {
                 } as unknown as Map<OrganisationID, Organisation<true>>;
 
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, mockedMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -621,7 +621,7 @@ describe('LdapSyncEventHandler', () => {
                 }
                 orgaWithoutKennung.kennung = undefined;
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -674,7 +674,7 @@ describe('LdapSyncEventHandler', () => {
                 }
                 orgaWithoutKennung.kennung = undefined;
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(undefined);
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
@@ -708,7 +708,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -739,7 +739,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -776,7 +776,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -812,7 +812,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -859,7 +859,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -908,7 +908,7 @@ describe('LdapSyncEventHandler', () => {
                 mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
 
                 mockPersonenKontextRelatedRepositoryCalls(pks, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -966,7 +966,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -999,7 +999,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 

@@ -514,23 +514,23 @@ describe('OrganisationRepository', () => {
 
         const domain: string = 'schule-sh.de';
 
-        it('should return emailDomain for root provided by root', async () => {
+        it('should return OU for UEM LDAP for root provided by root', async () => {
             const { root }: CreateOrgaTreeResult = await createOrgaTreeWithDomains(domain, undefined, undefined);
 
-            const result: string | undefined = await sut.findEmailDomainForOrganisation(root.id);
+            const result: string | undefined = await sut.findUemLdapOuForOrganisation(root.id);
 
             expect(result).toBeDefined();
             expect(result).toStrictEqual(domain);
         });
 
-        it('should return emailDomain for schule provided by traeger', async () => {
+        it('should return OU for UEM LDAP for schule provided by traeger', async () => {
             const { root, traeger, schule }: CreateOrgaTreeResult = await createOrgaTreeWithDomains(
                 undefined,
                 domain,
                 undefined,
             );
 
-            const result: string | undefined = await sut.findEmailDomainForOrganisation(traeger.id);
+            const result: string | undefined = await sut.findUemLdapOuForOrganisation(traeger.id);
 
             expect(root).toBeDefined();
             expect(schule).toBeDefined();
@@ -538,14 +538,14 @@ describe('OrganisationRepository', () => {
             expect(result).toStrictEqual(domain);
         });
 
-        it('should return emailDomain for schule provided by root', async () => {
+        it('should return OU for UEM LDAP for schule provided by root', async () => {
             const { root, traeger, schule }: CreateOrgaTreeResult = await createOrgaTreeWithDomains(
                 domain,
                 undefined,
                 undefined,
             );
 
-            const result: string | undefined = await sut.findEmailDomainForOrganisation(schule.id);
+            const result: string | undefined = await sut.findUemLdapOuForOrganisation(schule.id);
 
             expect(root).toBeDefined();
             expect(traeger).toBeDefined();
@@ -553,14 +553,14 @@ describe('OrganisationRepository', () => {
             expect(result).toStrictEqual(domain);
         });
 
-        it('should return undefined when NO organisation in tree has an email-domain', async () => {
+        it('should return undefined when NO organisation in tree has an OU for UEM LDAP', async () => {
             const { root, traeger, schule }: CreateOrgaTreeResult = await createOrgaTreeWithDomains(
                 undefined,
                 undefined,
                 undefined,
             );
 
-            const result: string | undefined = await sut.findEmailDomainForOrganisation(schule.id);
+            const result: string | undefined = await sut.findUemLdapOuForOrganisation(schule.id);
 
             expect(root).toBeDefined();
             expect(traeger).toBeDefined();
@@ -568,10 +568,10 @@ describe('OrganisationRepository', () => {
             expect(result).toBeUndefined();
         });
 
-        // This test covers getDomainRecursive, case 'no organisations, first cancel condition'
+        // This test covers getUemLdapOuRecursive, case 'no organisations, first cancel condition'
         it('should return undefined when NO organisation were found via findParentOrgasForIdSortedByDepthAsc', async () => {
             //no tree-creation here -> mocks no organisations could be found
-            const result: string | undefined = await sut.findEmailDomainForOrganisation(faker.string.uuid());
+            const result: string | undefined = await sut.findUemLdapOuForOrganisation(faker.string.uuid());
 
             expect(result).toBeUndefined();
         });
