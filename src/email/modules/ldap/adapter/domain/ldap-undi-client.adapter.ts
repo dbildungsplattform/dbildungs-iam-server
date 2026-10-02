@@ -76,6 +76,10 @@ export class LdapUndiClientAdapter {
 
     public static readonly MEMBER_OF: string = 'memberOf';
 
+    public static readonly USERS_CN: string = 'users';
+
+    public static readonly GROUP_CN: string = 'groups';
+
     public static readonly ATTRIBUTE_VALUE_EMPTY: string = 'empty';
 
     private mutex: Mutex;
@@ -192,10 +196,11 @@ export class LdapUndiClientAdapter {
             return bindResult;
         }
 
-        const personDN: string = `uid=${person.uid},ou=${rootNameResult.value},${this.ldapInstanceConfig.BASE_DN}`;
+        const personDN: string = `uid=${person.uid},cn=${LdapUndiClientAdapter.USERS_CN},ou=${rootNameResult.value},${this.ldapInstanceConfig.BASE_DN}`;
 
-        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${person.uid})`,
+        const searchResultPerson: SearchResult = await client.search(personDN, {
+            filter: '(objectClass=*)',
+            scope: 'base',
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
@@ -300,7 +305,7 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personId})`,
+            filter: `(uid=${personId}&objectClass=*)`,
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
@@ -353,7 +358,7 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personUid})`,
+            filter: `(uid=${personUid}&objectClass=*)`,
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
@@ -387,7 +392,7 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personUid})`,
+            filter: `(uid=${personUid}&objectClass=*)`,
         });
 
         if (!searchResultPerson.searchEntries[0]) {
@@ -414,7 +419,11 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async setPersonGroupsInternal(personDN: string, groups: GroupDataUndi[]): Promise<Result<void>> {
+    private async setPersonGroupsInternal(
+        personDN: string,
+        baseOu: string,
+        groups: GroupDataUndi[],
+    ): Promise<Result<void>> {
         const client: Client = this.ldapClient.getClient();
         const bindResult: Result<boolean> = await this.bind();
         if (!bindResult.ok) {
@@ -440,17 +449,21 @@ export class LdapUndiClientAdapter {
         const groupsToAdd: GroupDataUndi[] = differenceWith(
             groups,
             personGroups,
-            (group: GroupDataUndi, dn: string) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === dn,
+            (group: GroupDataUndi, dn: string) =>
+                `cn=${group.id},cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}` ===
+                dn,
         );
 
         const groupsToRemove: string[] = differenceWith(
             personGroups,
             groups,
-            (groupDN: string, group: GroupDataUndi) => `cn=${group.id},${this.ldapInstanceConfig.BASE_DN}` === groupDN,
+            (groupDN: string, group: GroupDataUndi) =>
+                `cn=${group.id},cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}` ===
+                groupDN,
         );
 
         const addResult: Result<void>[] = await Promise.all(
-            groupsToAdd.map((group: GroupDataUndi) => this.addPersonToGroupInternal(personDN, group)),
+            groupsToAdd.map((group: GroupDataUndi) => this.addPersonToGroupInternal(personDN, baseOu, group)),
         );
 
         const removeResult: Result<void>[] = await Promise.all(
@@ -469,8 +482,12 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async addPersonToGroupInternal(personDN: string, groupData: GroupDataUndi): Promise<Result<void>> {
-        const groupDn: string = `cn=${groupData.id},${this.ldapInstanceConfig.BASE_DN}`;
+    private async addPersonToGroupInternal(
+        personDN: string,
+        baseOu: string,
+        groupData: GroupDataUndi,
+    ): Promise<Result<void>> {
+        const groupDn: string = `cn=${groupData.id},cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
         const groupName: string = `lehrer-${groupData.kennung}`;
 
         const client: Client = this.ldapClient.getClient();
