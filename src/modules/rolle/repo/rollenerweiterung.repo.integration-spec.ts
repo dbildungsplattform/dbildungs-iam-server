@@ -1045,6 +1045,38 @@ describe('RollenerweiterungRepo', () => {
                 repoWithEntityManager.em.clear();
             }
         });
+
+        it('should rethrow persistence errors that are not UniqueConstraintViolationExceptions', async () => {
+            const rollenerweiterung: Rollenerweiterung<false> = DoFactory.createRollenerweiterung<false>(false);
+
+            const persistenceError: Error = new Error('Persistence failed');
+
+            const findByComposedIdSpy: Mock = vi.spyOn(sut, 'findByComposedId').mockResolvedValueOnce(undefined);
+
+            type RepoWithEntityManager = RollenerweiterungRepo & {
+                em: {
+                    flush: () => Promise<void>;
+                    clear: () => void;
+                };
+            };
+
+            const repoWithEntityManager: RepoWithEntityManager = sut as RepoWithEntityManager;
+
+            const flushSpy: Mock = vi.spyOn(repoWithEntityManager.em, 'flush').mockRejectedValueOnce(persistenceError);
+
+            try {
+                await expect(sut.create(rollenerweiterung)).rejects.toBe(persistenceError);
+                expect(findByComposedIdSpy).toHaveBeenCalledOnce();
+                expect(findByComposedIdSpy).toHaveBeenCalledWith({
+                    organisationId: rollenerweiterung.organisationId,
+                    rolleId: rollenerweiterung.rolleId,
+                    serviceProviderId: rollenerweiterung.serviceProviderId,
+                });
+                expect(flushSpy).toHaveBeenCalledOnce();
+            } finally {
+                repoWithEntityManager.em.clear();
+            }
+        });
     });
 
     describe('findManyByOrganisationAndRolle', () => {
