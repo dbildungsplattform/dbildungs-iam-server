@@ -221,10 +221,9 @@ export class EmailResolverService {
         }
     }
 
-    public async updateSchool(params: {
+    public async updateSchoolName(params: {
         organisationId: string;
-        name?: string;
-        kennung?: string;
+        newName: string;
     }): Promise<void> {
         try {
             this.logger.info(`Updating school ${params.organisationId} via email microservice`);
@@ -233,8 +232,7 @@ export class EmailResolverService {
                     this.getEndpoint() +
                         `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
                     {
-                        name: params.name,
-                        kennung: params.kennung,
+                        name: params.newName
                     } satisfies UpdateOrganisationBodyParams,
                     {
                         headers: {

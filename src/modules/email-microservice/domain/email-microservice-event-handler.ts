@@ -236,10 +236,19 @@ export class EmailMicroserviceEventHandler {
             return;
         }
 
-        await this.emailResolverService.updateSchool({
+        if(!event.newName) {
+            this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because newName is not provided`);
+            return;
+        }
+
+        if(event.newName === event.oldName){
+            this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because newName is the same as oldName`);
+            return;
+        }
+
+        await this.emailResolverService.updateSchoolName({
             organisationId: event.organisationId,
-            name: event.newName,
-            kennung: event.newKennung,
+            newName: event.newName,
         });
     }
 
@@ -249,6 +258,11 @@ export class EmailMicroserviceEventHandler {
     public async handlePersonExternalSystemsSyncEvent(
         event: PersonExternalSystemsSyncEvent | KafkaPersonExternalSystemsSyncEvent,
     ): Promise<void> {
+        this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${event.personId}`);
+        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
+            return;
+        }
         await this.syncPerson(event.personId);
     }
 
@@ -258,6 +272,11 @@ export class EmailMicroserviceEventHandler {
     public async handleLocksForPersonChangedEvent(
         event: LocksForPersonChangedEvent | KafkaLocksForPersonChangedEvent,
     ): Promise<void> {
+        this.logger.info(`Received LocksForPersonChangedEvent, personId:${event.personId}`);
+        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
+            return;
+        }
         await this.syncPerson(event.personId);
     }
 
@@ -273,11 +292,6 @@ export class EmailMicroserviceEventHandler {
     }
 
     private async syncPerson(personId: string): Promise<void>{;
-        this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);
-            return;
-        }
 
         const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(personId);
         const gesperrt: boolean = userLocks.length > 0;
