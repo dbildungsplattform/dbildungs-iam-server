@@ -48,7 +48,8 @@ export class EmailFactory {
                 error: new EntityNotFoundError('Organisation', organisationId),
             };
         }
-        const emailDomain: string | undefined = await this.organisationRepository.findEmailDomainForOrganisation(
+        // FIXME: Won't work with OU. Can be removed?
+        const emailDomain: string | undefined = await this.organisationRepository.findUemLdapOuForOrganisation(
             organisation.id,
         );
         if (!emailDomain) {
