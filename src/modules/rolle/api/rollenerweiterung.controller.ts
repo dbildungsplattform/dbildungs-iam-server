@@ -12,7 +12,6 @@ import { uniq } from 'lodash-es';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
-import { ApplyRollenerweiterungForAngebotService } from '../domain/apply-rollenerweiterungen-for-angebot-service.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { ApplyRollenerweiterungForSPPathParams } from './apply-rollenerweiterung-for-sp-changes.path.params.js';
 import { ApplyRollenerweiterungMultiExceptionFilter } from './apply-rollenerweiterung-multi-exception-filter.js';
@@ -21,6 +20,7 @@ import { ApplyRollenerweiterungBodyParams } from './apply-rollenerweiterung.body
 import { DbiamApplyRollenerweiterungMultiError } from './dbiam-apply-rollenerweiterung-multi.error.js';
 import { RollenerweiterungExceptionFilter } from './rollenerweiterung-exception-filter.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
 
 @UseFilters(new RollenerweiterungExceptionFilter(), new ApplyRollenerweiterungMultiExceptionFilter())
 @ApiTags('rolle')
@@ -30,7 +30,7 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 export class RollenerweiterungController {
     public constructor(
         private readonly logger: ClassLogger,
-        private readonly applyRollenerweiterungService: ApplyRollenerweiterungForAngebotService,
+        private readonly applyRollenerweiterungService: ApplyRollenerweiterungService,
     ) {}
 
     @Post('/angebot/:angebotId/organisation/:organisationId/apply')
