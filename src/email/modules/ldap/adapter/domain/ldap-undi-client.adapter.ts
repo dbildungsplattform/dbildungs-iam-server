@@ -19,6 +19,7 @@ import { LdapFindPersonError } from './error/ldap-find-person.error.js';
 import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.js';
 import { LdapCreateGroupError } from './error/ldap-create-group.error.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
+import { LdapPersonInvalidDNError } from './error/ldap-person-invalid-dn.error.js';
 
 export type PersonDataUndi = {
     domain: string;
@@ -286,7 +287,11 @@ export class LdapUndiClientAdapter {
             }
         }
 
-        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(personDN, groups);
+        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(
+            personDN,
+            rootNameResult.value,
+            groups,
+        );
         if (!setGroupsResult.ok) {
             return setGroupsResult;
         }
@@ -369,8 +374,17 @@ export class LdapUndiClientAdapter {
 
         const personDN: string = searchResultPerson.searchEntries[0].dn;
 
+        const dnPrefix: string = `uid=${personUid},cn=${LdapUndiClientAdapter.USERS_CN},ou=`;
+        const dnSuffix: string = `,${this.ldapInstanceConfig.BASE_DN}`;
+
+        if (!personDN.startsWith(dnPrefix) || !personDN.endsWith(dnSuffix)) {
+            return Err(new LdapPersonInvalidDNError(personDN));
+        }
+
+        const baseOu: string = personDN.substring(dnPrefix.length, personDN.length - dnSuffix.length);
+
         // TODO: SPSH-4220 Ask if LDAP is configured to automatically remove dangling references
-        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(personDN, []);
+        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(personDN, baseOu, []);
         if (!setGroupsResult.ok) {
             return setGroupsResult;
         }
