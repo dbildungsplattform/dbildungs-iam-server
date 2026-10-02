@@ -6,6 +6,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import request, { Response } from 'supertest';
 import { App } from 'supertest/types.js';
+
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
@@ -37,10 +38,9 @@ import { EscalatedPersonPermissions } from '../../permission/escalated-person-pe
 import { PersonFactory } from '../../person/domain/person.factory.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { RolleResponse } from '../../rolle/api/rolle.response.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
@@ -50,10 +50,9 @@ import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workfl
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
 import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
-import { FindDbiamPersonenkontextWorkflowBodyParams } from './param/dbiam-find-personenkontextworkflow-body.params.js';
+import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
 import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
 
@@ -176,7 +175,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     .get(`/personenkontext-workflow/step`)
                     .query({
                         operationContext: OperationContext.PERSON_ANLEGEN,
-                    } as FindDbiamPersonenkontextWorkflowBodyParams)
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -200,66 +199,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             administriertVon: traeger.id,
                         }),
                     );
-                    // ordered list of rollen we expect
-                    const expectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle A',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEIT,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle B',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.SORGBER,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle C',
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.LERN,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle D',
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.SCHB,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                    ]);
-                    const unexpectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.SYSADMIN,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.ORGADMIN,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.SORGBER,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.NLEHR,
-                            }),
-                        ),
-                    ]);
                     personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                         all: false,
                         orgaIds: [schule.id],
@@ -278,7 +217,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         .query({
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
-                        } as FindDbiamPersonenkontextWorkflowBodyParams)
+                        } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -286,16 +225,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(body.organisations).toEqual([
                         expect.objectContaining({ id: schule.id }) as OrganisationResponse,
                     ]);
-                    expect(body.rollen).toEqual(
-                        expectedRollen.map((r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse),
-                    );
-                    expect(body.rollen).not.toEqual(
-                        expect.arrayContaining(
-                            unexpectedRollen.map(
-                                (r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse,
-                            ),
-                        ),
-                    );
                 });
 
                 it(`should return rollen matching the selected organisation and LIMITED_ROLLENART_ALLOWLIST, if user has ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
@@ -308,73 +237,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             administriertVon: traeger.id,
                         }),
                     );
-                    // ordered list of rollen we expect
-                    const expectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle A',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEIT,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle B',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.SORGBER,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle C',
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.LERN,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle D',
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.SCHB,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                    ]);
-                    const unexpectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.SYSADMIN,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.ORGADMIN,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.SORGBER,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.NLEHR,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEIT,
-                            }),
-                        ),
-                    ]);
                     personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                         all: false,
                         orgaIds: [schule.id],
@@ -393,8 +255,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         .query({
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
-                            requestedWithSystemrecht: RollenSystemRechtEnum.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
-                        } as FindDbiamPersonenkontextWorkflowBodyParams)
+                        } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -402,16 +263,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(body.organisations).toEqual([
                         expect.objectContaining({ id: schule.id }) as OrganisationResponse,
                     ]);
-                    expect(body.rollen).toEqual(
-                        expectedRollen.map((r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse),
-                    );
-                    expect(body.rollen).not.toEqual(
-                        expect.arrayContaining(
-                            unexpectedRollen.map(
-                                (r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse,
-                            ),
-                        ),
-                    );
                 });
 
                 it(`should not allow commit, if rollenart of selected rolle is not allowed via LIMITED_ROLLENART_ALLOWLIST or is MPT for users with ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
@@ -461,7 +312,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
                             rollenIds: [mptRolle.id, mismatchedRolle.id],
-                        } as FindDbiamPersonenkontextWorkflowBodyParams)
+                        } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);
                     expect(response.body).toEqual(
@@ -483,62 +334,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             administriertVon: traeger.id,
                         }),
                     );
-                    // ordered list of rollen we expect
-                    const expectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle A',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEIT,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle B',
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEHR,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                name: 'Rolle C',
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.LERN,
-                            }),
-                        ),
-                    ]);
-                    const unexpectedRollen: Array<Rolle<true>> = await Promise.all([
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.SYSADMIN,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.ORGADMIN,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                rollenart: RollenArt.SORGBER,
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: traeger.id,
-                                rollenart: RollenArt.LEHR,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                        rolleRepo.create(
-                            DoFactory.createRolle(false, {
-                                administeredBySchulstrukturknoten: schule.id,
-                                rollenart: RollenArt.SCHB,
-                                merkmale: [RollenMerkmal.MPT_ROLLE],
-                            }),
-                        ),
-                    ]);
                     personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                         all: false,
                         orgaIds: [schule.id],
@@ -560,7 +355,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         .query({
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
-                        } as FindDbiamPersonenkontextWorkflowBodyParams)
+                        } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -568,16 +363,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(body.organisations).toEqual([
                         expect.objectContaining({ id: schule.id }) as OrganisationResponse,
                     ]);
-                    expect(body.rollen).toEqual(
-                        expectedRollen.map((r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse),
-                    );
-                    expect(body.rollen).not.toEqual(
-                        expect.arrayContaining(
-                            unexpectedRollen.map(
-                                (r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse,
-                            ),
-                        ),
-                    );
                 });
 
                 it('should not allow commit, if selected rollen are MPT', async () => {
@@ -620,7 +405,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
                             rollenIds: [mptRolle.id],
-                        } as FindDbiamPersonenkontextWorkflowBodyParams)
+                        } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);
                     expect(response.body).toEqual(
@@ -659,57 +444,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             it('should return organisation and rollen matching the selected user', async () => {
-                // ordered list of rollen we expect
-                const expectedRollen: Array<Rolle<true>> = await Promise.all([
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            name: 'Rolle A',
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: rolle.rollenart,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            name: 'Rolle B',
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: rolle.rollenart,
-                        }),
-                    ),
-                ]);
-                expectedRollen.unshift(rolle);
-                const unexpectedRollen: Array<Rolle<true>> = await Promise.all([
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            rollenart: RollenArt.SYSADMIN,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            rollenart: RollenArt.ORGADMIN,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: RollenArt.LEHR,
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: RollenArt.SORGBER,
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: RollenArt.NLEHR,
-                        }),
-                    ),
-                ]);
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
                     orgaIds: [organisation.id],
@@ -728,9 +462,8 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     .query({
                         operationContext: OperationContext.PERSON_BEARBEITEN,
                         organisationId: organisation.id,
-                        rollenIds: [rolle.id],
                         personId: existingPerson.id,
-                    } as FindDbiamPersonenkontextWorkflowBodyParams)
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -738,53 +471,10 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(body.organisations).toEqual([
                     expect.objectContaining({ id: organisation.id }) as OrganisationResponse,
                 ]);
-                expect(body.rollen).toEqual(
-                    expectedRollen.map((r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse),
-                );
-                expect(body.rollen).not.toEqual(
-                    expect.arrayContaining(
-                        unexpectedRollen.map(
-                            (r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse,
-                        ),
-                    ),
-                );
             });
 
             it('should return organisation and rollen for a user without personenkontexte', async () => {
                 await personenkontextRepoInternal.delete(personenkontext);
-                // ordered list of rollen we expect
-                const expectedRollen: Array<Rolle<true>> = await Promise.all([
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            name: 'Rolle A',
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: rolle.rollenart,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            name: 'Rolle B',
-                            administeredBySchulstrukturknoten: organisation.id,
-                            rollenart: rolle.rollenart,
-                        }),
-                    ),
-                ]);
-                expectedRollen.unshift(rolle);
-                const unexpectedRollen: Array<Rolle<true>> = await Promise.all([
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            rollenart: RollenArt.SYSADMIN,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                    rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            rollenart: RollenArt.ORGADMIN,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    ),
-                ]);
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
                     orgaIds: [organisation.id],
@@ -803,9 +493,8 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     .query({
                         operationContext: OperationContext.PERSON_BEARBEITEN,
                         organisationId: organisation.id,
-                        rollenIds: [rolle.id],
                         personId: existingPerson.id,
-                    } as FindDbiamPersonenkontextWorkflowBodyParams)
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -813,16 +502,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(body.organisations).toEqual([
                     expect.objectContaining({ id: organisation.id }) as OrganisationResponse,
                 ]);
-                expect(body.rollen).toEqual(
-                    expectedRollen.map((r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse),
-                );
-                expect(body.rollen).not.toEqual(
-                    expect.arrayContaining(
-                        unexpectedRollen.map(
-                            (r: Rolle<true>) => expect.objectContaining({ id: r.id }) as RolleResponse,
-                        ),
-                    ),
-                );
             });
 
             it('should return canCommit=true for a valid combination', async () => {
@@ -845,7 +524,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         organisationId: organisation.id,
                         rollenIds: [rolle.id, newRolle.id],
                         personId: existingPerson.id,
-                    } as FindDbiamPersonenkontextWorkflowBodyParams)
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -872,7 +551,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         organisationId: organisation.id,
                         rollenIds: [rolle.id, newRolle.id],
                         personId: existingPerson.id,
-                    } as FindDbiamPersonenkontextWorkflowBodyParams)
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
@@ -1349,7 +1028,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     PersonenkontextWorkflowAggregate.createNew(
                         null as unknown as RolleRepo,
                         null as unknown as OrganisationRepository,
-                        null as unknown as DBiamPersonenkontextRepo,
                         null as unknown as DbiamPersonenkontextFactory,
                         null as unknown as ConfigService,
                         null as unknown as PersonenkontextWorkflowSharedKernel,
