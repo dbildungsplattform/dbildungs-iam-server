@@ -69,8 +69,8 @@ export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisati
         entity.kuerzel,
         entity.typ,
         entity.traegerschaft,
-        entity.uemLdapOu,
         entity.emailAddress,
+        entity.uemLdapOu,
         entity.itslearningEnabled,
     );
 }

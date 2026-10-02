@@ -139,11 +139,18 @@ describe('OrganisationRepository', () => {
         it('should return New Aggregate', () => {
             const organisationEntity: OrganisationEntity = em.create(
                 OrganisationEntity,
-                mapOrgaAggregateToData(DoFactory.createOrganisation(true)),
+                mapOrgaAggregateToData(
+                    DoFactory.createOrganisation(true, {
+                        emailAdress: 'office@schule-sh.de',
+                        uemLdapOu: 'schule-sh.de',
+                    }),
+                ),
             );
             const organisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
 
             expect(organisation).toBeInstanceOf(Organisation);
+            expect(organisation.emailAdress).toBe('office@schule-sh.de');
+            expect(organisation.uemLdapOu).toBe('schule-sh.de');
         });
     });
 
@@ -442,7 +449,7 @@ describe('OrganisationRepository', () => {
         });
     });
 
-    describe('findEmailDomainForOrganisation', () => {
+    describe('findUemLdapOuForOrganisation', () => {
         type CreateOrgaTreeResult = {
             root: Organisation<true>;
             traeger: Organisation<true>;
@@ -466,6 +473,7 @@ describe('OrganisationRepository', () => {
                 faker.string.uuid(),
                 OrganisationsTyp.ROOT,
                 undefined,
+                undefined,
                 rootDomain,
             );
 
@@ -482,6 +490,7 @@ describe('OrganisationRepository', () => {
                 faker.string.uuid(),
                 OrganisationsTyp.ROOT,
                 undefined,
+                undefined,
                 traegerDomain,
             );
 
@@ -497,6 +506,7 @@ describe('OrganisationRepository', () => {
                 faker.lorem.word(),
                 faker.string.uuid(),
                 OrganisationsTyp.ROOT,
+                undefined,
                 undefined,
                 schuleDomain,
             );
