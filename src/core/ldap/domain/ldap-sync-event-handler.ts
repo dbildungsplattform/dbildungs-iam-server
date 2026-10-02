@@ -13,7 +13,6 @@ import { PersonRepository } from '../../../modules/person/persistence/person.rep
 import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
@@ -32,7 +31,6 @@ import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-gr
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
-import { UemLdapOuError } from '../adapter/domain/error/uem-ldap-ou.error.js';
 
 export type LdapSyncData = {
     givenName: string;
@@ -289,86 +287,6 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             `Syncing data to LDAP for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
         );
 
-        if (!this.emailResolverService.shouldUseEmailMicroservice() && ldapSyncData.enabledEmailAddress) {
-            // Check and sync EmailAddress
-            const currentMailPrimaryAddress: string | undefined = personAttributes.mailPrimaryAddress;
-            if (ldapSyncData.enabledEmailAddress !== currentMailPrimaryAddress) {
-                this.logger.warning(
-                    `Mismatch mailPrimaryAddress, person:${ldapSyncData.enabledEmailAddress}, LDAP:${currentMailPrimaryAddress}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                );
-                const uemLdapOu: Result<string> = await this.findUemLdapOuForPersonId(ldapSyncData.personId);
-                if (!uemLdapOu.ok) {
-                    this.logger.error(
-                        `Failed to find UEM LDAP OU for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                    );
-                    throw new UemLdapOuError();
-                }
-                if (!currentMailPrimaryAddress) {
-                    this.logger.warning(
-                        `MailPrimaryAddress undefined for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                    );
-                    await this.ldapClientAdapter.changeEmailAddressByPersonId(
-                        ldapSyncData.personId,
-                        ldapSyncData.username,
-                        ldapSyncData.enabledEmailAddress,
-                    );
-                } else {
-                    if (
-                        this.isAddressInDisabledAddresses(
-                            currentMailPrimaryAddress,
-                            ldapSyncData.disabledEmailAddresses,
-                        )
-                    ) {
-                        this.logger.info(
-                            `Found ${currentMailPrimaryAddress} in DISABLED addresses, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                        );
-                        this.logger.info(
-                            `Overwriting LDAP:${currentMailPrimaryAddress} with person:${ldapSyncData.enabledEmailAddress}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                        );
-                        await this.ldapClientAdapter.changeEmailAddressByPersonId(
-                            ldapSyncData.personId,
-                            ldapSyncData.username,
-                            ldapSyncData.enabledEmailAddress,
-                        );
-                        if (personAttributes.mailAlternativeAddress) {
-                            await this.createDisabledEmailAddress(
-                                ldapSyncData.personId,
-                                ldapSyncData.username,
-                                personAttributes.mailAlternativeAddress,
-                            );
-                        }
-                    } else {
-                        return this.logger.crit(
-                            `COULD NOT find ${currentMailPrimaryAddress} in DISABLED addresses, Overwriting ABORTED, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                        );
-                    }
-                }
-            }
-
-            const currentMailAlternativeAddress: string | undefined = personAttributes.mailAlternativeAddress;
-
-            // if mailPrimaryAddress also is overwritten in LDAP before, the async writing process may also overwrite mailAlternativeAddress
-            // but a second executing can successfully set mailAlternativeAddress
-            if (ldapSyncData.disabledEmailAddresses[0]) {
-                if (ldapSyncData.disabledEmailAddresses[0] !== currentMailAlternativeAddress) {
-                    this.logger.info(
-                        `Mismatch mailAlternativeAddress, person:${ldapSyncData.enabledEmailAddress}, LDAP:${currentMailAlternativeAddress}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
-                    );
-                    if (ldapSyncData.disabledEmailAddresses[0]) {
-                        await this.ldapClientAdapter.setMailAlternativeAddress(
-                            ldapSyncData.personId,
-                            ldapSyncData.username,
-                            ldapSyncData.disabledEmailAddresses[0],
-                        );
-                    }
-                }
-            }
-        } else {
-            this.logger.info(
-                `skipping email setting in ldap for :${ldapSyncData.personId} since email microservice is active`,
-            );
-        }
-
         // Check and sync PersonAttributes
         if (ldapSyncData.givenName !== personAttributes.givenName) {
             this.logger.warning(
@@ -403,10 +321,6 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
                     this.ldapClientAdapter.removePersonFromGroup(ldapSyncData.username, kennung, personAttributes.dn),
             ),
         ]);
-    }
-
-    private isAddressInDisabledAddresses(email: string, disabledEmailAddresses: string[]): boolean {
-        return disabledEmailAddresses.some((disabledAddress: string) => disabledAddress === email);
     }
 
     private createGroupAdditionList(schulenDstNrList: string[], groupDns: string[]): string[] {
@@ -459,30 +373,5 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             ok: true,
             value: split[0].replace('cn=lehrer-', ''),
         };
-    }
-
-    private async createDisabledEmailAddress(
-        personId: PersonID,
-        username: PersonUsername,
-        address: string,
-    ): Promise<void> {
-        const email: EmailAddress<false> = EmailAddress.createNew(
-            personId,
-            address,
-            EmailAddressStatus.DISABLED,
-            undefined,
-        );
-
-        const persistenceResult: EmailAddress<true> | DomainError = await this.emailRepo.save(email);
-        if (persistenceResult instanceof EmailAddress) {
-            this.logger.info(
-                `Successfully persisted new DISABLED EmailAddress for address:${persistenceResult.address}, personId:${personId}, username:${username}`,
-            );
-            //* NO EVENT IS PUBLISHED HERE -> NO COMMUNICATION TO OX */
-        } else {
-            this.logger.error(
-                `Could not persist email for personId:${personId}, username:${username}, error:${persistenceResult.message}`,
-            );
-        }
     }
 }

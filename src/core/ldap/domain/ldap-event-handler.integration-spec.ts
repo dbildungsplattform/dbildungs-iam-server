@@ -8,23 +8,20 @@ import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { DatabaseTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
-import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
 import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/personenkontext.factory.js';
+import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
+import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
-import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
-import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
-import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
-import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
@@ -50,6 +47,7 @@ describe('LdapEventHandler', () => {
     let organisationRepositoryMock: DeepMocked<OrganisationRepository>;
     let personRepositoryMock: DeepMocked<PersonRepository>;
     let dbiamPersonenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
+    let rolleRepoMock: DeepMocked<RolleRepo>;
     let eventServiceMock: DeepMocked<EventRoutingLegacyKafkaService>;
     let loggerMock: DeepMocked<ClassLogger>;
 
@@ -88,6 +86,7 @@ describe('LdapEventHandler', () => {
         organisationRepositoryMock = module.get(OrganisationRepository);
         personRepositoryMock = module.get(PersonRepository);
         dbiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
+        rolleRepoMock = module.get(RolleRepo);
         eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         loggerMock = module.get(ClassLogger);
 
@@ -272,6 +271,18 @@ describe('LdapEventHandler', () => {
 
         describe('when person has at least one kontext', () => {
             it('should call LdapClientService changeEmailAddressByPersonId', async () => {
+                const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                    serviceProviderData: [
+                        DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
+                    ],
+                });
+                const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                    personId: event.personId,
+                    rolleId: rolle.id,
+                });
+                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('oeffentlicheSchulen');
                 dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
                     ok: true,
                     value: true,
@@ -295,7 +306,7 @@ describe('LdapEventHandler', () => {
         });
 
         describe('when person has no kontext', () => {
-            it('should log info and skip LDAP update', async () => {
+            it('should log error and skip LDAP update', async () => {
                 dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
                     ok: true,
                     value: false,
@@ -304,11 +315,49 @@ describe('LdapEventHandler', () => {
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, but person has no kontext. Skipping LDAP update.`,
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, but failed to check kontexts. Skipping LDAP update.`,
                 );
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
             });
+        });
+
+        it('should skip LDAP update when readable contexts have no UEM role', async () => {
+            dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce(Ok(true));
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderData: [] });
+            const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
+            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
+
+            await ldapEventHandler.microserviceEmailChangedEventHandler(event);
+
+            expect(loggerMock.warning).toHaveBeenCalledWith(
+                `Failed to find UEM LDAP OU for personId:${event.personId}, but person has no kontext with UEM rolle. Skipping LDAP update.`,
+            );
+            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+            expect(organisationRepositoryMock.findUemLdapOuForOrganisation).not.toHaveBeenCalled();
+        });
+
+        it('should skip LDAP update when the UEM organisation has no LDAP OU', async () => {
+            dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce(Ok(true));
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                serviceProviderData: [
+                    DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
+                ],
+            });
+            const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
+            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
+
+            await ldapEventHandler.microserviceEmailChangedEventHandler(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `Failed to resolve UEM LDAP OU for personId:${event.personId}. Skipping LDAP update.`,
+            );
+            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
         });
     });
 
@@ -322,6 +371,7 @@ describe('LdapEventHandler', () => {
                 ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
                 await ldapEventHandler.personRenamedEventHandler(createMock(PersonRenamedEvent));
                 expect(loggerMock.error).toHaveBeenCalledTimes(0);
+                expect(eventServiceMock.publish).toHaveBeenCalledTimes(1);
             });
         });
         describe('when calling LdapClientService.modifyPersonAttributes is not successful', () => {
@@ -378,7 +428,7 @@ describe('LdapEventHandler', () => {
             expect(ldapClientAdapterMock.createLehrer).toHaveBeenCalledTimes(1);
         });
 
-        it('when organisation of created PK has no valid emailDomain should log error', async () => {
+        it('when organisation of created PK has no valid LDAP OU should log error', async () => {
             const createdPKOrgaId: string = faker.string.uuid();
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
@@ -416,7 +466,7 @@ describe('LdapEventHandler', () => {
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
             expect(loggerMock.error).toHaveBeenLastCalledWith(
-                `LdapClientService createLehrer NOT called, because organisation:${createdPKOrgaId} has no valid emailDomain`,
+                `LdapClientService createLehrer NOT called, because organisation:${createdPKOrgaId} has no valid uemLdapOu`,
             );
             expect(ldapClientAdapterMock.createLehrer).toHaveBeenCalledTimes(0);
         });
@@ -538,7 +588,7 @@ describe('LdapEventHandler', () => {
             expect(ldapClientAdapterMock.removePersonFromGroupByUsernameAndKennung).toHaveBeenCalledTimes(1);
         });
 
-        it('when organisation of deleted PK has no valid emailDomain should log error', async () => {
+        it('when organisation of deleted PK has no valid LDAP OU should log error', async () => {
             const removedOrgaId: string = faker.string.uuid();
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
@@ -576,7 +626,7 @@ describe('LdapEventHandler', () => {
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
             expect(loggerMock.error).toHaveBeenLastCalledWith(
-                `LdapClientService removePersonFromGroup NOT called, because organisation:${removedOrgaId} has no valid emailDomain`,
+                `LdapClientService removePersonFromGroup NOT called, because organisation:${removedOrgaId} has no valid uemLdapOu`,
             );
             expect(ldapClientAdapterMock.deleteLehrer).toHaveBeenCalledTimes(0);
         });
@@ -748,7 +798,7 @@ describe('LdapEventHandler', () => {
             expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Error in removePersonFromGroup:'));
         });
 
-        it('should log error when error occurs while getEmailDomainForOrganisationId deleting person', async () => {
+        it('should log error when error occurs while getUemLdapOuForOrganisation deleting person', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -786,7 +836,7 @@ describe('LdapEventHandler', () => {
 
             expect(loggerMock.error).toHaveBeenCalledTimes(1);
             expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getEmailDomainForOrganisationId:'),
+                expect.stringContaining('Error in getUemLdapOuForOrganisation:'),
             );
         });
 
@@ -831,7 +881,7 @@ describe('LdapEventHandler', () => {
             expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Error in createLehrer:'));
         });
 
-        it('should log error when error occurs while getEmailDomainForOrganisationId adding person', async () => {
+        it('should log error when error occurs while getUemLdapOuForOrganisation adding person', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -869,7 +919,7 @@ describe('LdapEventHandler', () => {
 
             expect(loggerMock.error).toHaveBeenCalledTimes(1);
             expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getEmailDomainForOrganisationId:'),
+                expect.stringContaining('Error in getUemLdapOuForOrganisation:'),
             );
         });
 
@@ -1040,7 +1090,7 @@ describe('LdapEventHandler', () => {
             );
         });
 
-        it('should stringify a non-Error thrown in getEmailDomainForOrganisationId', async () => {
+        it('should stringify a non-Error thrown in getUemLdapOuForOrganisation', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -1068,7 +1118,7 @@ describe('LdapEventHandler', () => {
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
             expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getEmailDomainForOrganisationId: non-error reason'),
+                expect.stringContaining('Error in getUemLdapOuForOrganisation: non-error reason'),
             );
         });
 
@@ -1105,197 +1155,6 @@ describe('LdapEventHandler', () => {
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
             expect(personRepositoryMock.save).toHaveBeenCalledTimes(0);
-        });
-    });
-
-    describe('handleEmailAddressGeneratedEvent', () => {
-        it('should call ldap client changeEmailAddressByPersonId', async () => {
-            const event: EmailAddressGeneratedEvent = new EmailAddressGeneratedEvent(
-                faker.string.uuid(),
-                faker.internet.username(),
-                faker.string.uuid(),
-                faker.internet.email(),
-                true,
-                faker.string.numeric(),
-            );
-
-            await ldapEventHandler.handleEmailAddressGeneratedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Received EmailAddressGeneratedEvent, personId:${event.personId}, username:${event.username}, emailAddress:${event.address}`,
-            );
-            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(1);
-        });
-    });
-
-    describe('handleEmailAddressChangedEvent', () => {
-        it('should call LdapClientService changeEmailAddressByPersonId', async () => {
-            const event: EmailAddressChangedEvent = new EmailAddressChangedEvent(
-                faker.string.uuid(),
-                faker.internet.username(),
-                faker.string.uuid(),
-                faker.internet.email(),
-                faker.string.uuid(),
-                faker.internet.email(),
-                faker.string.numeric(),
-            );
-
-            await ldapEventHandler.handleEmailAddressChangedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Received EmailAddressChangedEvent, personId:${event.personId}, newEmailAddress:${event.newAddress}, oldEmailAddress:${event.oldAddress}`,
-            );
-            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(1);
-        });
-    });
-
-    describe('handleEmailAddressMarkedForDeletionEvent', () => {
-        let personId: PersonID;
-        let username: PersonUsername;
-        let address: string;
-
-        beforeEach(() => {
-            personId = faker.string.uuid();
-            username = faker.internet.username();
-            address = faker.internet.email();
-        });
-        describe('when username is UNDEFINED in event', () => {
-            it('should NOT call LdapClientService removeMailAlternativeAddress and instead publish LdapEmailAddressDeletedEvent directly', async () => {
-                const event: EmailAddressMarkedForDeletionEvent = new EmailAddressMarkedForDeletionEvent(
-                    personId,
-                    undefined,
-                    faker.string.numeric(),
-                    faker.string.uuid(),
-                    EmailAddressStatus.DISABLED,
-                    address,
-                );
-
-                await ldapEventHandler.handleEmailAddressMarkedForDeletionEvent(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Received EmailAddressDeletedEvent, personId:${event.personId}, username:${event.username}, address:${event.address}`,
-                );
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Username UNDEFINED in EmailAddressDeletedEvent, skipping removal of MailAlternativeAddress in LDAP, oxUserId:${event.oxUserId}`,
-                );
-                expect(ldapClientAdapterMock.removeMailAlternativeAddress).toHaveBeenCalledTimes(0);
-                expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        personId: personId,
-                        username: undefined,
-                        address: address,
-                    }),
-                    expect.objectContaining({
-                        personId: personId,
-                        username: undefined,
-                        address: address,
-                    }),
-                );
-            });
-        });
-
-        describe('when username is defined in event', () => {
-            it('should call LdapClientService removeMailAlternativeAddress', async () => {
-                const event: EmailAddressMarkedForDeletionEvent = new EmailAddressMarkedForDeletionEvent(
-                    personId,
-                    username,
-                    faker.string.numeric(),
-                    faker.string.uuid(),
-                    EmailAddressStatus.DISABLED,
-                    address,
-                );
-                ldapClientAdapterMock.removeMailAlternativeAddress.mockResolvedValueOnce({ ok: true, value: true });
-                await ldapEventHandler.handleEmailAddressMarkedForDeletionEvent(event);
-
-                expect(loggerMock.info).toHaveBeenLastCalledWith(
-                    `Received EmailAddressDeletedEvent, personId:${event.personId}, username:${event.username}, address:${event.address}`,
-                );
-                expect(ldapClientAdapterMock.removeMailAlternativeAddress).toHaveBeenCalledTimes(1);
-                expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        personId: personId,
-                        username: username,
-                        address: address,
-                    }),
-                    expect.objectContaining({
-                        personId: personId,
-                        username: username,
-                        address: address,
-                    }),
-                );
-            });
-        });
-    });
-
-    describe('handleEmailAddressesPurgedEvent', () => {
-        const personId: PersonID = faker.string.uuid();
-        const username: PersonUsername = faker.internet.username();
-
-        it('should log error when username is UNDEFINED in event', async () => {
-            const event: EmailAddressesPurgedEvent = new EmailAddressesPurgedEvent(
-                personId,
-                undefined,
-                faker.string.numeric(),
-            );
-            await ldapEventHandler.handleEmailAddressesPurgedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenCalledWith(
-                `Received EmailAddressesPurgedEvent, personId:${event.personId}, username:${event.username}, oxUserId:${event.oxUserId}`,
-            );
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Cannot delete lehrer by username, username is UNDEFINED, oxUserId:${event.oxUserId}`,
-            );
-            expect(ldapClientAdapterMock.deleteLehrerByUsername).toHaveBeenCalledTimes(0);
-            expect(eventServiceMock.publish).toHaveBeenCalledTimes(0);
-        });
-
-        it('should call LdapClientService deleteLehrerByUsername', async () => {
-            const event: EmailAddressesPurgedEvent = new EmailAddressesPurgedEvent(
-                personId,
-                username,
-                faker.string.numeric(),
-            );
-            ldapClientAdapterMock.deleteLehrerByUsername.mockResolvedValueOnce({
-                ok: true,
-                value: personId,
-            });
-            await ldapEventHandler.handleEmailAddressesPurgedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Received EmailAddressesPurgedEvent, personId:${event.personId}, username:${event.username}, oxUserId:${event.oxUserId}`,
-            );
-            expect(ldapClientAdapterMock.deleteLehrerByUsername).toHaveBeenCalledTimes(1);
-            expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    personId: personId,
-                    username: username,
-                }),
-                expect.objectContaining({
-                    personId: personId,
-                    username: username,
-                }),
-            );
-        });
-
-        it('should call LdapClientService deleteLehrerByUsername and log error if result is NOT ok', async () => {
-            const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
-            const event: EmailAddressesPurgedEvent = new EmailAddressesPurgedEvent(
-                personId,
-                username,
-                faker.string.numeric(),
-            );
-            ldapClientAdapterMock.deleteLehrerByUsername.mockResolvedValueOnce({
-                ok: false,
-                error: error,
-            });
-            await ldapEventHandler.handleEmailAddressesPurgedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Received EmailAddressesPurgedEvent, personId:${event.personId}, username:${event.username}, oxUserId:${event.oxUserId}`,
-            );
-            expect(ldapClientAdapterMock.deleteLehrerByUsername).toHaveBeenCalledTimes(1);
-            expect(loggerMock.error).toHaveBeenLastCalledWith(error.message);
-            expect(eventServiceMock.publish).toHaveBeenCalledTimes(0);
         });
     });
 

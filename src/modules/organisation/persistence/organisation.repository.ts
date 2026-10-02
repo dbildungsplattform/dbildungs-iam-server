@@ -49,7 +49,7 @@ export function mapOrgaAggregateToData(organisation: Organisation<boolean>): Req
         kuerzel: organisation.kuerzel,
         typ: organisation.typ,
         traegerschaft: organisation.traegerschaft,
-        emailDomain: organisation.emailDomain,
+        uemLdapOu: organisation.uemLdapOu,
         emailAddress: organisation.emailAdress,
         itslearningEnabled: organisation.itslearningEnabled,
     };
@@ -69,7 +69,7 @@ export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisati
         entity.kuerzel,
         entity.typ,
         entity.traegerschaft,
-        entity.emailDomain,
+        entity.uemLdapOu,
         entity.emailAddress,
         entity.itslearningEnabled,
     );
