@@ -27,6 +27,9 @@ export class LdapServerConfig {
 
     @Min(0)
     @IsInt()
-    @IsOptional()
-    public readonly RETRY_WRAPPER_DEFAULT_RETRIES?: number;
+    public readonly RETRY_WRAPPER_NUMBER_OF_RETRIES!: number;
+
+    @Min(0)
+    @IsInt()
+    public readonly RETRY_WRAPPER_DELAY_IN_MS!: number;
 }

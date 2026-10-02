@@ -1,8 +1,8 @@
 import { DynamicModule, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GenericContainer, PullPolicy, StartedTestContainer, Wait } from 'testcontainers';
-import { ServerConfig } from '../../src/shared/config/index.js';
 import { LdapInstanceConfig } from '../../src/core/ldap/adapter/technical/ldap-instance-config.js';
+import { ServerConfig } from '../../src/shared/config/index.js';
 import { LdapServerConfig } from '../../src/shared/config/ldap-server.config.js';
 
 type LdapConfigTestModuleOptions = { isLdapRequired: boolean };
@@ -51,6 +51,8 @@ export class LdapTestModule implements OnModuleDestroy {
                             ldapConfig.BIND_DN,
                             ldapConfig.ADMIN_PASSWORD,
                             ldapConfig.BASE_DN,
+                            ldapConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES,
+                            ldapConfig.RETRY_WRAPPER_DELAY_IN_MS,
                         );
                     },
                     inject: [ConfigService],
