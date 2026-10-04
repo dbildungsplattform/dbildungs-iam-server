@@ -880,7 +880,96 @@ describe('PersonenkontextWorkflow', () => {
         });
     });
 
+    describe('canCommit', () => {
+        it('should return Ok without checking references or permissions when nothing is selected', async () => {
+            anlage.initialize(undefined, undefined, []);
+
+            const result: Result<void, DomainError> = await anlage.canCommit(
+                personpermissionsMock,
+                OperationContext.PERSON_BEARBEITEN,
+            );
+
+            expectOkResult(result);
+            expect(personenkontextWorkflowSharedKernelMock.checkReferences).not.toHaveBeenCalled();
+        });
+
+        it('should return the first failed reference check', async () => {
+            anlage.initialize(undefined, 'org-id', ['rolle-1', 'rolle-2']);
+            const referenceError: DomainError = new PersonenkontexteUpdateError('reference error');
+            personenkontextWorkflowSharedKernelMock.checkReferences
+                .mockResolvedValueOnce(Ok(undefined))
+                .mockResolvedValueOnce(Err(referenceError));
+
+            const result: Result<void, DomainError> = await anlage.canCommit(
+                personpermissionsMock,
+                OperationContext.PERSON_BEARBEITEN,
+            );
+
+            expectErrResult(result);
+            expect(result.error).toBe(referenceError);
+        });
+
+        it('should return an error if permissions are insufficient', async () => {
+            anlage.initialize(undefined, 'org-id', ['rolle-1']);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok(undefined));
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
+
+            const result: Result<void, DomainError> = await anlage.canCommit(
+                permissions,
+                OperationContext.PERSON_BEARBEITEN,
+            );
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(DomainError);
+        });
+
+        it('should return Ok when references and permissions are satisfied', async () => {
+            anlage.initialize(undefined, 'org-id', ['rolle-1']);
+            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok(undefined));
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+
+            const result: Result<void, DomainError> = await anlage.canCommit(
+                permissions,
+                OperationContext.PERSON_BEARBEITEN,
+            );
+
+            expectOkResult(result);
+            expect(result.value).toBeUndefined();
+        });
+    });
+
     describe('checkPermissions', () => {
+        it('should return undefined if user has PERSONEN_ANLEGEN permission and no gated merkmale are assigned', async () => {
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+
+            const lernRolle: Rolle<true> = DoFactory.createRolle(true, {
+                id: faker.string.uuid(),
+                rollenart: RollenArt.LERN,
+                merkmale: [],
+            });
+            rolleRepoMock.findByIds.mockResolvedValue(new Map([[lernRolle.id, lernRolle]]));
+
+            const result: Result<void, DomainError> = await anlage.checkPermissions(
+                permissions,
+                undefined,
+                'orgId',
+                [lernRolle.id],
+                OperationContext.PERSON_ANLEGEN,
+            );
+
+            expectOkResult(result);
+            expect(result.value).toBeUndefined();
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                'orgId',
+                RollenSystemRecht.PERSONEN_ANLEGEN,
+            );
+        });
+
         it('should return undefined if user has limited anlegen permissions and only limited rollen are assigned', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
                 LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],

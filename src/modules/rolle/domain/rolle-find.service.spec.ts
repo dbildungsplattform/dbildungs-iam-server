@@ -449,6 +449,24 @@ describe('RolleFindService', () => {
         const offset: number = faker.number.int();
         const rolleIds: RolleID[] = [faker.string.uuid()];
 
+        it('should return empty result if the given systemrecht is not a gated systemrecht', async () => {
+            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.ROLLEN_VERWALTEN,
+                includeTechnische,
+                searchStr,
+                limit,
+                offset,
+                rolleIds,
+            });
+
+            expect(result).toEqual([[], 0]);
+            expect(permissionsMock.getOrgIdsWithSystemrecht).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findBy).not.toHaveBeenCalled();
+        });
+
         it('should not restrict returned rollen if user has permission on all organisations and did not filter by organisations', async () => {
             const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
 
