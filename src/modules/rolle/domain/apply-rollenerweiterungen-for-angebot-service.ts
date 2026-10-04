@@ -16,9 +16,9 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { RollenMerkmal } from './rolle.enums.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
+import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
 interface TunknownResultForAngebot {
@@ -43,7 +43,6 @@ interface AddRollenerweiterungenToAngebotParams {
     addErweiterungenForRolleIds: string[];
     rollen: Map<string, Rolle<true>>;
     permissions: IPersonPermissions;
-    hasSystemrechtAtOrganisationMpt: boolean;
 }
 
 interface RemoveRollenerweiterungenFromAngebotParams {
@@ -52,7 +51,7 @@ interface RemoveRollenerweiterungenFromAngebotParams {
     existingErweiterungen?: Array<Rollenerweiterung<true>>;
     removeErweiterungenForRolleIds: string[];
     rollen: Map<string, Rolle<true>>;
-    hasSystemrechtAtOrganisationMpt: boolean;
+    permissions: IPersonPermissions;
 }
 
 function isErrorResultForRolle<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForAngebot {
@@ -86,10 +85,6 @@ export class ApplyRollenerweiterungForAngebotService {
         if (!(await permissions.hasSystemrechtAtOrganisation(orgaId, RollenSystemRecht.ROLLEN_ERWEITERN))) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
-        const hasSystemrechtAtOrganisationMpt: boolean = await permissions.hasSystemrechtAtOrganisation(
-            orgaId,
-            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-        );
         const serviceProvider: Option<ServiceProvider<true>> = await this.serviceProviderRepo.findById(angebotId);
         const organisation: Option<Organisation<true>> = await this.organisationRepo.findById(orgaId);
         if (!organisation) {
@@ -128,7 +123,6 @@ export class ApplyRollenerweiterungForAngebotService {
                         addErweiterungenForRolleIds: body.addErweiterungenForRolleIds,
                         rollen,
                         permissions,
-                        hasSystemrechtAtOrganisationMpt,
                     }),
                 ),
                 Promise.all(
@@ -138,7 +132,7 @@ export class ApplyRollenerweiterungForAngebotService {
                         existingErweiterungen,
                         removeErweiterungenForRolleIds: body.removeErweiterungenForRolleIds,
                         rollen,
-                        hasSystemrechtAtOrganisationMpt,
+                        permissions,
                     }),
                 ),
             ],
@@ -166,30 +160,36 @@ export class ApplyRollenerweiterungForAngebotService {
         existingErweiterungen = [],
         removeErweiterungenForRolleIds,
         rollen,
-        hasSystemrechtAtOrganisationMpt,
+        permissions,
     }: RemoveRollenerweiterungenFromAngebotParams): Promise<TunknownResultForAngebot>[] {
         const removeErweiterungenPromises: Promise<TunknownResultForAngebot>[] = removeErweiterungenForRolleIds
             .filter((rolleId: string) => {
                 return existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);
             })
-            .map((rolleId: string) => {
+            .map(async (rolleId: string): Promise<TunknownResultForAngebot> => {
                 const rolle: Option<Rolle<true>> = rollen.get(rolleId);
                 this.logger.info(
                     `Removing Erweiterung for rolleId: ${rolleId}, orgaId: ${orgaId}, angebotId: ${angebotId}`,
                 );
                 if (!rolle) {
-                    return Promise.resolve({
+                    return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
-                    });
+                    };
                 }
-                if (rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE) && !hasSystemrechtAtOrganisationMpt) {
-                    return Promise.resolve({
+                const hasPermissionForGatedMerkmale: boolean =
+                    await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+                        rolle.merkmale,
+                        orgaId,
+                        permissions,
+                    );
+                if (!hasPermissionForGatedMerkmale) {
+                    return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new MissingPermissionsError('Not authorized')),
-                    });
+                    };
                 }
                 return this.rollenerweiterungRepo
                     .deleteByComposedId({
@@ -213,40 +213,45 @@ export class ApplyRollenerweiterungForAngebotService {
         addErweiterungenForRolleIds,
         rollen,
         permissions,
-        hasSystemrechtAtOrganisationMpt,
     }: AddRollenerweiterungenToAngebotParams): Promise<TunknownResultForAngebot>[] {
         const erweiterungenPromises: Promise<TunknownResultForAngebot>[] = addErweiterungenForRolleIds
             .filter((rolleId: string) => {
                 return !existingErweiterungen.some((re: Rollenerweiterung<true>) => re.rolleId === rolleId);
             })
-            .map((rolleId: string) => {
+            .map(async (rolleId: string): Promise<TunknownResultForAngebot> => {
                 const rolle: Option<Rolle<true>> = rollen.get(rolleId);
                 this.logger.info(
                     `Adding Erweiterung for for rolleId: ${rolleId}, orgaId: ${orgaId}, angebotId: ${serviceProvider.id}`,
                 );
                 if (!rolle) {
-                    return Promise.resolve({
+                    return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
-                    });
+                    };
                 }
                 if (
                     serviceProvider.rollenartenWhitelist.length > 0 &&
                     !serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)
                 ) {
-                    return Promise.resolve({
+                    return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
-                    });
+                    };
                 }
-                if (rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE) && !hasSystemrechtAtOrganisationMpt) {
-                    return Promise.resolve({
+                const hasPermissionForGatedMerkmale: boolean =
+                    await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+                        rolle.merkmale,
+                        orgaId,
+                        permissions,
+                    );
+                if (!hasPermissionForGatedMerkmale) {
+                    return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
                         result: Err(new MissingPermissionsError('Not authorized')),
-                    });
+                    };
                 }
                 return this.rollenerweiterungRepo
                     .createAuthorized(

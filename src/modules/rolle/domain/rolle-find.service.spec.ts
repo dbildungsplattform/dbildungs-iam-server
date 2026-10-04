@@ -19,6 +19,7 @@ import {
 } from './rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
+import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from './systemrecht.js';
 
@@ -125,7 +126,7 @@ describe('RolleFindService', () => {
                     limit: params.limit,
                     offset: params.offset,
                     rollenArten: params.rollenArten,
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -332,7 +333,7 @@ describe('RolleFindService', () => {
 
             expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                 expect.objectContaining<RolleFindByParameters>({
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -345,7 +346,7 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAvailableForErweiterung(params);
             expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                 expect.objectContaining<Partial<RolleFindByParameters>>({
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -435,13 +436,13 @@ describe('RolleFindService', () => {
                 expect.objectContaining<RolleFindByParameters>({
                     offset: 1,
                     limit: 1,
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
     });
 
-    describe('findMptRollenAuthorized', () => {
+    describe('findRollenAuthorizedForGatedSystemrecht', () => {
         const includeTechnische: boolean = faker.datatype.boolean();
         const searchStr: string = faker.string.alphanumeric();
         const limit: number = faker.number.int();
@@ -457,8 +458,9 @@ describe('RolleFindService', () => {
 
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -487,8 +489,9 @@ describe('RolleFindService', () => {
                 orgaIds: ['orga-1'],
             });
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -515,8 +518,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -559,8 +563,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -604,8 +609,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -688,8 +694,9 @@ describe('RolleFindService', () => {
                     limit: 1,
                     offset: 1,
                     searchStr: 'suche rolle',
-                    mpt: {
+                    gatedBucket: {
                         allowedRollenarten,
+                        authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                     },
                 });
             });
@@ -713,15 +720,16 @@ describe('RolleFindService', () => {
                         systemrecht: RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
                     });
 
-                    const allowedRollenartenForMPTRollen: Array<RollenArt> = Array.from(
+                    const allowedRollenartenForGatedRollen: Array<RollenArt> = Array.from(
                         OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
                     );
                     expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith({
                         organisationId: schule.id,
                         allowedOrganisationIds: [schule.id, traeger.id],
                         allowedRollenarten: [RollenArt.LERN],
-                        mpt: {
-                            allowedRollenarten: allowedRollenartenForMPTRollen,
+                        gatedBucket: {
+                            allowedRollenarten: allowedRollenartenForGatedRollen,
+                            authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                         },
                     });
                 });
@@ -931,14 +939,19 @@ describe('RolleFindService', () => {
                     const shouldExcludeMptRollen: () => boolean = () =>
                         !(hasMptPermission && requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN));
 
+                    // Only MPT_ROLLEN_ZUORDNEN is ever requested in this describe block, so the other gated Merkmale
+                    // (PILOT_1_ROLLE, ...) are always excluded; MPT_ROLLE is excluded unless requested and authorized.
+                    const expectedExcludeMerkmale: () => RollenMerkmal[] = () =>
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE).filter(
+                            (merkmal: RollenMerkmal) => shouldExcludeMptRollen() || merkmal !== RollenMerkmal.MPT_ROLLE,
+                        );
+
                     const expectPersonAdministrationQueryWithExpectedMptFiltering: () => void = () => {
                         expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                             getValidationObjectForPersonAdministrationFindByParams({
                                 expectedOrganisationIds: [...schulen.map((o: Organisation<true>) => o.id), traeger.id],
                                 expectedRollenArten: [RollenArt.LEIT, RollenArt.LEHR, RollenArt.LERN],
-                                expectedExcludeMerkmale: shouldExcludeMptRollen()
-                                    ? [RollenMerkmal.MPT_ROLLE]
-                                    : undefined,
+                                expectedExcludeMerkmale: expectedExcludeMerkmale(),
                             }),
                         );
                     };

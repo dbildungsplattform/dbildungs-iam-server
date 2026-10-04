@@ -11,6 +11,7 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
@@ -299,15 +300,23 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-        const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
-        if (includesMPTRollen) {
-            const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
-                organisationId,
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
-            if (!hasSystemrecht) {
-                return Err(new MissingPermissionsError('Unauthorized to assign MPT-Rollen at the organisation'));
-            }
+        const hasUnauthorizedGatedRolle: boolean = (
+            await Promise.all(
+                Array.from(rollen.values()).map(async (rolle: Rolle<true>) => {
+                    const gatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale);
+                    if (gatedMerkmale.length === 0) {
+                        return true;
+                    }
+                    return RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+                        gatedMerkmale,
+                        organisationId,
+                        permissions,
+                    );
+                }),
+            )
+        ).some((hasPermission: boolean) => !hasPermission);
+        if (hasUnauthorizedGatedRolle) {
+            return Err(new MissingPermissionsError('Unauthorized to assign Pilot-Rollen at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {
@@ -334,16 +343,8 @@ export class PersonenkontextWorkflowAggregate {
     private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
-                allowedRollenArten.includes(rolle.rollenart) || rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+                allowedRollenArten.includes(rolle.rollenart) ||
+                RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale).length > 0,
         );
-    }
-
-    private includesMPTRollen(rollen: Iterable<Rolle<true>>): boolean {
-        for (const rolle of rollen) {
-            if (rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

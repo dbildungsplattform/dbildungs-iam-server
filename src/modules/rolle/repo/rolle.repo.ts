@@ -26,6 +26,7 @@ import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkonte
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
@@ -138,8 +139,10 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     organisationId: OrganisationID;
     allowedOrganisationIds: Array<OrganisationID>;
     allowedRollenarten: Array<RollenArt>;
-    mpt?: {
+    /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
+    gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
+        authorizedMerkmale: Array<RollenMerkmal>;
     };
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
@@ -387,12 +390,27 @@ export class RolleRepo {
             allowedOrganisationIds = orgIdsWithRecht.orgaIds;
         }
 
-        // we can assume that MPT_ROLLEN_ZUORDNEN is not exclusive to a single orga here, since matchAll on permissions.getOrgIdsWithSystemrecht is true by default
-        const hasMptRollenZuordnenPermission: boolean =
-            systemrechte?.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) ?? false;
-        const excludeMerkmale: RollenMerkmal[] | undefined = hasMptRollenZuordnenPermission
-            ? undefined
-            : [RollenMerkmal.MPT_ROLLE];
+        // Rollen carrying a gated Merkmal (MPT_ROLLE, PILOT_1_ROLLE, ...) are only shown if the paired RollenSystemRecht
+        // was both explicitly requested via `systemrechte` and actually held by the caller - holding the right alone
+        // does not surface the Rolle unless the caller also asked for it.
+        const excludeMerkmale: RollenMerkmal[] = [];
+        for (const paar of RollenmerkmalSystemrechtPaar.ALL) {
+            const wasRequested: boolean = systemrechte?.includes(paar.systemrecht) ?? false;
+            const hasPermission: boolean =
+                wasRequested &&
+                (allowedOrganisationIds
+                    ? (
+                          await Promise.all(
+                              allowedOrganisationIds.map((orga: OrganisationID) =>
+                                  permissions.hasSystemrechtAtOrganisation(orga, paar.systemrecht),
+                              ),
+                          )
+                      ).every(Boolean)
+                    : await permissions.hasSystemrechteAtRootOrganisation([paar.systemrecht]));
+            if (!hasPermission) {
+                excludeMerkmale.push(paar.merkmal);
+            }
+        }
 
         return this.findBy({
             includeTechnische,
@@ -506,20 +524,28 @@ export class RolleRepo {
         if (params.searchStr) {
             where.name = { $ilike: `%${params.searchStr}%` };
         }
-        if (params.mpt) {
+        if (params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0) {
+            const unauthorizedGatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+                (merkmal: RollenMerkmal) => !params.gatedBucket!.authorizedMerkmale.includes(merkmal),
+            );
             where.$or = [
                 {
                     rollenart: { $in: params.allowedRollenarten },
-                    merkmale: { $none: { merkmal: RollenMerkmal.MPT_ROLLE } },
+                    merkmale: { $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } } },
                 },
                 {
-                    rollenart: { $in: params.mpt.allowedRollenarten },
-                    merkmale: { $some: { merkmal: RollenMerkmal.MPT_ROLLE } },
+                    rollenart: { $in: params.gatedBucket.allowedRollenarten },
+                    $and: [
+                        { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
+                        ...unauthorizedGatedMerkmale.map((merkmal: RollenMerkmal) => ({
+                            merkmale: { $none: { merkmal } },
+                        })),
+                    ],
                 },
             ];
         } else {
             where.rollenart = { $in: params.allowedRollenarten };
-            where.merkmale = { $none: { merkmal: RollenMerkmal.MPT_ROLLE } };
+            where.merkmale = { $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } } };
         }
         const [rollenEntities, count]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, where, {
             populate: [

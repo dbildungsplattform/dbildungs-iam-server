@@ -15,10 +15,10 @@ import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
-import { RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
+import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from './systemrecht.js';
 
 interface TunknownResultForRolle {
@@ -76,10 +76,6 @@ export class ApplyRollenerweiterungForRolleService {
         if (!(await permissions.hasSystemrechtAtOrganisation(orgaId, RollenSystemRecht.ROLLEN_ERWEITERN))) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
-        const hasSystemrechtAtOrganisationMpt: boolean = await permissions.hasSystemrechtAtOrganisation(
-            orgaId,
-            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-        );
 
         const organisation: Option<Organisation<true>> = await this.organisationRepo.findById(orgaId);
         if (!organisation) {
@@ -98,7 +94,12 @@ export class ApplyRollenerweiterungForRolleService {
             );
             return Err(new EntityNotFoundError('Rolle', rolleId));
         }
-        if (rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE) && !hasSystemrechtAtOrganisationMpt) {
+        const hasPermissionForGatedMerkmale: boolean = await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+            rolle.merkmale,
+            orgaId,
+            permissions,
+        );
+        if (!hasPermissionForGatedMerkmale) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
 

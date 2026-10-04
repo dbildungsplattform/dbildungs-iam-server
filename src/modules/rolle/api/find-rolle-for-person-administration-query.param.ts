@@ -2,8 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
-import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenSystemRecht, RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
 import { PagedQueryParams } from '../../../shared/paging/paged.query.params.js';
+
+const ALLOWED_SYSTEMRECHTE: RollenSystemRechtEnum[] = [
+    RollenSystemRechtEnum.PERSONEN_VERWALTEN,
+    ...RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE.map((systemrecht: RollenSystemRecht) => systemrecht.name),
+];
 
 export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParams {
     @IsOptional()
@@ -30,7 +36,7 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
     @ArrayContains([RollenSystemRechtEnum.PERSONEN_VERWALTEN])
-    @IsIn([RollenSystemRechtEnum.PERSONEN_VERWALTEN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN], {
+    @IsIn(ALLOWED_SYSTEMRECHTE, {
         each: true,
     })
     @ApiProperty({
@@ -40,7 +46,7 @@ export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParam
         required: false,
         isArray: true,
         description:
-            'The system right for which the roles should be available. Can only be PERSONEN_VERWALTEN and optionally MPT_ROLLEN_ZUORDNEN.',
+            'The system right for which the roles should be available. Can only be PERSONEN_VERWALTEN and optionally any gated Systemrecht (e.g. MPT_ROLLEN_ZUORDNEN, PILOT_1_ROLLEN_ZUORDNEN, ...).',
     })
     public readonly systemrechte?: RollenSystemRechtEnum[];
 }
