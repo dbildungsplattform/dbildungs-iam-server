@@ -8,7 +8,7 @@ import { RollenSystemRecht } from './systemrecht.js';
  * required to see or manage Rollen carrying that Merkmal (e.g. MPT-Rollen and Pilot-X-Rollen).
  *
  * This is the single source of truth for all Merkmal<->Systemrecht pairs. To introduce a new pair
- * (e.g. a future Pilot-6), add one static field and append it to `ALL` - every consumer derives from that list.
+ * (e.g. a future Pilot-6), add one static field and append it to `ALL`. Every consumer derives from that list.
  * The list is defined as static readonly fields, so it is built once when the module is loaded (i.e. cached for
  * the lifetime of the application) instead of being recomputed on every access.
  */
