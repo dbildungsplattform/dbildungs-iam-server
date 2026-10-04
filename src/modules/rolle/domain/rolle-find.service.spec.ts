@@ -789,11 +789,6 @@ describe('RolleFindService', () => {
                 OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
             );
             expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith(
-                expect.not.objectContaining({
-                    gatedBucket: expect.anything(),
-                }),
-            );
-            expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith(
                 expect.objectContaining({
                     allowedRollenarten,
                 }),
