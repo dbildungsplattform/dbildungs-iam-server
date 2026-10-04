@@ -414,18 +414,18 @@ export class RolleFindService {
         requestedSystemrechte: RollenSystemRecht[] = [],
         selectedAndPermittedOrgas?: Array<OrganisationID>,
     ): Promise<RollenMerkmal[]> {
-        const excludedMerkmale: RollenMerkmal[] = [];
-        for (const paar of RollenmerkmalSystemrechtPaar.ALL) {
-            const wasRequested: boolean = requestedSystemrechte.includes(paar.systemrecht);
-            const hasPermission: boolean =
-                wasRequested &&
-                // eslint-disable-next-line no-await-in-loop
-                (await this.hasSystemrechtPermission(permissions, paar.systemrecht, selectedAndPermittedOrgas));
-            if (!hasPermission) {
-                excludedMerkmale.push(paar.merkmal);
-            }
-        }
-        return excludedMerkmale;
+        const hasPermissionPerPaar: boolean[] = await Promise.all(
+            RollenmerkmalSystemrechtPaar.ALL.map(async (paar: RollenmerkmalSystemrechtPaar): Promise<boolean> => {
+                const wasRequested: boolean = requestedSystemrechte.includes(paar.systemrecht);
+                if (!wasRequested) {
+                    return false;
+                }
+                return this.hasSystemrechtPermission(permissions, paar.systemrecht, selectedAndPermittedOrgas);
+            }),
+        );
+        return RollenmerkmalSystemrechtPaar.ALL.filter(
+            (_paar: RollenmerkmalSystemrechtPaar, index: number) => !hasPermissionPerPaar[index],
+        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
     }
 
     private async hasSystemrechtPermission(
