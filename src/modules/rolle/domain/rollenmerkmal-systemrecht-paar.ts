@@ -86,7 +86,9 @@ export class RollenmerkmalSystemrechtPaar {
 
     /** Returns the subset of the given Merkmale that are gated by a RollenSystemRecht. */
     public static gatedMerkmaleOf(merkmale: Iterable<RollenMerkmal>): RollenMerkmal[] {
-        return Array.from(merkmale).filter((merkmal: RollenMerkmal) => RollenmerkmalSystemrechtPaar.isGatedMerkmal(merkmal));
+        return Array.from(merkmale).filter((merkmal: RollenMerkmal) =>
+            RollenmerkmalSystemrechtPaar.isGatedMerkmal(merkmal),
+        );
     }
 
     /**
@@ -99,9 +101,9 @@ export class RollenmerkmalSystemrechtPaar {
         organisationId: OrganisationID,
         permissions: IPersonPermissions,
     ): Promise<boolean> {
-        const requiredSystemrechte: RollenSystemRecht[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(gatedMerkmale).map(
-            (merkmal: RollenMerkmal) => RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)!.systemrecht,
-        );
+        const requiredSystemrechte: RollenSystemRecht[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(
+            gatedMerkmale,
+        ).map((merkmal: RollenMerkmal) => RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)!.systemrecht);
 
         if (requiredSystemrechte.length === 0) {
             return true;
