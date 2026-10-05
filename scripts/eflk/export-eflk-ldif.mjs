@@ -239,16 +239,16 @@ function assignPersonBuckets(persons, ouByOrganisation) {
 
 // Builds the LDIF lines for all person entries, keeping each person's DN around for group membership.
 function buildPersonEntries(persons, ouByPerson, baseDn) {
-    const lines = [];
+    const personLines = [];
     const personDnById = new Map();
     for (const person of persons) {
         const ou = ouByPerson.get(person.id);
         const entry = buildPersonEntry(person, ou, baseDn);
         personDnById.set(person.id, entry.dn);
-        lines.push(...entry.lines, '');
+        personLines.push(...entry.lines, '');
     }
 
-    return { lines, personDnById };
+    return { personLines, personDnById };
 }
 
 function groupMembersByOrganisation(persons, personDnById) {
@@ -317,7 +317,7 @@ async function main() {
         const ouByOrganisation = await classifyAllOrganisations(client, allOrganisationIds, roots);
         const ouByPerson = assignPersonBuckets(persons, ouByOrganisation);
 
-        const { lines: personLines, personDnById } = buildPersonEntries(persons, ouByPerson, args.baseDn);
+        const { personLines, personDnById } = buildPersonEntries(persons, ouByPerson, args.baseDn);
         const membersByOrganisation = groupMembersByOrganisation(persons, personDnById);
         const groupLines = buildAllGroupEntries(allOrganisationIds, ouByOrganisation, organisationen, membersByOrganisation, args.baseDn);
 
