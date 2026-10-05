@@ -56,6 +56,50 @@ function waitForPort(port, child, timeoutMs = DEFAULT_WAIT_TIMEOUT_MS) {
     });
 }
 
+// Prompts for a value interactively without echoing the input (for passwords/passphrases).
+// More reliable than a shell-level 'read -s', since it's always prompted in the same
+// process regardless of shell/terminal session.
+export function promptHidden(promptText) {
+    return new Promise((resolve, reject) => {
+        if (!process.stdin.isTTY) {
+            reject(new Error(`Kann '${promptText.trim()}' nicht interaktiv abfragen (kein TTY) - bitte per ENV-Variable setzen.`));
+            return;
+        }
+
+        process.stdout.write(promptText);
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding('utf8');
+
+        let input = '';
+        const onData = (char) => {
+            switch (char) {
+                case '\n':
+                case '\r':
+                case '\u0004':
+                    process.stdin.removeListener('data', onData);
+                    process.stdin.setRawMode(false);
+                    process.stdin.pause();
+                    process.stdout.write('\n');
+                    resolve(input);
+                    break;
+                case '\u0003':
+                    process.stdout.write('\n');
+                    process.exit(130);
+                    break;
+                case '\u007f':
+                    input = input.slice(0, -1);
+                    break;
+                default:
+                    input += char;
+                    break;
+            }
+        };
+
+        process.stdin.on('data', onData);
+    });
+}
+
 // Writes an askpass helper script that supplies the passphrase, so ssh doesn't
 // have to prompt for it interactively (no TTY in the child process).
 async function createAskPassScript() {

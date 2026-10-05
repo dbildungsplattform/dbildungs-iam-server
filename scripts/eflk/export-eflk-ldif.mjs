@@ -18,7 +18,7 @@ import {
     queryPersonOrganisationContexts,
     queryOrganisationsByIds,
 } from './db-queries.mjs';
-import { openSshTunnel, closeSshTunnel, installTunnelCleanupHandlers } from './ssh-tunnel.mjs';
+import { openSshTunnel, closeSshTunnel, installTunnelCleanupHandlers, promptHidden } from './ssh-tunnel.mjs';
 
 const DEFAULT_LOCAL_PORT = 15432;
 // see config/config.json
@@ -45,9 +45,11 @@ function parseArgs(argv) {
         dbPort: DEFAULT_DB_PORT,
         localPort: DEFAULT_LOCAL_PORT,
     };
+
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
         const next = () => argv[++i];
+
         switch (arg) {
             case '--out':
                 args.out = next();
@@ -126,50 +128,6 @@ Alle Optionen sind Pflicht (kein Fallback/Default), ausser --local-port, --base-
 Das Postgres-Passwort und die SSH-Key-Passphrase werden immer interaktiv und
 maskiert abgefragt (keine Uebergabe per Parameter/ENV-Variable).
 `);
-}
-
-// Prompts for a value interactively without echoing the input (for passwords/passphrases).
-// More reliable than a shell-level 'read -s', since it's always prompted in the same
-// process regardless of shell/terminal session.
-function promptHidden(promptText) {
-    return new Promise((resolve, reject) => {
-        if (!process.stdin.isTTY) {
-            reject(new Error(`Kann '${promptText.trim()}' nicht interaktiv abfragen (kein TTY) - bitte per ENV-Variable setzen.`));
-            return;
-        }
-
-        process.stdout.write(promptText);
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding('utf8');
-
-        let input = '';
-        const onData = (char) => {
-            switch (char) {
-                case '\n':
-                case '\r':
-                case '\u0004':
-                    process.stdin.removeListener('data', onData);
-                    process.stdin.setRawMode(false);
-                    process.stdin.pause();
-                    process.stdout.write('\n');
-                    resolve(input);
-                    break;
-                case '\u0003':
-                    process.stdout.write('\n');
-                    process.exit(130);
-                    break;
-                case '\u007f':
-                    input = input.slice(0, -1);
-                    break;
-                default:
-                    input += char;
-                    break;
-            }
-        };
-
-        process.stdin.on('data', onData);
-    });
 }
 
 // Resolves the two direct root children ("Oeffentliche Schulen", "Ersatzschulen"),
