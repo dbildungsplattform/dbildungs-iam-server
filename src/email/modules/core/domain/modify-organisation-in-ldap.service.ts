@@ -9,10 +9,7 @@ export class ModifyOrganisationInLdapService {
         return this.ldapUndiClientAdapter.deleteGroup(organisationId);
     }
 
-    public modifyOrganisationNameInLdap(
-        organisationId: string,
-        name: string,
-    ): Promise<Result<void>> {
+    public modifyOrganisationNameInLdap(organisationId: string, name: string): Promise<Result<void>> {
         return this.ldapUndiClientAdapter.updateGroup(organisationId, name);
     }
 }

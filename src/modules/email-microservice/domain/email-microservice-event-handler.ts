@@ -239,9 +239,7 @@ export class EmailMicroserviceEventHandler {
         }
 
         if (!event.name) {
-            this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because name is not provided`,
-            );
+            this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because name is not provided`);
             return;
         }
 

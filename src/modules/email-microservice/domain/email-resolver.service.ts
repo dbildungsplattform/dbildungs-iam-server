@@ -207,8 +207,7 @@ export class EmailResolverService {
             this.logger.info(`Deleting school ${params.organisationId} via email microservice`);
             await lastValueFrom(
                 this.httpService.delete(
-                    this.getEndpoint() +
-                        `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
                     {
                         headers: {
                             'api-key': this.getApiKey(),
@@ -221,18 +220,14 @@ export class EmailResolverService {
         }
     }
 
-    public async updateSchoolName(params: {
-        organisationId: string;
-        newName: string;
-    }): Promise<void> {
+    public async updateSchoolName(params: { organisationId: string; newName: string }): Promise<void> {
         try {
             this.logger.info(`Updating school ${params.organisationId} via email microservice`);
             await lastValueFrom(
                 this.httpService.patch(
-                    this.getEndpoint() +
-                        `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
                     {
-                        name: params.newName
+                        name: params.newName,
                     } satisfies UpdateOrganisationBodyParams,
                     {
                         headers: {
