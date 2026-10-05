@@ -853,10 +853,15 @@ describe('EmailMicroserviceEventHandler', () => {
             const organisationId: string = faker.string.uuid();
             const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
                 organisationId,
-                faker.company.name(),
-                faker.company.name(),
                 faker.string.numeric(7),
+                faker.word.noun(),
+                false,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 faker.string.numeric(7),
+                faker.word.noun(),
+                faker.string.uuid(),
+                faker.string.uuid(),
             );
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
 
@@ -874,18 +879,24 @@ describe('EmailMicroserviceEventHandler', () => {
             const organisationId: string = faker.string.uuid();
             const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
                 organisationId,
-                faker.company.name(),
-                undefined,
                 faker.string.numeric(7),
+                '',
+                false,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 faker.string.numeric(7),
+                faker.word.noun(),
+                faker.string.uuid(),
+                faker.string.uuid(),
             );
+
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             await sut.handleSchuleUpdatedEvent(event);
 
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining(
-                    `Ignoring Event for organisationId:${organisationId} because newName is not provided`,
+                    `Ignoring Event for organisationId:${organisationId} because name is not provided`,
                 ),
             );
             expect(emailResolverServiceMock.updateSchoolName).not.toHaveBeenCalled();
@@ -896,10 +907,15 @@ describe('EmailMicroserviceEventHandler', () => {
             const name: string = faker.company.name();
             const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
                 organisationId,
-                name,
-                name,
                 faker.string.numeric(7),
+                name,
+                false,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 faker.string.numeric(7),
+                name,
+                faker.string.uuid(),
+                faker.string.uuid(),
             );
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
@@ -907,7 +923,7 @@ describe('EmailMicroserviceEventHandler', () => {
 
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining(
-                    `Ignoring Event for organisationId:${organisationId} because newName is the same as oldName`,
+                    `Ignoring Event for organisationId:${organisationId} because name is the same as oldName`,
                 ),
             );
             expect(emailResolverServiceMock.updateSchoolName).not.toHaveBeenCalled();
@@ -918,10 +934,15 @@ describe('EmailMicroserviceEventHandler', () => {
             const newName: string = faker.company.name();
             const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
                 organisationId,
-                faker.company.name(),
+                faker.string.numeric(7),
                 newName,
+                false,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 faker.string.numeric(7),
-                faker.string.numeric(7),
+                faker.word.noun(),
+                faker.string.uuid(),
+                faker.string.uuid(),
             );
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 

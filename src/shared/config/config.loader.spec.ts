@@ -418,6 +418,12 @@ describe('configloader', () => {
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
                     BASE_DN: 'dc=schule-sh,dc=de',
                 },
+                LDAP_UNDI: {
+                    ENABLED: true,
+                    URL: 'ldap://localhost',
+                    BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
+                    BASE_DN: 'dc=schule-sh,dc=de',
+                },
                 EMAIL: {
                     NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: 90,
                 },
@@ -429,6 +435,7 @@ describe('configloader', () => {
             const secrets: DeepPartial<JsonConfig> = {
                 DB: { SECRET: 'SuperSecretSecret' },
                 LDAP: { ADMIN_PASSWORD: 'password' },
+                LDAP_UNDI: { ADMIN_PASSWORD: 'password' },
                 OX: {
                     PASSWORD: 'password',
                 },
@@ -481,6 +488,13 @@ describe('configloader', () => {
                     PASSWORD: 'x',
                 },
                 LDAP: {
+                    ENABLED: true,
+                    URL: 'ldap://localhost',
+                    BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
+                    BASE_DN: 'dc=schule-sh,dc=de',
+                    ADMIN_PASSWORD: 'x',
+                },
+                LDAP_UNDI: {
                     ENABLED: true,
                     URL: 'ldap://localhost',
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',

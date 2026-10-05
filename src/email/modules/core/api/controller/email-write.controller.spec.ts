@@ -15,6 +15,8 @@ import { SetEmailAddressForSpshPersonPathParams } from '../dtos/params/set-email
 import { DeleteEmailAddressesForSpshPersonPathParams } from '../dtos/params/delete-email-addresses-for-spsh-person.pathparams.js';
 import { SetEmailAddressesSuspendedPathParams } from '../dtos/params/set-email-addresses-suspended.pathparams.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
+import { ModifyOrganisationInLdapService } from '../../domain/modify-organisation-in-ldap.service.js';
+import { SetEmailAddressesSuspendedBodyParams } from '../dtos/params/set-email-addresses-suspended.bodyparams.js';
 
 describe('Email Write Controller', () => {
     let emailWriteController: EmailWriteController;
@@ -32,6 +34,7 @@ describe('Email Write Controller', () => {
                 },
                 EmailWriteController,
                 SetEmailAddressForSpshPersonService,
+                ModifyOrganisationInLdapService,
                 SetEmailSuspendedService,
                 DeleteEmailsAddressesForSpshPersonService,
                 ClassLogger,
@@ -43,6 +46,8 @@ describe('Email Write Controller', () => {
             .useValue(createMock<DeleteEmailsAddressesForSpshPersonService>(DeleteEmailsAddressesForSpshPersonService))
             .overrideProvider(SetEmailSuspendedService)
             .useValue(createMock<SetEmailSuspendedService>(SetEmailSuspendedService))
+            .overrideProvider(ModifyOrganisationInLdapService)
+            .useValue(createMock(ModifyOrganisationInLdapService))
             .overrideProvider(ClassLogger)
             .useValue(createMock<ClassLogger>(ClassLogger))
             .compile();
@@ -69,7 +74,7 @@ describe('Email Write Controller', () => {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: faker.string.uuid(),
-                kennungen: [],
+                organisationen: [],
                 spshUsername: faker.internet.username(),
             });
             setEmailAddressForSpshPersonServiceMock.setEmailAddressForSpshPerson.mockResolvedValue();
@@ -91,7 +96,7 @@ describe('Email Write Controller', () => {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: faker.string.uuid(),
-                kennungen: [],
+                organisationen: [],
                 spshUsername: faker.internet.username(),
             });
             const requestParams: SetEmailAddressForSpshPersonPathParams = new SetEmailAddressForSpshPersonPathParams();
@@ -145,12 +150,14 @@ describe('Email Write Controller', () => {
             const spshPersonId: string = faker.string.uuid();
             setEmailSuspendedServiceMock.setEmailsSuspended.mockResolvedValue();
             const params: SetEmailAddressesSuspendedPathParams = new SetEmailAddressesSuspendedPathParams();
+            const bodyParams: SetEmailAddressesSuspendedBodyParams = { gesperrt: true };
             Object.assign(params, { spshPersonId });
-            const result: void = emailWriteController.setEmailsSuspended(params);
+            const result: void = emailWriteController.setEmailsSuspended(params, bodyParams);
             expect(result).toBeUndefined();
             vi.runAllTimers();
             expect(setEmailSuspendedServiceMock.setEmailsSuspended).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
+                gesperrt: bodyParams.gesperrt,
             });
         });
 
@@ -158,12 +165,14 @@ describe('Email Write Controller', () => {
             const spshPersonId: string = faker.string.uuid();
             setEmailSuspendedServiceMock.setEmailsSuspended.mockRejectedValue(new Error('Test error'));
             const params: SetEmailAddressesSuspendedPathParams = new SetEmailAddressesSuspendedPathParams();
+            const bodyParams: SetEmailAddressesSuspendedBodyParams = { gesperrt: true };
             Object.assign(params, { spshPersonId });
-            const result: void = emailWriteController.setEmailsSuspended(params);
+            const result: void = emailWriteController.setEmailsSuspended(params, bodyParams);
             expect(result).toBeUndefined();
             vi.runAllTimers();
             expect(setEmailSuspendedServiceMock.setEmailsSuspended).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
+                gesperrt: bodyParams.gesperrt,
             });
         });
     });
