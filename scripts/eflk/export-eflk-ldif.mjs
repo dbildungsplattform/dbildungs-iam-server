@@ -207,9 +207,6 @@ async function fetchOrganisationen(client, organisationIds) {
     return organisationenById;
 }
 
-// Diagnostic cross-check: "hat E-Mail" (email.address priority 0/1) is checked independently
-// of "hat Personenkontext mit E-Mail Service-Provider" (organisationIds) - a high count here
-// can mean many persons have qualifying address rows without an active E-Mail-Rolle.
 function logEmailKontextDiagnostics(persons) {
     const personsWithoutEmailServiceProviderKontext = persons.filter((p) => p.organisationIds.length === 0).length;
     console.log(
@@ -218,12 +215,72 @@ function logEmailKontextDiagnostics(persons) {
     );
 }
 
+async function classifyAllOrganisations(client, organisationIds, roots) {
+    const classificationCache = new Map();
+    const ouByOrganisation = new Map();
+    for (const organisationId of organisationIds) {
+        const classification = await classifyOrganisation(client, organisationId, roots, classificationCache);
+        ouByOrganisation.set(organisationId, classification === 'ERSATZ' ? 'ersatz' : 'oeffentlich');
+    }
+
+    return ouByOrganisation;
+}
+
+// Bucket of the person = bucket of the first assigned school (analogous to the "mainSchool" fallback per the target schema)
+function assignPersonBuckets(persons, ouByOrganisation) {
+    const ouByPerson = new Map();
+    for (const person of persons) {
+        const firstOrgId = person.organisationIds[0];
+        ouByPerson.set(person.id, firstOrgId ? ouByOrganisation.get(firstOrgId) : 'oeffentlich');
+    }
+
+    return ouByPerson;
+}
+
+// Builds the LDIF lines for all person entries, keeping each person's DN around for group membership.
+function buildPersonEntries(persons, ouByPerson, baseDn) {
+    const lines = [];
+    const personDnById = new Map();
+    for (const person of persons) {
+        const ou = ouByPerson.get(person.id);
+        const entry = buildPersonEntry(person, ou, baseDn);
+        personDnById.set(person.id, entry.dn);
+        lines.push(...entry.lines, '');
+    }
+
+    return { lines, personDnById };
+}
+
+function groupMembersByOrganisation(persons, personDnById) {
+    const membersByOrganisation = new Map();
+    for (const person of persons) {
+        const personDn = personDnById.get(person.id);
+        for (const organisationId of person.organisationIds) {
+            const list = membersByOrganisation.get(organisationId) ?? [];
+            list.push(personDn);
+            membersByOrganisation.set(organisationId, list);
+        }
+    }
+
+    return membersByOrganisation;
+}
+
+// Builds the LDIF lines for all group entries (one group per organisation).
+function buildAllGroupEntries(organisationIds, ouByOrganisation, organisationen, membersByOrganisation, baseDn) {
+    const lines = [];
+    for (const organisationId of organisationIds) {
+        const ou = ouByOrganisation.get(organisationId);
+        const organisation = organisationen.get(organisationId);
+        const memberDns = membersByOrganisation.get(organisationId) ?? [];
+        lines.push(...buildGroupEntry(organisationId, organisation, ou, baseDn, memberDns), '');
+    }
+
+    return lines;
+}
+
 async function main() {
     const args = parseArgs(process.argv.slice(2));
 
-    const sshPassphrase = await promptHidden(`Passphrase fuer ${args.sshKey} (leer falls keine): `);
-
-    console.log(`Baue SSH-Tunnel auf: ${args.sshUser}@${args.sshHost}:${args.sshPort} -> ${args.dbHost}:${args.dbPort} (lokal: ${args.localPort})`);
     const sshTunnel = await openSshTunnel({
         sshHost: args.sshHost,
         sshPort: args.sshPort,
@@ -232,7 +289,6 @@ async function main() {
         dbHost: args.dbHost,
         dbPort: args.dbPort,
         localPort: args.localPort,
-        passphrase: sshPassphrase,
     });
     activeSshTunnel = sshTunnel;
 
@@ -259,47 +315,14 @@ async function main() {
 
         const allOrganisationIds = [...new Set(persons.flatMap((p) => p.organisationIds))];
         const organisationen = await fetchOrganisationen(client, allOrganisationIds);
+        const ouByOrganisation = await classifyAllOrganisations(client, allOrganisationIds, roots);
+        const ouByPerson = assignPersonBuckets(persons, ouByOrganisation);
 
-        const classificationCache = new Map();
-        const ouByOrganisation = new Map();
-        for (const organisationId of allOrganisationIds) {
-            const classification = await classifyOrganisation(client, organisationId, roots, classificationCache);
-            ouByOrganisation.set(organisationId, classification === 'ERSATZ' ? 'ersatz' : 'oeffentlich');
-        }
+        const { lines: personLines, personDnById } = buildPersonEntries(persons, ouByPerson, args.baseDn);
+        const membersByOrganisation = groupMembersByOrganisation(persons, personDnById);
+        const groupLines = buildAllGroupEntries(allOrganisationIds, ouByOrganisation, organisationen, membersByOrganisation, args.baseDn);
 
-        // Bucket of the person = bucket of the first assigned school (analogous to the "mainSchool" fallback per the target schema)
-        const ouByPerson = new Map();
-        for (const person of persons) {
-            const firstOrgId = person.organisationIds[0];
-            ouByPerson.set(person.id, firstOrgId ? ouByOrganisation.get(firstOrgId) : 'oeffentlich');
-        }
-
-        const outputLines = [...buildContainerEntries(args.baseDn)];
-
-        const personDnById = new Map();
-        for (const person of persons) {
-            const ou = ouByPerson.get(person.id);
-            const { dn, lines } = buildPersonEntry(person, ou, args.baseDn);
-            personDnById.set(person.id, dn);
-            outputLines.push(...lines, '');
-        }
-
-        const membersByOrganisation = new Map();
-        for (const person of persons) {
-            const personDn = personDnById.get(person.id);
-            for (const organisationId of person.organisationIds) {
-                const list = membersByOrganisation.get(organisationId) ?? [];
-                list.push(personDn);
-                membersByOrganisation.set(organisationId, list);
-            }
-        }
-
-        for (const organisationId of allOrganisationIds) {
-            const ou = ouByOrganisation.get(organisationId);
-            const organisation = organisationen.get(organisationId);
-            const memberDns = membersByOrganisation.get(organisationId) ?? [];
-            outputLines.push(...buildGroupEntry(organisationId, organisation, ou, args.baseDn, memberDns), '');
-        }
+        const outputLines = [...buildContainerEntries(args.baseDn), ...personLines, ...groupLines];
 
         await writeFile(args.out, outputLines.join('\n'));
         console.log(`${persons.length} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);

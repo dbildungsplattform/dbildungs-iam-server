@@ -132,9 +132,12 @@ function assertLocalPortIsFree(port) {
 }
 
 // Sets up a local SSH port forward: localPort -> dbHost:dbPort, tunnelled via sshUser@sshHost.
-export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost, dbPort, localPort, passphrase }) {
+// Prompts interactively for the key's passphrase (leer falls keine).
+export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost, dbPort, localPort }) {
+    console.log(`Baue SSH-Tunnel auf: ${sshUser}@${sshHost}:${sshPort} -> ${dbHost}:${dbPort} (lokal: ${localPort})`);
     await assertLocalPortIsFree(localPort);
 
+    const passphrase = await promptHidden(`Passphrase fuer ${sshKey} (leer falls keine): `);
     const askPassScript = passphrase ? await createAskPassScript() : undefined;
 
     const sshArgs = [
