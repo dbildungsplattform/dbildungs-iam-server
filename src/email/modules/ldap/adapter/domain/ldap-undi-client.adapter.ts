@@ -19,6 +19,7 @@ import { LdapFindPersonError } from './error/ldap-find-person.error.js';
 import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.js';
 import { LdapCreateGroupError } from './error/ldap-create-group.error.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
+import { LdapModifyGroupError } from './error/ldap-modify-group.error.js';
 
 export type PersonDataUndi = {
     domain: string;
@@ -104,7 +105,7 @@ export class LdapUndiClientAdapter {
 
     public async updatePersonPartialById(
         personID: string,
-        updateData: Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>,
+        updateData: Partial<Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>>,
     ): Promise<Result<void>> {
         return this.executeWithRetry(
             () => this.updatePersonPartialByIdInternal(personID, updateData),
@@ -112,8 +113,11 @@ export class LdapUndiClientAdapter {
         );
     }
 
+    /**
+     * Updates the group *IF* it exists
+     */
     public async updateGroup(id: string, name: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.updateGroup(id, name), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.updateGroupInternal(id, name), this.getNrOfRetries());
     }
 
     public async deleteGroup(id: string): Promise<Result<void>> {
@@ -288,7 +292,7 @@ export class LdapUndiClientAdapter {
 
     private async updatePersonPartialByIdInternal(
         personId: string,
-        updateData: Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>,
+        updateData: Partial<Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>>,
     ): Promise<Result<void>> {
         const client: Client = this.ldapClient.getClient();
         const bindResult: Result<boolean> = await this.bind();
@@ -540,6 +544,43 @@ export class LdapUndiClientAdapter {
         }
 
         return Ok();
+    }
+
+    private async updateGroupInternal(id: string, name: string): Promise<Result<void>> {
+        return this.mutex.runExclusive(async () => {
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+
+            const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+                filter: `(cn=${id}&objectClass=groupOfNames)`,
+            });
+
+            if (!searchResultOrgUnit.searchEntries[0]) {
+                // No group exists
+                return Ok();
+            }
+
+            const dn: string = searchResultOrgUnit.searchEntries[0].dn;
+
+            try {
+                const change: Change = new Change({
+                    operation: 'replace',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.COMMON_NAME,
+                        values: [name],
+                    }),
+                });
+
+                await client.modify(dn, change);
+            } catch (err) {
+                return Err(new LdapModifyGroupError(id, [err]));
+            }
+
+            return Ok();
+        });
     }
 
     private async deleteGroupInternal(id: string): Promise<Result<void>> {
