@@ -391,15 +391,13 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-                undefined,
-                undefined,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map((s: ManageableServiceProviderWithReferencedObjects) => s.serviceProvider),
@@ -455,15 +453,13 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-                undefined,
-                undefined,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map((s: ManageableServiceProviderWithReferencedObjects) => s.serviceProvider),
@@ -500,15 +496,15 @@ describe('ServiceProviderService', () => {
                 offset,
             );
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
                 limit,
                 offset,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map((s: ManageableServiceProviderWithReferencedObjects) => s.serviceProvider),
@@ -976,16 +972,13 @@ describe('ServiceProviderService', () => {
             );
 
             expect(organisationRepo.findParentOrgasForIds).toHaveBeenCalledWith([organisation.id]);
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrganisation.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
                 ],
-                undefined,
-                undefined,
-                undefined,
-            );
+            });
             expect(result[0]).toContain(serviceProvider);
             expect(result[1]).toBe(1);
         });
@@ -1029,16 +1022,16 @@ describe('ServiceProviderService', () => {
                 20,
             );
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrganisation.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
                 ],
-                10,
-                20,
-                [RollenArt.LERN],
-            );
+                rollenArten: [RollenArt.LERN],
+                limit: 10,
+                offset: 20,
+            });
             expect(result).toBe(resultFromRepository);
         });
     });

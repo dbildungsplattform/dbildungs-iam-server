@@ -279,24 +279,24 @@ export class ServiceProviderRepo {
         return mapEntityToAggregate(entity);
     }
 
-    public async findByOrgasWithMerkmale(
-        organisationIds: OrganisationID[],
-        merkmale: ServiceProviderMerkmal[],
-        limit?: number,
-        offset?: number,
-        rollenArten?: RollenArt[],
-    ): Promise<Counted<ServiceProvider<true>>> {
+    public async findByOrgasWithMerkmale(params: {
+        organisationIds: OrganisationID[];
+        merkmale: ServiceProviderMerkmal[];
+        rollenArten?: RollenArt[];
+        limit?: number;
+        offset?: number;
+    }): Promise<Counted<ServiceProvider<true>>> {
         // each merkmal needs its own $and entry, otherwise a single relation-join would require just one of them to match
         const where: FilterQuery<ServiceProviderEntity> = {
-            providedOnSchulstrukturknoten: { $in: organisationIds },
-            ...(merkmale.length > 0 && {
-                $and: merkmale.map((merkmal: ServiceProviderMerkmal) => ({ merkmale: { merkmal } })),
+            providedOnSchulstrukturknoten: { $in: params.organisationIds },
+            ...(params.merkmale.length > 0 && {
+                $and: params.merkmale.map((merkmal: ServiceProviderMerkmal) => ({ merkmale: { merkmal } })),
             }),
-            ...(rollenArten &&
-                rollenArten.length > 0 && {
+            ...(params.rollenArten &&
+                params.rollenArten.length > 0 && {
                     $or: [
                         { rollenartenWhitelist: { $none: {} } },
-                        { rollenartenWhitelist: { $some: { rollenart: { $in: rollenArten } } } },
+                        { rollenartenWhitelist: { $some: { rollenart: { $in: params.rollenArten } } } },
                     ],
                 }),
         };
@@ -306,8 +306,8 @@ export class ServiceProviderRepo {
             where,
             {
                 populate: ['merkmale', 'rollenartenWhitelist'],
-                limit,
-                offset,
+                limit: params.limit,
+                offset: params.offset,
                 orderBy: {
                     kategorie: 'ASC', // kategorie defines a custom order
                 },

@@ -508,12 +508,12 @@ describe('ServiceProviderRepo', () => {
 
             em.clear();
 
-            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
-                [orgId],
-                [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                5,
-                0,
-            );
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                limit: 5,
+                offset: 0,
+            });
 
             expect(count).toEqual(1);
             expect(result).toHaveLength(1);
@@ -539,13 +539,13 @@ describe('ServiceProviderRepo', () => {
 
             em.clear();
 
-            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
-                [orgId],
-                [
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-            );
+            });
 
             expect(count).toEqual(1);
             expect(result).toHaveLength(1);
@@ -566,7 +566,10 @@ describe('ServiceProviderRepo', () => {
 
             em.clear();
 
-            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale([orgId], []);
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: [],
+            });
 
             expect(count).toEqual(2);
             expect(result).toHaveLength(2);
@@ -587,22 +590,22 @@ describe('ServiceProviderRepo', () => {
 
             const limit: number = 5;
             const [withoutOffsetResult, countWithoutOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrgasWithMerkmale(
-                    [orgId],
-                    [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                await sut.findByOrgasWithMerkmale({
+                    organisationIds: [orgId],
+                    merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                     limit,
-                    0,
-                );
+                    offset: 0,
+                });
             expect(withoutOffsetResult).toHaveLength(limit);
             expect(countWithoutOffset).toEqual(total);
 
             const [withOffsetResult, countWithOffset]: Counted<ServiceProvider<true>> =
-                await sut.findByOrgasWithMerkmale(
-                    [orgId],
-                    [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                await sut.findByOrgasWithMerkmale({
+                    organisationIds: [orgId],
+                    merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
                     limit,
-                    5,
-                );
+                    offset: 5,
+                });
             expect(withOffsetResult).toHaveLength(limit);
             expect(countWithOffset).toEqual(total);
 
@@ -628,12 +631,12 @@ describe('ServiceProviderRepo', () => {
                 ),
             );
 
-            const [serviceProviderResult]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
-                [orgId],
-                [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                5,
-                0,
-            );
+            const [serviceProviderResult]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                limit: 5,
+                offset: 0,
+            });
 
             [
                 ServiceProviderKategorie.EMAIL,
@@ -672,20 +675,20 @@ describe('ServiceProviderRepo', () => {
                     }),
                 ]);
 
-            const [firstPage, firstPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
-                [orgId],
-                requiredMerkmale,
-                1,
-                0,
-                [RollenArt.LEHR],
-            );
-            const [secondPage, secondPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
-                [orgId],
-                requiredMerkmale,
-                1,
-                1,
-                [RollenArt.LEHR],
-            );
+            const [firstPage, firstPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: requiredMerkmale,
+                rollenArten: [RollenArt.LEHR],
+                limit: 1,
+                offset: 0,
+            });
+            const [secondPage, secondPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale({
+                organisationIds: [orgId],
+                merkmale: requiredMerkmale,
+                rollenArten: [RollenArt.LEHR],
+                limit: 1,
+                offset: 1,
+            });
 
             expect(firstPageCount).toBe(2);
             expect(secondPageCount).toBe(2);
