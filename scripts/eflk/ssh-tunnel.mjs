@@ -10,7 +10,6 @@ import { join } from 'node:path';
 
 // Fixed, non-writable candidate locations for the ssh binary - avoids relying on PATH resolution.
 const SSH_BINARY_CANDIDATES = ['/usr/bin/ssh', '/bin/ssh', '/usr/local/bin/ssh', '/opt/homebrew/bin/ssh'];
-
 const DEFAULT_WAIT_TIMEOUT_MS = 15000;
 const PORT_POLL_INTERVAL_MS = 300;
 const SIGKILL_GRACE_PERIOD_MS = 2000;
