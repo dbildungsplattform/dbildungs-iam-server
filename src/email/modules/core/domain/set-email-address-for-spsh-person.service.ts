@@ -81,7 +81,7 @@ export class SetEmailAddressForSpshPersonService {
     public async setEmailAddressForSpshPerson(params: {
         spshPersonId: string;
         spshUsername: string;
-        organisations: SchoolwithKennungAndName[];
+        organisationen: SchoolwithKennungAndName[];
         firstName: string;
         lastName: string;
         gesperrt: boolean;
@@ -110,7 +110,7 @@ export class SetEmailAddressForSpshPersonService {
         }
 
         const uniqueOrganisations: SchoolwithKennungAndName[] = uniqBy(
-            params.organisations,
+            params.organisationen,
             (o: SchoolwithKennungAndName) => o.id,
         );
 
@@ -382,7 +382,7 @@ export class SetEmailAddressForSpshPersonService {
             newPrimaryEmail.setStatus(EmailAddressStatusEnum.FAILED);
             newPrimaryEmail = await this.updateEmailIgnoreMissing(newPrimaryEmail);
 
-            return ldapResult;
+            return ldapUndiResult;
         }
 
         // Everything was a success, set the e-mail to active

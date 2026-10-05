@@ -17,7 +17,6 @@ import { ServiceProviderSystem } from '../../service-provider/domain/service-pro
 import { EmailMicroserviceModule } from '../email-microservice.module.js';
 import { EmailMicroserviceEventHandler } from './email-microservice-event-handler.js';
 import { EmailResolverService } from './email-resolver.service.js';
-import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
 import { EventModule } from '../../../core/eventbus/index.js';
@@ -28,6 +27,12 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { Person } from '../../person/domain/person.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+
+type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;
 
 describe('EmailMicroserviceEventHandler', () => {
     let app: INestApplication;
@@ -36,9 +41,11 @@ describe('EmailMicroserviceEventHandler', () => {
     let sut: EmailMicroserviceEventHandler;
     let loggerMock: DeepMocked<ClassLogger>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
+    let orgaRepoMock: DeepMocked<OrganisationRepository>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let personRepositoryMock: DeepMocked<PersonRepository>;
+    let userLockRepoMock: DeepMocked<UserLockRepository>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -56,23 +63,30 @@ describe('EmailMicroserviceEventHandler', () => {
             .useValue(createMock(ClassLogger))
             .overrideProvider(EmailResolverService)
             .useValue(createMock(EmailResolverService))
+            .overrideProvider(OrganisationRepository)
+            .useValue(createMock(OrganisationRepository))
             .overrideProvider(RolleRepo)
             .useValue(createMock(RolleRepo))
             .overrideProvider(DBiamPersonenkontextRepo)
             .useValue(createMock<DBiamPersonenkontextRepo>(DBiamPersonenkontextRepo))
             .overrideProvider(PersonRepository)
             .useValue(createMock<PersonRepository>(PersonRepository))
+            .overrideProvider(UserLockRepository)
+            .useValue(createMock(UserLockRepository))
             .compile();
 
         sut = module.get(EmailMicroserviceEventHandler);
         loggerMock = module.get(ClassLogger);
         emailResolverServiceMock = module.get(EmailResolverService);
+        orgaRepoMock = module.get(OrganisationRepository);
         rolleRepoMock = module.get(RolleRepo);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         personRepositoryMock = module.get(PersonRepository);
+        userLockRepoMock = module.get(UserLockRepository);
 
         app = module.createNestApplication();
         await app.init();
+
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
@@ -91,13 +105,15 @@ describe('EmailMicroserviceEventHandler', () => {
         it('should log and call emailResolverService when microservice is enabled', async () => {
             const mockServiceProviderId: string = faker.string.uuid();
             const spshPersonId: string = faker.string.uuid();
-            const params: SetEmailAddressForSpshPersonBodyParams = {
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, { kennung: '0706054' });
+            const params: SetEmailParams = {
                 spshUsername: faker.internet.username(),
-                kennungen: ['0706054'],
+                organisationen: [mockOrganisation],
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: mockServiceProviderId,
-            } satisfies SetEmailAddressForSpshPersonBodyParams;
+                gesperrt: true,
+            };
             const mockEvent: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: spshPersonId,
@@ -112,7 +128,7 @@ describe('EmailMicroserviceEventHandler', () => {
                         id: 'pk1',
                         rolleId: 'r1',
                         rolle: RollenArt.LERN,
-                        orgaId: faker.string.uuid(),
+                        orgaId: mockOrganisation.id,
                         orgaKennung: '0706054',
                         isItslearningOrga: false,
                         serviceProviderExternalSystems: [ServiceProviderSystem.EMAIL],
@@ -131,8 +147,11 @@ describe('EmailMicroserviceEventHandler', () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r1', mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map([[mockOrganisation.id, mockOrganisation]]));
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([createMock(UserLock)]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
+            expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([mockOrganisation.id]);
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining('Received PersonenkontextUpdatedEvent'),
             );
@@ -145,13 +164,16 @@ describe('EmailMicroserviceEventHandler', () => {
         it('should log and call emailResolverService when microservice is enabled and username is undefined (not in praxis)', async () => {
             const mockServiceProviderId: string = faker.string.uuid();
             const spshPersonId: string = faker.string.uuid();
-            const params: SetEmailAddressForSpshPersonBodyParams = {
+            const params: SetEmailParams = {
                 spshUsername: '',
-                kennungen: ['0706054'],
+                organisationen: [
+                    DoFactory.createOrganisation(true, { kennung: '0706054' }),
+                ],
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: mockServiceProviderId,
-            } satisfies SetEmailAddressForSpshPersonBodyParams;
+                gesperrt: false,
+            };
             const mockEvent: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: spshPersonId,
@@ -185,6 +207,7 @@ describe('EmailMicroserviceEventHandler', () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r1', mockRolle]]));
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await expect(sut.handlePersonenkontextUpdatedEvent(mockEvent)).rejects.toThrow(
                 `Person with id:${spshPersonId} has no username, cannot resolve email.`,
@@ -253,6 +276,8 @@ describe('EmailMicroserviceEventHandler', () => {
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[mockRolleId, mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
             expect(loggerMock.info).toHaveBeenCalledWith(
@@ -267,6 +292,7 @@ describe('EmailMicroserviceEventHandler', () => {
         it('should resolve correct email service provider and call setEmailForSpshPerson', async () => {
             const mockPersonId: string = faker.string.uuid();
             const mockServiceProviderId: string = faker.string.uuid();
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, { kennung: '0706054' });
             const mockEvent: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: mockPersonId,
@@ -281,7 +307,7 @@ describe('EmailMicroserviceEventHandler', () => {
                         id: 'pk1',
                         rolleId: 'r1',
                         rolle: RollenArt.LERN,
-                        orgaId: faker.string.uuid(),
+                        orgaId: mockOrganisation.id,
                         orgaKennung: '0706054',
                         isItslearningOrga: false,
                         serviceProviderExternalSystems: [],
@@ -299,6 +325,8 @@ describe('EmailMicroserviceEventHandler', () => {
             });
 
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r1', mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map([[mockOrganisation.id, mockOrganisation]]));
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             vi.spyOn(emailResolverServiceMock, 'setEmailForSpshPerson').mockResolvedValue();
 
@@ -308,7 +336,8 @@ describe('EmailMicroserviceEventHandler', () => {
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: mockPersonId,
                 spshUsername: 'testuser',
-                kennungen: ['0706054'],
+                organisationen: [mockOrganisation],
+                gesperrt: false,
                 firstName: 'Max',
                 lastName: 'Mustermann',
                 spshServiceProviderId: mockServiceProviderId,
@@ -387,22 +416,27 @@ describe('EmailMicroserviceEventHandler', () => {
             });
 
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
             expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: mockPersonId,
+                gesperrt: false,
             });
         });
 
         it('should filter out kontexte whose id is in removedKontexte', async () => {
             const mockServiceProviderId: string = faker.string.uuid();
             const spshPersonId: string = faker.string.uuid();
+            const organisationToKeep: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'K1' });
+            const organisationToRemove: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'K2' });
 
             const kontextToKeep: PersonenkontextEventKontextData = {
                 id: 'pk1',
                 rolleId: 'r1',
                 rolle: RollenArt.LERN,
-                orgaId: faker.string.uuid(),
+                orgaId: organisationToKeep.id,
                 orgaKennung: 'K1',
                 isItslearningOrga: false,
                 serviceProviderExternalSystems: [ServiceProviderSystem.EMAIL],
@@ -411,7 +445,7 @@ describe('EmailMicroserviceEventHandler', () => {
                 id: 'pk2',
                 rolleId: 'r2',
                 rolle: RollenArt.LERN,
-                orgaId: faker.string.uuid(),
+                orgaId: organisationToRemove.id,
                 orgaKennung: 'K2',
                 isItslearningOrga: false,
                 serviceProviderExternalSystems: [ServiceProviderSystem.EMAIL],
@@ -441,26 +475,37 @@ describe('EmailMicroserviceEventHandler', () => {
 
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r1', mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(
+                new Map([
+                    [organisationToKeep.id, organisationToKeep],
+                    [organisationToRemove.id, organisationToRemove],
+                ]),
+            );
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
 
+            expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([organisationToKeep.id]);
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    kennungen: ['K1'],
+                    organisationen: [organisationToKeep],
                 }),
             );
         });
 
-        it('should only include kennungen for kontexte with a rolle in rollenMap', async () => {
+        it('should only include organisationen for kontexte with a rolle in rollenMap', async () => {
             const mockServiceProviderId: string = faker.string.uuid();
             const spshPersonId: string = faker.string.uuid();
-            const params: SetEmailAddressForSpshPersonBodyParams = {
+            const organisationWithoutRolle: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'K1' });
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'K2' });
+            const params: SetEmailParams = {
                 spshUsername: faker.internet.username(),
-                kennungen: ['K2'],
+                organisationen: [mockOrganisation],
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: mockServiceProviderId,
-            } satisfies SetEmailAddressForSpshPersonBodyParams;
+                gesperrt: false,
+            };
 
             const mockEvent: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
@@ -476,7 +521,7 @@ describe('EmailMicroserviceEventHandler', () => {
                         id: 'pk1',
                         rolleId: 'r1',
                         rolle: RollenArt.LERN,
-                        orgaId: faker.string.uuid(),
+                        orgaId: organisationWithoutRolle.id,
                         orgaKennung: 'K1',
                         isItslearningOrga: false,
                         serviceProviderExternalSystems: [ServiceProviderSystem.EMAIL],
@@ -485,7 +530,7 @@ describe('EmailMicroserviceEventHandler', () => {
                         id: 'pk2',
                         rolleId: 'r2',
                         rolle: RollenArt.LERN,
-                        orgaId: faker.string.uuid(),
+                        orgaId: mockOrganisation.id,
                         orgaKennung: 'K2',
                         isItslearningOrga: false,
                         serviceProviderExternalSystems: [ServiceProviderSystem.EMAIL],
@@ -505,20 +550,23 @@ describe('EmailMicroserviceEventHandler', () => {
 
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r2', mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(
+                new Map([
+                    [organisationWithoutRolle.id, organisationWithoutRolle],
+                    [mockOrganisation.id, mockOrganisation],
+                ]),
+            );
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
 
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
-                spshUsername: params.spshUsername,
-                kennungen: ['K2'],
-                firstName: params.firstName,
-                lastName: params.lastName,
-                spshServiceProviderId: mockServiceProviderId,
+                ...params,
             });
         });
 
-        it('should filter out kontexte with undefined orgaKennung', async () => {
+        it('should filter out kontexte whose organisation is missing from orgaMap', async () => {
             const mockServiceProviderId: string = faker.string.uuid();
             const spshPersonId: string = faker.string.uuid();
 
@@ -556,12 +604,14 @@ describe('EmailMicroserviceEventHandler', () => {
 
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([['r1', mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonenkontextUpdatedEvent(mockEvent);
 
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    kennungen: [],
+                    organisationen: [],
                 }),
             );
         });
@@ -570,6 +620,7 @@ describe('EmailMicroserviceEventHandler', () => {
     describe('handlePersonRenamedEvent', () => {
         it('should log and call emailResolverService when microservice is enabled', async () => {
             const kennung: string = faker.string.numeric(7);
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, { kennung });
             const spshServiceProviderId: string = faker.string.uuid();
             const mockEvent: PersonRenamedEvent = new PersonRenamedEvent(
                 faker.string.uuid(),
@@ -591,20 +642,24 @@ describe('EmailMicroserviceEventHandler', () => {
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
                 {
                     personenkontext: DoFactory.createPersonenkontext(true),
-                    organisation: DoFactory.createOrganisation(true, { kennung }),
+                    organisation: mockOrganisation,
                     rolle: mockRolle,
                 },
             ]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[mockRolle.id, mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map([[mockOrganisation.id, mockOrganisation]]));
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonRenamedEvent(mockEvent);
 
+            expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([mockOrganisation.id]);
             expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('Received PersonRenamedEvent'));
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: mockEvent.personId,
                 spshUsername: mockEvent.username,
-                kennungen: [kennung],
+                organisationen: [mockOrganisation],
+                gesperrt: false,
                 firstName: mockEvent.vorname,
                 lastName: mockEvent.familienname,
                 spshServiceProviderId,
@@ -680,6 +735,8 @@ describe('EmailMicroserviceEventHandler', () => {
             ]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[mockRolle.id, mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
             await sut.handlePersonRenamedEvent(mockEvent);
 
@@ -754,6 +811,7 @@ describe('EmailMicroserviceEventHandler', () => {
             const kennung: string = faker.string.numeric(7);
 
             const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(personId);
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, { kennung });
 
             const mockPerson: Person<true> = DoFactory.createPerson(true, {
                 id: personId,
@@ -772,23 +830,27 @@ describe('EmailMicroserviceEventHandler', () => {
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
                 {
                     personenkontext: DoFactory.createPersonenkontext(true),
-                    organisation: DoFactory.createOrganisation(true, { kennung: kennung }),
+                    organisation: mockOrganisation,
                     rolle: mockRolle,
                 },
             ]);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[mockRolle.id, mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map([[mockOrganisation.id, mockOrganisation]]));
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             personRepositoryMock.findById.mockResolvedValue(mockPerson);
 
             await sut.handlePersonExternalSystemsSyncEvent(event);
 
+            expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([mockOrganisation.id]);
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining('Received PersonExternalSystemsSyncEvent'),
             );
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: personId,
                 spshUsername: username,
-                kennungen: [kennung],
+                organisationen: [mockOrganisation],
+                gesperrt: false,
                 firstName,
                 lastName,
                 spshServiceProviderId: serviceProviderId,
@@ -815,6 +877,8 @@ describe('EmailMicroserviceEventHandler', () => {
                 },
             ]);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[faker.string.uuid(), mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             personRepositoryMock.findById.mockResolvedValue(undefined);
 
@@ -850,6 +914,8 @@ describe('EmailMicroserviceEventHandler', () => {
                 },
             ]);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[faker.string.uuid(), mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             personRepositoryMock.findById.mockResolvedValue(mockPerson);
 
@@ -882,6 +948,8 @@ describe('EmailMicroserviceEventHandler', () => {
                 },
             ]);
             rolleRepoMock.findByIds.mockResolvedValue(new Map([[faker.string.uuid(), mockRolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             personRepositoryMock.findById.mockResolvedValue(mockPerson);
 
@@ -892,6 +960,7 @@ describe('EmailMicroserviceEventHandler', () => {
             );
             expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: personId,
+                gesperrt: false,
             });
         });
     });

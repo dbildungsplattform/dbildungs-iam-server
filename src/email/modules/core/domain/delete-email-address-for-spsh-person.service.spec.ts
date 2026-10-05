@@ -13,6 +13,7 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { Ok, Err } from '../../../../shared/util/result.js';
 import { OxNoSuchUserError } from '../../ox/adapter/domain/error/ox-no-such-user.error.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 
 describe('DeleteEmailsAddressesForSpshPersonService', () => {
     let module: TestingModule;
@@ -39,6 +40,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
                 {
                     provide: LdapClientAdapter,
                     useValue: createMock(LdapClientAdapter),
+                },
+                {
+                    provide: LdapUndiClientAdapter,
+                    useValue: createMock(LdapUndiClientAdapter),
                 },
                 {
                     provide: WebhookService,

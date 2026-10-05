@@ -46,7 +46,7 @@ export class EmailWriteController {
             .setEmailAddressForSpshPerson({
                 spshPersonId: pathParams.spshPersonId,
                 spshUsername: bodyParams.spshUsername,
-                organisations: bodyParams.organisationen,
+                organisationen: bodyParams.organisationen,
                 firstName: bodyParams.firstName,
                 lastName: bodyParams.lastName,
                 gesperrt: bodyParams.gesperrt,

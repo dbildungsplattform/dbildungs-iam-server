@@ -31,6 +31,7 @@ import { EmailAddressGenerator } from './email-address-generator.js';
 import { EmailAddress } from './email-address.js';
 import { EmailDomain } from './email-domain.js';
 import { SetEmailAddressForSpshPersonService } from './set-email-address-for-spsh-person.service.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 
 describe('SetEmailAddressForSpshPersonService', () => {
     let module: TestingModule;
@@ -44,6 +45,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
     let emailAddressGeneratorMock: DeepMocked<EmailAddressGenerator>;
     let oxSendServiceMock: DeepMocked<OxSendService>;
     let ldapClientAdapterMock: DeepMocked<LdapClientAdapter>;
+    let ldapUndiClientAdapterMock: DeepMocked<LdapUndiClientAdapter>;
     let oxAdapterMock: DeepMocked<OxAdapter>;
     let webhookServiceMock: DeepMocked<WebhookService>;
 
@@ -75,6 +77,10 @@ describe('SetEmailAddressForSpshPersonService', () => {
                     useValue: createMock(LdapClientAdapter),
                 },
                 {
+                    provide: LdapUndiClientAdapter,
+                    useValue: createMock(LdapUndiClientAdapter),
+                },
+                {
                     provide: WebhookService,
                     useValue: createMock(WebhookService),
                 },
@@ -91,6 +97,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
         emailAddressGeneratorMock = module.get(EmailAddressGenerator);
         oxSendServiceMock = module.get(OxSendService);
         ldapClientAdapterMock = module.get(LdapClientAdapter);
+        ldapUndiClientAdapterMock = module.get(LdapUndiClientAdapter);
         oxAdapterMock = module.get(OxAdapter);
         webhookServiceMock = module.get(WebhookService);
 
@@ -121,9 +128,10 @@ describe('SetEmailAddressForSpshPersonService', () => {
             {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
-                kennungen: [],
+                organisationen: [],
                 spshServiceProviderId,
                 spshUsername: faker.internet.username(),
+                gesperrt: faker.datatype.boolean(),
             },
         ];
     }
@@ -149,6 +157,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
         it('should create new email if no other mail exists', async () => {
             oxAdapterMock.useOx.mockReturnValue(true);
             ldapClientAdapterMock.useLdap.mockReturnValue(true);
+            ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
             const domain: EmailDomain<true> = await setupDomain();
             const [pathParams, bodyParams]: [
@@ -169,6 +178,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
                     uid: pathParams.spshPersonId,
                 }),
             );
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             await sut.setEmailAddressForSpshPerson({ ...pathParams, ...bodyParams });
 
@@ -195,6 +205,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
         it('should reactivate old email', async () => {
             oxAdapterMock.useOx.mockReturnValue(true);
             ldapClientAdapterMock.useLdap.mockReturnValue(true);
+            ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
             const domain: EmailDomain<true> = await setupDomain();
             const [pathParams, bodyParams]: [
@@ -248,6 +259,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             oxSendServiceMock.send.mockResolvedValueOnce(Ok({})); // Update person
             ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(true)); // Check if person exists
             ldapClientAdapterMock.updatePerson.mockResolvedValueOnce(Ok({} as PersonData));
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             await sut.setEmailAddressForSpshPerson({ ...pathParams, ...bodyParams });
 
@@ -315,6 +327,20 @@ describe('SetEmailAddressForSpshPersonService', () => {
                 email3.address,
                 email1.address,
             );
+            expect(ldapUndiClientAdapterMock.upsertPerson).toHaveBeenCalledWith(
+                {
+                    domain: domain.domain,
+                    uid: pathParams.spshPersonId,
+                    firstName: bodyParams.firstName,
+                    lastName: bodyParams.lastName,
+                    username: bodyParams.spshUsername,
+                    mailPrimaryAddress: email3.address,
+                    mailSecondaryAddress: email1.address,
+                    deaktiviert: false,
+                    gesperrt: bodyParams.gesperrt,
+                },
+                [],
+            );
             expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
                 spshPersonId: pathParams.spshPersonId,
                 newPrimaryEmail: email3.address,
@@ -351,6 +377,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             oxSendServiceMock.send.mockResolvedValueOnce(Ok({})); // Update person
             ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(true)); // Check if person exists
             ldapClientAdapterMock.updatePerson.mockResolvedValueOnce(Ok({} as PersonData));
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             await sut.setEmailAddressForSpshPerson({ ...pathParams, ...bodyParams });
 
@@ -418,6 +445,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             oxSendServiceMock.send.mockResolvedValueOnce(Ok({})); // Update person
             ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(true)); // Check if person exists
             ldapClientAdapterMock.updatePerson.mockResolvedValueOnce(Ok({} as PersonData));
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             const error: EntityNotFoundError = new EntityNotFoundError('test error');
             vi.spyOn(emailAddressRepo, 'shiftPriorities').mockResolvedValueOnce(Err(error));
@@ -458,6 +486,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             oxSendServiceMock.send.mockResolvedValueOnce(Ok({})); // Update person
             ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(true)); // Check if person exists
             ldapClientAdapterMock.updatePerson.mockResolvedValueOnce(Ok({} as PersonData));
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             const shiftPrioritiesSpy: Mock = vi.spyOn(emailAddressRepo, 'shiftPriorities');
 
@@ -594,6 +623,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             oxSendServiceMock.send.mockResolvedValueOnce(Ok({ id: newOxId }));
             ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(false));
             ldapClientAdapterMock.createPerson.mockResolvedValueOnce(Ok({} as PersonData));
+            ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Ok());
 
             const originalSave: EmailAddressRepo['save'] = emailAddressRepo.save;
             vi.spyOn(emailAddressRepo, 'save')
@@ -750,6 +780,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             it('should error when create fails', async () => {
                 oxAdapterMock.useOx.mockReturnValue(true);
                 ldapClientAdapterMock.useLdap.mockReturnValue(true);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
                 const error: OxError = new OxError('test error');
                 oxSendServiceMock.send.mockResolvedValueOnce(Err(error)); // modify
@@ -770,6 +801,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             it('should set status to ALREADY_IN_OX if that error was returned', async () => {
                 oxAdapterMock.useOx.mockReturnValue(true);
                 ldapClientAdapterMock.useLdap.mockReturnValue(true);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
                 const error: OxPrimaryMailAlreadyExistsError = new OxPrimaryMailAlreadyExistsError('test error');
                 oxSendServiceMock.send.mockResolvedValueOnce(Err(error)); // modify
@@ -816,6 +848,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             it('should error when exists-check fails', async () => {
                 oxAdapterMock.useOx.mockReturnValue(true);
                 ldapClientAdapterMock.useLdap.mockReturnValue(true);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
                 const error: Error = new Error('Test Error');
                 ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Err(error));
@@ -839,6 +872,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             it('should error when ldap upsert create fails', async () => {
                 oxAdapterMock.useOx.mockReturnValue(true);
                 ldapClientAdapterMock.useLdap.mockReturnValue(true);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
                 ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(false));
                 const error: Error = new Error('Test Error');
@@ -863,6 +897,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
             it('should error when ldap upsert update fails', async () => {
                 oxAdapterMock.useOx.mockReturnValue(true);
                 ldapClientAdapterMock.useLdap.mockReturnValue(true);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
                 ldapClientAdapterMock.isPersonExisting.mockResolvedValueOnce(Ok(true));
                 const error: Error = new Error('Test Error');
@@ -894,6 +929,56 @@ describe('SetEmailAddressForSpshPersonService', () => {
                 expect(ldapClientAdapterMock.isPersonExisting).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.createPerson).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.updatePerson).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('upsertLdapUndiUser', () => {
+            let domain: EmailDomain<true>;
+            let params: [SetEmailAddressForSpshPersonPathParams, SetEmailAddressForSpshPersonBodyParams];
+            let expectedEmailAddress: string;
+
+            beforeEach(async () => {
+                domain = await setupDomain();
+                params = makeParams(domain.spshServiceProviderId);
+                expectedEmailAddress = `${params[1].firstName}.${params[1].lastName}@${domain.domain}`;
+
+                emailAddressGeneratorMock.generateAvailableAddress.mockResolvedValueOnce(Ok(expectedEmailAddress));
+
+                oxSendServiceMock.send.mockResolvedValueOnce(Ok({ id: faker.string.numeric(5) }));
+            });
+
+            it('should error when ldap upsert fails', async () => {
+                oxAdapterMock.useOx.mockReturnValue(false);
+                ldapClientAdapterMock.useLdap.mockReturnValue(false);
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
+
+                const error: Error = new Error('Test Error');
+                ldapUndiClientAdapterMock.upsertPerson.mockResolvedValueOnce(Err(error));
+
+                await expect(() =>
+                    sut.setEmailAddressForSpshPerson({ ...params[0], ...params[1] }),
+                ).rejects.toBeInstanceOf(EmailAddressGenerationAttemptsExceededError);
+
+                const emailResult: EmailAddress<true>[] = await emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
+                    params[0].spshPersonId,
+                );
+
+                expect(emailResult).toHaveLength(1);
+                expect(emailResult[0]?.getStatus()).toEqual(EmailAddressStatusEnum.FAILED);
+                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                    `Error while updating/creating LDAP UNDI user`,
+                    error,
+                );
+            });
+
+            it('should return ok ldap is disabled', async () => {
+                ldapUndiClientAdapterMock.useLdap.mockReturnValue(false);
+
+                await sut.setEmailAddressForSpshPerson({ ...params[0], ...params[1] });
+                expect(loggerMock.info).toHaveBeenCalledWith(
+                    expect.stringContaining('LDAP UNDI is disabled -> faking upsertLdapUser'),
+                );
+                expect(ldapUndiClientAdapterMock.upsertPerson).not.toHaveBeenCalled();
             });
         });
 

@@ -18,6 +18,8 @@ import { EmailAddressStatusEnum } from '../persistence/email-address-status.enti
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailAddress } from './email-address.js';
 import { SetEmailSuspendedService } from './set-email-suspended.service.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
+import { LdapBindError } from '../../ldap/adapter/domain/error/ldap-bind.error.js';
 
 describe('SetEmailSuspendedService', () => {
     let module: TestingModule;
@@ -25,6 +27,7 @@ describe('SetEmailSuspendedService', () => {
     let orm: MikroORM;
     let emailAddressRepo: EmailAddressRepo;
     let oxAdapterMock: DeepMocked<OxAdapter>;
+    let ldapUndiClientAdapterMock: DeepMocked<LdapUndiClientAdapter>;
     let loggerMock: DeepMocked<ClassLogger>;
     let webhookServiceMock: DeepMocked<WebhookService>;
 
@@ -46,6 +49,10 @@ describe('SetEmailSuspendedService', () => {
                     provide: OxAdapter,
                     useValue: createMock(OxAdapter),
                 },
+                {
+                    provide: LdapUndiClientAdapter,
+                    useValue: createMock(LdapUndiClientAdapter),
+                },
             ],
         }).compile();
 
@@ -53,6 +60,7 @@ describe('SetEmailSuspendedService', () => {
         orm = module.get(MikroORM);
         emailAddressRepo = module.get(EmailAddressRepo);
         oxAdapterMock = module.get(OxAdapter);
+        ldapUndiClientAdapterMock = module.get(LdapUndiClientAdapter);
         loggerMock = module.get(ClassLogger);
         webhookServiceMock = module.get(WebhookService);
 
@@ -101,12 +109,13 @@ describe('SetEmailSuspendedService', () => {
     describe('setEmailsSuspended', () => {
         it('should log and return if no addresses are found', async () => {
             const spshPersonId: string = faker.string.uuid();
+            const gesperrt: boolean = faker.datatype.boolean();
 
             const initial: EmailAddress<true>[] =
                 await emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(spshPersonId);
             expect(initial).toHaveLength(0);
 
-            await sut.setEmailsSuspended({ spshPersonId });
+            await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
             const refreshed: EmailAddress<true>[] =
                 await emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(spshPersonId);
@@ -120,13 +129,14 @@ describe('SetEmailSuspendedService', () => {
 
         it('should set SUSPENDED and markedForCron 90 days for priority 0 and 1, skip > 1', async () => {
             const spshPersonId: string = faker.string.uuid();
+            const gesperrt: boolean = faker.datatype.boolean();
             const inlegibleEmail: string = faker.internet.email();
             await buildEmail(spshPersonId, faker.internet.email(), 0, EmailAddressStatusEnum.ACTIVE);
             await buildEmail(spshPersonId, faker.internet.email(), 1, EmailAddressStatusEnum.ACTIVE);
             await buildEmail(spshPersonId, inlegibleEmail, 2, EmailAddressStatusEnum.PENDING);
 
             const before: number = Date.now();
-            await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+            await sut.setEmailsSuspended({ spshPersonId, gesperrt });
             const after: number = Date.now();
 
             const refreshed: EmailAddress<true>[] =
@@ -154,6 +164,7 @@ describe('SetEmailSuspendedService', () => {
                 `Priority of email address ${inlegibleEmail} is not 0 or 1. Skipping setting suspended`,
             );
             expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
+            expect(ldapUndiClientAdapterMock.updatePersonPartialById).not.toHaveBeenCalled();
             expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
                 spshPersonId,
                 newPrimaryEmail: undefined,
@@ -165,6 +176,7 @@ describe('SetEmailSuspendedService', () => {
 
         it('should not update markedForCron if it already has a value', async () => {
             const spshPersonId: string = faker.string.uuid();
+            const gesperrt: boolean = faker.datatype.boolean();
             await buildEmail(spshPersonId, faker.internet.email(), 0, EmailAddressStatusEnum.ACTIVE);
             await buildEmail(
                 spshPersonId,
@@ -175,7 +187,7 @@ describe('SetEmailSuspendedService', () => {
             );
 
             const before: number = Date.now();
-            await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+            await sut.setEmailsSuspended({ spshPersonId, gesperrt });
             const after: number = Date.now();
 
             const refreshed: EmailAddress<true>[] =
@@ -199,6 +211,7 @@ describe('SetEmailSuspendedService', () => {
         describe('OX groups', () => {
             it('should set OX-groups if user has an OX id', async () => {
                 const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
                 const oxUserCounter: string = faker.string.numeric(6);
                 await buildEmail(
                     spshPersonId,
@@ -211,13 +224,14 @@ describe('SetEmailSuspendedService', () => {
                 oxAdapterMock.useOx.mockReturnValueOnce(true);
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
 
-                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
                 expect(oxAdapterMock.setUserOxGroups).toHaveBeenCalledWith(oxUserCounter, []);
             });
 
             it('should not set OX-groups if user does not have an OX id', async () => {
                 const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
                 await buildEmail(
                     spshPersonId,
                     faker.internet.email(),
@@ -229,13 +243,14 @@ describe('SetEmailSuspendedService', () => {
                 oxAdapterMock.useOx.mockReturnValueOnce(true);
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
 
-                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
                 expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
             });
 
             it('should log error if setting of groups failed', async () => {
                 const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
                 await buildEmail(
                     spshPersonId,
                     faker.internet.email(),
@@ -249,7 +264,7 @@ describe('SetEmailSuspendedService', () => {
                 const error: OxError = new OxError('Could not set groups');
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Err(error));
 
-                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
                 expect(oxAdapterMock.setUserOxGroups).toHaveBeenCalled();
                 expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
@@ -260,6 +275,7 @@ describe('SetEmailSuspendedService', () => {
 
             it('should not set OX-groups if OX is disabled', async () => {
                 const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
                 await buildEmail(
                     spshPersonId,
                     faker.internet.email(),
@@ -271,10 +287,57 @@ describe('SetEmailSuspendedService', () => {
                 oxAdapterMock.useOx.mockReturnValueOnce(false);
                 oxAdapterMock.setUserOxGroups.mockResolvedValueOnce(Ok());
 
-                await sut.setEmailsSuspended({ spshPersonId: spshPersonId });
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
                 expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
                 expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('Ox is disabled'));
+            });
+        });
+
+        describe('UNDI LDAP', () => {
+            it('should update person', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    undefined,
+                );
+                ldapUndiClientAdapterMock.useLdap.mockReturnValueOnce(true);
+                ldapUndiClientAdapterMock.updatePersonPartialById.mockResolvedValueOnce(Ok());
+
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
+
+                expect(ldapUndiClientAdapterMock.updatePersonPartialById).toHaveBeenCalledWith(spshPersonId, {
+                    deaktiviert: true,
+                    gesperrt,
+                });
+            });
+
+            it('should log error', async () => {
+                const spshPersonId: string = faker.string.uuid();
+                const gesperrt: boolean = faker.datatype.boolean();
+                await buildEmail(
+                    spshPersonId,
+                    faker.internet.email(),
+                    0,
+                    EmailAddressStatusEnum.ACTIVE,
+                    undefined,
+                    undefined,
+                );
+                const error: LdapBindError = new LdapBindError();
+                ldapUndiClientAdapterMock.useLdap.mockReturnValueOnce(true);
+                ldapUndiClientAdapterMock.updatePersonPartialById.mockResolvedValueOnce(Err(error));
+
+                await sut.setEmailsSuspended({ spshPersonId, gesperrt });
+
+                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                    'Error while updating user in LDAP UNDI.',
+                    error,
+                );
             });
         });
     });

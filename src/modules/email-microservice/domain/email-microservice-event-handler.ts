@@ -203,7 +203,9 @@ export class EmailMicroserviceEventHandler {
     @KafkaEventHandler(KafkaOrganisationDeletedEvent)
     @EventHandler(OrganisationDeletedEvent)
     @EnsureRequestContext()
-    public async handleOrganisationDeletedEvent(event: KafkaOrganisationDeletedEvent | OrganisationDeletedEvent): Promise<void> {
+    public async handleOrganisationDeletedEvent(
+        event: KafkaOrganisationDeletedEvent | OrganisationDeletedEvent,
+    ): Promise<void> {
         this.logger.info(
             `Received KafkaOrganisationDeletedEvent, organisationId:${event.organisationId}, typ:${event.typ}`,
         );
@@ -272,7 +274,7 @@ export class EmailMicroserviceEventHandler {
         return spshServiceProviderId;
     }
 
-    private async syncPerson(personId: string): Promise<void>{;
+    private async syncPerson(personId: string): Promise<void> {
         this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
         if (!this.emailResolverService.shouldUseEmailMicroservice()) {
             this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);

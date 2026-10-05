@@ -19,7 +19,6 @@ import { LdapFindPersonError } from './error/ldap-find-person.error.js';
 import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.js';
 import { LdapCreateGroupError } from './error/ldap-create-group.error.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
-import { LdapPersonInvalidDNError } from './error/ldap-person-invalid-dn.error.js';
 
 export type PersonDataUndi = {
     domain: string;
@@ -95,12 +94,6 @@ export class LdapUndiClientAdapter {
 
     //** BELOW ONLY PUBLIC FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
 
-    // TODO: SPSH-4220 create public retry-wrapped functions for the internal functions
-    // Public API:
-    // UpsertPerson (takes in person and group data)
-    // DeletePerson
-    // UpdateGroup (for renamed events)
-
     public async upsertPerson(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
         return this.executeWithRetry(() => this.upsertPersonInternal(person, groups), this.getNrOfRetries());
     }
@@ -119,12 +112,6 @@ export class LdapUndiClientAdapter {
         );
     }
 
-    /**
-     * Updates the group in ldap, if it exists (kennung must not be updated!)
-     * @param id
-     * @param name
-     * @returns
-     */
     public async updateGroup(id: string, name: string): Promise<Result<void>> {
         return this.executeWithRetry(() => this.updateGroup(id, name), this.getNrOfRetries());
     }
@@ -374,17 +361,12 @@ export class LdapUndiClientAdapter {
 
         const personDN: string = searchResultPerson.searchEntries[0].dn;
 
-        const dnPrefix: string = `uid=${personUid},cn=${LdapUndiClientAdapter.USERS_CN},ou=`;
-        const dnSuffix: string = `,${this.ldapInstanceConfig.BASE_DN}`;
-
-        if (!personDN.startsWith(dnPrefix) || !personDN.endsWith(dnSuffix)) {
-            return Err(new LdapPersonInvalidDNError(personDN));
-        }
-
-        const baseOu: string = personDN.substring(dnPrefix.length, personDN.length - dnSuffix.length);
-
         // TODO: SPSH-4220 Ask if LDAP is configured to automatically remove dangling references
-        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(personDN, baseOu, []);
+        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(
+            personDN,
+            '', // empty Base-OU is valid here, because we're only removing groups
+            [],
+        );
         if (!setGroupsResult.ok) {
             return setGroupsResult;
         }
@@ -393,41 +375,6 @@ export class LdapUndiClientAdapter {
             await client.del(personDN);
         } catch (e) {
             return Err(new LdapDeletePersonError([e]));
-        }
-
-        return Ok();
-    }
-
-    private async setUserGesperrtByIdInternal(personUid: string, gesperrt: boolean): Promise<Result<void>> {
-        const client: Client = this.ldapClient.getClient();
-        const bindResult: Result<boolean> = await this.bind();
-        if (!bindResult.ok) {
-            return bindResult;
-        }
-
-        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personUid}&objectClass=*)`,
-        });
-
-        if (!searchResultPerson.searchEntries[0]) {
-            // Person does not exist, no need to lock
-            return Ok();
-        }
-
-        const personDN: string = searchResultPerson.searchEntries[0].dn;
-
-        try {
-            await client.modify(personDN, [
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.GESPERRT,
-                        values: [gesperrt ? 'TRUE' : 'FALSE'],
-                    }),
-                }),
-            ]);
-        } catch (e) {
-            return Err(new LdapModifyPersonError([e]));
         }
 
         return Ok();

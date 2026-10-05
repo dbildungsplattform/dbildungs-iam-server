@@ -8,11 +8,15 @@ import { PersonenKontextModule } from '../personenkontext/personenkontext.module
 import { PersonModule } from '../person/person.module.js';
 import { EmailWebhookController } from './api/email-microservice-webhook.controller.js';
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
+import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
+import { OrganisationModule } from '../organisation/organisation.module.js';
 
 @Module({
     imports: [
         HttpModule,
         RolleModule,
+        OrganisationModule,
+        KeycloakAdministrationModule,
         EmailPersistenceModule,
         forwardRef(() => PersonenKontextModule),
         forwardRef(() => PersonModule),
