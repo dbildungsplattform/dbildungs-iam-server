@@ -22,6 +22,7 @@ function resolveSshBinary() {
     if (!found) {
         throw new Error(`ssh-Binary wurde in keinem der bekannten Pfade gefunden (${SSH_BINARY_CANDIDATES.join(', ')})`);
     }
+
     return found;
 }
 
@@ -153,9 +154,11 @@ export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost,
         ...(askPassScript ? [] : ['-o', 'BatchMode=yes']),
         `${sshUser}@${sshHost}`,
     ];
+
     const env = askPassScript
         ? { ...process.env, SSH_ASKPASS: askPassScript, SSH_ASKPASS_REQUIRE: 'force', SSH_KEY_PASSPHRASE: passphrase }
         : process.env;
+
     const child = spawn(resolveSshBinary(), sshArgs, { stdio: ['ignore', 'ignore', 'pipe'], env });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
