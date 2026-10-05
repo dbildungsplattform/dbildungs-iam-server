@@ -31,6 +31,10 @@ import { UserLockRepository } from '../../keycloak-administration/repository/use
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
+import { LocksForPersonChangedEvent } from '../../../shared/events/locks-for-person-changed.event.js';
 
 type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;
 
@@ -86,7 +90,6 @@ describe('EmailMicroserviceEventHandler', () => {
 
         app = module.createNestApplication();
         await app.init();
-
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     afterAll(async () => {
@@ -158,6 +161,7 @@ describe('EmailMicroserviceEventHandler', () => {
             expect(emailResolverServiceMock.setEmailForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
                 ...params,
+                organisationen: [mockOrganisation],
             });
         });
 
@@ -166,9 +170,7 @@ describe('EmailMicroserviceEventHandler', () => {
             const spshPersonId: string = faker.string.uuid();
             const params: SetEmailParams = {
                 spshUsername: '',
-                organisationen: [
-                    DoFactory.createOrganisation(true, { kennung: '0706054' }),
-                ],
+                organisationen: [DoFactory.createOrganisation(true, { kennung: '0706054' })],
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: mockServiceProviderId,
@@ -337,9 +339,9 @@ describe('EmailMicroserviceEventHandler', () => {
                 spshPersonId: mockPersonId,
                 spshUsername: 'testuser',
                 organisationen: [mockOrganisation],
-                gesperrt: false,
                 firstName: 'Max',
                 lastName: 'Mustermann',
+                gesperrt: false,
                 spshServiceProviderId: mockServiceProviderId,
             });
         });
@@ -789,6 +791,149 @@ describe('EmailMicroserviceEventHandler', () => {
         });
     });
 
+    describe('handleOrganisationDeletedEvent', () => {
+        it('should log and return early when microservice is disabled', async () => {
+            const organisationId: string = faker.string.uuid();
+            const event: OrganisationDeletedEvent = new OrganisationDeletedEvent(
+                organisationId,
+                faker.company.name(),
+                faker.string.numeric(7),
+                OrganisationsTyp.SCHULE,
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
+
+            await sut.handleOrganisationDeletedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Ignoring Event for organisationId:${organisationId} because email microservice is disabled`,
+                ),
+            );
+            expect(emailResolverServiceMock.deleteSchool).not.toHaveBeenCalled();
+        });
+
+        it('should log and return early when organisation is not a school', async () => {
+            const organisationId: string = faker.string.uuid();
+            const event: OrganisationDeletedEvent = new OrganisationDeletedEvent(
+                organisationId,
+                faker.company.name(),
+                faker.string.numeric(7),
+                OrganisationsTyp.LAND,
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+            await sut.handleOrganisationDeletedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Ignoring Event for organisationId:${organisationId} because it is not a school`,
+                ),
+            );
+            expect(emailResolverServiceMock.deleteSchool).not.toHaveBeenCalled();
+        });
+
+        it('should call deleteSchool when microservice is enabled and organisation is a school', async () => {
+            const organisationId: string = faker.string.uuid();
+            const event: OrganisationDeletedEvent = new OrganisationDeletedEvent(
+                organisationId,
+                faker.company.name(),
+                faker.string.numeric(7),
+                OrganisationsTyp.SCHULE,
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+            await sut.handleOrganisationDeletedEvent(event);
+
+            expect(emailResolverServiceMock.deleteSchool).toHaveBeenCalledWith({ organisationId });
+        });
+    });
+
+    describe('handleSchuleUpdatedEvent', () => {
+        it('should log and return early when microservice is disabled', async () => {
+            const organisationId: string = faker.string.uuid();
+            const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
+                organisationId,
+                faker.company.name(),
+                faker.company.name(),
+                faker.string.numeric(7),
+                faker.string.numeric(7),
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
+
+            await sut.handleSchuleUpdatedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Ignoring Event for organisationId:${organisationId} because email microservice is disabled`,
+                ),
+            );
+            expect(emailResolverServiceMock.updateSchoolName).not.toHaveBeenCalled();
+        });
+
+        it('should log and return early when newName is not provided', async () => {
+            const organisationId: string = faker.string.uuid();
+            const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
+                organisationId,
+                faker.company.name(),
+                undefined,
+                faker.string.numeric(7),
+                faker.string.numeric(7),
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+            await sut.handleSchuleUpdatedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Ignoring Event for organisationId:${organisationId} because newName is not provided`,
+                ),
+            );
+            expect(emailResolverServiceMock.updateSchoolName).not.toHaveBeenCalled();
+        });
+
+        it('should log and return early when newName is the same as oldName', async () => {
+            const organisationId: string = faker.string.uuid();
+            const name: string = faker.company.name();
+            const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
+                organisationId,
+                name,
+                name,
+                faker.string.numeric(7),
+                faker.string.numeric(7),
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+            await sut.handleSchuleUpdatedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Ignoring Event for organisationId:${organisationId} because newName is the same as oldName`,
+                ),
+            );
+            expect(emailResolverServiceMock.updateSchoolName).not.toHaveBeenCalled();
+        });
+
+        it('should call updateSchoolName when microservice is enabled and name changed', async () => {
+            const organisationId: string = faker.string.uuid();
+            const newName: string = faker.company.name();
+            const event: SchuleUpdatedEvent = new SchuleUpdatedEvent(
+                organisationId,
+                faker.company.name(),
+                newName,
+                faker.string.numeric(7),
+                faker.string.numeric(7),
+            );
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
+
+            await sut.handleSchuleUpdatedEvent(event);
+
+            expect(emailResolverServiceMock.updateSchoolName).toHaveBeenCalledWith({
+                organisationId,
+                newName,
+            });
+        });
+    });
+
     describe('handlePersonExternalSystemsSyncEvent', () => {
         it('should log and return if microservice is disabled', async () => {
             const personId: string = faker.string.uuid();
@@ -957,6 +1102,54 @@ describe('EmailMicroserviceEventHandler', () => {
 
             expect(loggerMock.info).toHaveBeenCalledWith(
                 expect.stringContaining('No email service provider found for personId:'),
+            );
+            expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).toHaveBeenCalledWith({
+                spshPersonId: personId,
+                gesperrt: false,
+            });
+        });
+    });
+
+    describe('handleLocksForPersonChangedEvent', () => {
+        it('should log and return if microservice is disabled', async () => {
+            const personId: string = faker.string.uuid();
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+
+            await sut.handleLocksForPersonChangedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining(`Ignoring Event for personId:${personId}`),
+            );
+            expect(emailResolverServiceMock.setEmailForSpshPerson).not.toHaveBeenCalled();
+            expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).not.toHaveBeenCalled();
+        });
+
+        it('should call setEmailsSuspendedForSpshPerson when microservice is enabled and no provider exists', async () => {
+            const personId: string = faker.string.uuid();
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
+            const mockRolle: Rolle<true> = DoFactory.createRolle(true, {
+                serviceProviderData: [
+                    DoFactory.createServiceProvider(true, {
+                        externalSystem: ServiceProviderSystem.NONE,
+                    }),
+                ],
+            });
+            personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
+                {
+                    personenkontext: DoFactory.createPersonenkontext(true),
+                    organisation: DoFactory.createOrganisation(true),
+                    rolle: mockRolle,
+                },
+            ]);
+            rolleRepoMock.findByIds.mockResolvedValue(new Map([[mockRolle.id, mockRolle]]));
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
+
+            await sut.handleLocksForPersonChangedEvent(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                expect.stringContaining('Received LocksForPersonChangedEvent'),
             );
             expect(emailResolverServiceMock.setEmailsSuspendedForSpshPerson).toHaveBeenCalledWith({
                 spshPersonId: personId,

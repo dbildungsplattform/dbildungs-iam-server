@@ -98,7 +98,7 @@ export class EmailWriteController {
         @Body() bodyParams: UpdateOrganisationBodyParams,
     ): void {
         void this.modifyOrganisationInLdapService
-            .modifyOrganisationInLdap(pathParams.organisationId, bodyParams.name, bodyParams.kennung)
+            .modifyOrganisationNameInLdap(pathParams.organisationId, bodyParams.name)
             .catch((err: Error) => {
                 this.logger.error(`Error in background LDAP organisation update: ${err.message}`);
             });
