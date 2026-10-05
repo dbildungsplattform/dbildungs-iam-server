@@ -179,7 +179,14 @@ async function resolveRootChildren(client, rootOrganisationId) {
     const oeffentlich = rows.find((r) => r.name?.includes('Öffentliche'));
     const ersatz = rows.find((r) => r.name?.includes('Ersatz'));
 
-    return { oeffentlichId: oeffentlich?.id, ersatzId: ersatz?.id };
+    // Can happen for a wrong --root-organisation-id.
+    if (!oeffentlich || !ersatz) {
+        throw new Error(
+            `Konnte unter --root-organisation-id ${rootOrganisationId} nicht beide Kinder 'Oeffentliche Schulen' und 'Ersatzschulen' finden.`,
+        );
+    }
+
+    return { oeffentlichId: oeffentlich.id, ersatzId: ersatz.id };
 }
 
 // Analogous to OrganisationRepository.findOrganisationZuordnungErsatzOderOeffentlich():
