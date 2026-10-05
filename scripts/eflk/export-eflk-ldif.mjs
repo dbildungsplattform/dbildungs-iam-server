@@ -207,6 +207,17 @@ async function fetchOrganisationen(client, organisationIds) {
     return organisationenById;
 }
 
+// Diagnostic cross-check: "hat E-Mail" (email.address priority 0/1) is checked independently
+// of "hat Personenkontext mit E-Mail Service-Provider" (organisationIds) - a high count here
+// can mean many persons have qualifying address rows without an active E-Mail-Rolle.
+function logEmailKontextDiagnostics(persons) {
+    const personsWithoutEmailServiceProviderKontext = persons.filter((p) => p.organisationIds.length === 0).length;
+    console.log(
+        `${persons.length} Personen erfuellen 'hat E-Mail' (email.address, priority 0/1, unabhaengig vom Status); `
+        + `davon ${personsWithoutEmailServiceProviderKontext} ohne Personenkontext mit E-Mail-Service-Provider.`,
+    );
+}
+
 async function main() {
     const args = parseArgs(process.argv.slice(2));
 
@@ -244,14 +255,7 @@ async function main() {
         const roots = await resolveRootChildren(client, args.rootOrganisationId);
         const persons = await fetchPersonsWithEmail(client);
 
-        // Diagnostic cross-check: "hat E-Mail" (email.address priority 0/1) is checked independently
-        // of "hat Personenkontext mit E-Mail Service-Provider" (organisationIds) - a high count here
-        // can mean many persons have qualifying address rows without an active E-Mail-Rolle.
-        const personsWithoutEmailServiceProviderKontext = persons.filter((p) => p.organisationIds.length === 0).length;
-        console.log(
-            `${persons.length} Personen erfuellen 'hat E-Mail' (email.address, priority 0/1, unabhaengig vom Status); `
-            + `davon ${personsWithoutEmailServiceProviderKontext} ohne Personenkontext mit E-Mail-Service-Provider.`,
-        );
+        logEmailKontextDiagnostics(persons);
 
         const allOrganisationIds = [...new Set(persons.flatMap((p) => p.organisationIds))];
         const organisationen = await fetchOrganisationen(client, allOrganisationIds);
@@ -272,16 +276,17 @@ async function main() {
 
         const outputLines = [...buildContainerEntries(args.baseDn)];
 
+        const personDnById = new Map();
         for (const person of persons) {
             const ou = ouByPerson.get(person.id);
-            const { lines } = buildPersonEntry(person, ou, args.baseDn);
+            const { dn, lines } = buildPersonEntry(person, ou, args.baseDn);
+            personDnById.set(person.id, dn);
             outputLines.push(...lines, '');
         }
 
         const membersByOrganisation = new Map();
         for (const person of persons) {
-            const ou = ouByPerson.get(person.id);
-            const personDn = `uid=${person.id},cn=users,ou=${ou},${args.baseDn}`;
+            const personDn = personDnById.get(person.id);
             for (const organisationId of person.organisationIds) {
                 const list = membersByOrganisation.get(organisationId) ?? [];
                 list.push(personDn);
