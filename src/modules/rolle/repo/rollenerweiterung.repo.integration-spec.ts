@@ -27,6 +27,7 @@ import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { RollenerweiterungEntity } from '../entity/rollenerweiterung.entity.js';
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
@@ -195,6 +196,42 @@ describe('RollenerweiterungRepo', () => {
                 expect(re.serviceProviderId).toBe(serviceProviders[0]!.id);
                 expect(re.organisationId).toBe(organisations[0]!.id);
             }
+        });
+
+        it('should return at most five rollenerweiterungen per service provider', async () => {
+            const parentOrga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const testServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+
+            const rolleResults: Array<Rolle<true> | DomainError> = await Promise.all(
+                makeN(
+                    () =>
+                        rolleRepo.save(
+                            DoFactory.createRolle(false, { administeredBySchulstrukturknoten: parentOrga.id }),
+                        ),
+                    6,
+                ),
+            );
+
+            const rollen: Rolle<true>[] = rolleResults.map((value: Rolle<true> | DomainError) => {
+                if (value instanceof DomainError) {
+                    throw value;
+                }
+                return value;
+            });
+
+            await Promise.all(
+                rollen.map((rolle: Rolle<true>) =>
+                    sut.create(factory.createNew(parentOrga.id, rolle.id, testServiceProvider.id)),
+                ),
+            );
+
+            const result: Map<ServiceProviderID, Rollenerweiterung<true>[]> = await sut.findByServiceProviderIds([
+                testServiceProvider.id,
+            ]);
+
+            expect(result.get(testServiceProvider.id)).toHaveLength(5);
         });
     });
 
@@ -370,6 +407,57 @@ describe('RollenerweiterungRepo', () => {
             expect(result).toHaveLength(1);
             expect(result[0]!.organisationId).toBe(otherOrganisation.id);
             expect(result[0]!.serviceProviderId).toBe(serviceProvider.id);
+        });
+    });
+
+    describe('findManyByRolleId', () => {
+        it('should return all rollenerweiterungen for the requested rolle id', async () => {
+            const organisationA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const targetRolleOrError: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+            const otherRolleOrError: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+
+            if (targetRolleOrError instanceof DomainError || otherRolleOrError instanceof DomainError) {
+                throw new Error('Failed to create test rollen');
+            }
+
+            const targetRolle: Rolle<true> = targetRolleOrError;
+            const otherRolle: Rolle<true> = otherRolleOrError;
+
+            const serviceProviderA: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+            const serviceProviderB: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+
+            await sut.create(factory.createNew(organisationA.id, targetRolle.id, serviceProviderA.id));
+            await sut.create(factory.createNew(organisationB.id, targetRolle.id, serviceProviderB.id));
+            await sut.create(factory.createNew(organisationA.id, otherRolle.id, serviceProviderA.id));
+
+            const result: Array<Rollenerweiterung<true>> = await sut.findManyByRolleId(targetRolle.id);
+
+            expect(result).toHaveLength(2);
+            expect(result.every((entry: Rollenerweiterung<true>) => entry.rolleId === targetRolle.id)).toBe(true);
+        });
+
+        it('should return an empty array when rollenerweiterungen only exist for another rolle', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const existingRolleOrError: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+
+            if (existingRolleOrError instanceof DomainError) {
+                throw existingRolleOrError;
+            }
+
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+            });
+
+            await sut.create(factory.createNew(organisation.id, existingRolleOrError.id, serviceProvider.id));
+
+            const result: Array<Rollenerweiterung<true>> = await sut.findManyByRolleId(faker.string.uuid());
+
+            expect(result).toEqual([]);
         });
     });
 
@@ -933,6 +1021,30 @@ describe('RollenerweiterungRepo', () => {
                     ),
                 ).toHaveLength(3);
             });
+        });
+
+        test('should return rollenerweiterungen when authorized for the organisation', async () => {
+            permissionMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+
+            const result: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
+                await sut.findManyByOrganisationAndRolleAuthorized(organisations[0]!.id, rollen[0]!.id, permissionMock);
+
+            expectOkResult(result);
+            expect(result.value).toHaveLength(3);
+            expect(permissionMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                organisations[0]!.id,
+                RollenSystemRecht.ROLLEN_ERWEITERN,
+            );
+        });
+
+        test('should return MissingPermissionsError when not authorized for the organisation', async () => {
+            permissionMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
+
+            const result: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
+                await sut.findManyByOrganisationAndRolleAuthorized(organisations[0]!.id, rollen[0]!.id, permissionMock);
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(MissingPermissionsError);
         });
     });
 

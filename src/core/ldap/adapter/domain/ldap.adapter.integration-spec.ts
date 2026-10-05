@@ -13,6 +13,7 @@ import {
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     LdapTestModule,
 } from '../../../../../test/utils/index.js';
+import { LdapBindError } from '../../../../email/modules/ldap/adapter/domain/error/ldap-bind.error.js';
 import { Person } from '../../../../modules/person/domain/person.js';
 import { PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
@@ -28,14 +29,13 @@ import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
 import { LdapDeleteOrganisationError } from './error/ldap-delete-organisation.error.js';
 import { LdapEmailAddressError } from './error/ldap-email-address.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
+import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
 import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
 import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
 import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
 import { LdapSearchError } from './error/ldap-search.error.js';
 import { LdapAdapter, LdapPersonAttributes, PersonData } from './ldap.adapter.js';
 import { LdapEntityType } from './ldap.types.js';
-import { LdapBindError } from '../../../../email/modules/ldap/adapter/domain/error/ldap-bind.error.js';
-import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
         _func: () => Promise<Result<T>>,
@@ -3180,6 +3180,56 @@ describe('LDAP Adapter', () => {
 
                 const promise: Promise<Result<string>> = ldapClientAdapter.deleteOrganisation(kennung);
                 await expect(promise).resolves.toEqual(Err(new LdapDeleteOrganisationError({ kennung })));
+            });
+        });
+    });
+
+    describe('organisationExists', () => {
+        it('should return true when the organisation exists', async () => {
+            ldapClientMock.getClient.mockImplementation(() => {
+                clientMock.bind.mockResolvedValueOnce();
+                clientMock.search.mockResolvedValueOnce({
+                    searchEntries: [{ dn: 'dn=example' }],
+                    searchReferences: [],
+                });
+                return clientMock;
+            });
+            const kennung: string = faker.string.numeric(7);
+
+            const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
+
+            expect(clientMock.search).toHaveBeenLastCalledWith(mockLdapInstanceConfig.BASE_DN, {
+                scope: 'sub',
+                filter: `(ou=${kennung})`,
+            });
+            expect(result).toEqual(Ok(true));
+        });
+
+        it('should return false when the organisation does not exist', async () => {
+            ldapClientMock.getClient.mockImplementation(() => {
+                clientMock.bind.mockResolvedValueOnce();
+                clientMock.search.mockResolvedValueOnce({
+                    searchEntries: [],
+                    searchReferences: [],
+                });
+                return clientMock;
+            });
+            const kennung: string = faker.string.numeric(7);
+
+            const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
+            expect(result).toEqual(Ok(false));
+        });
+
+        describe('when bind fails', () => {
+            it('should return error', async () => {
+                ldapClientMock.getClient.mockImplementation(() => {
+                    clientMock.bind.mockRejectedValueOnce(Err(false));
+                    return clientMock;
+                });
+                const kennung: string = faker.string.numeric(7);
+
+                const result: Result<boolean> = await ldapClientAdapter.organisationExists(kennung);
+                expect(result).toEqual({ error: new LdapBindError(), ok: false });
             });
         });
     });

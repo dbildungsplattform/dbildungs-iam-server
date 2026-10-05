@@ -115,6 +115,46 @@ describe('DBiamPersonenkontextService', () => {
         });
     });
 
+    describe('IsPersonalnummerRequiredByRoleIds', () => {
+        describe('when any rolle has koperspflichtig merkmal', () => {
+            it('should return true', async () => {
+                const mapRollen: Map<string, Rolle<true>> = new Map();
+                mapRollen.set(
+                    '1',
+                    DoFactory.createRolle(true, {
+                        rollenart: RollenArt.LEHR,
+                        merkmale: [RollenMerkmal.KOPERS_PFLICHT],
+                        id: '1',
+                    }),
+                );
+                mapRollen.set('2', DoFactory.createRolle(true, { rollenart: RollenArt.LEIT, merkmale: [], id: '2' }));
+                rolleRepoMock.findByIds.mockResolvedValueOnce(mapRollen);
+
+                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);
+                expect(result).toBeTruthy();
+            });
+        });
+
+        describe('when no personenkontext has a rolle with koperspflichtig merkmale', () => {
+            it('should return false', async () => {
+                const mapRollen: Map<string, Rolle<true>> = new Map();
+                mapRollen.set(
+                    '1',
+                    DoFactory.createRolle(true, {
+                        rollenart: RollenArt.LERN,
+                        merkmale: [],
+                        id: '1',
+                    }),
+                );
+                mapRollen.set('2', DoFactory.createRolle(true, { rollenart: RollenArt.LEIT, merkmale: [], id: '2' }));
+                rolleRepoMock.findByIds.mockResolvedValueOnce(mapRollen);
+
+                const result: boolean = await sut.isPersonalnummerRequiredByRoleIds(['1', '2']);
+                expect(result).toBeFalsy();
+            });
+        });
+    });
+
     describe('getKopersPersonenkontexte', () => {
         describe('when a person has a personenkontext with a rolle with koperspflichtig merkmale', () => {
             it('should return the personenkontext', async () => {

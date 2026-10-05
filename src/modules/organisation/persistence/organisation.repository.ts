@@ -682,34 +682,23 @@ export class OrganisationRepository {
         if (organisationEntity.version !== organisation.version) {
             throw new OrganisationUpdateOutdatedError();
         }
-        const oldName: string | undefined = organisationEntity.name;
-        const oldKennung: string | undefined = organisationEntity.kennung;
+
+        const oldOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
         organisationEntity.version += 1;
 
         organisationEntity.assign(mapOrgaAggregateToData(organisation));
 
         await this.em.persist(organisationEntity).flush();
 
-        if (organisationEntity.typ === OrganisationsTyp.SCHULE) {
+        const updatedOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
+        if (updatedOrganisation.typ === OrganisationsTyp.SCHULE) {
             this.eventService.publish(
-                new SchuleUpdatedEvent(
-                    organisationEntity.id,
-                    oldName,
-                    organisationEntity.name,
-                    oldKennung,
-                    organisationEntity.kennung,
-                ),
-                new KafkaSchuleUpdatedEvent(
-                    organisationEntity.id,
-                    oldName,
-                    organisationEntity.name,
-                    oldKennung,
-                    organisationEntity.kennung,
-                ),
+                SchuleUpdatedEvent.fromOrganisations(updatedOrganisation, oldOrganisation),
+                KafkaSchuleUpdatedEvent.fromOrganisations(updatedOrganisation, oldOrganisation),
             );
         }
 
-        return mapOrgaEntityToAggregate(organisationEntity);
+        return updatedOrganisation;
     }
 
     public async findOrganisationZuordnungErsatzOderOeffentlich(

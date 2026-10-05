@@ -23,6 +23,8 @@ import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persi
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
@@ -144,7 +146,11 @@ describe('LdapSyncEventHandler', () => {
     }
 
     function getRolle(rollenart: RollenArt = RollenArt.LEHR): Rolle<true> {
-        return DoFactory.createRolle<true>(true, { rollenart: rollenart });
+        const serviceProviderData: ServiceProvider<true>[] =
+            rollenart === RollenArt.LEHR
+                ? [DoFactory.createServiceProvider<true>(true, { externalSystem: ServiceProviderSystem.UEM })]
+                : [];
+        return DoFactory.createRolle<true>(true, { rollenart: rollenart, serviceProviderData: serviceProviderData });
     }
 
     function getOrgaMap(...orgas: Organisation<true>[]): Map<OrganisationID, Organisation<true>> {

@@ -1,5 +1,11 @@
 export enum RollenSystemRechtEnum {
     ROLLEN_VERWALTEN = 'ROLLEN_VERWALTEN',
+    MPT_ROLLEN_ZUORDNEN = 'MPT_ROLLEN_ZUORDNEN',
+    PILOT_1_ROLLEN_ZUORDNEN = 'PILOT_1_ROLLEN_ZUORDNEN',
+    PILOT_2_ROLLEN_ZUORDNEN = 'PILOT_2_ROLLEN_ZUORDNEN',
+    PILOT_3_ROLLEN_ZUORDNEN = 'PILOT_3_ROLLEN_ZUORDNEN',
+    PILOT_4_ROLLEN_ZUORDNEN = 'PILOT_4_ROLLEN_ZUORDNEN',
+    PILOT_5_ROLLEN_ZUORDNEN = 'PILOT_5_ROLLEN_ZUORDNEN',
     PERSONEN_SOFORT_LOESCHEN = 'PERSONEN_SOFORT_LOESCHEN', // Implicitly requires PERSONEN_VERWALTEN to be usable in the frontend
     PERSONEN_VERWALTEN = 'PERSONEN_VERWALTEN',
     LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN = 'LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN',
@@ -38,6 +44,36 @@ export class RollenSystemRecht {
     public static readonly ROLLEN_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
         false,
         RollenSystemRechtEnum.ROLLEN_VERWALTEN,
+    );
+
+    public static readonly MPT_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
+    );
+
+    public static readonly PILOT_1_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.PILOT_1_ROLLEN_ZUORDNEN,
+    );
+
+    public static readonly PILOT_2_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.PILOT_2_ROLLEN_ZUORDNEN,
+    );
+
+    public static readonly PILOT_3_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
+    );
+
+    public static readonly PILOT_4_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN,
+    );
+
+    public static readonly PILOT_5_ROLLEN_ZUORDNEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN,
     );
 
     // Implicitly requires PERSONEN_VERWALTEN to be usable in the frontend
@@ -140,6 +176,12 @@ export class RollenSystemRecht {
 
     public static readonly ALL: RollenSystemRecht[] = [
         RollenSystemRecht.ROLLEN_VERWALTEN,
+        RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+        RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN,
+        RollenSystemRecht.PILOT_2_ROLLEN_ZUORDNEN,
+        RollenSystemRecht.PILOT_3_ROLLEN_ZUORDNEN,
+        RollenSystemRecht.PILOT_4_ROLLEN_ZUORDNEN,
+        RollenSystemRecht.PILOT_5_ROLLEN_ZUORDNEN,
         RollenSystemRecht.PERSONEN_SOFORT_LOESCHEN,
         RollenSystemRecht.PERSONEN_VERWALTEN,
         RollenSystemRecht.LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN,
@@ -165,6 +207,18 @@ export class RollenSystemRecht {
         switch (name) {
             case RollenSystemRechtEnum.ROLLEN_VERWALTEN:
                 return RollenSystemRecht.ROLLEN_VERWALTEN;
+            case RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.MPT_ROLLEN_ZUORDNEN;
+            case RollenSystemRechtEnum.PILOT_1_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN;
+            case RollenSystemRechtEnum.PILOT_2_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.PILOT_2_ROLLEN_ZUORDNEN;
+            case RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.PILOT_3_ROLLEN_ZUORDNEN;
+            case RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.PILOT_4_ROLLEN_ZUORDNEN;
+            case RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN:
+                return RollenSystemRecht.PILOT_5_ROLLEN_ZUORDNEN;
             case RollenSystemRechtEnum.PERSONEN_SOFORT_LOESCHEN:
                 return RollenSystemRecht.PERSONEN_SOFORT_LOESCHEN;
             case RollenSystemRechtEnum.PERSONEN_VERWALTEN:

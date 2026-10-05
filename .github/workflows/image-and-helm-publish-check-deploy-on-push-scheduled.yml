@@ -7,17 +7,21 @@ on:
   push:
     branches:
       - "**"
+  pull_request:
+    branches:
+      - main
   schedule:
     - cron: "0 2 * * *"
   delete:
 
 concurrency:
-  group: dbildungs-iam-server-${{ github.event.ref }}
+  group: dbildungs-iam-server-${{ github.event.pull_request.number || github.event.ref }}
   cancel-in-progress: true
 
 jobs:
   check_deployment_clearance:
     name: "Check deployment clearance"
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,7 +100,7 @@ jobs:
 
   tests_and_sonarcloud:
     name: "Tests and Sonarcloud"
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'main') || github.event_name == 'pull_request' }}
     uses: dBildungsplattform/dbp-github-workflows/.github/workflows/check-nest-test-sonarcloud.yaml@8
     with:
       node_version: "24.16.0"
