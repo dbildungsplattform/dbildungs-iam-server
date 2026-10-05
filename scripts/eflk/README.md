@@ -46,7 +46,7 @@ node scripts/eflk/export-eflk-ldif.mjs \
 * **`uid`** = `person.id` (UUID), **`cn`** = `person.username`.
 * **`deaktiviert`**: `TRUE`, wenn `person.org_unassignment_date` gesetzt ist
 * **`gesperrt`**: `TRUE`, wenn ein `user_lock`-Eintrag existiert, dessen `locked_until` `NULL` ist oder in der Zukunft liegt.
-* **Schulzugehörigkeit**: nur Personenkontexte, deren Rolle einen `service_provider` mit `kategorie = 'EMAIL'` hat.
+* **Schulzugehörigkeit**: nur Personenkontexte, deren Rolle einen `service_provider` mit `external_system = 'EMAIL'` hat.
 * **Öffentlich vs. Ersatzschule**: repliziert
   `OrganisationRepository.findOrganisationZuordnungErsatzOderOeffentlich()`
   (Namenserkennung "Öffentliche"/"Ersatz" unter den direkten Kindern der

@@ -72,7 +72,7 @@ export async function queryPersonOrganisationContexts(client, personIds) {
         `SELECT DISTINCT pk.person_id, pk.organisation_id
          FROM public.personenkontext pk
          JOIN public.rolle_service_provider rsp ON rsp.rolle_id = pk.rolle_id
-         JOIN public.service_provider sp ON sp.id = rsp.service_provider_id AND sp.kategorie = 'EMAIL'
+         JOIN public.service_provider sp ON sp.id = rsp.service_provider_id AND sp.external_system = 'EMAIL'
          WHERE pk.person_id = ANY($1::uuid[])`,
         [personIds],
     );
