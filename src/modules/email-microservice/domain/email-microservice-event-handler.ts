@@ -238,23 +238,23 @@ export class EmailMicroserviceEventHandler {
             return;
         }
 
-        if (!event.newName) {
+        if (!event.name) {
             this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because newName is not provided`,
+                `Ignoring Event for organisationId:${event.organisationId} because name is not provided`,
             );
             return;
         }
 
-        if (event.newName === event.oldName) {
+        if (event.name === event.oldName) {
             this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because newName is the same as oldName`,
+                `Ignoring Event for organisationId:${event.organisationId} because name is the same as oldName`,
             );
             return;
         }
 
         await this.emailResolverService.updateSchoolName({
             organisationId: event.organisationId,
-            newName: event.newName,
+            newName: event.name,
         });
     }
 
