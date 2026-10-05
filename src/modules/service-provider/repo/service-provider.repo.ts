@@ -284,6 +284,7 @@ export class ServiceProviderRepo {
         merkmale: ServiceProviderMerkmal[],
         limit?: number,
         offset?: number,
+        rollenArten?: RollenArt[],
     ): Promise<Counted<ServiceProvider<true>>> {
         // each merkmal needs its own $and entry, otherwise a single relation-join would require just one of them to match
         const where: FilterQuery<ServiceProviderEntity> = {
@@ -291,6 +292,13 @@ export class ServiceProviderRepo {
             ...(merkmale.length > 0 && {
                 $and: merkmale.map((merkmal: ServiceProviderMerkmal) => ({ merkmale: { merkmal } })),
             }),
+            ...(rollenArten &&
+                rollenArten.length > 0 && {
+                    $or: [
+                        { rollenartenWhitelist: { $none: {} } },
+                        { rollenartenWhitelist: { $some: { rollenart: { $in: rollenArten } } } },
+                    ],
+                }),
         };
 
         const [entities, count]: Counted<ServiceProviderEntity> = await this.em.findAndCount(

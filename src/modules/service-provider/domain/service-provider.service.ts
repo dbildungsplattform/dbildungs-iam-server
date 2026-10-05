@@ -246,6 +246,8 @@ export class ServiceProviderService {
         organisationId: OrganisationID,
         permissions: IPersonPermissions,
         rollenArten?: RollenArt[],
+        limit?: number,
+        offset?: number,
     ): Promise<Counted<ServiceProvider<true>>> {
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.ROLLEN_ERWEITERN],
@@ -259,25 +261,17 @@ export class ServiceProviderService {
             organisationId,
             ...parents.map((orga: Organisation<true>) => orga.id),
         ];
-        const serviceProviders: Counted<ServiceProvider<true>> = await this.serviceProviderRepo.findByOrgasWithMerkmale(
+        return this.serviceProviderRepo.findByOrgasWithMerkmale(
             organisationWithParentsIds,
             // only show Angebote activated for the schulische Rollenverwaltung
             [
                 ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                 ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
             ],
+            limit,
+            offset,
+            rollenArten,
         );
-
-        if (rollenArten && rollenArten.length > 0) {
-            const filteredServiceProviders: ServiceProvider<true>[] = serviceProviders[0].filter(
-                (sp: ServiceProvider<true>) =>
-                    sp.rollenartenWhitelist.length === 0 ||
-                    sp.rollenartenWhitelist.some((ra: RollenArt) => rollenArten.includes(ra)),
-            );
-            return [filteredServiceProviders, filteredServiceProviders.length];
-        }
-
-        return serviceProviders;
     }
 
     private async getRollenAndRollenerweiterungCountForServiceProviders(

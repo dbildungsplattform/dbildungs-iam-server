@@ -644,6 +644,58 @@ describe('ServiceProviderRepo', () => {
                 expect(serviceProviderResult[index]!.kategorie).toBe(kategorie);
             });
         });
+
+        it('filters by rollenartenWhitelist before applying pagination and counting', async () => {
+            const orgId: string = faker.string.uuid();
+            const requiredMerkmale: ServiceProviderMerkmal[] = [
+                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+            ];
+            const [unrestrictedProvider, matchingProvider, nonMatchingProvider]: ServiceProvider<true>[] =
+                await Promise.all([
+                    createAndPersistServiceProvider(em, {
+                        kategorie: ServiceProviderKategorie.EMAIL,
+                        providedOnSchulstrukturknoten: orgId,
+                        merkmale: requiredMerkmale,
+                        rollenartenWhitelist: [],
+                    }),
+                    createAndPersistServiceProvider(em, {
+                        kategorie: ServiceProviderKategorie.UNTERRICHT,
+                        providedOnSchulstrukturknoten: orgId,
+                        merkmale: requiredMerkmale,
+                        rollenartenWhitelist: [RollenArt.LEHR],
+                    }),
+                    createAndPersistServiceProvider(em, {
+                        kategorie: ServiceProviderKategorie.HINWEISE,
+                        providedOnSchulstrukturknoten: orgId,
+                        merkmale: requiredMerkmale,
+                        rollenartenWhitelist: [RollenArt.LERN],
+                    }),
+                ]);
+
+            const [firstPage, firstPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
+                [orgId],
+                requiredMerkmale,
+                1,
+                0,
+                [RollenArt.LEHR],
+            );
+            const [secondPage, secondPageCount]: Counted<ServiceProvider<true>> = await sut.findByOrgasWithMerkmale(
+                [orgId],
+                requiredMerkmale,
+                1,
+                1,
+                [RollenArt.LEHR],
+            );
+
+            expect(firstPageCount).toBe(2);
+            expect(secondPageCount).toBe(2);
+            expect(firstPage).toHaveLength(1);
+            expect(secondPage).toHaveLength(1);
+            expect(new Set([firstPage[0]!.id, secondPage[0]!.id])).toEqual(
+                new Set([unrestrictedProvider!.id, matchingProvider!.id]),
+            );
+            expect([firstPage[0]!.id, secondPage[0]!.id]).not.toContain(nonMatchingProvider!.id);
+        });
     });
 
     describe('findAuthorizedById', () => {
