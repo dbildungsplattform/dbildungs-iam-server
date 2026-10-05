@@ -570,7 +570,7 @@ describe('RolleRepo', () => {
             expect(total).toBe(1);
         });
 
-        it('should exclude MPT rollen from authorized default lookup when caller lacks MPT_ROLLEN_ZUORDNEN', async () => {
+        it('should include MPT and Pilot rollen in authorized default lookup without gated systemrechte', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const organisationId: OrganisationID = organisation.id;
             const defaultRolle: Rolle<true> | DomainError = await sut.save(
@@ -582,8 +582,18 @@ describe('RolleRepo', () => {
                     merkmale: [RollenMerkmal.MPT_ROLLE],
                 }),
             );
+            const pilotRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                }),
+            );
 
-            if (defaultRolle instanceof DomainError || mptRolle instanceof DomainError) {
+            if (
+                defaultRolle instanceof DomainError ||
+                mptRolle instanceof DomainError ||
+                pilotRolle instanceof DomainError
+            ) {
                 throw Error();
             }
 
@@ -600,10 +610,11 @@ describe('RolleRepo', () => {
                 0,
             );
 
-            expect(rolleResult).toHaveLength(1);
-            expect(total).toBe(1);
-            expect(rolleResult?.[0]?.id).toBe(defaultRolle.id);
-            expect(rolleResult.map((rolle: Rolle<true>) => rolle.id)).not.toContain(mptRolle.id);
+            expect(rolleResult).toHaveLength(3);
+            expect(total).toBe(3);
+            expect(rolleResult?.map((rolle: Rolle<true>) => rolle.id)).toEqual(
+                expect.arrayContaining([defaultRolle.id, mptRolle.id, pilotRolle.id]),
+            );
         });
 
         it('should include MPT rollen when caller actually holds MPT_ROLLEN_ZUORDNEN', async () => {

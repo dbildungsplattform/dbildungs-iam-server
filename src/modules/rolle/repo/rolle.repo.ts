@@ -390,37 +390,12 @@ export class RolleRepo {
             allowedOrganisationIds = orgIdsWithRecht.orgaIds;
         }
 
-        // Rollen carrying a gated Merkmal (MPT_ROLLE, PILOT_1_ROLLE, ...) are only shown if the paired RollenSystemRecht
-        // was both explicitly requested via `systemrechte` and actually held by the caller - holding the right alone
-        // does not surface the Rolle unless the caller also asked for it.
-        const hasPermissionPerPaar: boolean[] = await Promise.all(
-            RollenmerkmalSystemrechtPaar.ALL.map(async (paar: RollenmerkmalSystemrechtPaar): Promise<boolean> => {
-                const wasRequested: boolean = systemrechte?.includes(paar.systemrecht) ?? false;
-                if (!wasRequested) {
-                    return false;
-                }
-                if (allowedOrganisationIds) {
-                    const permissionsPerOrga: boolean[] = await Promise.all(
-                        allowedOrganisationIds.map((orga: OrganisationID) =>
-                            permissions.hasSystemrechtAtOrganisation(orga, paar.systemrecht),
-                        ),
-                    );
-                    return permissionsPerOrga.every(Boolean);
-                }
-                return permissions.hasSystemrechteAtRootOrganisation([paar.systemrecht]);
-            }),
-        );
-        const excludeMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.ALL.filter(
-            (_paar: RollenmerkmalSystemrechtPaar, index: number) => !hasPermissionPerPaar[index],
-        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
-
         return this.findBy({
             includeTechnische,
             searchStr,
             limit,
             offset,
             allowedOrganisationIds,
-            excludeMerkmale,
             rolleIds,
             orderBy: 'artAndName',
             merkmale,
