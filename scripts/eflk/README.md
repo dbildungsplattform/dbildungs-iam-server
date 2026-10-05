@@ -41,8 +41,8 @@ node scripts/eflk/export-eflk-ldif.mjs \
 // TODO: PR Review
 ## Getroffene Annahmen (bitte vor Prod-Nutzung gegenprüfen)
 
-* **"Hat E-Mail"**: mindestens eine `email.address` mit `priority IN (0,1)` und
-  aktuellstem Status `ACTIVE` oder `DEACTIVE`.
+* **"Hat E-Mail"**: mindestens eine `email.address` mit `priority IN (0,1)`,
+  unabhängig vom Status (Prio 0/1 wird immer ins LDAP/OX geschrieben).
 * **`uid`** = `person.id` (UUID), **`cn`** = `person.username`.
 * **`deaktiviert`**: `TRUE`, wenn `person.org_unassignment_date` gesetzt ist
 * **`gesperrt`**: `TRUE`, wenn ein `user_lock`-Eintrag existiert, dessen `locked_until` `NULL` ist oder in der Zukunft liegt.

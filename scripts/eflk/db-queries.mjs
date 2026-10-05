@@ -33,15 +33,8 @@ export async function queryPersonsWithEmail(client) {
          WHERE EXISTS (
              SELECT 1
              FROM email.address a
-             JOIN LATERAL (
-                 SELECT status FROM email.address_status s
-                 WHERE s.email_address_id = a.id
-                 ORDER BY s.created_at DESC
-                 LIMIT 1
-             ) latest ON true
              WHERE a.spsh_person_id = p.id::text
                AND a.priority IN (0, 1)
-               AND latest.status IN ('ACTIVE', 'DEACTIVE')
          )
          ORDER BY p.id`,
     );
@@ -51,17 +44,10 @@ export async function queryPersonsWithEmail(client) {
 
 export async function queryEmailsForPersons(client, personIds) {
     const { rows } = await client.query(
-        `SELECT a.spsh_person_id AS person_id, a.address, a.priority, latest.status
+        `SELECT a.spsh_person_id AS person_id, a.address, a.priority
          FROM email.address a
-         JOIN LATERAL (
-             SELECT status FROM email.address_status s
-             WHERE s.email_address_id = a.id
-             ORDER BY s.created_at DESC
-             LIMIT 1
-         ) latest ON true
          WHERE a.spsh_person_id = ANY($1::text[])
            AND a.priority IN (0, 1)
-           AND latest.status IN ('ACTIVE', 'DEACTIVE')
          ORDER BY a.spsh_person_id, a.priority`,
         [personIds],
     );

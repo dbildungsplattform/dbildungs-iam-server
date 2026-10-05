@@ -198,7 +198,7 @@ async function classifyOrganisation(client, organisationId, roots, cache) {
     return result;
 }
 
-// Persons with at least one priority 0/1 email address whose latest status is ACTIVE/DEACTIVE.
+// Persons with at least one priority 0/1 email address (status is irrelevant, see README.md).
 async function fetchPersonsWithEmail(client) {
     const personRows = await queryPersonsWithEmail(client);
 
@@ -284,7 +284,7 @@ async function main() {
         // can mean many persons have qualifying address rows without an active E-Mail-Rolle.
         const personsWithoutEmailServiceProviderKontext = persons.filter((p) => p.organisationIds.length === 0).length;
         console.log(
-            `${persons.length} Personen erfuellen 'hat E-Mail' (email.address, priority 0/1, Status ACTIVE/DEACTIVE); `
+            `${persons.length} Personen erfuellen 'hat E-Mail' (email.address, priority 0/1, unabhaengig vom Status); `
             + `davon ${personsWithoutEmailServiceProviderKontext} ohne Personenkontext mit E-Mail-Service-Provider.`,
         );
 
