@@ -1095,29 +1095,60 @@ describe('LDAP UNDI Client Adapter', () => {
         });
     });
 
-    describe('updatePersonPartialById', () => {
+    describe('setPersonSuspendedById', () => {
+        let id: string;
+        let dn: string;
+
+        beforeEach(() => {
+            id = faker.string.uuid();
+            dn = `uid=${id}`;
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValue({ searchEntries: [{ dn }], searchReferences: [] });
+            clientMock.modify.mockResolvedValue();
+        });
+
         it('should search for user and update it', async () => {
-            const id: string = faker.string.uuid();
-            const dn: string = `uid=${id}`;
+            const groupDn: string = `cn=${faker.string.uuid()},cn=groups,${instanceConfig.BASE_DN}`;
+            clientMock.search
+                .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchReferences: [],
+                })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn: groupDn, member: [dn] }],
+                    searchReferences: [],
+                });
 
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
-                clientMock.modify.mockResolvedValueOnce();
-                return clientMock;
-            });
-
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(id, {
-                gesperrt: true,
-                deaktiviert: false,
-            });
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, true);
 
             expectOkResult(result);
-            expect(clientMock.search).toHaveBeenCalledWith(instanceConfig.BASE_DN, {
+            expect(clientMock.search).toHaveBeenNthCalledWith(1, instanceConfig.BASE_DN, {
                 filter: `(uid=${id}&objectClass=*)`,
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
-            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
+            expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
+                filter: '(objectClass=*)',
+                scope: 'base',
+                attributes: [LdapUndiClientAdapter.MEMBER_OF],
+            });
+            expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
+                scope: 'base',
+                filter: '(objectClass=groupOfNames)',
+                attributes: [LdapUndiClientAdapter.MEMBER],
+            });
+            expect(clientMock.modify).toHaveBeenCalledTimes(2);
+            expect(clientMock.modify).toHaveBeenNthCalledWith(1, groupDn, [
+                new Change({
+                    operation: 'delete',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.MEMBER,
+                        values: [dn],
+                    }),
+                }),
+            ]);
+            expect(clientMock.modify).toHaveBeenNthCalledWith(2, dn, [
                 new Change({
                     operation: 'replace',
                     modification: new Attribute({
@@ -1129,41 +1160,29 @@ describe('LDAP UNDI Client Adapter', () => {
                     operation: 'replace',
                     modification: new Attribute({
                         type: LdapUndiClientAdapter.DEAKTIVIERT,
-                        values: ['FALSE'],
+                        values: ['TRUE'],
                     }),
                 }),
             ]);
+            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
         });
 
         it('should error if person can not be found', async () => {
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
-                return clientMock;
-            });
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
 
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(faker.string.uuid(), {
-                gesperrt: true,
-                deaktiviert: false,
-            });
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, true);
 
             expectErrResult(result);
             expect(result.error).toBeInstanceOf(LdapFindPersonError);
+            expect(clientMock.search).toHaveBeenCalledTimes(1);
             expect(clientMock.modify).not.toHaveBeenCalled();
+            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
         });
 
-        it.each([true, false])('should update only gesperrt (%s)', async (gesperrt: boolean) => {
-            const id: string = faker.string.uuid();
-            const dn: string = `uid=${id}`;
-
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
-                clientMock.modify.mockResolvedValueOnce();
-                return clientMock;
-            });
-
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(id, { gesperrt });
+        it.each([true, false])('should update gesperrt (%s)', async (gesperrt: boolean) => {
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, gesperrt);
 
             expectOkResult(result);
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
@@ -1174,59 +1193,71 @@ describe('LDAP UNDI Client Adapter', () => {
                         values: [gesperrt ? 'TRUE' : 'FALSE'],
                     }),
                 }),
-            ]);
-        });
-
-        it.each([true, false])('should only update deaktiviert (%s)', async (deaktiviert: boolean) => {
-            const id: string = faker.string.uuid();
-            const dn: string = `uid=${id}`;
-
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
-                clientMock.modify.mockResolvedValueOnce();
-                return clientMock;
-            });
-
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(id, { deaktiviert });
-
-            expectOkResult(result);
-            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
                 new Change({
                     operation: 'replace',
                     modification: new Attribute({
                         type: LdapUndiClientAdapter.DEAKTIVIERT,
-                        values: [deaktiviert ? 'TRUE' : 'FALSE'],
+                        values: ['TRUE'],
                     }),
                 }),
             ]);
         });
 
-        it('should return modify error', async () => {
-            const id: string = faker.string.uuid();
-            const dn: string = `uid=${id}`;
+        it('should return set groups error', async () => {
+            const groupDn: string = `cn=${faker.string.uuid()},cn=groups,${instanceConfig.BASE_DN}`;
+            const error: Error = new Error('LDAP group membership removal failed');
+            clientMock.search
+                .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchReferences: [],
+                })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn: groupDn, member: [dn] }],
+                    searchReferences: [],
+                });
+            clientMock.modify.mockRejectedValueOnce(error);
 
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
-                clientMock.modify.mockRejectedValueOnce(undefined);
-                return clientMock;
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, true);
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapSetPersonGroupsError);
+            expect(result.error).toMatchObject({
+                details: [expect.any(LdapRemovePersonFromGroupError)],
             });
+            expect(result.error).toHaveProperty('details.0.details', [error]);
+            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(groupDn, [
+                new Change({
+                    operation: 'delete',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.MEMBER,
+                        values: [dn],
+                    }),
+                }),
+            ]);
+            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
+        });
 
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(id, {});
+        it('should return modify error', async () => {
+            const error: Error = new Error('LDAP modify failed');
+            clientMock.modify.mockRejectedValueOnce(error);
+
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, true);
 
             expectErrResult(result);
             expect(result.error).toBeInstanceOf(LdapModifyPersonError);
+            expect(result.error).toHaveProperty('details', [error]);
+            expect(clientMock.search).toHaveBeenCalledTimes(2);
+            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, expect.any(Array));
+            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
         });
 
         it('should return bind error', async () => {
-            ldapClientMock.getClient.mockReturnValue(clientMock);
             clientMock.bind.mockRejectedValueOnce(new Error('LDAP bind failed'));
 
-            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(faker.string.uuid(), {
-                gesperrt: true,
-                deaktiviert: false,
-            });
+            const result: Result<void> = await ldapClientAdapter.setPersonSuspendedById(id, true);
 
             expectErrResult(result);
             expect(result.error).toBeInstanceOf(LdapBindError);

@@ -103,12 +103,9 @@ export class LdapUndiClientAdapter {
         return this.executeWithRetry(() => this.deletePersonInternal(personID), this.getNrOfRetries());
     }
 
-    public async updatePersonPartialById(
-        personID: string,
-        updateData: Partial<Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>>,
-    ): Promise<Result<void>> {
+    public async setPersonSuspendedById(personID: string, gesperrt: boolean): Promise<Result<void>> {
         return this.executeWithRetry(
-            () => this.updatePersonPartialByIdInternal(personID, updateData),
+            () => this.setPersonSuspendedByIdInternal(personID, gesperrt),
             this.getNrOfRetries(),
         );
     }
@@ -290,10 +287,7 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async updatePersonPartialByIdInternal(
-        personId: string,
-        updateData: Partial<Pick<PersonDataUndi, 'deaktiviert' | 'gesperrt'>>,
-    ): Promise<Result<void>> {
+    private async setPersonSuspendedByIdInternal(personId: string, gesperrt: boolean): Promise<Result<void>> {
         const client: Client = this.ldapClient.getClient();
         const bindResult: Result<boolean> = await this.bind();
         if (!bindResult.ok) {
@@ -311,32 +305,32 @@ export class LdapUndiClientAdapter {
 
         const personDN: string = searchResultPerson.searchEntries[0].dn;
 
+        const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(
+            personDN,
+            '', // empty Base-OU is valid here, because we're only removing groups
+            [],
+        );
+        if (!setGroupsResult.ok) {
+            return setGroupsResult;
+        }
+
         try {
-            const changes: Change[] = [];
-
-            if (updateData.gesperrt !== undefined) {
-                changes.push(
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.GESPERRT,
-                            values: [updateData.gesperrt ? 'TRUE' : 'FALSE'],
-                        }),
+            const changes: Change[] = [
+                new Change({
+                    operation: 'replace',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.GESPERRT,
+                        values: [gesperrt ? 'TRUE' : 'FALSE'],
                     }),
-                );
-            }
-
-            if (updateData.deaktiviert !== undefined) {
-                changes.push(
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.DEAKTIVIERT,
-                            values: [updateData.deaktiviert ? 'TRUE' : 'FALSE'],
-                        }),
+                }),
+                new Change({
+                    operation: 'replace',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.DEAKTIVIERT,
+                        values: ['TRUE'],
                     }),
-                );
-            }
+                }),
+            ];
 
             await client.modify(personDN, changes);
         } catch (e) {
@@ -365,7 +359,6 @@ export class LdapUndiClientAdapter {
 
         const personDN: string = searchResultPerson.searchEntries[0].dn;
 
-        // TODO: SPSH-4220 Ask if LDAP is configured to automatically remove dangling references
         const setGroupsResult: Result<void> = await this.setPersonGroupsInternal(
             personDN,
             '', // empty Base-OU is valid here, because we're only removing groups

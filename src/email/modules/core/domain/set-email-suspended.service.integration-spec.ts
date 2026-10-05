@@ -164,7 +164,7 @@ describe('SetEmailSuspendedService', () => {
                 `Priority of email address ${inlegibleEmail} is not 0 or 1. Skipping setting suspended`,
             );
             expect(oxAdapterMock.setUserOxGroups).not.toHaveBeenCalled();
-            expect(ldapUndiClientAdapterMock.updatePersonPartialById).not.toHaveBeenCalled();
+            expect(ldapUndiClientAdapterMock.setPersonSuspendedById).not.toHaveBeenCalled();
             expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
                 spshPersonId,
                 newPrimaryEmail: undefined,
@@ -307,14 +307,11 @@ describe('SetEmailSuspendedService', () => {
                     undefined,
                 );
                 ldapUndiClientAdapterMock.useLdap.mockReturnValueOnce(true);
-                ldapUndiClientAdapterMock.updatePersonPartialById.mockResolvedValueOnce(Ok());
+                ldapUndiClientAdapterMock.setPersonSuspendedById.mockResolvedValueOnce(Ok());
 
                 await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 
-                expect(ldapUndiClientAdapterMock.updatePersonPartialById).toHaveBeenCalledWith(spshPersonId, {
-                    deaktiviert: true,
-                    gesperrt,
-                });
+                expect(ldapUndiClientAdapterMock.setPersonSuspendedById).toHaveBeenCalledWith(spshPersonId, gesperrt);
             });
 
             it('should log error', async () => {
@@ -330,7 +327,7 @@ describe('SetEmailSuspendedService', () => {
                 );
                 const error: LdapBindError = new LdapBindError();
                 ldapUndiClientAdapterMock.useLdap.mockReturnValueOnce(true);
-                ldapUndiClientAdapterMock.updatePersonPartialById.mockResolvedValueOnce(Err(error));
+                ldapUndiClientAdapterMock.setPersonSuspendedById.mockResolvedValueOnce(Err(error));
 
                 await sut.setEmailsSuspended({ spshPersonId, gesperrt });
 

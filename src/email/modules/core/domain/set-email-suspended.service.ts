@@ -103,9 +103,6 @@ export class SetEmailSuspendedService {
             return Ok();
         }
 
-        return this.ldapUndiClientAdapter.updatePersonPartialById(personId, {
-            deaktiviert: true, // suspended
-            gesperrt: gesperrt,
-        });
+        return this.ldapUndiClientAdapter.setPersonSuspendedById(personId, gesperrt);
     }
 }
