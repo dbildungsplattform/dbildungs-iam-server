@@ -127,6 +127,8 @@ export class DeleteEmailsAddressesForSpshPersonService {
                     ldapUndiDeleteResult.error,
                 );
             }
+        } else {
+            this.logger.info(`LDAP UNDI disabled -> faking deletePerson. Data: spshPersonId=${params.spshPersonId}`);
         }
 
         if (canDbDeleteAllAdresses) {

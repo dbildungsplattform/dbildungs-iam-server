@@ -128,7 +128,18 @@ describe('SetEmailAddressForSpshPersonService', () => {
             {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
-                organisationen: [],
+                organisationen: [
+                    {
+                        id: faker.string.uuid(),
+                        name: faker.company.name(),
+                        kennung: faker.string.numeric(7),
+                    },
+                    {
+                        id: faker.string.uuid(),
+                        name: faker.company.name(),
+                        kennung: faker.string.numeric(7),
+                    },
+                ],
                 spshServiceProviderId,
                 spshUsername: faker.internet.username(),
                 gesperrt: faker.datatype.boolean(),
@@ -339,7 +350,7 @@ describe('SetEmailAddressForSpshPersonService', () => {
                     deaktiviert: false,
                     gesperrt: bodyParams.gesperrt,
                 },
-                [],
+                bodyParams.organisationen,
             );
             expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
                 spshPersonId: pathParams.spshPersonId,

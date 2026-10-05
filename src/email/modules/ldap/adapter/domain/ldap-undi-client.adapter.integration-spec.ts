@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Attribute, Change, Client } from 'ldapts';
-import { vi } from 'vitest';
+import { MockInstance, vi } from 'vitest';
 import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../../test/utils/database-test.module.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
@@ -27,6 +27,7 @@ import { LdapCreateGroupError } from './error/ldap-create-group.error.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
 import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
 import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
@@ -45,6 +46,7 @@ describe('LDAP UNDI Client Adapter', () => {
     let ldapClientAdapter: LdapUndiClientAdapter;
     let ldapClientMock: DeepMocked<LdapUndiClient>;
     let clientMock: DeepMocked<Client>;
+    let loggerMock: DeepMocked<ClassLogger>;
     let instanceConfig: LdapUndiEmailMicroserviceInstanceConfig;
 
     const mockLdapInstanceConfig: LdapUndiEmailMicroserviceInstanceConfig = {
@@ -84,6 +86,7 @@ describe('LDAP UNDI Client Adapter', () => {
         ldapClientAdapter = module.get(LdapUndiClientAdapter);
         ldapClientMock = module.get(LdapUndiClient);
         clientMock = createMock(Client);
+        loggerMock = module.get(ClassLogger);
         instanceConfig = module.get(LdapUndiEmailMicroserviceInstanceConfig);
 
         //currently only used to wait for the LDAP container, because setupDatabase() is blocking
@@ -104,6 +107,8 @@ describe('LDAP UNDI Client Adapter', () => {
         clientMock = createMock(Client);
         await DatabaseTestModule.clearDatabase(orm);
 
+        mockLdapInstanceConfig.ENABLED = true;
+
         vi.spyOn(ldapClientAdapter as unknown as PublicExecuteWithRetry, 'executeWithRetry').mockImplementation(
             (...args: unknown[]) => {
                 //Needed To globally mock the private executeWithRetry function (otherwise test run too long)
@@ -112,6 +117,112 @@ describe('LDAP UNDI Client Adapter', () => {
                 return func();
             },
         );
+    });
+
+    describe('executeWithRetry', () => {
+        beforeEach(() => {
+            vi.restoreAllMocks();
+            vi.useFakeTimers({ toFake: ['setTimeout'] });
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            vi.useRealTimers();
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 2;
+        });
+
+        it('when operation succeeds should return value', async () => {
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+
+            const result: Result<void> = await ldapClientAdapter.deletePerson(faker.string.uuid());
+
+            expectOkResult(result);
+            expect(clientMock.bind).toHaveBeenCalledTimes(1);
+            expect(loggerMock.logUnknownAsError).not.toHaveBeenCalled();
+            expect(loggerMock.error).not.toHaveBeenCalled();
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it('should handle a Result with ok=false and return its error after the final attempt', async () => {
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 1;
+            clientMock.bind.mockRejectedValue(new Error('LDAP bind failed'));
+
+            const result: Result<void> = await ldapClientAdapter.deletePerson(faker.string.uuid());
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapBindError);
+            expect(clientMock.bind).toHaveBeenCalledTimes(1);
+            expect(clientMock.search).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 0',
+                result.error,
+            );
+            expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 1 attempts failed. Exiting with failure.');
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
+            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
+            clientMock.bind.mockRejectedValue(new Error('LDAP bind failed'));
+            const timeoutSpy: MockInstance<typeof setTimeout> = vi.spyOn(globalThis, 'setTimeout');
+
+            const resultPromise: Promise<Result<void>> = ldapClientAdapter.deletePerson(faker.string.uuid());
+            await vi.runAllTimersAsync();
+            const result: Result<void> = await resultPromise;
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapBindError);
+            expect(clientMock.bind).toHaveBeenCalledTimes(LdapUndiClientAdapter.FALLBACK_RETRIES);
+            expect(clientMock.search).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
+            for (let attempt: number = 1; attempt <= LdapUndiClientAdapter.FALLBACK_RETRIES; attempt++) {
+                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                    `Attempt ${attempt} failed. Retrying in 15000ms... Remaining retries: ${LdapUndiClientAdapter.FALLBACK_RETRIES - attempt}`,
+                    expect.any(LdapBindError),
+                );
+            }
+            expect(timeoutSpy).toHaveBeenCalledTimes(LdapUndiClientAdapter.FALLBACK_RETRIES - 1);
+            expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 15000);
+            expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 3 attempts failed. Exiting with failure.');
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it('when operation fails it should automatically retry the operation with nr of retries set via env', async () => {
+            clientMock.bind.mockRejectedValue(new Error('LDAP bind failed'));
+            const timeoutSpy: MockInstance<typeof setTimeout> = vi.spyOn(globalThis, 'setTimeout');
+
+            const resultPromise: Promise<Result<void>> = ldapClientAdapter.deletePerson(faker.string.uuid());
+            await vi.runAllTimersAsync();
+            const result: Result<void> = await resultPromise;
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapBindError);
+            expect(clientMock.bind).toHaveBeenCalledTimes(2);
+            expect(clientMock.search).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 1',
+                expect.any(LdapBindError),
+            );
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                'Attempt 2 failed. Retrying in 15000ms... Remaining retries: 0',
+                expect.any(LdapBindError),
+            );
+            expect(timeoutSpy).toHaveBeenCalledExactlyOnceWith(expect.any(Function), 15000);
+            expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 2 attempts failed. Exiting with failure.');
+            expect(vi.getTimerCount()).toBe(0);
+        });
+    });
+
+    describe('useLdap', () => {
+        it('should return false, if ENABLED is false', () => {
+            mockLdapInstanceConfig.ENABLED = false;
+
+            expect(ldapClientAdapter.useLdap()).toBe(false);
+        });
     });
 
     describe('upsertPerson', () => {
@@ -238,16 +349,88 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.add).not.toHaveBeenCalled();
         });
 
-        it('should return error if root name could not be determined', async () => {
-            person.domain = 'invalid.example';
+        describe('getRootName', () => {
+            it.each([
+                ['schule-sh.de', 'oeffentlicheSchulen'],
+                ['ersatzschule-sh.de', 'ersatzSchulen'],
+            ])('should use the correct root name for domain %s', async (domain: string, rootName: string) => {
+                person.domain = domain;
+                const dn: string = `uid=${person.uid},cn=users,ou=${rootName},${instanceConfig.BASE_DN}`;
+
+                ldapClientMock.getClient.mockReturnValue(clientMock);
+                clientMock.bind.mockResolvedValue();
+                clientMock.search
+                    .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
+                    .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+                clientMock.add.mockResolvedValueOnce();
+
+                const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
+
+                expectOkResult(result);
+                expect(clientMock.search).toHaveBeenNthCalledWith(1, dn, {
+                    filter: '(objectClass=*)',
+                    scope: 'base',
+                    attributes: [LdapUndiClientAdapter.MEMBER_OF],
+                });
+                expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(
+                    dn,
+                    expect.objectContaining({ [LdapUndiClientAdapter.UID]: person.uid }),
+                );
+                expect(clientMock.modify).not.toHaveBeenCalled();
+            });
+
+            it('should return error if root name could not be determined', async () => {
+                person.domain = 'invalid.example';
+
+                const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
+
+                expectErrResult(result);
+                expect(result.error).toBeInstanceOf(LdapEmailDomainError);
+                expect(ldapClientMock.getClient).not.toHaveBeenCalled();
+                expect(clientMock.add).not.toHaveBeenCalled();
+                expect(clientMock.modify).not.toHaveBeenCalled();
+            });
+        });
+
+        it('should return error when creating user', async () => {
+            const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+            const error: Error = new Error('LDAP add failed');
+
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+            clientMock.add.mockRejectedValueOnce(error);
 
             const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
 
             expectErrResult(result);
-            expect(result.error).toBeInstanceOf(LdapEmailDomainError);
-            expect(ldapClientMock.getClient).not.toHaveBeenCalled();
-            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(result.error).toBeInstanceOf(LdapCreatePersonError);
+            expect(result.error).toHaveProperty('details', [error]);
+            expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(
+                dn,
+                expect.objectContaining({ [LdapUndiClientAdapter.UID]: person.uid }),
+            );
+            expect(clientMock.search).toHaveBeenCalledTimes(1);
             expect(clientMock.modify).not.toHaveBeenCalled();
+        });
+
+        it('should return error when updating user', async () => {
+            const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+            const error: Error = new Error('LDAP modify failed');
+
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+            clientMock.modify.mockRejectedValueOnce(error);
+
+            const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapModifyPersonError);
+            expect(result.error).toHaveProperty('details', [error]);
+            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, expect.any(Array));
+            expect(clientMock.search).toHaveBeenCalledTimes(1);
+            expect(clientMock.add).not.toHaveBeenCalled();
         });
 
         it('should return bind error', async () => {
@@ -837,6 +1020,47 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.modify).not.toHaveBeenCalled();
         });
 
+        it('should return error when setPersonGroups fails', async () => {
+            const id: string = faker.string.uuid();
+            const dn: string = `uid=${id}`;
+            const groupDn: string = `cn=${faker.string.uuid()},cn=groups,${instanceConfig.BASE_DN}`;
+            const error: Error = new Error('LDAP group membership removal failed');
+
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search
+                .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchReferences: [],
+                })
+                .mockResolvedValueOnce({
+                    searchEntries: [{ dn: groupDn, member: [dn] }],
+                    searchReferences: [],
+                });
+            clientMock.modify.mockRejectedValueOnce(error);
+
+            const result: Result<void> = await ldapClientAdapter.deletePerson(id);
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapSetPersonGroupsError);
+            expect(result.error).toMatchObject({
+                details: [expect.any(LdapRemovePersonFromGroupError)],
+            });
+            expect(result.error).toHaveProperty('details.0.details', [error]);
+            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(groupDn, [
+                new Change({
+                    operation: 'delete',
+                    modification: new Attribute({
+                        type: LdapUndiClientAdapter.MEMBER,
+                        values: [dn],
+                    }),
+                }),
+            ]);
+            expect(clientMock.del).not.toHaveBeenCalled();
+            expect(clientMock.add).not.toHaveBeenCalled();
+        });
+
         it('should return delete error', async () => {
             const id: string = faker.string.uuid();
             const dn: string = `uid=${id}`;
@@ -993,6 +1217,27 @@ describe('LDAP UNDI Client Adapter', () => {
 
             expectErrResult(result);
             expect(result.error).toBeInstanceOf(LdapModifyPersonError);
+        });
+
+        it('should return bind error', async () => {
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockRejectedValueOnce(new Error('LDAP bind failed'));
+
+            const result: Result<void> = await ldapClientAdapter.updatePersonPartialById(faker.string.uuid(), {
+                gesperrt: true,
+                deaktiviert: false,
+            });
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(LdapBindError);
+            expect(clientMock.bind).toHaveBeenCalledExactlyOnceWith(
+                instanceConfig.BIND_DN,
+                instanceConfig.ADMIN_PASSWORD,
+            );
+            expect(clientMock.search).not.toHaveBeenCalled();
+            expect(clientMock.modify).not.toHaveBeenCalled();
+            expect(clientMock.add).not.toHaveBeenCalled();
+            expect(clientMock.del).not.toHaveBeenCalled();
         });
     });
 
