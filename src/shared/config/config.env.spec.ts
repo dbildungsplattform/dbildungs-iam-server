@@ -1,3 +1,4 @@
+import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 import configEnv, { Config } from './config.env.js';
 
 describe('Config Loader', () => {
@@ -55,6 +56,33 @@ describe('Config Loader', () => {
             process.env['IMPORT_CSV_MAX_NUMBER_OF_USERS'] = 'string';
 
             expect(() => configEnv()).toThrow();
+        });
+    });
+
+    describe('Portal Config', () => {
+        it('should load Portal configuration with parsed enum array values', () => {
+            process.env['PORTAL_LIMITED_ROLLENART_ALLOWLIST'] = 'LERN,EXTERN';
+
+            const config: Config = configEnv();
+            expect(config.PORTAL).toEqual({
+                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+            });
+        });
+
+        it('should filter invalid Portal enum values', () => {
+            process.env['PORTAL_LIMITED_ROLLENART_ALLOWLIST'] = 'LERN,INVALID,EXTERN';
+
+            const config: Config = configEnv();
+            expect(config.PORTAL).toEqual({
+                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+            });
+        });
+
+        it('should set undefined for Portal values if not provided', () => {
+            const config: Config = configEnv();
+            expect(config.PORTAL).toEqual({
+                LIMITED_ROLLENART_ALLOWLIST: undefined,
+            });
         });
     });
 });

@@ -22,7 +22,11 @@ export class SchuleKennungEindeutig extends CompositeSpecification<Organisation<
         orgaScope.findBy({
             kennung: organisation.kennung,
         });
-        const [, total]: Counted<Organisation<true>> = await this.organisationRepo.findBy(orgaScope);
-        return total <= 0;
+        const [data]: Counted<Organisation<true>> = await this.organisationRepo.findBy(orgaScope);
+        if (data.some((org: Organisation<true>) => org.id !== organisation.id)) {
+            return false;
+        } else {
+            return true;
+        }
     }
 }

@@ -6,6 +6,8 @@ import {
     ServiceProviderKategorieTypName,
     ServiceProviderMerkmal,
     ServiceProviderMerkmalTypName,
+    ServiceProviderSystem,
+    ServiceProviderSystemTypName,
     ServiceProviderTarget,
     ServiceProviderTargetTypName,
 } from '../domain/service-provider.enum.js';
@@ -42,6 +44,9 @@ export class ServiceProviderResponse {
     @ApiProperty({ enum: RollenArt, enumName: RollenArtTypName, isArray: true })
     public rollenartenWhitelist: RollenArt[];
 
+    @ApiProperty({ enum: ServiceProviderSystem, enumName: ServiceProviderSystemTypName })
+    public externalSystem: ServiceProviderSystem;
+
     public constructor(serviceProvider: ServiceProvider<true>) {
         this.id = serviceProvider.id;
         this.name = serviceProvider.name;
@@ -53,5 +58,6 @@ export class ServiceProviderResponse {
         this.requires2fa = serviceProvider.requires2fa;
         this.merkmale = serviceProvider.merkmale;
         this.rollenartenWhitelist = serviceProvider.rollenartenWhitelist;
+        this.externalSystem = serviceProvider.externalSystem;
     }
 }

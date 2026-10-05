@@ -18,6 +18,8 @@ import { ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityCouldNotBeUpdated } from '../../../shared/error/entity-could-not-be-updated.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/index.js';
 import { OrganisationID } from '../../../shared/types/index.js';
@@ -1411,72 +1413,46 @@ describe('OrganisationRepository', () => {
             });
         });
 
-        describe('When update is called', () => {
-            it('should publish SchuleUpdatedEvent with old and new values', async () => {
-                const oldName: string = faker.company.name();
-                const newName: string = faker.company.name();
-                const oldKennung: string = faker.string.numeric();
-                const newKennung: string = faker.string.numeric();
-                const schule: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
-                    typ: OrganisationsTyp.SCHULE,
-                    name: oldName,
-                    kennung: oldKennung,
-                });
-                const schuleEntity: OrganisationEntity = em.create(
-                    OrganisationEntity,
-                    mapOrgaAggregateToData(schule),
+        describe('When update is called for a Schule', () => {
+            it('should publish SchuleUpdatedEvent successfully', async () => {
+                const savedSchule: Organisation<true> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        administriertVon: organisationEntity2.id,
+                        zugehoerigZu: organisationEntity2.id,
+                        typ: OrganisationsTyp.SCHULE,
+                        kennung: '1234567',
+                        name: 'Alte Schule',
+                    }),
                 );
-                await em.persist(schuleEntity).flush();
-                schule.name = newName;
-                schule.kennung = newKennung;
+                eventServiceMock.publish.mockClear();
 
-                await sut.save(schule);
+                savedSchule.kennung = '7654321';
+                savedSchule.name = 'Neue Schule';
+                savedSchule.zugehoerigZu = organisationEntity3.id;
 
+                const result: Organisation<true> = await sut.save(savedSchule);
+
+                expect(result).toBeInstanceOf(Organisation);
                 expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        organisationId: schule.id,
-                        oldName,
-                        newName,
-                        oldKennung,
-                        newKennung,
+                    expect.objectContaining<Partial<SchuleUpdatedEvent>>({
+                        organisationId: result.id,
+                        kennung: '7654321',
+                        name: 'Neue Schule',
+                        itslearningEnabled: result.itslearningEnabled,
+                        oldKennung: '1234567',
+                        oldName: 'Alte Schule',
+                        oldZugehoerigZu: organisationEntity2.id,
+                        zugehoerigZu: organisationEntity3.id,
                     }),
-                    expect.objectContaining({
-                        organisationId: schule.id,
-                        oldName,
-                        newName,
-                        oldKennung,
-                        newKennung,
-                        kafkaKey: schule.id,
-                    }),
-                );
-            });
-
-            it('should publish SchuleUpdatedEvent when name and kennung are unchanged', async () => {
-                const schule: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
-                    typ: OrganisationsTyp.SCHULE,
-                });
-                const schuleEntity: OrganisationEntity = em.create(
-                    OrganisationEntity,
-                    mapOrgaAggregateToData(schule),
-                );
-                await em.persist(schuleEntity).flush();
-
-                await sut.save(schule);
-
-                expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        organisationId: schule.id,
-                        oldName: schule.name,
-                        newName: schule.name,
-                        oldKennung: schule.kennung,
-                        newKennung: schule.kennung,
-                    }),
-                    expect.objectContaining({
-                        organisationId: schule.id,
-                        oldName: schule.name,
-                        newName: schule.name,
-                        oldKennung: schule.kennung,
-                        newKennung: schule.kennung,
+                    expect.objectContaining<Partial<KafkaSchuleUpdatedEvent>>({
+                        organisationId: result.id,
+                        kennung: '7654321',
+                        name: 'Neue Schule',
+                        itslearningEnabled: result.itslearningEnabled,
+                        oldKennung: '1234567',
+                        oldName: 'Alte Schule',
+                        oldZugehoerigZu: organisationEntity2.id,
+                        zugehoerigZu: organisationEntity3.id,
                     }),
                 );
             });

@@ -86,6 +86,7 @@ describe('configloader', () => {
                 VIDIS: {
                     BASE_URL: 'dummy-url',
                     CLIENT_ID: 'dummy-username',
+                    KEYCLOAK_CLIENT_ID: 'vidis-test',
                     CLIENT_SECRET: 'dummy-password',
                     SYNC_SCHOOLS_PAGE_SIZE: 5,
                     REGION: 'Schleswig-Holstein',
@@ -271,6 +272,7 @@ describe('configloader', () => {
                 VIDIS: {
                     BASE_URL: 'dummy-url',
                     CLIENT_ID: 'dummy-username',
+                    KEYCLOAK_CLIENT_ID: 'vidis-test',
                     CLIENT_SECRET: 'dummy-password',
                     SYNC_SCHOOLS_PAGE_SIZE: 5,
                     REGION: 'Schleswig-Holstein',

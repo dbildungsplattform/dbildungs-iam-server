@@ -54,6 +54,7 @@ function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         externalSystem: serviceProvider.externalSystem,
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
+        keycloakClientId: serviceProvider.keycloakClientId,
         merkmale,
         rollenartenWhitelist,
     };
@@ -86,6 +87,7 @@ function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProvider<bo
         entity.vidisAngebotId,
         merkmale,
         rollenartenWhitelist,
+        entity.keycloakClientId,
     );
 }
 
@@ -203,17 +205,6 @@ export class ServiceProviderRepo {
         return serviceProviders.map(mapEntityToAggregate);
     }
 
-    public async find(options?: ServiceProviderFindOptions): Promise<ServiceProvider<true>[]> {
-        const exclude: readonly ['logo'] | undefined = options?.withLogo ? undefined : ['logo'];
-
-        const serviceProviders: ServiceProviderEntity[] = await this.em.findAll(ServiceProviderEntity, {
-            exclude,
-            populate: ['merkmale', 'rollenartenWhitelist'],
-        });
-
-        return serviceProviders.map(mapEntityToAggregate);
-    }
-
     public async findByIds(ids: string[]): Promise<Map<string, ServiceProvider<true>>> {
         const serviceProviderEntities: ServiceProviderEntity[] = await this.em.find(
             ServiceProviderEntity,
@@ -288,18 +279,23 @@ export class ServiceProviderRepo {
         return mapEntityToAggregate(entity);
     }
 
-    public async findByOrgasWithMerkmal(
+    public async findByOrgasWithMerkmale(
         organisationIds: OrganisationID[],
-        merkmal: ServiceProviderMerkmal,
+        merkmale: ServiceProviderMerkmal[],
         limit?: number,
         offset?: number,
     ): Promise<Counted<ServiceProvider<true>>> {
+        // each merkmal needs its own $and entry, otherwise a single relation-join would require just one of them to match
+        const where: FilterQuery<ServiceProviderEntity> = {
+            providedOnSchulstrukturknoten: { $in: organisationIds },
+            ...(merkmale.length > 0 && {
+                $and: merkmale.map((merkmal: ServiceProviderMerkmal) => ({ merkmale: { merkmal } })),
+            }),
+        };
+
         const [entities, count]: Counted<ServiceProviderEntity> = await this.em.findAndCount(
             ServiceProviderEntity,
-            {
-                providedOnSchulstrukturknoten: { $in: organisationIds },
-                merkmale: { merkmal: merkmal },
-            },
+            where,
             {
                 populate: ['merkmale', 'rollenartenWhitelist'],
                 limit,
@@ -345,6 +341,28 @@ export class ServiceProviderRepo {
             await this.em.find(
                 ServiceProviderEntity,
                 { providedOnSchulstrukturknoten: { $in: organisationIds } },
+                {
+                    exclude,
+                },
+            )
+        ).map(mapEntityToAggregate);
+    }
+
+    public async findBySchulstrukturknotenWithRollenArtWhitelist(
+        organisationIds: Array<OrganisationID>,
+        rollenArt: RollenArt,
+    ): Promise<Array<ServiceProvider<true>>> {
+        const exclude: readonly ['logo'] | undefined = ['logo'];
+        return (
+            await this.em.find(
+                ServiceProviderEntity,
+                {
+                    providedOnSchulstrukturknoten: { $in: organisationIds },
+                    $or: [
+                        { rollenartenWhitelist: { rollenart: rollenArt } },
+                        { rollenartenWhitelist: { $exists: false } },
+                    ],
+                },
                 {
                     exclude,
                 },
