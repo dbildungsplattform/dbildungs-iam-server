@@ -308,9 +308,7 @@ export class ServiceProviderRepo {
                 populate: ['merkmale', 'rollenartenWhitelist'],
                 limit: params.limit,
                 offset: params.offset,
-                orderBy: {
-                    kategorie: 'ASC', // kategorie defines a custom order
-                },
+                orderBy: { kategorie: 'ASC', name: 'ASC', id: 'ASC' },
             },
         );
 
