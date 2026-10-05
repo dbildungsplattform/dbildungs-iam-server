@@ -168,7 +168,10 @@ export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost,
         throw new Error(`${err.message}${stderr ? `\nssh stderr: ${stderr.trim()}` : ''}`);
     }
 
-    return { child, askPassScript };
+    const tunnel = { child, askPassScript };
+    installTunnelCleanupHandlers(tunnel);
+
+    return tunnel;
 }
 
 // Terminates the tunnel, escalating to SIGKILL if it doesn't exit gracefully. Safe to call twice.
@@ -198,12 +201,12 @@ function isChildRunning(child) {
 }
 
 // Safety net so the tunnel is still closed on Ctrl+C/SIGTERM/a crash - these run outside of
-// main()'s own try/finally. getTunnel() is a getter since the tunnel is only known once openSshTunnel() resolves.
-export function installTunnelCleanupHandlers(getTunnel) {
+// main()'s own try/finally.
+function installTunnelCleanupHandlers(tunnel) {
     for (const signal of ['SIGINT', 'SIGTERM']) {
         process.on(signal, () => {
             console.error(`\n${signal} empfangen, schliesse SSH-Tunnel...`);
-            closeSshTunnel(getTunnel())
+            closeSshTunnel(tunnel)
                 .catch((err) => console.error(err))
                 .finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
         });
@@ -212,7 +215,7 @@ export function installTunnelCleanupHandlers(getTunnel) {
     for (const event of ['uncaughtException', 'unhandledRejection']) {
         process.on(event, (err) => {
             console.error(err);
-            closeSshTunnel(getTunnel())
+            closeSshTunnel(tunnel)
                 .catch((cleanupErr) => console.error(cleanupErr))
                 .finally(() => process.exit(1));
         });

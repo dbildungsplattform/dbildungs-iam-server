@@ -18,7 +18,7 @@ import {
     queryPersonOrganisationContexts,
     queryOrganisationsByIds,
 } from './db-queries.mjs';
-import { openSshTunnel, closeSshTunnel, installTunnelCleanupHandlers, promptHidden } from './ssh-tunnel.mjs';
+import { openSshTunnel, closeSshTunnel, promptHidden } from './ssh-tunnel.mjs';
 
 const DEFAULT_LOCAL_PORT = 15432;
 // see config/config.json
@@ -290,7 +290,6 @@ async function main() {
         dbPort: args.dbPort,
         localPort: args.localPort,
     });
-    activeSshTunnel = sshTunnel;
 
     const clientConfig = {
         host: '127.0.0.1',
@@ -332,10 +331,6 @@ async function main() {
         await closeSshTunnel(sshTunnel);
     }
 }
-
-// Tracks the currently open tunnel so installTunnelCleanupHandlers() can close it.
-let activeSshTunnel;
-installTunnelCleanupHandlers(() => activeSshTunnel);
 
 main().catch((err) => {
     console.error(err);
