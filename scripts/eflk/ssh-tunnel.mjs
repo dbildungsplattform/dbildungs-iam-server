@@ -200,8 +200,6 @@ function isChildRunning(child) {
     return child.exitCode === null && child.signalCode === null;
 }
 
-// Safety net so the tunnel is still closed on Ctrl+C/SIGTERM/a crash - these run outside of
-// main()'s own try/finally.
 function installTunnelCleanupHandlers(tunnel) {
     for (const signal of ['SIGINT', 'SIGTERM']) {
         process.on(signal, () => {
