@@ -14,7 +14,7 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
@@ -220,30 +220,29 @@ export class PersonenkontexteUpdate {
             ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
         ]);
 
-        return this.checkMptPermissions(modifiedPKs, modifiedRollen);
+        return this.checkGatedRollenPermissions(modifiedPKs, modifiedRollen);
     }
 
-    private async checkMptPermissions(
+    private async checkGatedRollenPermissions(
         modifiedPKs: Personenkontext<true>[],
         modifiedRollen: Map<RolleID, Rolle<true>>,
     ): Promise<Option<DomainError>> {
-        const hasMptPermissions: boolean = (
+        const hasGatedRollenPermissions: boolean = (
             await Promise.all(
                 modifiedPKs
-                    .filter((pk: Personenkontext<true>) =>
-                        modifiedRollen.get(pk.rolleId)?.hasMerkmal(RollenMerkmal.MPT_ROLLE),
-                    )
+                    .filter((pk: Personenkontext<true>) => modifiedRollen.has(pk.rolleId))
                     .map((pk: Personenkontext<true>) =>
-                        this.permissions.hasSystemrechtAtOrganisation(
+                        RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+                            modifiedRollen.get(pk.rolleId)!.merkmale,
                             pk.organisationId,
-                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                            this.permissions,
                         ),
                     ),
             )
         ).every(Boolean);
 
-        if (!hasMptPermissions) {
-            return new MissingPermissionsError('Unauthorized to modify MPT-Rollen at the organisation');
+        if (!hasGatedRollenPermissions) {
+            return new MissingPermissionsError('Unauthorized to modify MPT/Pilot-Rollen at the organisation');
         }
 
         return undefined;

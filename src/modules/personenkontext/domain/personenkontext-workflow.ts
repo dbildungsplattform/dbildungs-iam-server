@@ -316,7 +316,7 @@ export class PersonenkontextWorkflowAggregate {
             )
         ).some((hasPermission: boolean) => !hasPermission);
         if (hasUnauthorizedGatedRolle) {
-            return Err(new MissingPermissionsError('Unauthorized to assign Pilot-Rollen at the organisation'));
+            return Err(new MissingPermissionsError('Unauthorized to assign MPT/Pilot-Rollen at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {

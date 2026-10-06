@@ -328,7 +328,19 @@ export class RolleRepo {
 
         // TODO: this can fail if there are more rollen than limit
         const finalQuery: FilterQuery<NoInfer<RolleEntity>> = params.rolleIds?.length
-            ? { $or: [baseQuery, { id: { $in: params.rolleIds } }] }
+            ? {
+                  $or: [
+                      baseQuery,
+                      {
+                          $and: [
+                              { id: { $in: params.rolleIds } },
+                              ...(params.excludeMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
+                                  merkmale: { $none: { merkmal } },
+                              })),
+                          ],
+                      },
+                  ],
+              }
             : baseQuery;
 
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);

@@ -349,16 +349,35 @@ export class RolleFindService {
             case OrganisationBoundsKind.EMPTY:
                 return [[], 0];
             case OrganisationBoundsKind.BOUNDED:
-                rolleFindByParams = this.createRolleFindByParams(sharedParams, {
-                    allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
-                    rollenArten: await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas),
-                });
+                rolleFindByParams = this.createRolleFindByParams(
+                    sharedParams,
+                    {
+                        allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
+                        rollenArten: await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas),
+                    },
+                    (
+                        await this.resolveExcludedGatedMerkmale(
+                            params.permissions,
+                            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
+                            organisationBounds.selectedAndPermittedOrgas,
+                        )
+                    ).filter((merkmal: RollenMerkmal) => merkmal !== paar.merkmal),
+                );
                 break;
             case OrganisationBoundsKind.UNBOUNDED:
-                rolleFindByParams = this.createRolleFindByParams(sharedParams, {
-                    allowedOrganisationIds: undefined,
-                    rollenArten: undefined,
-                });
+                rolleFindByParams = this.createRolleFindByParams(
+                    sharedParams,
+                    {
+                        allowedOrganisationIds: undefined,
+                        rollenArten: undefined,
+                    },
+                    (
+                        await this.resolveExcludedGatedMerkmale(
+                            params.permissions,
+                            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
+                        )
+                    ).filter((merkmal: RollenMerkmal) => merkmal !== paar.merkmal),
+                );
         }
 
         return this.rolleRepo.findBy(rolleFindByParams);

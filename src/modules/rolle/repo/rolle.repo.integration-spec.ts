@@ -1034,25 +1034,29 @@ describe('RolleRepo', () => {
             expect(count).toEqual(1);
         });
 
-        it('should exclude rollen with excluded merkmale', async () => {
-            const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
-                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
-            });
-            const rolleWithExcludedMerkmal: Rolle<true> = await createRolle({
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
+        it.each([false, true])(
+            'should exclude rollen with excluded merkmale (selected=%s)',
+            async (selected: boolean) => {
+                const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
+                    merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                });
+                const rolleWithExcludedMerkmal: Rolle<true> = await createRolle({
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                });
 
-            const scope: RolleFindByParameters = {
-                excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
-                limit: 10,
-            };
+                const scope: RolleFindByParameters = {
+                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    rolleIds: selected ? [rolleWithExcludedMerkmal.id] : undefined,
+                    limit: 10,
+                };
 
-            const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
+                const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-            expect(count).toBe(1);
-            expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
-            expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
-        });
+                expect(count).toBe(1);
+                expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
+                expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
+            },
+        );
 
         it('should require rollen to have all required merkmale', async () => {
             const rolleWithAllRequiredMerkmale: Rolle<true> = await createRolle({
