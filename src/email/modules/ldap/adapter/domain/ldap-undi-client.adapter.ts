@@ -185,11 +185,12 @@ export class LdapUndiClientAdapter {
             return bindResult;
         }
 
+        const searchBaseDn: string = `cn=${LdapUndiClientAdapter.USERS_CN},ou=${rootNameResult.value},${this.ldapInstanceConfig.BASE_DN}`;
         const personDN: string = `uid=${person.uid},cn=${LdapUndiClientAdapter.USERS_CN},ou=${rootNameResult.value},${this.ldapInstanceConfig.BASE_DN}`;
 
-        const searchResultPerson: SearchResult = await client.search(personDN, {
-            filter: '(objectClass=*)',
-            scope: 'base',
+        const searchResultPerson: SearchResult = await client.search(searchBaseDn, {
+            filter: `(uid=${person.uid})`,
+            scope: 'one',
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
@@ -211,6 +212,7 @@ export class LdapUndiClientAdapter {
                     hideFromAddressLists: 'FALSE',
                 });
             } catch (e) {
+                this.logger.logUnknownAsError(`Could not create person!`, e);
                 return Err(new LdapCreatePersonError([e]));
             }
         } else {
@@ -271,6 +273,7 @@ export class LdapUndiClientAdapter {
 
                 await client.modify(personDN, changes);
             } catch (e) {
+                this.logger.logUnknownAsError(`Could not modify person ${personDN}`, e);
                 return Err(new LdapModifyPersonError([e]));
             }
         }
@@ -295,11 +298,12 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personId}&objectClass=*)`,
+            filter: `(uid=${personId})`,
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
         if (!searchResultPerson.searchEntries[0]) {
+            this.logger.error(`Could not find person uid=${personId} to suspend`);
             return Err(new LdapFindPersonError());
         }
 
@@ -334,6 +338,7 @@ export class LdapUndiClientAdapter {
 
             await client.modify(personDN, changes);
         } catch (e) {
+            this.logger.logUnknownAsError(`Could not suspend person uid=${personId}`, e);
             return Err(new LdapModifyPersonError([e]));
         }
 
@@ -348,12 +353,13 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-            filter: `(uid=${personUid}&objectClass=*)`,
+            filter: `(uid=${personUid})`,
             attributes: [LdapUndiClientAdapter.MEMBER_OF],
         });
 
         if (!searchResultPerson.searchEntries[0]) {
             // Person does not exist
+            this.logger.info(`Person uid=${personUid} does not exist, no need to delete them`);
             return Ok();
         }
 
@@ -371,6 +377,7 @@ export class LdapUndiClientAdapter {
         try {
             await client.del(personDN);
         } catch (e) {
+            this.logger.logUnknownAsError(`Could not delete person ${personDN}`, e);
             return Err(new LdapDeletePersonError([e]));
         }
 
@@ -395,6 +402,7 @@ export class LdapUndiClientAdapter {
         });
 
         if (!searchResultPerson.searchEntries[0]) {
+            this.logger.error(`Could not find person ${personDN} for setting groups`);
             return Err(new LdapFindPersonError());
         }
 
@@ -445,6 +453,7 @@ export class LdapUndiClientAdapter {
         baseOu: string,
         groupData: GroupDataUndi,
     ): Promise<Result<void>> {
+        const searchBaseDn: string = `cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
         const groupDn: string = `cn=${groupData.id},cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
         const groupName: string = `lehrer-${groupData.kennung}`;
 
@@ -454,9 +463,9 @@ export class LdapUndiClientAdapter {
             return bindResult;
         }
 
-        const searchResultOrgUnit: SearchResult = await client.search(groupDn, {
-            filter: `(objectClass=groupOfNames)`,
-            scope: 'base',
+        const searchResultOrgUnit: SearchResult = await client.search(searchBaseDn, {
+            filter: `(cn=${groupData.id}&objectClass=groupOfNames)`,
+            scope: 'one',
         });
 
         if (!searchResultOrgUnit.searchEntries[0]) {
@@ -472,22 +481,25 @@ export class LdapUndiClientAdapter {
             try {
                 await client.add(groupDn, newOrgUnit);
             } catch (e) {
+                this.logger.logUnknownAsError(`Could create group ${groupDn}`, e);
                 return Err(new LdapCreateGroupError(groupData.id, [e]));
             }
-        }
-
-        try {
-            await client.modify(groupDn, [
-                new Change({
-                    operation: 'add',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MEMBER,
-                        values: [personDN],
+        } else {
+            // GroupOfNames already exists, modify members
+            try {
+                await client.modify(groupDn, [
+                    new Change({
+                        operation: 'add',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.MEMBER,
+                            values: [personDN],
+                        }),
                     }),
-                }),
-            ]);
-        } catch (e) {
-            return Err(new LdapAddPersonToGroupError([e]));
+                ]);
+            } catch (e) {
+                this.logger.logUnknownAsError(`Could not add person ${personDN} to group ${groupDn}`, e);
+                return Err(new LdapAddPersonToGroupError([e]));
+            }
         }
 
         return Ok();
@@ -508,6 +520,7 @@ export class LdapUndiClientAdapter {
 
         if (!searchResultOrgUnit.searchEntries[0]) {
             // Group doesn't exist, no need to remove person
+            this.logger.info(`Group ${groupDN} does not exist, no need to remove person ${personDN}`);
             return Ok();
         }
 
@@ -519,6 +532,7 @@ export class LdapUndiClientAdapter {
             )
         ) {
             // Person is not member of group, no need to remove
+            this.logger.info(`Person ${personDN} is not a member of group ${groupDN}, no need to remove them.`);
             return Ok();
         }
 
@@ -533,6 +547,7 @@ export class LdapUndiClientAdapter {
                 }),
             ]);
         } catch (e) {
+            this.logger.logUnknownAsError(`Could not remove person ${personDN} from group ${groupDN}`, e);
             return { ok: false, error: new LdapRemovePersonFromGroupError([e]) };
         }
 
@@ -553,6 +568,7 @@ export class LdapUndiClientAdapter {
 
             if (!searchResultOrgUnit.searchEntries[0]) {
                 // No group exists
+                this.logger.info(`Group id=${id} does not exist, no need to rename`);
                 return Ok();
             }
 
@@ -562,14 +578,15 @@ export class LdapUndiClientAdapter {
                 const change: Change = new Change({
                     operation: 'replace',
                     modification: new Attribute({
-                        type: LdapUndiClientAdapter.COMMON_NAME,
+                        type: LdapUndiClientAdapter.ORGANISATION_NAME,
                         values: [name],
                     }),
                 });
 
                 await client.modify(dn, change);
-            } catch (err) {
-                return Err(new LdapModifyGroupError(id, [err]));
+            } catch (e) {
+                this.logger.logUnknownAsError(`Could not rename group id=${id} to new name "${name}"`, e);
+                return Err(new LdapModifyGroupError(id, [e]));
             }
 
             return Ok();
@@ -590,6 +607,7 @@ export class LdapUndiClientAdapter {
 
             if (!searchResultOrgUnit.searchEntries[0]) {
                 // No group exists, no need to delete
+                this.logger.info(`Group id=${id} does not exist, no need to delete it.`);
                 return Ok();
             }
 
@@ -597,8 +615,9 @@ export class LdapUndiClientAdapter {
 
             try {
                 await client.del(dn);
-            } catch (err) {
-                return Err(new LdapDeleteGroupError(id, [err]));
+            } catch (e) {
+                this.logger.logUnknownAsError(`Could not delete group id=${id}`, e);
+                return Err(new LdapDeleteGroupError(id, [e]));
             }
 
             return Ok();

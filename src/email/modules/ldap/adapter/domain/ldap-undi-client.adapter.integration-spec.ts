@@ -243,6 +243,7 @@ describe('LDAP UNDI Client Adapter', () => {
         });
 
         it("should search for user and create it if they don't exist", async () => {
+            const searchBaseDn: string = `cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
             const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
 
             ldapClientMock.getClient.mockImplementation(() => clientMock);
@@ -255,9 +256,9 @@ describe('LDAP UNDI Client Adapter', () => {
             const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
 
             expectOkResult(result);
-            expect(clientMock.search).toHaveBeenNthCalledWith(1, dn, {
-                filter: '(objectClass=*)',
-                scope: 'base',
+            expect(clientMock.search).toHaveBeenNthCalledWith(1, searchBaseDn, {
+                filter: `(uid=${person.uid})`,
+                scope: 'one',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
             expect(clientMock.search).toHaveBeenCalledTimes(2);
@@ -278,6 +279,7 @@ describe('LDAP UNDI Client Adapter', () => {
         });
 
         it('should search for user and update it if they exist', async () => {
+            const searchBaseDn: string = `cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
             const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
 
             ldapClientMock.getClient.mockImplementation(() => {
@@ -290,7 +292,12 @@ describe('LDAP UNDI Client Adapter', () => {
             const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
 
             expectOkResult(result);
-            expect(clientMock.search).toHaveBeenCalledWith(dn, {
+            expect(clientMock.search).toHaveBeenNthCalledWith(1, searchBaseDn, {
+                filter: `(uid=${person.uid})`,
+                scope: 'one',
+                attributes: [LdapUndiClientAdapter.MEMBER_OF],
+            });
+            expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
                 filter: '(objectClass=*)',
                 scope: 'base',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
@@ -355,6 +362,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 ['ersatzschule-sh.de', 'ersatzSchulen'],
             ])('should use the correct root name for domain %s', async (domain: string, rootName: string) => {
                 person.domain = domain;
+                const searchBaseDn: string = `cn=users,ou=${rootName},${instanceConfig.BASE_DN}`;
                 const dn: string = `uid=${person.uid},cn=users,ou=${rootName},${instanceConfig.BASE_DN}`;
 
                 ldapClientMock.getClient.mockReturnValue(clientMock);
@@ -367,9 +375,9 @@ describe('LDAP UNDI Client Adapter', () => {
                 const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
 
                 expectOkResult(result);
-                expect(clientMock.search).toHaveBeenNthCalledWith(1, dn, {
-                    filter: '(objectClass=*)',
-                    scope: 'base',
+                expect(clientMock.search).toHaveBeenNthCalledWith(1, searchBaseDn, {
+                    filter: `(uid=${person.uid})`,
+                    scope: 'one',
                     attributes: [LdapUndiClientAdapter.MEMBER_OF],
                 });
                 expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(
@@ -520,47 +528,57 @@ describe('LDAP UNDI Client Adapter', () => {
             });
 
             describe('adding groups', () => {
-                it.each([true, false])(
-                    "should add person to missing groups and create group if it doesn't exist (exists: %s)",
-                    async (exists: boolean) => {
-                        clientMock.search
-                            .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
-                            .mockResolvedValueOnce({
-                                searchEntries: exists ? [{ dn: groupDn }] : [],
-                                searchReferences: [],
-                            });
+                it('should add person to an existing group without creating it', async () => {
+                    const searchBaseDn: string = `cn=groups,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+                    clientMock.search
+                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] });
 
-                        const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
+                    const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
 
-                        expectOkResult(result);
-                        expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
-                            filter: '(objectClass=groupOfNames)',
-                            scope: 'base',
-                        });
-                        if (exists) {
-                            expect(clientMock.add).not.toHaveBeenCalled();
-                        } else {
-                            expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(groupDn, {
-                                [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfNames'],
-                                [LdapUndiClientAdapter.COMMON_NAME]: group.id,
-                                [LdapUndiClientAdapter.DESCRIPTION]: `lehrer-${group.kennung}`,
-                                [LdapUndiClientAdapter.ORGANISATION_NAME]: group.name,
-                                [LdapUndiClientAdapter.ORGANISTAION_KENNUNG]: group.kennung,
-                                [LdapUndiClientAdapter.MEMBER]: [dn],
-                            });
-                        }
-                        expect(clientMock.modify).toHaveBeenCalledTimes(2);
-                        expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                            new Change({
-                                operation: 'add',
-                                modification: new Attribute({
-                                    type: LdapUndiClientAdapter.MEMBER,
-                                    values: [dn],
-                                }),
+                    expectOkResult(result);
+                    expect(clientMock.search).toHaveBeenNthCalledWith(3, searchBaseDn, {
+                        filter: `(cn=${group.id}&objectClass=groupOfNames)`,
+                        scope: 'one',
+                    });
+                    expect(clientMock.add).not.toHaveBeenCalled();
+                    expect(clientMock.modify).toHaveBeenCalledTimes(2);
+                    expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
+                        new Change({
+                            operation: 'add',
+                            modification: new Attribute({
+                                type: LdapUndiClientAdapter.MEMBER,
+                                values: [dn],
                             }),
-                        ]);
-                    },
-                );
+                        }),
+                    ]);
+                });
+
+                it('should create a missing group and add person to it', async () => {
+                    const searchBaseDn: string = `cn=groups,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+                    clientMock.search
+                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+
+                    const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
+
+                    expectOkResult(result);
+                    expect(clientMock.search).toHaveBeenNthCalledWith(3, searchBaseDn, {
+                        filter: `(cn=${group.id}&objectClass=groupOfNames)`,
+                        scope: 'one',
+                    });
+                    expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(groupDn, {
+                        [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfNames'],
+                        [LdapUndiClientAdapter.COMMON_NAME]: group.id,
+                        [LdapUndiClientAdapter.DESCRIPTION]: `lehrer-${group.kennung}`,
+                        [LdapUndiClientAdapter.ORGANISATION_NAME]: group.name,
+                        [LdapUndiClientAdapter.ORGANISTAION_KENNUNG]: group.kennung,
+                        [LdapUndiClientAdapter.MEMBER]: [dn],
+                    });
+                    expect(clientMock.modify).toHaveBeenCalledTimes(1);
+                    expect(clientMock.modify).toHaveBeenCalledWith(dn, expect.any(Array));
+                    expect(clientMock.modify).not.toHaveBeenCalledWith(groupDn, expect.anything());
+                });
             });
 
             describe('removing groups', () => {
@@ -941,7 +959,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
             expectOkResult(result);
             expect(clientMock.search).toHaveBeenNthCalledWith(1, instanceConfig.BASE_DN, {
-                filter: `(uid=${id}&objectClass=*)`,
+                filter: `(uid=${id})`,
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
             expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
@@ -1125,7 +1143,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
             expectOkResult(result);
             expect(clientMock.search).toHaveBeenNthCalledWith(1, instanceConfig.BASE_DN, {
-                filter: `(uid=${id}&objectClass=*)`,
+                filter: `(uid=${id})`,
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
             expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
