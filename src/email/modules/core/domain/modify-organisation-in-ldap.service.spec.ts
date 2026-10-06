@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 import { LoggingTestModule } from '../../../../../test/utils/index.js';
 import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
 import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
+import { Ok } from '../../../../shared/util/result.js';
 import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 import { ModifyOrganisationInLdapService } from './modify-organisation-in-ldap.service.js';
 
@@ -23,7 +24,23 @@ describe('Modify Organisation In Ldap Service', () => {
         ldapUndiClientAdapterMock = module.get(LdapUndiClientAdapter);
     });
 
+    beforeEach(() => {
+        vi.resetAllMocks();
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
+    });
+
     describe('deleteOrganisationFromLdap', () => {
+        it('should return Ok without deleting the group when LDAP is disabled', async () => {
+            const organisationId: string = faker.string.uuid();
+            ldapUndiClientAdapterMock.useLdap.mockReturnValue(false);
+
+            const result: Result<void> =
+                await modifyOrganisationInLdapService.deleteOrganisationFromLdap(organisationId);
+
+            expect(result).toEqual(Ok());
+            expect(ldapUndiClientAdapterMock.deleteGroup).not.toHaveBeenCalled();
+        });
+
         it('should return the result if deleteGroup succeeds', async () => {
             const organisationId: string = faker.string.uuid();
             const expectedResult: Result<void> = { ok: true, value: undefined };
@@ -36,6 +53,20 @@ describe('Modify Organisation In Ldap Service', () => {
     });
 
     describe('modifyOrganisationNameInLdap', () => {
+        it('should return Ok without updating the group when LDAP is disabled', async () => {
+            const organisationId: string = faker.string.uuid();
+            const name: string = faker.company.name();
+            ldapUndiClientAdapterMock.useLdap.mockReturnValue(false);
+
+            const result: Result<void> = await modifyOrganisationInLdapService.modifyOrganisationNameInLdap(
+                organisationId,
+                name,
+            );
+
+            expect(result).toEqual(Ok());
+            expect(ldapUndiClientAdapterMock.updateGroup).not.toHaveBeenCalled();
+        });
+
         it('should return the result if updateGroup succeeds', async () => {
             const organisationId: string = faker.string.uuid();
             const name: string = faker.company.name();
