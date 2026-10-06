@@ -334,6 +334,12 @@ export class RolleRepo {
                       {
                           $and: [
                               { id: { $in: params.rolleIds } },
+                              ...(params.allowedOrganisationIds
+                                  ? [{ administeredBySchulstrukturknoten: params.allowedOrganisationIds }]
+                                  : []),
+                              ...(params.requireMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
+                                  merkmale: { $some: { merkmal } },
+                              })),
                               ...(params.excludeMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
                                   merkmale: { $none: { merkmal } },
                               })),
@@ -375,7 +381,7 @@ export class RolleRepo {
 
     public async findRollenAuthorized(
         permissions: IPersonPermissions,
-        systemrechte: RollenSystemRecht[] | undefined,
+        _systemrechte: RollenSystemRecht[] | undefined,
         includeTechnische: boolean,
         searchStr?: string,
         limit?: number,
@@ -386,10 +392,10 @@ export class RolleRepo {
         rollenArten?: RollenArt[],
         serviceProviderIds?: ServiceProviderID[],
     ): Promise<[Rolle<true>[], number]> {
-        // Fallback to ROLLEN_VERWALTEN if no systemrechte are provided (this is the default behavior expected from the frontend)
         const orgIdsWithRecht: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
-            systemrechte ?? [RollenSystemRecht.ROLLEN_VERWALTEN],
+            [RollenSystemRecht.ROLLEN_VERWALTEN],
             false,
+            true,
         );
         if (!orgIdsWithRecht.all && orgIdsWithRecht.orgaIds.length === 0) {
             return [[], 0];
