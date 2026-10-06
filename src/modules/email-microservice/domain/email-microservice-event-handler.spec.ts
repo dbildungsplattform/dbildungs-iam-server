@@ -959,9 +959,7 @@ describe('EmailMicroserviceEventHandler', () => {
         it('should log if microservice is disabled when syncing person', async () => {
             const personId: string = faker.string.uuid();
             const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(personId);
-            emailResolverServiceMock.shouldUseEmailMicroservice
-                .mockReturnValueOnce(true)
-                .mockReturnValueOnce(false);
+            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true).mockReturnValueOnce(false);
 
             await sut.handlePersonExternalSystemsSyncEvent(event);
 

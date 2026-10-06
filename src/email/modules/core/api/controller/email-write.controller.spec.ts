@@ -161,9 +161,7 @@ describe('Email Write Controller', () => {
             const result: void = emailWriteController.deleteOrganisation(organisationId);
             expect(result).toBeUndefined();
             vi.runAllTimers();
-            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(
-                organisationId,
-            );
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(organisationId);
         });
 
         it('should log error if deleteOrganisationFromLdap fails', async () => {
@@ -173,9 +171,7 @@ describe('Email Write Controller', () => {
             const result: void = emailWriteController.deleteOrganisation(organisationId);
             expect(result).toBeUndefined();
             await vi.runAllTimersAsync();
-            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(
-                organisationId,
-            );
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(organisationId);
             expect(loggerMock.error).toHaveBeenCalledWith(
                 `Error in background LDAP organisation deletion: ${error.message}`,
             );
