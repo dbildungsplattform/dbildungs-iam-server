@@ -753,6 +753,79 @@ describe('EmailResolverService', () => {
         expect(result).toEqual(new PersonEmailResponse(EmailAddressStatus.DISABLED, mockEmail));
     });
 
+    describe('deleteSchool', () => {
+        it('should call httpService.delete with correct URL and log info', async () => {
+            const organisationId: string = faker.string.uuid();
+
+            mockHttpService.delete.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+
+            await sut.deleteSchool({ organisationId });
+
+            expect(loggerMock.info).toHaveBeenCalledWith(`Deleting school ${organisationId} via email microservice`);
+            expect(mockHttpService.delete).toHaveBeenCalledWith(
+                `http://localhost:9091/api/write/organisation/${organisationId}`,
+                {
+                    headers: {
+                        'api-key': 'api-key',
+                    },
+                },
+            );
+        });
+
+        it('should log error when httpService.delete throws', async () => {
+            const organisationId: string = faker.string.uuid();
+            const error: Error = new Error('Microservice failure');
+            mockHttpService.delete.mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await sut.deleteSchool({ organisationId });
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `Failed to delete school ${organisationId}`,
+                error,
+            );
+        });
+    });
+
+    describe('updateSchoolName', () => {
+        it('should call httpService.patch with correct URL and log info', async () => {
+            const organisationId: string = faker.string.uuid();
+            const newName: string = faker.company.name();
+
+            mockHttpService.patch.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+
+            await sut.updateSchoolName({ organisationId, newName });
+
+            expect(loggerMock.info).toHaveBeenCalledWith(`Updating school ${organisationId} via email microservice`);
+            expect(mockHttpService.patch).toHaveBeenCalledWith(
+                `http://localhost:9091/api/write/organisation/${organisationId}`,
+                { name: newName },
+                {
+                    headers: {
+                        'api-key': 'api-key',
+                    },
+                },
+            );
+        });
+
+        it('should log error when httpService.patch throws', async () => {
+            const organisationId: string = faker.string.uuid();
+            const newName: string = faker.company.name();
+            const error: Error = new Error('Microservice failure');
+            mockHttpService.patch.mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await sut.updateSchoolName({ organisationId, newName });
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `Failed to update school ${organisationId}`,
+                error,
+            );
+        });
+    });
+
     describe('deleteEmailsForSpshPerson', () => {
         it('should call httpService.delete with correct URL and log info', async () => {
             const spshPersonId: string = faker.string.uuid();
