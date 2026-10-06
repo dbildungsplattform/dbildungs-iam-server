@@ -7,6 +7,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { KlasseCreatedEvent } from '../../../shared/events/klasse-created.event.js';
 import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.js';
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { OrganisationsTyp, RootDirectChildrenType } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
@@ -517,6 +518,158 @@ describe('ItsLearning Organisations Event Handler', () => {
                     },
                 ],
                 `${event.eventID}-SCHULE-SYNC`,
+            );
+        });
+    });
+
+    describe('schuleUpdatedEventHandler', () => {
+        function createEvent(overrides: Partial<SchuleUpdatedEvent> = {}): SchuleUpdatedEvent {
+            return Object.assign(
+                new SchuleUpdatedEvent(
+                    faker.string.uuid(),
+                    faker.string.numeric(7),
+                    faker.word.noun(),
+                    true,
+                    faker.string.uuid(),
+                    faker.string.uuid(),
+                    faker.string.numeric(7),
+                    faker.word.noun(),
+                    faker.string.uuid(),
+                    faker.string.uuid(),
+                ),
+                overrides,
+            );
+        }
+
+        it('should skip event, if not enabled', async () => {
+            sut.ENABLED = false;
+            const event: SchuleUpdatedEvent = createEvent();
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(`[EventID: ${event.eventID}] Not enabled, ignoring event.`);
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).not.toHaveBeenCalled();
+        });
+
+        it('should skip event, if schule is not itslearning enabled', async () => {
+            const event: SchuleUpdatedEvent = createEvent({ itslearningEnabled: false });
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                `[EventID: ${event.eventID}] Schule with ID ${event.organisationId} is not itslearning enabled. Ignoring event.`,
+            );
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).not.toHaveBeenCalled();
+        });
+
+        it('should skip event, when schule is ersatzschule', async () => {
+            const event: SchuleUpdatedEvent = createEvent();
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.ERSATZ,
+            );
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(`[EventID: ${event.eventID}] Ersatzschule, ignoring.`);
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).not.toHaveBeenCalled();
+        });
+
+        it('should log error, if update failed', async () => {
+            const event: SchuleUpdatedEvent = createEvent();
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            itslearningGroupRepoAdapter.createOrUpdateGroup.mockResolvedValueOnce(new DomainErrorMock('Error'));
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(loggerMock.error).toHaveBeenLastCalledWith(
+                `[EventID: ${event.eventID}] Could not update Schule (ID ${event.organisationId}) in itsLearning: Error`,
+            );
+        });
+
+        it('should call createOrUpdateGroup with correct params', async () => {
+            const event: SchuleUpdatedEvent = createEvent();
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            itslearningGroupRepoAdapter.createOrUpdateGroup.mockResolvedValueOnce(undefined);
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).toHaveBeenCalledWith<[CreateGroupParams, string]>(
+                {
+                    id: event.organisationId,
+                    name: `${event.kennung} (${event.name})`,
+                    type: 'School',
+                    parentId: sut.ROOT_OEFFENTLICH,
+                },
+                `${event.eventID}-SCHULE-UPDATED`,
+            );
+            expect(loggerMock.info).toHaveBeenLastCalledWith(
+                `[EventID: ${event.eventID}] Schule with ID ${event.organisationId} was updated.`,
+            );
+        });
+
+        it('should set default dienststellennummer for schule', async () => {
+            const event: SchuleUpdatedEvent = createEvent({ kennung: undefined, name: faker.string.alphanumeric(10) });
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            itslearningGroupRepoAdapter.createOrUpdateGroup.mockResolvedValueOnce(undefined);
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).toHaveBeenCalledWith<[CreateGroupParams, string]>(
+                {
+                    id: event.organisationId,
+                    name: `Unbekannte Dienststellennummer (${event.name})`,
+                    type: 'School',
+                    parentId: sut.ROOT_OEFFENTLICH,
+                },
+                `${event.eventID}-SCHULE-UPDATED`,
+            );
+        });
+
+        it('should set default name for schule', async () => {
+            const event: SchuleUpdatedEvent = createEvent({ name: undefined });
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            itslearningGroupRepoAdapter.createOrUpdateGroup.mockResolvedValueOnce(undefined);
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).toHaveBeenCalledWith<[CreateGroupParams, string]>(
+                {
+                    id: event.organisationId,
+                    name: `${event.kennung} (Unbenannte Schule)`,
+                    type: 'School',
+                    parentId: sut.ROOT_OEFFENTLICH,
+                },
+                `${event.eventID}-SCHULE-UPDATED`,
+            );
+        });
+
+        it('should truncate name if too long', async () => {
+            const event: SchuleUpdatedEvent = createEvent({
+                name: 'Schule with a name that is way too long should be truncated',
+            });
+            orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValueOnce(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            itslearningGroupRepoAdapter.createOrUpdateGroup.mockResolvedValueOnce(undefined);
+
+            await sut.schuleUpdatedEventHandler(event);
+
+            expect(itslearningGroupRepoAdapter.createOrUpdateGroup).toHaveBeenCalledWith<[CreateGroupParams, string]>(
+                {
+                    id: event.organisationId,
+                    name: `${event.kennung} (Schule with a name that is way too ...)`,
+                    type: 'School',
+                    parentId: sut.ROOT_OEFFENTLICH,
+                },
+                `${event.eventID}-SCHULE-UPDATED`,
             );
         });
     });

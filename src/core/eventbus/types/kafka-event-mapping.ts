@@ -15,6 +15,7 @@ import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-p
 import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updated.event.js';
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
 import { Constructor } from './util.types.js';
 import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
 import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
@@ -72,6 +73,7 @@ export type KafkaEventKey =
     | 'klasse.updated'
     | 'rolle.updated'
     | 'schule.created'
+    | 'schule.updated'
     | 'schule.itslearning_enabled'
     | 'organisation.deleted';
 
@@ -175,6 +177,11 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
 
     'schule.created': {
         eventClass: KafkaSchuleCreatedEvent,
+        topic: 'organisation-topic',
+        topicDlq: 'organisation-dlq-topic',
+    },
+    'schule.updated': {
+        eventClass: KafkaSchuleUpdatedEvent,
         topic: 'organisation-topic',
         topicDlq: 'organisation-dlq-topic',
     },
