@@ -24,7 +24,7 @@
     },
     "LDAP_UNDI": {
         "ENABLED": false,
-        "URL": "ldap://localhost",
+        "URL": "ldap://localhost:390",
         "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
         "ADMIN_PASSWORD": "admin",
         "BASE_DN": "dc=schule-sh,dc=de",

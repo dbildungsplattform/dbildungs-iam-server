@@ -250,7 +250,7 @@ describe('LDAP UNDI Client Adapter', () => {
             clientMock.bind.mockResolvedValue();
             clientMock.search
                 .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
-                .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+                .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
             clientMock.add.mockResolvedValueOnce();
 
             const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
@@ -263,7 +263,7 @@ describe('LDAP UNDI Client Adapter', () => {
             });
             expect(clientMock.search).toHaveBeenCalledTimes(2);
             expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(dn, {
-                [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'univentionMail', 'posixAccount'],
+                [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'spshUser'],
                 [LdapUndiClientAdapter.UID]: person.uid,
                 [LdapUndiClientAdapter.COMMON_NAME]: person.username,
                 [LdapUndiClientAdapter.GIVEN_NAME]: person.firstName,
@@ -284,7 +284,9 @@ describe('LDAP UNDI Client Adapter', () => {
 
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValue({ searchEntries: [{ dn }], searchReferences: [] });
+                clientMock.search
+                    .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                    .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                 clientMock.modify.mockResolvedValueOnce();
                 return clientMock;
             });
@@ -297,10 +299,10 @@ describe('LDAP UNDI Client Adapter', () => {
                 scope: 'one',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
-            expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
-                filter: '(objectClass=*)',
-                scope: 'base',
-                attributes: [LdapUndiClientAdapter.MEMBER_OF],
+            expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
+                filter: `(&(objectClass=groupOfEntries)(member=${dn}))`,
+                scope: 'subordinates',
+                attributes: [],
             });
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
                 new Change({
@@ -356,10 +358,82 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.add).not.toHaveBeenCalled();
         });
 
+        it('should create a deactivated, unsuspended person without a secondary email address', async () => {
+            const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+            person.deaktiviert = true;
+            person.gesperrt = false;
+            person.mailSecondaryAddress = undefined;
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search
+                .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
+                .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+            clientMock.add.mockResolvedValue();
+
+            const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
+
+            expectOkResult(result);
+            expect(clientMock.search).toHaveBeenCalledTimes(2);
+            expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(
+                dn,
+                expect.objectContaining({
+                    [LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS]: '',
+                    [LdapUndiClientAdapter.DEAKTIVIERT]: 'TRUE',
+                    [LdapUndiClientAdapter.GESPERRT]: 'FALSE',
+                }),
+            );
+            expect(clientMock.modify).not.toHaveBeenCalled();
+        });
+
+        it('should update a deactivated, unsuspended person without a secondary email address', async () => {
+            const dn: string = `uid=${person.uid},cn=users,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+            person.deaktiviert = true;
+            person.gesperrt = false;
+            person.mailSecondaryAddress = undefined;
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search
+                .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+            clientMock.modify.mockResolvedValue();
+
+            const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
+
+            expectOkResult(result);
+            expect(clientMock.search).toHaveBeenCalledTimes(2);
+            expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(
+                dn,
+                expect.arrayContaining([
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
+                            values: [],
+                        }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.DEAKTIVIERT,
+                            values: ['TRUE'],
+                        }),
+                    }),
+                    new Change({
+                        operation: 'replace',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.GESPERRT,
+                            values: ['FALSE'],
+                        }),
+                    }),
+                ]),
+            );
+            expect(clientMock.add).not.toHaveBeenCalled();
+        });
+
         describe('getRootName', () => {
             it.each([
-                ['schule-sh.de', 'oeffentlicheSchulen'],
-                ['ersatzschule-sh.de', 'ersatzSchulen'],
+                ['schule-sh.de', 'oeffentlich'],
+                ['ersatzschule-sh.de', 'ersatz'],
             ])('should use the correct root name for domain %s', async (domain: string, rootName: string) => {
                 person.domain = domain;
                 const searchBaseDn: string = `cn=users,ou=${rootName},${instanceConfig.BASE_DN}`;
@@ -369,7 +443,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search
                     .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
-                    .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+                    .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                 clientMock.add.mockResolvedValueOnce();
 
                 const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
@@ -485,7 +559,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: [retainedDn, removedDn] }],
+                            searchEntries: [{ dn: retainedDn }, { dn: removedDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] })
@@ -497,10 +571,10 @@ describe('LDAP UNDI Client Adapter', () => {
                     const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [retainedGroup, group]);
 
                     expectOkResult(result);
-                    expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
-                        filter: '(objectClass=*)',
-                        scope: 'base',
-                        attributes: [LdapUndiClientAdapter.MEMBER_OF],
+                    expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
+                        filter: `(&(objectClass=groupOfEntries)(member=${dn}))`,
+                        scope: 'subordinates',
+                        attributes: [],
                     });
                     expect(clientMock.search).toHaveBeenCalledTimes(4);
                     expect(clientMock.search).not.toHaveBeenCalledWith(retainedDn, expect.anything());
@@ -528,18 +602,70 @@ describe('LDAP UNDI Client Adapter', () => {
             });
 
             describe('adding groups', () => {
-                it('should add person to an existing group without creating it', async () => {
-                    const searchBaseDn: string = `cn=groups,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+                it.each(['string', 'buffer', 'string array', 'buffer array'])(
+                    'should not add the person again when the group has a %s member attribute containing them',
+                    async (attributeType: string) => {
+                        const memberValues: Record<string, string | Buffer | string[] | Buffer[]> = {
+                            string: dn,
+                            buffer: Buffer.from(dn),
+                            'string array': [`uid=${faker.string.uuid()}`, dn],
+                            'buffer array': [Buffer.from(`uid=${faker.string.uuid()}`), Buffer.from(dn)],
+                        };
+                        clientMock.search
+                            .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
+                            .mockResolvedValueOnce({
+                                searchEntries: [{ dn: groupDn, member: memberValues[attributeType]! }],
+                                searchReferences: [],
+                            });
+
+                        const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
+
+                        expectOkResult(result);
+                        expect(clientMock.search).toHaveBeenCalledTimes(3);
+                        expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, expect.any(Array));
+                        expect(clientMock.add).not.toHaveBeenCalled();
+                        expect(loggerMock.info).toHaveBeenCalledWith(
+                            `Person ${dn} already is member of group ${groupDn}`,
+                        );
+                    },
+                );
+
+                it('should add the person to a group containing only other members', async () => {
                     clientMock.search
-                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
+                        .mockResolvedValueOnce({
+                            searchEntries: [{ dn: groupDn, member: [`uid=${faker.string.uuid()}`] }],
+                            searchReferences: [],
+                        });
+
+                    const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
+
+                    expectOkResult(result);
+                    expect(clientMock.modify).toHaveBeenCalledTimes(2);
+                    expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
+                        new Change({
+                            operation: 'add',
+                            modification: new Attribute({
+                                type: LdapUndiClientAdapter.MEMBER,
+                                values: [dn],
+                            }),
+                        }),
+                    ]);
+                    expect(clientMock.add).not.toHaveBeenCalled();
+                });
+
+                it('should add person to an existing group without creating it', async () => {
+                    const searchBaseDn: string = `ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+                    clientMock.search
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
                         .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] });
 
                     const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
 
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, searchBaseDn, {
-                        filter: `(cn=${group.id}&objectClass=groupOfNames)`,
-                        scope: 'one',
+                        filter: `(cn=${group.id})`,
+                        scope: 'subordinates',
                     });
                     expect(clientMock.add).not.toHaveBeenCalled();
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -555,20 +681,20 @@ describe('LDAP UNDI Client Adapter', () => {
                 });
 
                 it('should create a missing group and add person to it', async () => {
-                    const searchBaseDn: string = `cn=groups,ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
+                    const searchBaseDn: string = `ou=${LdapUndiClientAdapter.OEFFENTLICHE_SCHULEN_OU},${instanceConfig.BASE_DN}`;
                     clientMock.search
-                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
                         .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
 
                     const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
 
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, searchBaseDn, {
-                        filter: `(cn=${group.id}&objectClass=groupOfNames)`,
-                        scope: 'one',
+                        filter: `(cn=${group.id})`,
+                        scope: 'subordinates',
                     });
                     expect(clientMock.add).toHaveBeenCalledExactlyOnceWith(groupDn, {
-                        [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfNames'],
+                        [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfEntries'],
                         [LdapUndiClientAdapter.COMMON_NAME]: group.id,
                         [LdapUndiClientAdapter.DESCRIPTION]: `lehrer-${group.kennung}`,
                         [LdapUndiClientAdapter.ORGANISATION_NAME]: group.name,
@@ -585,7 +711,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should not modify a group that no longer exists when removing a person', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
@@ -595,7 +721,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(1);
@@ -605,7 +731,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should not modify a group with no member attribute when removing a person', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] });
@@ -615,7 +741,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(1);
@@ -625,7 +751,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should not modify a group the person is no longer a member of', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -638,7 +764,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(1);
@@ -648,7 +774,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should remove person from a group with a string member attribute', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -661,7 +787,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -680,7 +806,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should remove person from a group with a buffer member attribute', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -693,7 +819,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -712,7 +838,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should remove person from a group with a string array member attribute', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -725,7 +851,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -744,7 +870,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should remove person from a group with a buffer array member attribute', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: groupDn }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -757,7 +883,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                         scope: 'base',
-                        filter: '(objectClass=groupOfNames)',
+                        filter: '(objectClass=groupOfEntries)',
                         attributes: [LdapUndiClientAdapter.MEMBER],
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -775,13 +901,12 @@ describe('LDAP UNDI Client Adapter', () => {
             });
 
             describe('error handling', () => {
-                it('should return error if person can not be found', async () => {
+                it('should leave the person unchanged when no group memberships are found', async () => {
                     clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
 
-                    const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
+                    const result: Result<void> = await ldapClientAdapter.upsertPerson(person, []);
 
-                    expectErrResult(result);
-                    expect(result.error).toBeInstanceOf(LdapFindPersonError);
+                    expectOkResult(result);
                     expect(clientMock.search).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenCalledTimes(1);
                     expect(clientMock.add).not.toHaveBeenCalled();
@@ -789,7 +914,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
                 it('should return an aggregated error if creating a missing group fails', async () => {
                     clientMock.search
-                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
                         .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                     clientMock.add.mockRejectedValueOnce(undefined);
 
@@ -806,7 +931,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
                 it('should return an aggregated error if adding a person to a group fails', async () => {
                     clientMock.search
-                        .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                        .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] })
                         .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] });
                     clientMock.modify.mockResolvedValueOnce().mockRejectedValueOnce(undefined);
 
@@ -833,7 +958,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 it('should return an aggregated error if removing a person from a group fails', async () => {
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: [groupDn] }],
+                            searchEntries: [{ dn: groupDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({
@@ -867,7 +992,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
                     clientMock.search
                         .mockResolvedValueOnce({
-                            searchEntries: [{ dn, memberOf: [removedDn] }],
+                            searchEntries: [{ dn: removedDn }],
                             searchReferences: [],
                         })
                         .mockResolvedValueOnce({ searchEntries: [{ dn: groupDn }], searchReferences: [] })
@@ -892,7 +1017,7 @@ describe('LDAP UNDI Client Adapter', () => {
                 });
 
                 it('should return an aggregated bind error when adding a person to a group', async () => {
-                    clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
+                    clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                     clientMock.bind.mockResolvedValueOnce().mockResolvedValueOnce().mockRejectedValueOnce(undefined);
 
                     const result: Result<void> = await ldapClientAdapter.upsertPerson(person, [group]);
@@ -910,7 +1035,7 @@ describe('LDAP UNDI Client Adapter', () => {
 
                 it('should return an aggregated bind error when removing a person from a group', async () => {
                     clientMock.search.mockResolvedValueOnce({
-                        searchEntries: [{ dn, memberOf: [groupDn] }],
+                        searchEntries: [{ dn: groupDn }],
                         searchReferences: [],
                     });
                     clientMock.bind.mockResolvedValueOnce().mockResolvedValueOnce().mockRejectedValueOnce(undefined);
@@ -950,7 +1075,9 @@ describe('LDAP UNDI Client Adapter', () => {
 
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValue({ searchEntries: [{ dn }], searchReferences: [] });
+                clientMock.search
+                    .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                    .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                 clientMock.del.mockResolvedValueOnce();
                 return clientMock;
             });
@@ -962,10 +1089,10 @@ describe('LDAP UNDI Client Adapter', () => {
                 filter: `(uid=${id})`,
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
-            expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
-                filter: '(objectClass=*)',
-                scope: 'base',
-                attributes: [LdapUndiClientAdapter.MEMBER_OF],
+            expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
+                filter: `(&(objectClass=groupOfEntries)(member=${dn}))`,
+                scope: 'subordinates',
+                attributes: [],
             });
             expect(clientMock.del).toHaveBeenCalledExactlyOnceWith(dn);
             expect(clientMock.modify).not.toHaveBeenCalled();
@@ -983,7 +1110,7 @@ describe('LDAP UNDI Client Adapter', () => {
             clientMock.bind.mockResolvedValue();
             clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] });
             clientMock.search.mockResolvedValueOnce({
-                searchEntries: [{ dn, memberOf: groupDns }],
+                searchEntries: groupDns.map((groupDn: string) => ({ dn: groupDn })),
                 searchReferences: [],
             });
             clientMock.search.mockResolvedValueOnce({
@@ -1005,7 +1132,7 @@ describe('LDAP UNDI Client Adapter', () => {
             groupDns.forEach((groupDn: string) => {
                 expect(clientMock.search).toHaveBeenCalledWith(groupDn, {
                     scope: 'base',
-                    filter: '(objectClass=groupOfNames)',
+                    filter: '(objectClass=groupOfEntries)',
                     attributes: [LdapUndiClientAdapter.MEMBER],
                 });
                 expect(clientMock.modify).toHaveBeenCalledWith(groupDn, [
@@ -1049,7 +1176,7 @@ describe('LDAP UNDI Client Adapter', () => {
             clientMock.search
                 .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
                 .mockResolvedValueOnce({
-                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchEntries: [{ dn: groupDn }],
                     searchReferences: [],
                 })
                 .mockResolvedValueOnce({
@@ -1085,7 +1212,9 @@ describe('LDAP UNDI Client Adapter', () => {
 
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValue({ searchEntries: [{ dn }], searchReferences: [] });
+                clientMock.search
+                    .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
+                    .mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
                 clientMock.del.mockRejectedValueOnce(undefined);
                 return clientMock;
             });
@@ -1122,7 +1251,13 @@ describe('LDAP UNDI Client Adapter', () => {
             dn = `uid=${id}`;
             ldapClientMock.getClient.mockReturnValue(clientMock);
             clientMock.bind.mockResolvedValue();
-            clientMock.search.mockResolvedValue({ searchEntries: [{ dn }], searchReferences: [] });
+            clientMock.search.mockImplementation(
+                (_baseDn: Parameters<Client['search']>[0], options: Parameters<Client['search']>[1]) =>
+                    Promise.resolve({
+                        searchEntries: options?.filter === `(uid=${id})` ? [{ dn }] : [],
+                        searchReferences: [],
+                    }),
+            );
             clientMock.modify.mockResolvedValue();
         });
 
@@ -1131,7 +1266,7 @@ describe('LDAP UNDI Client Adapter', () => {
             clientMock.search
                 .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
                 .mockResolvedValueOnce({
-                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchEntries: [{ dn: groupDn }],
                     searchReferences: [],
                 })
                 .mockResolvedValueOnce({
@@ -1146,14 +1281,14 @@ describe('LDAP UNDI Client Adapter', () => {
                 filter: `(uid=${id})`,
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
-            expect(clientMock.search).toHaveBeenNthCalledWith(2, dn, {
-                filter: '(objectClass=*)',
-                scope: 'base',
-                attributes: [LdapUndiClientAdapter.MEMBER_OF],
+            expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
+                filter: `(&(objectClass=groupOfEntries)(member=${dn}))`,
+                scope: 'subordinates',
+                attributes: [],
             });
             expect(clientMock.search).toHaveBeenNthCalledWith(3, groupDn, {
                 scope: 'base',
-                filter: '(objectClass=groupOfNames)',
+                filter: '(objectClass=groupOfEntries)',
                 attributes: [LdapUndiClientAdapter.MEMBER],
             });
             expect(clientMock.modify).toHaveBeenCalledTimes(2);
@@ -1227,7 +1362,7 @@ describe('LDAP UNDI Client Adapter', () => {
             clientMock.search
                 .mockResolvedValueOnce({ searchEntries: [{ dn }], searchReferences: [] })
                 .mockResolvedValueOnce({
-                    searchEntries: [{ dn, memberOf: [groupDn] }],
+                    searchEntries: [{ dn: groupDn }],
                     searchReferences: [],
                 })
                 .mockResolvedValueOnce({

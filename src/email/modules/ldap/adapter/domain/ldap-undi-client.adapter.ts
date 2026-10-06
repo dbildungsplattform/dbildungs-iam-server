@@ -43,9 +43,9 @@ export type GroupDataUndi = {
 export class LdapUndiClientAdapter {
     public static readonly FALLBACK_RETRIES: number = 3; // e.g. FALLBACK_RETRIES = 3 will produce retry sequence: 1sek, 8sek, 27sek (1000ms * retrycounter^3)
 
-    public static readonly OEFFENTLICHE_SCHULEN_OU: string = 'oeffentlicheSchulen';
+    public static readonly OEFFENTLICHE_SCHULEN_OU: string = 'oeffentlich';
 
-    public static readonly ERSATZ_SCHULEN_OU: string = 'ersatzSchulen';
+    public static readonly ERSATZ_SCHULEN_OU: string = 'ersatz';
 
     public static readonly DN: string = 'dn';
 
@@ -198,7 +198,7 @@ export class LdapUndiClientAdapter {
             // Create new person
             try {
                 await client.add(personDN, {
-                    [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'univentionMail', 'posixAccount'],
+                    [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'spshUser'],
                     [LdapUndiClientAdapter.UID]: person.uid,
                     [LdapUndiClientAdapter.COMMON_NAME]: person.username,
                     [LdapUndiClientAdapter.GIVEN_NAME]: person.firstName,
@@ -395,21 +395,13 @@ export class LdapUndiClientAdapter {
             return bindResult;
         }
 
-        const searchResultPerson: SearchResult = await client.search(personDN, {
-            filter: `(objectClass=*)`,
-            scope: 'base',
-            attributes: [LdapUndiClientAdapter.MEMBER_OF],
+        const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
+            filter: `(&(objectClass=groupOfEntries)(member=${personDN}))`,
+            scope: 'subordinates',
+            attributes: [],
         });
 
-        if (!searchResultPerson.searchEntries[0]) {
-            this.logger.error(`Could not find person ${personDN} for setting groups`);
-            return Err(new LdapFindPersonError());
-        }
-
-        const personGroups: string[] = this.getEntryAttributeAsStringArray(
-            searchResultPerson.searchEntries[0],
-            LdapUndiClientAdapter.MEMBER_OF,
-        );
+        const personGroups: string[] = searchResultPerson.searchEntries.map((e: Entry) => e.dn);
 
         // Find additional/missing groups
         const groupsToAdd: GroupDataUndi[] = differenceWith(
@@ -453,7 +445,7 @@ export class LdapUndiClientAdapter {
         baseOu: string,
         groupData: GroupDataUndi,
     ): Promise<Result<void>> {
-        const searchBaseDn: string = `cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
+        const searchBaseDn: string = `ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
         const groupDn: string = `cn=${groupData.id},cn=${LdapUndiClientAdapter.GROUP_CN},ou=${baseOu},${this.ldapInstanceConfig.BASE_DN}`;
         const groupName: string = `lehrer-${groupData.kennung}`;
 
@@ -464,14 +456,14 @@ export class LdapUndiClientAdapter {
         }
 
         const searchResultOrgUnit: SearchResult = await client.search(searchBaseDn, {
-            filter: `(cn=${groupData.id}&objectClass=groupOfNames)`,
-            scope: 'one',
+            filter: `(cn=${groupData.id})`,
+            scope: 'subordinates',
         });
 
         if (!searchResultOrgUnit.searchEntries[0]) {
-            // GroupOfNames doesnt exist
+            // GroupOfEntries doesnt exist
             const newOrgUnit: Record<string, string | string[]> = {
-                [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfNames'],
+                [LdapUndiClientAdapter.OBJECT_CLASS]: ['groupOfEntries'],
                 [LdapUndiClientAdapter.COMMON_NAME]: groupData.id,
                 [LdapUndiClientAdapter.DESCRIPTION]: groupName,
                 [LdapUndiClientAdapter.ORGANISATION_NAME]: groupData.name,
@@ -481,24 +473,33 @@ export class LdapUndiClientAdapter {
             try {
                 await client.add(groupDn, newOrgUnit);
             } catch (e) {
-                this.logger.logUnknownAsError(`Could create group ${groupDn}`, e);
+                this.logger.logUnknownAsError(`Could not create group ${groupDn}`, e);
                 return Err(new LdapCreateGroupError(groupData.id, [e]));
             }
         } else {
-            // GroupOfNames already exists, modify members
-            try {
-                await client.modify(groupDn, [
-                    new Change({
-                        operation: 'add',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.MEMBER,
-                            values: [personDN],
+            if (
+                !this.getEntryAttributeAsStringArray(
+                    searchResultOrgUnit.searchEntries[0],
+                    LdapUndiClientAdapter.MEMBER,
+                ).includes(personDN)
+            ) {
+                // GroupOfEntries already exists, modify members
+                try {
+                    await client.modify(groupDn, [
+                        new Change({
+                            operation: 'add',
+                            modification: new Attribute({
+                                type: LdapUndiClientAdapter.MEMBER,
+                                values: [personDN],
+                            }),
                         }),
-                    }),
-                ]);
-            } catch (e) {
-                this.logger.logUnknownAsError(`Could not add person ${personDN} to group ${groupDn}`, e);
-                return Err(new LdapAddPersonToGroupError([e]));
+                    ]);
+                } catch (e) {
+                    this.logger.logUnknownAsError(`Could not add person ${personDN} to group ${groupDn}`, e);
+                    return Err(new LdapAddPersonToGroupError([e]));
+                }
+            } else {
+                this.logger.info(`Person ${personDN} already is member of group ${groupDn}`);
             }
         }
 
@@ -514,7 +515,7 @@ export class LdapUndiClientAdapter {
 
         const searchResultOrgUnit: SearchResult = await client.search(groupDN, {
             scope: 'base',
-            filter: `(objectClass=groupOfNames)`,
+            filter: `(objectClass=groupOfEntries)`,
             attributes: [LdapUndiClientAdapter.MEMBER],
         });
 
@@ -563,7 +564,7 @@ export class LdapUndiClientAdapter {
             }
 
             const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-                filter: `(cn=${id}&objectClass=groupOfNames)`,
+                filter: `(cn=${id}&objectClass=groupOfEntries)`,
             });
 
             if (!searchResultOrgUnit.searchEntries[0]) {
@@ -602,7 +603,7 @@ export class LdapUndiClientAdapter {
             }
 
             const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-                filter: `(cn=${id}&objectClass=groupOfNames)`,
+                filter: `(cn=${id}&objectClass=groupOfEntries)`,
             });
 
             if (!searchResultOrgUnit.searchEntries[0]) {
