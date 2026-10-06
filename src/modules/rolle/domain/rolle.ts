@@ -147,6 +147,10 @@ export class Rolle<WasPersisted extends boolean> {
         return this.systemrechte.includes(systemRecht);
     }
 
+    public hasMerkmal(merkmal: RollenMerkmal): boolean {
+        return this.merkmale.includes(merkmal);
+    }
+
     public hasUemServiceProvider(): boolean {
         return this.serviceProviderData.some(
             (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.UEM,
