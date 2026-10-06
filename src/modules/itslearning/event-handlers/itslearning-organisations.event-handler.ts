@@ -13,10 +13,12 @@ import { KafkaKlasseCreatedEvent } from '../../../shared/events/kafka-klasse-cre
 import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-updated.event.js';
 import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
 import { KlasseCreatedEvent } from '../../../shared/events/klasse-created.event.js';
 import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { OrganisationsTyp, RootDirectChildrenType } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
@@ -214,6 +216,53 @@ export class ItsLearningOrganisationsEventHandler {
         this.logger.info(
             `[EventID: ${event.eventID}] Schule with ID ${event.organisationId} and its ${klassen.length} Klassen were created.`,
         );
+    }
+
+    @KafkaEventHandler(KafkaSchuleUpdatedEvent)
+    @EventHandler(SchuleUpdatedEvent)
+    @EnsureRequestContext()
+    public async schuleUpdatedEventHandler(event: SchuleUpdatedEvent): Promise<void> {
+        this.logger.info(`[EventID: ${event.eventID}] Received SchuleUpdatedEvent, ID: ${event.organisationId}`);
+
+        if (!this.ENABLED) {
+            this.logger.info(`[EventID: ${event.eventID}] Not enabled, ignoring event.`);
+            return;
+        }
+
+        if (!event.itslearningEnabled) {
+            this.logger.info(
+                `[EventID: ${event.eventID}] Schule with ID ${event.organisationId} is not itslearning enabled. Ignoring event.`,
+            );
+            return;
+        }
+
+        const rootType: RootDirectChildrenType =
+            await this.organisationRepo.findOrganisationZuordnungErsatzOderOeffentlich(event.organisationId);
+
+        if (rootType === RootDirectChildrenType.ERSATZ) {
+            this.logger.error(`[EventID: ${event.eventID}] Ersatzschule, ignoring.`);
+            return;
+        }
+
+        const params: UpdateGroupParams = {
+            id: event.organisationId,
+            name: this.makeSchulName(event.kennung, event.name),
+            type: 'School',
+            parentId: this.ROOT_OEFFENTLICH,
+        };
+
+        const updateError: Option<DomainError> = await this.itslearningGroupAdapter.createOrUpdateGroup(
+            params,
+            `${event.eventID}-SCHULE-UPDATED`,
+        );
+
+        if (updateError) {
+            return this.logger.error(
+                `[EventID: ${event.eventID}] Could not update Schule (ID ${event.organisationId}) in itsLearning: ${updateError.message}`,
+            );
+        }
+
+        this.logger.info(`[EventID: ${event.eventID}] Schule with ID ${event.organisationId} was updated.`);
     }
 
     @KafkaEventHandler(KafkaOrganisationDeletedEvent)

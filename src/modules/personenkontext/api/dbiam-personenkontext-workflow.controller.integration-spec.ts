@@ -1178,6 +1178,99 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     });
 
     describe('/PUT commit', () => {
+        describe('MPT permissions', () => {
+            afterEach(() => {
+                personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            });
+
+            it.each([
+                { operation: 'add', allowed: false },
+                { operation: 'remove', allowed: false },
+                { operation: 'add', allowed: true },
+                { operation: 'remove', allowed: true },
+            ])(
+                'should enforce MPT permissions for $operation with allowed=$allowed',
+                async ({ operation, allowed }: { operation: string; allowed: boolean }) => {
+                    const person: Person<true> = await createPerson();
+                    const organisation: Organisation<true> = await organisationRepo.save(
+                        DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+                    );
+                    const regularRolle: Rolle<true> = await rolleRepo.create(
+                        DoFactory.createRolle(false, {
+                            rollenart: RollenArt.LEHR,
+                            merkmale: [],
+                            serviceProviderIds: [],
+                        }),
+                    );
+                    const mptRolle: Rolle<true> = await rolleRepo.create(
+                        DoFactory.createRolle(false, {
+                            rollenart: RollenArt.LEHR,
+                            merkmale: [RollenMerkmal.MPT_ROLLE],
+                            serviceProviderIds: [],
+                        }),
+                    );
+                    const regularPK: Personenkontext<true> = await personenkontextRepoInternal.save(
+                        DoFactory.createPersonenkontext(false, {
+                            personId: person.id,
+                            organisationId: organisation.id,
+                            rolleId: regularRolle.id,
+                            befristung: undefined,
+                        }),
+                    );
+                    let lastModified: Date = regularPK.updatedAt;
+                    if (operation === 'remove') {
+                        const mptPK: Personenkontext<true> = await personenkontextRepoInternal.save(
+                            DoFactory.createPersonenkontext(false, {
+                                personId: person.id,
+                                organisationId: organisation.id,
+                                rolleId: mptRolle.id,
+                                befristung: undefined,
+                            }),
+                        );
+                        lastModified = mptPK.updatedAt;
+                    }
+                    const sentRollen: Rolle<true>[] = operation === 'add' ? [regularRolle, mptRolle] : [regularRolle];
+                    const body: DbiamUpdatePersonenkontexteBodyParams = {
+                        count: operation === 'add' ? 1 : 2,
+                        lastModified,
+                        personenkontexte: sentRollen.map((rolle: Rolle<true>) => ({
+                            personId: person.id,
+                            organisationId: organisation.id,
+                            rolleId: rolle.id,
+                        })),
+                    };
+                    personPermissionsMock.canModifyPerson.mockResolvedValue(true);
+                    personPermissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
+                        (organisationId: string, systemrecht: RollenSystemRecht): Promise<boolean> =>
+                            Promise.resolve(
+                                systemrecht !== RollenSystemRecht.MPT_ROLLEN_ZUORDNEN ||
+                                    (allowed && organisationId === organisation.id),
+                            ),
+                    );
+
+                    const response: Response = await request(app.getHttpServer() as App)
+                        .put(`/personenkontext-workflow/${person.id}`)
+                        .send(body);
+
+                    expect(response.status).toBe(allowed ? 200 : 404);
+                    if (!allowed) {
+                        expect(response.body).toEqual({ code: 404, i18nKey: 'MISSING_PERMISSIONS' });
+                    }
+                    const persisted: Personenkontext<true>[] = await app
+                        .get(DBiamPersonenkontextRepo)
+                        .findByPerson(person.id);
+                    const expectedRollen: Rolle<true>[] = allowed
+                        ? sentRollen
+                        : operation === 'add'
+                          ? [regularRolle]
+                          : [regularRolle, mptRolle];
+                    expect(persisted.map((pk: Personenkontext<true>) => pk.rolleId).sort()).toEqual(
+                        expectedRollen.map((rolle: Rolle<true>) => rolle.id).sort(),
+                    );
+                },
+            );
+        });
+
         describe('when sending no PKs', () => {
             it('should delete and therefore return 200', async () => {
                 const person: Person<true> = await createPerson();
