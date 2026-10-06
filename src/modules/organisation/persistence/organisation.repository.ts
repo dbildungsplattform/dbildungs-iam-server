@@ -21,11 +21,13 @@ import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-upd
 import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
 import { KlasseCreatedEvent } from '../../../shared/events/klasse-created.event.js';
 import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { SchuleCreatedEvent } from '../../../shared/events/schule-created.event.js';
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
@@ -680,13 +682,23 @@ export class OrganisationRepository {
         if (organisationEntity.version !== organisation.version) {
             throw new OrganisationUpdateOutdatedError();
         }
+
+        const oldOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
         organisationEntity.version += 1;
 
         organisationEntity.assign(mapOrgaAggregateToData(organisation));
 
         await this.em.persist(organisationEntity).flush();
 
-        return mapOrgaEntityToAggregate(organisationEntity);
+        const updatedOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
+        if (updatedOrganisation.typ === OrganisationsTyp.SCHULE) {
+            this.eventService.publish(
+                SchuleUpdatedEvent.fromOrganisations(updatedOrganisation, oldOrganisation),
+                KafkaSchuleUpdatedEvent.fromOrganisations(updatedOrganisation, oldOrganisation),
+            );
+        }
+
+        return updatedOrganisation;
     }
 
     public async findOrganisationZuordnungErsatzOderOeffentlich(
