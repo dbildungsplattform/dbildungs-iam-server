@@ -417,9 +417,15 @@ describe('EmailResolverService', () => {
                 kennung: '0706054',
                 name: 'Testschule',
             });
+            const mockOrganisationWithoutKennung: Organisation<true> = DoFactory.createOrganisation(true, {
+                kennung: '',
+            });
+            const mockOrganisationWithoutName: Organisation<true> = DoFactory.createOrganisation(true, {
+                name: '',
+            });
             const params: SetEmailParams = {
                 spshUsername: 'mmustermann',
-                organisationen: [mockOrganisation],
+                organisationen: [mockOrganisation, mockOrganisationWithoutKennung, mockOrganisationWithoutName],
                 firstName: 'Max',
                 lastName: 'Mustermann',
                 spshServiceProviderId: faker.string.uuid(),

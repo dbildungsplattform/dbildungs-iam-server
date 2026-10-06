@@ -153,13 +153,20 @@ export class EmailResolverService {
             );
             this.logger.info(`Params: ${JSON.stringify(params)}`);
 
-            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = params.organisationen.map(
-                (o: Organisation<true>) => ({
+            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = params.organisationen
+                .map((o: Organisation<true>) => ({
                     id: o.id,
-                    kennung: o.kennung!, // TODO: SPSH-4220
-                    name: o.name!, // TODO: SPSH-4220
-                }),
-            );
+                    kennung: o.kennung,
+                    name: o.name,
+                }))
+                .filter(
+                    (o: {
+                        id: string;
+                        kennung: string | undefined;
+                        name: string | undefined;
+                    }): o is SetEmailAddressForSpshPersonBodyParams['organisationen'][number] =>
+                        !!o.kennung && !!o.name, // Ignore organisations without a kennung or name
+                );
 
             await lastValueFrom(
                 this.httpService.post(
