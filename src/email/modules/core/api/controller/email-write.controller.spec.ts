@@ -17,12 +17,16 @@ import { SetEmailAddressesSuspendedPathParams } from '../dtos/params/set-email-a
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
 import { ModifyOrganisationInLdapService } from '../../domain/modify-organisation-in-ldap.service.js';
 import { SetEmailAddressesSuspendedBodyParams } from '../dtos/params/set-email-addresses-suspended.bodyparams.js';
+import { UpdateOrganisationBodyParams } from '../dtos/params/update-organisation.bodyparams.js';
+import { UpdateOrganisationPathParams } from '../dtos/params/update-organisation.pathparams.js';
 
 describe('Email Write Controller', () => {
     let emailWriteController: EmailWriteController;
     let setEmailAddressForSpshPersonServiceMock: DeepMocked<SetEmailAddressForSpshPersonService>;
     let setEmailSuspendedServiceMock: DeepMocked<SetEmailSuspendedService>;
     let deleteEmailsAddressesForSpshPersonServiceMock: DeepMocked<DeleteEmailsAddressesForSpshPersonService>;
+    let modifyOrganisationInLdapServiceMock: DeepMocked<ModifyOrganisationInLdapService>;
+    let loggerMock: DeepMocked<ClassLogger>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -56,6 +60,8 @@ describe('Email Write Controller', () => {
         setEmailAddressForSpshPersonServiceMock = module.get(SetEmailAddressForSpshPersonService);
         setEmailSuspendedServiceMock = module.get(SetEmailSuspendedService);
         deleteEmailsAddressesForSpshPersonServiceMock = module.get(DeleteEmailsAddressesForSpshPersonService);
+        modifyOrganisationInLdapServiceMock = module.get(ModifyOrganisationInLdapService);
+        loggerMock = module.get(ClassLogger);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {
@@ -142,6 +148,76 @@ describe('Email Write Controller', () => {
             expect(
                 deleteEmailsAddressesForSpshPersonServiceMock.deleteEmailAddressesForSpshPerson,
             ).toHaveBeenCalledWith({ spshPersonId });
+        });
+    });
+
+    describe('deleteOrganisation', () => {
+        it('should resolve immediately if deleteOrganisationFromLdap succeeds', () => {
+            const organisationId: string = faker.string.uuid();
+            modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap.mockResolvedValue({
+                ok: true,
+                value: undefined,
+            });
+            const result: void = emailWriteController.deleteOrganisation(organisationId);
+            expect(result).toBeUndefined();
+            vi.runAllTimers();
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(
+                organisationId,
+            );
+        });
+
+        it('should log error if deleteOrganisationFromLdap fails', async () => {
+            const organisationId: string = faker.string.uuid();
+            const error: Error = new Error('Delete failed');
+            modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap.mockRejectedValue(error);
+            const result: void = emailWriteController.deleteOrganisation(organisationId);
+            expect(result).toBeUndefined();
+            await vi.runAllTimersAsync();
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(
+                organisationId,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `Error in background LDAP organisation deletion: ${error.message}`,
+            );
+        });
+    });
+
+    describe('updateOrganisation', () => {
+        it('should resolve immediately if modifyOrganisationNameInLdap succeeds', () => {
+            const organisationId: string = faker.string.uuid();
+            const params: UpdateOrganisationPathParams = new UpdateOrganisationPathParams();
+            const bodyParams: UpdateOrganisationBodyParams = { name: faker.company.name() };
+            Object.assign(params, { organisationId });
+            modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap.mockResolvedValue({
+                ok: true,
+                value: undefined,
+            });
+            const result: void = emailWriteController.updateOrganisation(params, bodyParams);
+            expect(result).toBeUndefined();
+            vi.runAllTimers();
+            expect(modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap).toHaveBeenCalledWith(
+                organisationId,
+                bodyParams.name,
+            );
+        });
+
+        it('should log error if modifyOrganisationNameInLdap fails', async () => {
+            const organisationId: string = faker.string.uuid();
+            const params: UpdateOrganisationPathParams = new UpdateOrganisationPathParams();
+            const bodyParams: UpdateOrganisationBodyParams = { name: faker.company.name() };
+            Object.assign(params, { organisationId });
+            const error: Error = new Error('Update failed');
+            modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap.mockRejectedValue(error);
+            const result: void = emailWriteController.updateOrganisation(params, bodyParams);
+            expect(result).toBeUndefined();
+            await vi.runAllTimersAsync();
+            expect(modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap).toHaveBeenCalledWith(
+                organisationId,
+                bodyParams.name,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `Error in background LDAP organisation update: ${error.message}`,
+            );
         });
     });
 
