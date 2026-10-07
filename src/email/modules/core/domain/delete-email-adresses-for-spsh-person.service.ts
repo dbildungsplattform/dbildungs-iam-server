@@ -25,6 +25,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
     public async deleteEmailAddressesForSpshPerson(params: { spshPersonId: string }): Promise<void> {
         const spshPersonId: string = params.spshPersonId;
         this.logger.info(`Received request to delete all email addresses for spshPerson ${spshPersonId}.`);
+
         const personEmailAddresses: EmailAddress<true>[] =
             await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(spshPersonId);
 
@@ -52,6 +53,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
             emailAddress.setStatus(EmailAddressStatusEnum.TO_BE_DELETED);
             emailAddress.markedForCron = new Date();
         });
+
         await Promise.all(
             personEmailAddresses.map((emailAddress: EmailAddress<true>) => this.emailAddressRepo.save(emailAddress)),
         );
@@ -61,15 +63,9 @@ export class DeleteEmailsAddressesForSpshPersonService {
         spshPersonId: string,
         personEmailAddresses: EmailAddress<true>[],
     ): Promise<boolean> {
-        const oxUserCounter: OXUserID | undefined = personEmailAddresses.find(
-            (emailAddress: EmailAddress<true>) => emailAddress.oxUserCounter,
-        )?.oxUserCounter;
-        const externalId: string | undefined = personEmailAddresses.find(
-            (emailAddress: EmailAddress<true>) => emailAddress.externalId,
-        )?.externalId;
-        const domain: string | undefined = personEmailAddresses
-            .find((emailAddress: EmailAddress<true>) => emailAddress.getDomain())
-            ?.getDomain();
+        const oxUserCounter: OXUserID | undefined = this.findOxUserCounter(personEmailAddresses);
+        const externalId: string | undefined = this.findExternalId(personEmailAddresses);
+        const domain: string | undefined = this.findEmailDomain(personEmailAddresses);
 
         const oxAllowsDatabaseDeletion: boolean = await this.deleteOxUser(
             spshPersonId,
@@ -84,7 +80,21 @@ export class DeleteEmailsAddressesForSpshPersonService {
         );
         const undiLdapAllowsDatabaseDeletion: boolean = await this.deleteUndiLdapPerson(spshPersonId);
 
-        return oxAllowsDatabaseDeletion && ldapAllowsDatabaseDeletion && undiLdapAllowsDatabaseDeletion;
+        const isDeletionSuccessful: boolean = oxAllowsDatabaseDeletion && ldapAllowsDatabaseDeletion && undiLdapAllowsDatabaseDeletion;
+        
+        return isDeletionSuccessful;
+    }
+
+    private findOxUserCounter(personEmailAddresses: EmailAddress<true>[]): OXUserID | undefined {
+        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.oxUserCounter)?.oxUserCounter;
+    }
+
+    private findExternalId(personEmailAddresses: EmailAddress<true>[]): string | undefined {
+        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.externalId)?.externalId;
+    }
+
+    private findEmailDomain(personEmailAddresses: EmailAddress<true>[]): string | undefined {
+        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.getDomain())?.getDomain();
     }
 
     private async deleteOxUser(
@@ -96,6 +106,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
             this.logger.warning(
                 `No oxUserCounter found for spshPerson ${spshPersonId} when deleting email addresses. Skipping Ox deletion`,
             );
+
             return true;
         }
 
@@ -121,6 +132,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
             this.logger.info(
                 `Successfully deleted for spshPerson ${spshPersonId} the corresponding Ox user ${oxUserCounter}.`,
             );
+
             return true;
         }
 
@@ -128,6 +140,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
             this.logger.info(
                 `User for spshPerson ${spshPersonId} with Ox user id ${oxUserCounter} does not exist in Ox anymore. Continuing deletion process.`,
             );
+
             return true;
         }
 
@@ -147,31 +160,33 @@ export class DeleteEmailsAddressesForSpshPersonService {
             return true;
         }
 
-        let deleteLdapPersonResult: Result<void, Error>;
-
         if (!this.ldapClientAdapter.useLdap()) {
             const ldapUserAddresses: object = personEmailAddresses.map((emailAddress: EmailAddress<true>) => ({
                 address: emailAddress.address,
                 priority: emailAddress.priority,
                 externalId: emailAddress.externalId,
             }));
+
             this.logger.info(
                 `LDAP disabled -> faking deletePerson. Data: externalId=${externalId}, domain=${domain}, addresses=${JSON.stringify(
                     ldapUserAddresses,
                 )}`,
             );
-            deleteLdapPersonResult = Ok(undefined);
         } else {
-            deleteLdapPersonResult = await this.ldapClientAdapter.deletePerson(externalId, domain);
-        }
+            const deleteLdapPersonResult: Result<void, Error> = await this.ldapClientAdapter.deletePerson(
+                externalId,
+                domain,
+            );
 
-        if (!deleteLdapPersonResult.ok) {
-            return false;
+            if (!deleteLdapPersonResult.ok) {
+                return false;
+            }
         }
 
         this.logger.info(
             `Successfully deleted for spshPerson ${spshPersonId} the LDAP user with uid: ${externalId} in domain ${domain}.`,
         );
+
         return true;
     }
 
@@ -192,6 +207,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
         }
 
         this.logger.info(`Successfully deleted person ${spshPersonId} in UNDI LDAP`);
+
         return true;
     }
 
@@ -206,13 +222,18 @@ export class DeleteEmailsAddressesForSpshPersonService {
         this.logger.info(`Successfully deleted all email addresses for spshPerson ${spshPersonId} from DB.`);
     }
 
+    private findEmailAddressByPriority(
+        personEmailAddresses: EmailAddress<true>[],
+        priority: number,
+    ): string | undefined {
+        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.priority === priority)
+            ?.address;
+    }
+
     private notifyEmailAddressesChanged(spshPersonId: string, personEmailAddresses: EmailAddress<true>[]): void {
-        const previousPrimaryEmail: string | undefined = personEmailAddresses.find(
-            (emailAddress: EmailAddress<true>) => emailAddress.priority === 0,
-        )?.address;
-        const previousAlternativeEmail: string | undefined = personEmailAddresses.find(
-            (emailAddress: EmailAddress<true>) => emailAddress.priority === 1,
-        )?.address;
+        const previousPrimaryEmail: string | undefined = this.findEmailAddressByPriority(personEmailAddresses, 0);
+        const previousAlternativeEmail: string | undefined =
+            this.findEmailAddressByPriority(personEmailAddresses, 1);
 
         this.webhookService.sendEmailsChanged({
             spshPersonId,
