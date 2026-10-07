@@ -23,136 +23,199 @@ export class DeleteEmailsAddressesForSpshPersonService {
     ) {}
 
     public async deleteEmailAddressesForSpshPerson(params: { spshPersonId: string }): Promise<void> {
-        this.logger.info(`Received request to delete all email addresses for spshPerson ${params.spshPersonId}.`);
-        const personEmailAddresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
-            params.spshPersonId,
-        );
+        const spshPersonId: string = params.spshPersonId;
+        this.logger.info(`Received request to delete all email addresses for spshPerson ${spshPersonId}.`);
+        const personEmailAddresses: EmailAddress<true>[] =
+            await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(spshPersonId);
 
         if (personEmailAddresses.length === 0) {
-            this.logger.info(`No email addresses found for spshPerson ${params.spshPersonId}. Skipping deletion.`);
+            this.logger.info(`No email addresses found for spshPerson ${spshPersonId}. Skipping deletion.`);
             return;
         }
-        personEmailAddresses.forEach((a: EmailAddress<true>) => {
-            a.setStatus(EmailAddressStatusEnum.TO_BE_DELETED);
-            a.markedForCron = new Date();
+
+        await this.markEmailAddressesForDeletion(personEmailAddresses);
+        const canDeleteFromDatabase: boolean = await this.deleteExternalAccounts(spshPersonId, personEmailAddresses);
+
+        if (canDeleteFromDatabase) {
+            await this.deleteEmailAddressesFromDatabase(spshPersonId, personEmailAddresses);
+        } else {
+            this.logger.warning(
+                `Could not delete all external representations for spshPerson ${spshPersonId}. Keeping email addresses in DB with status TO_BE_DELETED for retry.`,
+            );
+        }
+
+        this.notifyEmailAddressesChanged(spshPersonId, personEmailAddresses);
+    }
+
+    private async markEmailAddressesForDeletion(personEmailAddresses: EmailAddress<true>[]): Promise<void> {
+        personEmailAddresses.forEach((emailAddress: EmailAddress<true>) => {
+            emailAddress.setStatus(EmailAddressStatusEnum.TO_BE_DELETED);
+            emailAddress.markedForCron = new Date();
         });
-        await Promise.all(personEmailAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.save(a)));
+        await Promise.all(
+            personEmailAddresses.map((emailAddress: EmailAddress<true>) => this.emailAddressRepo.save(emailAddress)),
+        );
+    }
 
-        //If any of the external deletion operations fail, we keep the email addresses in DB with status TO_BE_DELETED for retry by the cronjob
-        let canDbDeleteAllAdresses: boolean = true;
-
+    private async deleteExternalAccounts(
+        spshPersonId: string,
+        personEmailAddresses: EmailAddress<true>[],
+    ): Promise<boolean> {
         const oxUserCounter: OXUserID | undefined = personEmailAddresses.find(
-            (a: EmailAddress<true>) => a.oxUserCounter,
+            (emailAddress: EmailAddress<true>) => emailAddress.oxUserCounter,
         )?.oxUserCounter;
-        const externalId: string | undefined = personEmailAddresses.find((a: EmailAddress<true>) => a.externalId)?.externalId;
-        const domain: string | undefined = personEmailAddresses.find((a: EmailAddress<true>) => a.getDomain())?.getDomain();
+        const externalId: string | undefined = personEmailAddresses.find(
+            (emailAddress: EmailAddress<true>) => emailAddress.externalId,
+        )?.externalId;
+        const domain: string | undefined = personEmailAddresses
+            .find((emailAddress: EmailAddress<true>) => emailAddress.getDomain())
+            ?.getDomain();
 
-        if (oxUserCounter) {
-            //Deleting the Group Relations extra is not necessary as Ox deletes them automatically when deleting the user
-            let deleteUserResult: Result<void, Error>;
+        const oxAllowsDatabaseDeletion: boolean = await this.deleteOxUser(
+            spshPersonId,
+            oxUserCounter,
+            personEmailAddresses,
+        );
+        const ldapAllowsDatabaseDeletion: boolean = await this.deleteLdapPerson(
+            spshPersonId,
+            externalId,
+            domain,
+            personEmailAddresses,
+        );
+        const undiLdapAllowsDatabaseDeletion: boolean = await this.deleteUndiLdapPerson(spshPersonId);
 
-            if (!this.oxAdapter.useOx()) {
-                const oxUserAddresses: object = personEmailAddresses.map((a: EmailAddress<true>) => ({
-                    address: a.address,
-                    priority: a.priority,
-                    externalId: a.externalId,
-                }));
-                this.logger.info(
-                    `OX disabled -> faking deleteUser. Data: oxUserCounter=${oxUserCounter}, addresses=${JSON.stringify(oxUserAddresses)}`,
-                );
+        return oxAllowsDatabaseDeletion && ldapAllowsDatabaseDeletion && undiLdapAllowsDatabaseDeletion;
+    }
 
-                deleteUserResult = Ok(undefined);
-            } else {
-                deleteUserResult = await this.oxAdapter.deleteUser(oxUserCounter);
-            }
-
-            if (deleteUserResult.ok) {
-                this.logger.info(
-                    `Successfully deleted for spshPerson ${params.spshPersonId} the corresponding Ox user ${oxUserCounter}.`,
-                );
-            } else if (deleteUserResult.error instanceof OxNoSuchUserError) {
-                this.logger.info(
-                    `User for spshPerson ${params.spshPersonId} with Ox user id ${oxUserCounter} does not exist in Ox anymore. Continuing deletion process.`,
-                );
-            } else {
-                canDbDeleteAllAdresses = false;
-            }
-        } else {
+    private async deleteOxUser(
+        spshPersonId: string,
+        oxUserCounter: OXUserID | undefined,
+        personEmailAddresses: EmailAddress<true>[],
+    ): Promise<boolean> {
+        if (!oxUserCounter) {
             this.logger.warning(
-                `No oxUserCounter found for spshPerson ${params.spshPersonId} when deleting email addresses. Skipping Ox deletion`,
+                `No oxUserCounter found for spshPerson ${spshPersonId} when deleting email addresses. Skipping Ox deletion`,
             );
+            return true;
         }
 
-        if (externalId && domain) {
-            let deleteLdapPersonResult: Result<void, Error>;
+        //Deleting the Group Relations extra is not necessary as Ox deletes them automatically when deleting the user
+        let deleteUserResult: Result<void, Error>;
 
-            if (!this.ldapClientAdapter.useLdap()) {
-                const ldapUserAddresses: object = personEmailAddresses.map((a: EmailAddress<true>) => ({
-                    address: a.address,
-                    priority: a.priority,
-                    externalId: a.externalId,
-                }));
-                this.logger.info(
-                    `LDAP disabled -> faking deletePerson. Data: externalId=${externalId}, domain=${domain}, addresses=${JSON.stringify(
-                        ldapUserAddresses,
-                    )}`,
-                );
-                deleteLdapPersonResult = Ok(undefined);
-            } else {
-                deleteLdapPersonResult = await this.ldapClientAdapter.deletePerson(externalId, domain);
-            }
+        if (!this.oxAdapter.useOx()) {
+            const oxUserAddresses: object = personEmailAddresses.map((emailAddress: EmailAddress<true>) => ({
+                address: emailAddress.address,
+                priority: emailAddress.priority,
+                externalId: emailAddress.externalId,
+            }));
+            this.logger.info(
+                `OX disabled -> faking deleteUser. Data: oxUserCounter=${oxUserCounter}, addresses=${JSON.stringify(oxUserAddresses)}`,
+            );
 
-            if (!deleteLdapPersonResult.ok) {
-                canDbDeleteAllAdresses = false;
-            } else {
-                this.logger.info(
-                    `Successfully deleted for spshPerson ${params.spshPersonId} the LDAP user with uid: ${externalId} in domain ${domain}.`,
-                );
-            }
+            deleteUserResult = Ok(undefined);
         } else {
+            deleteUserResult = await this.oxAdapter.deleteUser(oxUserCounter);
+        }
+
+        if (deleteUserResult.ok) {
+            this.logger.info(
+                `Successfully deleted for spshPerson ${spshPersonId} the corresponding Ox user ${oxUserCounter}.`,
+            );
+            return true;
+        }
+
+        if (deleteUserResult.error instanceof OxNoSuchUserError) {
+            this.logger.info(
+                `User for spshPerson ${spshPersonId} with Ox user id ${oxUserCounter} does not exist in Ox anymore. Continuing deletion process.`,
+            );
+            return true;
+        }
+
+        return false;
+    }
+
+    private async deleteLdapPerson(
+        spshPersonId: string,
+        externalId: string | undefined,
+        domain: string | undefined,
+        personEmailAddresses: EmailAddress<true>[],
+    ): Promise<boolean> {
+        if (!externalId || !domain) {
             this.logger.warning(
-                `No externalId or domain found for spshPerson ${params.spshPersonId} when deleting email addresses. Skipping LDAP deletion`,
+                `No externalId or domain found for spshPerson ${spshPersonId} when deleting email addresses. Skipping LDAP deletion`,
             );
+            return true;
         }
 
-        if (this.ldapUndiClientAdapter.useLdap()) {
-            const ldapUndiDeleteResult: Result<void> = await this.ldapUndiClientAdapter.deletePerson(
-                params.spshPersonId,
-            );
+        let deleteLdapPersonResult: Result<void, Error>;
 
-            if (ldapUndiDeleteResult.ok) {
-                this.logger.info(`Successfully deleted person ${params.spshPersonId} in UNDI LDAP`);
-            } else {
-                canDbDeleteAllAdresses = false;
-                this.logger.logUnknownAsError(
-                    `Could not delete person ${params.spshPersonId} in UNDI LDAP`,
-                    ldapUndiDeleteResult.error,
-                );
-            }
+        if (!this.ldapClientAdapter.useLdap()) {
+            const ldapUserAddresses: object = personEmailAddresses.map((emailAddress: EmailAddress<true>) => ({
+                address: emailAddress.address,
+                priority: emailAddress.priority,
+                externalId: emailAddress.externalId,
+            }));
+            this.logger.info(
+                `LDAP disabled -> faking deletePerson. Data: externalId=${externalId}, domain=${domain}, addresses=${JSON.stringify(
+                    ldapUserAddresses,
+                )}`,
+            );
+            deleteLdapPersonResult = Ok(undefined);
         } else {
-            this.logger.info(`LDAP UNDI disabled -> faking deletePerson. Data: spshPersonId=${params.spshPersonId}`);
+            deleteLdapPersonResult = await this.ldapClientAdapter.deletePerson(externalId, domain);
         }
 
-        if (canDbDeleteAllAdresses) {
-            const deletePromises: Promise<void>[] = personEmailAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.delete(a));
-            await Promise.all(deletePromises);
-            this.logger.info(`Successfully deleted all email addresses for spshPerson ${params.spshPersonId} from DB.`);
-        } else {
-            this.logger.warning(
-                `Could not delete all external representations for spshPerson ${params.spshPersonId}. Keeping email addresses in DB with status TO_BE_DELETED for retry.`,
+        if (!deleteLdapPersonResult.ok) {
+            return false;
+        }
+
+        this.logger.info(
+            `Successfully deleted for spshPerson ${spshPersonId} the LDAP user with uid: ${externalId} in domain ${domain}.`,
+        );
+        return true;
+    }
+
+    private async deleteUndiLdapPerson(spshPersonId: string): Promise<boolean> {
+        if (!this.ldapUndiClientAdapter.useLdap()) {
+            this.logger.info(`LDAP UNDI disabled -> faking deletePerson. Data: spshPersonId=${spshPersonId}`);
+            return true;
+        }
+
+        const ldapUndiDeleteResult: Result<void> = await this.ldapUndiClientAdapter.deletePerson(spshPersonId);
+
+        if (!ldapUndiDeleteResult.ok) {
+            this.logger.logUnknownAsError(
+                `Could not delete person ${spshPersonId} in UNDI LDAP`,
+                ldapUndiDeleteResult.error,
             );
+            return false;
         }
 
-        // Webhook notify
+        this.logger.info(`Successfully deleted person ${spshPersonId} in UNDI LDAP`);
+        return true;
+    }
+
+    private async deleteEmailAddressesFromDatabase(
+        spshPersonId: string,
+        personEmailAddresses: EmailAddress<true>[],
+    ): Promise<void> {
+        const deletePromises: Promise<void>[] = personEmailAddresses.map((emailAddress: EmailAddress<true>) =>
+            this.emailAddressRepo.delete(emailAddress),
+        );
+        await Promise.all(deletePromises);
+        this.logger.info(`Successfully deleted all email addresses for spshPerson ${spshPersonId} from DB.`);
+    }
+
+    private notifyEmailAddressesChanged(spshPersonId: string, personEmailAddresses: EmailAddress<true>[]): void {
         const previousPrimaryEmail: string | undefined = personEmailAddresses.find(
-            (a: EmailAddress<true>) => a.priority === 0,
+            (emailAddress: EmailAddress<true>) => emailAddress.priority === 0,
         )?.address;
         const previousAlternativeEmail: string | undefined = personEmailAddresses.find(
-            (a: EmailAddress<true>) => a.priority === 1,
+            (emailAddress: EmailAddress<true>) => emailAddress.priority === 1,
         )?.address;
 
         this.webhookService.sendEmailsChanged({
-            spshPersonId: params.spshPersonId,
+            spshPersonId,
             previousPrimaryEmail,
             previousAlternativeEmail,
             newPrimaryEmail: undefined,

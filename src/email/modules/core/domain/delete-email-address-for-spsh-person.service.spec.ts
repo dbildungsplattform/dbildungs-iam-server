@@ -146,6 +146,48 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         });
     });
 
+    it('should delete both email addresses but each external account only once', async () => {
+        const spshPersonId: string = faker.string.uuid();
+        const primaryEmail: EmailAddress<true> = makeEmail();
+        primaryEmail.spshPersonId = spshPersonId;
+        primaryEmail.address = 'primary@example.com';
+        const alternativeEmail: EmailAddress<true> = makeEmail();
+        alternativeEmail.spshPersonId = spshPersonId;
+        alternativeEmail.address = 'alias@example.com';
+        alternativeEmail.priority = 1;
+        alternativeEmail.oxUserCounter = primaryEmail.oxUserCounter;
+        alternativeEmail.externalId = primaryEmail.externalId;
+
+        oxAdapterMock.useOx.mockReturnValue(true);
+        ldapClientAdapterMock.useLdap.mockReturnValue(true);
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([
+            primaryEmail,
+            alternativeEmail,
+        ]);
+        emailAddressRepoMock.save.mockResolvedValueOnce(Ok(primaryEmail)).mockResolvedValueOnce(Ok(alternativeEmail));
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok());
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
+        emailAddressRepoMock.delete.mockResolvedValue();
+
+        await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
+
+        expect(oxAdapterMock.deleteUser).toHaveBeenCalledTimes(1);
+        expect(ldapClientAdapterMock.deletePerson).toHaveBeenCalledTimes(1);
+        expect(ldapUndiClientAdapterMock.deletePerson).toHaveBeenCalledTimes(1);
+        expect(emailAddressRepoMock.delete).toHaveBeenCalledTimes(2);
+        expect(emailAddressRepoMock.delete).toHaveBeenCalledWith(primaryEmail);
+        expect(emailAddressRepoMock.delete).toHaveBeenCalledWith(alternativeEmail);
+        expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
+            spshPersonId,
+            newPrimaryEmail: undefined,
+            newAlternativeEmail: undefined,
+            previousPrimaryEmail: primaryEmail.address,
+            previousAlternativeEmail: alternativeEmail.address,
+        });
+    });
+
     it('should log and skip OX deletion if oxUserCounter is missing', async () => {
         const spshPersonId: string = faker.string.uuid();
         const externalId: string = faker.string.uuid();
@@ -211,6 +253,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
     it('should not delete from DB if OX deletion fails', async () => {
         oxAdapterMock.useOx.mockReturnValue(true);
         ldapClientAdapterMock.useLdap.mockReturnValue(true);
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
         const spshPersonId: string = faker.string.uuid();
         const oxUserCounter: string = faker.string.uuid();
@@ -225,10 +268,15 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
         oxAdapterMock.deleteUser.mockResolvedValueOnce(Err(new Error('fail')));
         ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
 
+        expect(ldapClientAdapterMock.deletePerson).toHaveBeenCalledWith(externalId, domain);
+        expect(ldapUndiClientAdapterMock.deletePerson).toHaveBeenCalledWith(spshPersonId);
         expect(emailAddressRepoMock.delete).not.toHaveBeenCalled();
+        expect(email.getStatus()).toBe(EmailAddressStatusEnum.TO_BE_DELETED);
+        expect(email.markedForCron).toBeInstanceOf(Date);
         expect(loggerMock.warning).toHaveBeenCalledWith(
             `Could not delete all external representations for spshPerson ${spshPersonId}. Keeping email addresses in DB with status TO_BE_DELETED for retry.`,
         );
