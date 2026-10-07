@@ -19,9 +19,11 @@ import {
 import { StepUpLevel } from '../../src/modules/authentication/passport/oidc.strategy.js';
 import { PassportUser } from '../../src/modules/authentication/types/user.js';
 import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
+import { RollenMerkmal } from '../../src/modules/rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../../src/modules/rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../../src/modules/rolle/domain/systemrecht.js';
 import { IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
-import { RolleID } from '../../src/shared/types/aggregate-ids.types.js';
+import { OrganisationID, RolleID } from '../../src/shared/types/aggregate-ids.types.js';
 import { createMock, DeepMocked } from './createMock.js';
 
 export class PersonPermissionsMock implements IPersonPermissions {
@@ -75,6 +77,14 @@ export class PersonPermissionsMock implements IPersonPermissions {
         return Promise.resolve(true);
     }
 
+    public getPermittedMerkmaleForOrga(): Promise<RollenMerkmal[]> {
+        return Promise.resolve(Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE));
+    }
+
+    public hasPermissionForGatedMerkmale(): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+
     public canModifyPerson(): Promise<boolean> {
         return Promise.resolve(true);
     }
@@ -84,6 +94,17 @@ export function createPersonPermissionsMock(personFields?: Partial<PersonFields>
     const personPermissions: DeepMocked<PersonPermissions> = createMock(PersonPermissions);
     personPermissions.hasSystemrechteAtOrganisation = vi.fn().mockResolvedValue(true);
     personPermissions.hasSystemrechtAtOrganisation = vi.fn().mockResolvedValue(true);
+    personPermissions.getPermittedMerkmaleForOrga = vi
+        .fn()
+        .mockResolvedValue(Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE));
+    personPermissions.hasPermissionForGatedMerkmale = vi.fn(
+        async (merkmale: Iterable<RollenMerkmal>, organisationId: OrganisationID): Promise<boolean> => {
+            const gatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
+            const permittedMerkmale: RollenMerkmal[] =
+                await personPermissions.getPermittedMerkmaleForOrga(organisationId);
+            return gatedMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
+        },
+    );
     personPermissions.canModifyPerson = vi.fn().mockResolvedValue(true);
     personPermissions.getPersonenkontexteWithRolesAndOrgs = vi.fn().mockResolvedValue([]);
 

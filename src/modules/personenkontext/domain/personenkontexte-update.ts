@@ -14,13 +14,12 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { CheckRollenartSpecification } from '../specification/nur-gleiche-rolle.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
@@ -220,30 +219,28 @@ export class PersonenkontexteUpdate {
             ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
         ]);
 
-        return this.checkMptPermissions(modifiedPKs, modifiedRollen);
+        return this.checkGatedRollenPermissions(modifiedPKs, modifiedRollen);
     }
 
-    private async checkMptPermissions(
+    private async checkGatedRollenPermissions(
         modifiedPKs: Personenkontext<true>[],
         modifiedRollen: Map<RolleID, Rolle<true>>,
     ): Promise<Option<DomainError>> {
-        const hasMptPermissions: boolean = (
-            await Promise.all(
-                modifiedPKs
-                    .filter((pk: Personenkontext<true>) =>
-                        modifiedRollen.get(pk.rolleId)?.hasMerkmal(RollenMerkmal.MPT_ROLLE),
-                    )
-                    .map((pk: Personenkontext<true>) =>
-                        this.permissions.hasSystemrechtAtOrganisation(
-                            pk.organisationId,
-                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                        ),
-                    ),
-            )
-        ).every(Boolean);
+        const permissionChecks: Promise<boolean>[] = [];
+        for (const pk of modifiedPKs) {
+            const rolle: Rolle<true> | undefined = modifiedRollen.get(pk.rolleId);
+            if (rolle) {
+                permissionChecks.push(
+                    this.permissions.hasPermissionForGatedMerkmale(rolle.merkmale, pk.organisationId),
+                );
+            }
+        }
+        const hasGatedRollenPermissions: boolean = (await Promise.all(permissionChecks)).every(
+            (hasPermission: boolean) => hasPermission,
+        );
 
-        if (!hasMptPermissions) {
-            return new MissingPermissionsError('Unauthorized to modify MPT-Rollen at the organisation');
+        if (!hasGatedRollenPermissions) {
+            return new MissingPermissionsError('Unauthorized to modify MPT/Pilot-Rollen at the organisation');
         }
 
         return undefined;

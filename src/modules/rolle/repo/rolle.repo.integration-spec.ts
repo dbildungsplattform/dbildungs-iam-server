@@ -16,7 +16,7 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
@@ -437,7 +437,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -466,7 +465,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -477,7 +475,7 @@ describe('RolleRepo', () => {
             expect(total).toBe(0);
         });
 
-        it('should fallback to ROLLEN_VERWALTEN when systemrechte are not provided', async () => {
+        it('should always require ROLLEN_VERWALTEN', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const organisationId: OrganisationID = organisation.id;
             await sut.save(DoFactory.createRolle(false, { administeredBySchulstrukturknoten: organisationId }));
@@ -487,7 +485,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                undefined,
                 false,
                 undefined,
                 10,
@@ -497,9 +494,32 @@ describe('RolleRepo', () => {
             expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
                 [RollenSystemRecht.ROLLEN_VERWALTEN],
                 false,
+                true,
             );
             expect(rolleResult).toHaveLength(1);
             expect(total).toBe(1);
+        });
+
+        it('should deny the global list when only Pilot rights are held', async () => {
+            await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE] });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockImplementation(
+                (systemrechte: RollenSystemRecht[]): Promise<PermittedOrgas> =>
+                    Promise.resolve(
+                        systemrechte.includes(RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN)
+                            ? { all: true }
+                            : { all: false, orgaIds: [] },
+                    ),
+            );
+
+            const result: Counted<Rolle<true>> = await sut.findRollenAuthorized(permissions, false);
+
+            expect(result).toEqual([[], 0]);
+            expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                [RollenSystemRecht.ROLLEN_VERWALTEN],
+                false,
+                true,
+            );
         });
 
         it('should restrict result to requested organisationIds', async () => {
@@ -535,7 +555,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -559,7 +578,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -570,7 +588,53 @@ describe('RolleRepo', () => {
             expect(total).toBe(1);
         });
 
-        it('should exclude MPT rollen from authorized default lookup', async () => {
+        it('should include MPT and Pilot rollen in authorized default lookup without gated systemrechte', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const defaultRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, { administeredBySchulstrukturknoten: organisationId }),
+            );
+            const mptRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                }),
+            );
+            const pilotRolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                }),
+            );
+
+            if (
+                defaultRolle instanceof DomainError ||
+                mptRolle instanceof DomainError ||
+                pilotRolle instanceof DomainError
+            ) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+
+            const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
+                permissions,
+                false,
+                undefined,
+                10,
+                0,
+            );
+
+            expect(rolleResult).toHaveLength(3);
+            expect(total).toBe(3);
+            expect(rolleResult?.map((rolle: Rolle<true>) => rolle.id)).toEqual(
+                expect.arrayContaining([defaultRolle.id, mptRolle.id, pilotRolle.id]),
+            );
+        });
+
+        it('should include MPT rollen when caller actually holds MPT_ROLLEN_ZUORDNEN', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const organisationId: OrganisationID = organisation.id;
             const defaultRolle: Rolle<true> | DomainError = await sut.save(
@@ -589,47 +653,13 @@ describe('RolleRepo', () => {
 
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+            permissions.hasSystemrechtAtOrganisation.mockImplementation(
+                (orgaId: OrganisationID, systemrecht: RollenSystemRecht) =>
+                    Promise.resolve(orgaId === organisationId && systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN),
+            );
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
-                false,
-                undefined,
-                10,
-                0,
-            );
-
-            expect(rolleResult).toHaveLength(1);
-            expect(total).toBe(1);
-            expect(rolleResult?.[0]?.id).toBe(defaultRolle.id);
-            expect(rolleResult.map((rolle: Rolle<true>) => rolle.id)).not.toContain(mptRolle.id);
-        });
-
-        it('should include MPT rollen when user queries with MPT_ROLLEN_ZUORDNEN', async () => {
-            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const organisationId: OrganisationID = organisation.id;
-            const defaultRolle: Rolle<true> | DomainError = await sut.save(
-                DoFactory.createRolle(false, { administeredBySchulstrukturknoten: organisationId }),
-            );
-            const mptRolle: Rolle<true> | DomainError = await sut.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: organisationId,
-                    merkmale: [RollenMerkmal.MPT_ROLLE],
-                }),
-            );
-
-            if (defaultRolle instanceof DomainError || mptRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissions.getOrgIdsWithSystemrecht
-                .mockResolvedValueOnce({ all: false, orgaIds: [organisationId] })
-                .mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
-
-            const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
-                permissions,
-                [RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
                 false,
                 undefined,
                 10,
@@ -653,7 +683,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -674,7 +703,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -703,7 +731,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 'Test',
                 10,
@@ -724,7 +751,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -747,7 +773,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -770,7 +795,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 true,
                 undefined,
                 10,
@@ -803,7 +827,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -842,7 +865,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -890,7 +912,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -1020,25 +1041,29 @@ describe('RolleRepo', () => {
             expect(count).toEqual(1);
         });
 
-        it('should exclude rollen with excluded merkmale', async () => {
-            const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
-                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
-            });
-            const rolleWithExcludedMerkmal: Rolle<true> = await createRolle({
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
+        it.each([false, true])(
+            'should exclude rollen with excluded merkmale (selected=%s)',
+            async (selected: boolean) => {
+                const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
+                    merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                });
+                const rolleWithExcludedMerkmal: Rolle<true> = await createRolle({
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                });
 
-            const scope: RolleFindByParameters = {
-                excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
-                limit: 10,
-            };
+                const scope: RolleFindByParameters = {
+                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    rolleIds: selected ? [rolleWithExcludedMerkmal.id] : undefined,
+                    limit: 10,
+                };
 
-            const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
+                const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-            expect(count).toBe(1);
-            expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
-            expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
-        });
+                expect(count).toBe(1);
+                expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
+                expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
+            },
+        );
 
         it('should require rollen to have all required merkmale', async () => {
             const rolleWithAllRequiredMerkmale: Rolle<true> = await createRolle({
@@ -1069,7 +1094,7 @@ describe('RolleRepo', () => {
             });
             const rolleOutOfFilter: Rolle<true> = await createRolle({
                 rollenart: RollenArt.LERN, // nicht in rollenArten-Filter
-                administeredBySchulstrukturknoten: faker.string.uuid(), // nicht in allowedOrganisationIds
+                administeredBySchulstrukturknoten: rolleInScope.administeredBySchulstrukturknoten,
             });
 
             const scope: RolleFindByParameters = {
@@ -1086,6 +1111,37 @@ describe('RolleRepo', () => {
                 expect.arrayContaining([rolleInScope.id, rolleOutOfFilter.id]),
             );
         });
+
+        it.each([
+            { outsideOrganisation: true, missingMerkmal: false },
+            { outsideOrganisation: false, missingMerkmal: true },
+        ])(
+            'should reject selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal)',
+            async ({
+                outsideOrganisation,
+                missingMerkmal,
+            }: {
+                outsideOrganisation: boolean;
+                missingMerkmal: boolean;
+            }) => {
+                const rolleInScope: Rolle<true> = await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE] });
+                const selectedRolle: Rolle<true> = await createRolle({
+                    administeredBySchulstrukturknoten: outsideOrganisation
+                        ? faker.string.uuid()
+                        : rolleInScope.administeredBySchulstrukturknoten,
+                    merkmale: missingMerkmal ? [] : [RollenMerkmal.PILOT_1_ROLLE],
+                });
+
+                const [result, count]: Counted<Rolle<true>> = await sut.findBy({
+                    allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
+                    requireMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                    rolleIds: [selectedRolle.id],
+                });
+
+                expect(count).toBe(1);
+                expect(result.map((rolle: Rolle<true>) => rolle.id)).toEqual([rolleInScope.id]);
+            },
+        );
 
         type RollenArtAndNameTuple = {
             rollenart: RollenArt;
@@ -1244,7 +1300,7 @@ describe('RolleRepo', () => {
                 organisationId: rolle.administeredBySchulstrukturknoten,
                 allowedOrganisationIds: [rolle.administeredBySchulstrukturknoten],
                 allowedRollenarten: [rolle.rollenart],
-                mpt: { allowedRollenarten: [rolle.rollenart] },
+                gatedBucket: { allowedRollenarten: [rolle.rollenart], authorizedMerkmale: [RollenMerkmal.MPT_ROLLE] },
             });
 
             expect(rollen).toEqual(expect.arrayContaining([rolle, mptRolle]));

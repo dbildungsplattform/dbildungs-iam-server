@@ -8,6 +8,8 @@ import { Person } from '../../person/domain/person.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 
@@ -144,6 +146,17 @@ export class PersonPermissions implements IPersonPermissions {
         systemrecht: RollenSystemRecht,
     ): Promise<boolean> {
         return this.personenkontextRepo.hasSystemrechtAtOrganisation(this.id, organisationId, systemrecht);
+    }
+
+    public async getPermittedMerkmaleForOrga(organisationId: OrganisationID): Promise<RollenMerkmal[]> {
+        return RollenmerkmalSystemrechtPaar.getPermittedMerkmaleForOrga(this, organisationId);
+    }
+
+    public hasPermissionForGatedMerkmale(
+        merkmale: Iterable<RollenMerkmal>,
+        organisationId: OrganisationID,
+    ): Promise<boolean> {
+        return RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(this, merkmale, organisationId);
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {

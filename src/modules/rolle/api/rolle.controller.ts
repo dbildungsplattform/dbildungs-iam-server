@@ -56,6 +56,7 @@ import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
@@ -113,6 +114,8 @@ export class RolleController {
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         let rollenAndTotal: [Rolle<true>[], number];
         const systemrechteSet: Set<RollenSystemRechtEnum> = new Set(queryParams.systemrechte ?? []);
+        const singleRequestedSystemrecht: RollenSystemRecht | undefined =
+            systemrechteSet.size === 1 ? RollenSystemRecht.getByName(Array.from(systemrechteSet)[0]!) : undefined;
 
         if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.IMPORT_DURCHFUEHREN)) {
             if (!queryParams.organisationContextForOperation) {
@@ -127,9 +130,13 @@ export class RolleController {
                     offset: queryParams.offset,
                 });
             }
-        } else if (systemrechteSet.size === 1 && systemrechteSet.has(RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN)) {
-            rollenAndTotal = await this.rolleFindService.findMptRollenAuthorized({
+        } else if (
+            singleRequestedSystemrecht &&
+            RollenmerkmalSystemrechtPaar.isGatedSystemrecht(singleRequestedSystemrecht)
+        ) {
+            rollenAndTotal = await this.rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions,
+                systemrecht: singleRequestedSystemrecht,
                 includeTechnische: false,
                 searchStr: queryParams.searchStr,
                 limit: queryParams.limit,
@@ -138,12 +145,12 @@ export class RolleController {
                 rolleIds: queryParams.rolleIds,
             });
         } else if (
-            // covers plain [ROLLEN_ERWEITERN], and the combo [ROLLEN_ERWEITERN, MPT_ROLLEN_ZUORDNEN]
+            // covers plain [ROLLEN_ERWEITERN], and combos of [ROLLEN_ERWEITERN, <any gated Systemrechte>]
             systemrechteSet.has(RollenSystemRechtEnum.ROLLEN_ERWEITERN) &&
             Array.from(systemrechteSet).every(
                 (recht: RollenSystemRechtEnum) =>
                     recht === RollenSystemRechtEnum.ROLLEN_ERWEITERN ||
-                    recht === RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
+                    RollenmerkmalSystemrechtPaar.isGatedSystemrecht(RollenSystemRecht.getByName(recht)),
             )
         ) {
             rollenAndTotal = await this.rolleFindService.findRollenAvailableForErweiterung({
@@ -162,7 +169,6 @@ export class RolleController {
         } else {
             rollenAndTotal = await this.rolleRepo.findRollenAuthorized(
                 permissions,
-                queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
                 false,
                 queryParams.searchStr,
                 queryParams.limit,

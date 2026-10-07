@@ -19,12 +19,19 @@ import {
 } from './rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
+import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from './systemrecht.js';
 
 type RolleFindServiceTestAccess = {
     getOrganisationIdsWithParents(organisationIds: OrganisationID[]): Promise<OrganisationID[]>;
 };
+
+function createPersonPermissionsMockWithAllGatedMerkmale(): DeepMocked<PersonPermissions> {
+    const permissions: DeepMocked<PersonPermissions> = createMock(PersonPermissions);
+    permissions.getPermittedMerkmaleForOrga.mockResolvedValue(Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE));
+    return permissions;
+}
 
 function getValidationObjectForPersonAdministrationFindByParams(params: {
     searchStr?: string;
@@ -98,7 +105,10 @@ describe('RolleFindService', () => {
     describe('findRollenAvailableForErweiterung', () => {
         let permissionsMock: DeepMocked<PersonPermissions>;
         beforeEach(() => {
-            permissionsMock = createMock(PersonPermissions);
+            permissionsMock = createPersonPermissionsMockWithAllGatedMerkmale();
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+            );
         });
 
         it('should return empty array if no permitted orgas', async () => {
@@ -125,7 +135,7 @@ describe('RolleFindService', () => {
                     limit: params.limit,
                     offset: params.offset,
                     rollenArten: params.rollenArten,
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -312,6 +322,22 @@ describe('RolleFindService', () => {
             );
         });
 
+        it('should not include MPT rollen when requested but denied on an unbounded (root) scope', async () => {
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+            permissionsMock.hasSystemrechteAtRootOrganisation.mockResolvedValue(false);
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
+            const params: FindRollenWithPermissionsParams & { requestedSystemrechte?: RollenSystemRecht[] } = {
+                permissions: permissionsMock,
+                requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
+            };
+            await rolleFindService.findRollenAvailableForErweiterung(params);
+            expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
+                expect.objectContaining<RolleFindByParameters>({
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                }),
+            );
+        });
+
         it('should not include MPT rollen when caller does not have MPT_ROLLEN_ZUORDNEN permission, but requests it', async () => {
             const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.TRAEGER,
@@ -321,6 +347,7 @@ describe('RolleFindService', () => {
             });
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
             organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
             organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([OrganisationsTyp.SCHULE]);
             const params: FindRollenAvailableForErweiterungParams = {
@@ -332,7 +359,7 @@ describe('RolleFindService', () => {
 
             expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                 expect.objectContaining<RolleFindByParameters>({
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -345,7 +372,7 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAvailableForErweiterung(params);
             expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                 expect.objectContaining<Partial<RolleFindByParameters>>({
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
@@ -369,7 +396,7 @@ describe('RolleFindService', () => {
     describe('findRollenAvailableForImportPersonenkontext', () => {
         let permissionsMock: DeepMocked<PersonPermissions>;
         beforeEach(() => {
-            permissionsMock = createMock(PersonPermissions);
+            permissionsMock = createPersonPermissionsMockWithAllGatedMerkmale();
         });
 
         it('should return empty array if no permitted orgas', async () => {
@@ -435,21 +462,109 @@ describe('RolleFindService', () => {
                 expect.objectContaining<RolleFindByParameters>({
                     offset: 1,
                     limit: 1,
-                    excludeMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 }),
             );
         });
     });
 
-    describe('findMptRollenAuthorized', () => {
+    describe('findRollenAuthorizedForGatedSystemrecht', () => {
         const includeTechnische: boolean = faker.datatype.boolean();
         const searchStr: string = faker.string.alphanumeric();
         const limit: number = faker.number.int();
         const offset: number = faker.number.int();
         const rolleIds: RolleID[] = [faker.string.uuid()];
 
+        it.each([
+            { bounded: false, hasPilotPermission: false },
+            { bounded: false, hasPilotPermission: true },
+            { bounded: true, hasPilotPermission: false },
+            { bounded: true, hasPilotPermission: true },
+        ])(
+            'should enforce additional Pilot permission (bounded=$bounded, granted=$hasPilotPermission)',
+            async ({ bounded, hasPilotPermission }: { bounded: boolean; hasPilotPermission: boolean }) => {
+                const permissionsMock: DeepMocked<IPersonPermissions> =
+                    createPersonPermissionsMockWithAllGatedMerkmale();
+                permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+                permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                    hasPilotPermission
+                        ? [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE]
+                        : [RollenMerkmal.MPT_ROLLE],
+                );
+                organisationRepoMock.findParentOrgasForIds.mockResolvedValue([]);
+                organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([OrganisationsTyp.SCHULE]);
+                rolleRepoMock.findBy.mockResolvedValue([[], 0]);
+
+                await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                    permissions: permissionsMock,
+                    systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                    includeTechnische: false,
+                    organisationIds: bounded ? ['schule-1'] : undefined,
+                });
+
+                const permittedMerkmale: RollenMerkmal[] = hasPilotPermission
+                    ? [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE]
+                    : [RollenMerkmal.MPT_ROLLE];
+                expect(rolleRepoMock.findBy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                        excludeMerkmale: RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+                            (merkmal: RollenMerkmal) => !permittedMerkmale.includes(merkmal),
+                        ),
+                    }),
+                );
+                if (bounded) {
+                    expect(permissionsMock.getPermittedMerkmaleForOrga).toHaveBeenCalledWith('schule-1');
+                } else {
+                    expect(permissionsMock.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(
+                        organisationRepoMock.ROOT_ORGANISATION_ID,
+                    );
+                }
+            },
+        );
+
+        it('should return empty result if the given systemrecht is not a gated systemrecht', async () => {
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
+
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.ROLLEN_VERWALTEN,
+                includeTechnische,
+                searchStr,
+                limit,
+                offset,
+                rolleIds,
+            });
+
+            expect(result).toEqual([[], 0]);
+            expect(permissionsMock.getOrgIdsWithSystemrecht).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findBy).not.toHaveBeenCalled();
+        });
+
+        it('should exclude roles with any other gated Merkmal the user cannot use', async () => {
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([RollenMerkmal.MPT_ROLLE]);
+            rolleRepoMock.findBy.mockResolvedValue([[], 0]);
+
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                includeTechnische: false,
+            });
+
+            expect(rolleRepoMock.findBy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                    excludeMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE).filter(
+                        (merkmal: RollenMerkmal) => merkmal !== RollenMerkmal.MPT_ROLLE,
+                    ),
+                }),
+            );
+        });
+
         it('should not restrict returned rollen if user has permission on all organisations and did not filter by organisations', async () => {
-            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
 
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
                 all: true,
@@ -457,8 +572,9 @@ describe('RolleFindService', () => {
 
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -475,20 +591,22 @@ describe('RolleFindService', () => {
                 allowedOrganisationIds: undefined,
                 rolleIds,
                 requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                excludeMerkmale: undefined,
                 orderBy: 'artAndName',
             });
         });
 
         it('should return empty result if requested organisationIds are not permitted', async () => {
-            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
 
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
                 all: false,
                 orgaIds: ['orga-1'],
             });
 
-            const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
+            const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -503,7 +621,7 @@ describe('RolleFindService', () => {
         });
 
         it('should use permitted organisations and parents if no organisation filter is provided', async () => {
-            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
 
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
                 all: false,
@@ -515,8 +633,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -533,6 +652,7 @@ describe('RolleFindService', () => {
                 allowedOrganisationIds: ['orga-1', 'parent-1'],
                 rolleIds,
                 requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                excludeMerkmale: undefined,
                 orderBy: 'artAndName',
                 rollenArten: [
                     RollenArt.LEIT,
@@ -547,7 +667,7 @@ describe('RolleFindService', () => {
         });
 
         it('should use permitted organisations and parents if empty organisation filter is provided', async () => {
-            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
 
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
                 all: false,
@@ -559,8 +679,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -578,6 +699,7 @@ describe('RolleFindService', () => {
                 allowedOrganisationIds: ['orga-1', 'parent-1'],
                 rolleIds,
                 requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                excludeMerkmale: undefined,
                 orderBy: 'artAndName',
                 rollenArten: [
                     RollenArt.LEIT,
@@ -592,7 +714,7 @@ describe('RolleFindService', () => {
         });
 
         it('should intersect requested organisationIds with permitted ones and add parent organisations', async () => {
-            const permissionsMock: DeepMocked<IPersonPermissions> = createMock(PersonPermissions);
+            const permissionsMock: DeepMocked<IPersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
 
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
                 all: false,
@@ -604,8 +726,9 @@ describe('RolleFindService', () => {
             ]);
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
-            await rolleFindService.findMptRollenAuthorized({
+            await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                 includeTechnische,
                 searchStr,
                 limit,
@@ -623,6 +746,7 @@ describe('RolleFindService', () => {
                 allowedOrganisationIds: ['orga-2', 'parent-2'],
                 rolleIds,
                 requireMerkmale: [RollenMerkmal.MPT_ROLLE],
+                excludeMerkmale: undefined,
                 orderBy: 'artAndName',
                 rollenArten: [
                     RollenArt.LEIT,
@@ -640,7 +764,10 @@ describe('RolleFindService', () => {
     describe('findRollenAvailableForPersonenkontextCreation', () => {
         let permissionsMock: DeepMocked<PersonPermissions>;
         beforeEach(() => {
-            permissionsMock = createMock(PersonPermissions);
+            permissionsMock = createPersonPermissionsMockWithAllGatedMerkmale();
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+            );
         });
 
         describe('when requested systemrecht does not match', () => {
@@ -664,6 +791,9 @@ describe('RolleFindService', () => {
                 const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
                 permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
                 permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+                permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                    Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                );
                 organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
                 organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
@@ -688,8 +818,9 @@ describe('RolleFindService', () => {
                     limit: 1,
                     offset: 1,
                     searchStr: 'suche rolle',
-                    mpt: {
+                    gatedBucket: {
                         allowedRollenarten,
+                        authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                     },
                 });
             });
@@ -704,6 +835,9 @@ describe('RolleFindService', () => {
                     });
                     permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
                     permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+                    permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                    );
                     organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
                     organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
@@ -713,19 +847,47 @@ describe('RolleFindService', () => {
                         systemrecht: RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
                     });
 
-                    const allowedRollenartenForMPTRollen: Array<RollenArt> = Array.from(
+                    const allowedRollenartenForGatedRollen: Array<RollenArt> = Array.from(
                         OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
                     );
                     expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith({
                         organisationId: schule.id,
                         allowedOrganisationIds: [schule.id, traeger.id],
                         allowedRollenarten: [RollenArt.LERN],
-                        mpt: {
-                            allowedRollenarten: allowedRollenartenForMPTRollen,
+                        gatedBucket: {
+                            allowedRollenarten: allowedRollenartenForGatedRollen,
+                            authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                         },
                     });
                 });
             });
+        });
+
+        it('should not set a gatedBucket if the caller has no gated permissions', async () => {
+            const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.TRAEGER,
+            });
+            const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+            permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
+            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+            organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
+
+            await rolleFindService.findRollenAvailableForPersonenkontextCreation({
+                organisationId: schule.id,
+                permissions: permissionsMock,
+                systemrecht: RollenSystemRecht.PERSONEN_VERWALTEN,
+            });
+
+            const allowedRollenarten: Array<RollenArt> = Array.from(
+                OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
+            );
+            expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    allowedRollenarten,
+                }),
+            );
         });
 
         it('should return early, if users rollenart and allowed rollenart mismatch', async () => {
@@ -776,12 +938,13 @@ describe('RolleFindService', () => {
         let permissionsMock: DeepMocked<PersonPermissions>;
 
         beforeEach(() => {
-            permissionsMock = createMock(PersonPermissions);
+            permissionsMock = createPersonPermissionsMockWithAllGatedMerkmale();
         });
 
         describe('when user is Landesadmin', () => {
             beforeEach(() => {
                 permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+                permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
                 rolleRepoMock.findBy.mockResolvedValue([[], 0]);
             });
 
@@ -869,6 +1032,7 @@ describe('RolleFindService', () => {
                         all: false,
                         orgaIds: schulen.map((s: Organisation<true>) => s.id),
                     });
+                    permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
                     organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([OrganisationsTyp.SCHULE]);
                     organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
                     rolleRepoMock.findBy.mockResolvedValue([[], 0]);
@@ -931,14 +1095,19 @@ describe('RolleFindService', () => {
                     const shouldExcludeMptRollen: () => boolean = () =>
                         !(hasMptPermission && requestedSystemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN));
 
+                    // Only MPT_ROLLEN_ZUORDNEN is ever requested in this describe block, so the other gated Merkmale
+                    // (PILOT_1_ROLLE, ...) are always excluded; MPT_ROLLE is excluded unless requested and authorized.
+                    const expectedExcludeMerkmale: () => RollenMerkmal[] = () =>
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE).filter(
+                            (merkmal: RollenMerkmal) => shouldExcludeMptRollen() || merkmal !== RollenMerkmal.MPT_ROLLE,
+                        );
+
                     const expectPersonAdministrationQueryWithExpectedMptFiltering: () => void = () => {
                         expect(rolleRepoMock.findBy).toHaveBeenLastCalledWith(
                             getValidationObjectForPersonAdministrationFindByParams({
                                 expectedOrganisationIds: [...schulen.map((o: Organisation<true>) => o.id), traeger.id],
                                 expectedRollenArten: [RollenArt.LEIT, RollenArt.LEHR, RollenArt.LERN],
-                                expectedExcludeMerkmale: shouldExcludeMptRollen()
-                                    ? [RollenMerkmal.MPT_ROLLE]
-                                    : undefined,
+                                expectedExcludeMerkmale: expectedExcludeMerkmale(),
                             }),
                         );
                     };
@@ -966,6 +1135,17 @@ describe('RolleFindService', () => {
                                         systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
                                 );
                             },
+                        );
+                        permissionsMock.getPermittedMerkmaleForOrga.mockImplementation(
+                            (requestedOrganisation: OrganisationID): Promise<RollenMerkmal[]> =>
+                                Promise.resolve(
+                                    hasPermission &&
+                                        schulen.some(
+                                            (schule: Organisation<true>) => schule.id === requestedOrganisation,
+                                        )
+                                        ? [RollenMerkmal.MPT_ROLLE]
+                                        : [],
+                                ),
                         );
                     });
 
