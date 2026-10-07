@@ -307,11 +307,7 @@ export class PersonenkontextWorkflowAggregate {
                     if (gatedMerkmale.length === 0) {
                         return true;
                     }
-                    return RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
-                        gatedMerkmale,
-                        organisationId,
-                        permissions,
-                    );
+                    return permissions.hasPermissionForGatedMerkmale(gatedMerkmale, organisationId);
                 }),
             )
         ).some((hasPermission: boolean) => !hasPermission);

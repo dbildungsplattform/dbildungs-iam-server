@@ -18,7 +18,6 @@ import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-me
 import { Rolle } from './rolle.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
-import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from './systemrecht.js';
 
 interface TunknownResultForRolle {
@@ -94,10 +93,9 @@ export class ApplyRollenerweiterungForRolleService {
             );
             return Err(new EntityNotFoundError('Rolle', rolleId));
         }
-        const hasPermissionForGatedMerkmale: boolean = await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+        const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForGatedMerkmale(
             rolle.merkmale,
             orgaId,
-            permissions,
         );
         if (!hasPermissionForGatedMerkmale) {
             return Err(new MissingPermissionsError('Not authorized'));

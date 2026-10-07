@@ -241,17 +241,9 @@ export class RolleFindService {
             searchStr: params.rolleName,
         };
 
-        const authorizedGatedMerkmale: RollenMerkmal[] = (
-            await Promise.all(
-                RollenmerkmalSystemrechtPaar.ALL.map(async (paar: RollenmerkmalSystemrechtPaar) => {
-                    const hasPermission: boolean = await params.permissions.hasSystemrechtAtOrganisation(
-                        params.organisationId,
-                        paar.systemrecht,
-                    );
-                    return hasPermission ? paar.merkmal : undefined;
-                }),
-            )
-        ).filter((merkmal: RollenMerkmal | undefined): merkmal is RollenMerkmal => merkmal !== undefined);
+        const authorizedGatedMerkmale: RollenMerkmal[] = await params.permissions.getPermittedMerkmaleForOrga(
+            params.organisationId,
+        );
         if (authorizedGatedMerkmale.length > 0) {
             query.gatedBucket = {
                 allowedRollenarten: allowedRollenartenForGatedRollen,
@@ -433,35 +425,31 @@ export class RolleFindService {
         requestedSystemrechte: RollenSystemRecht[] = [],
         selectedAndPermittedOrgas?: Array<OrganisationID>,
     ): Promise<RollenMerkmal[]> {
-        const hasPermissionPerPaar: boolean[] = await Promise.all(
-            RollenmerkmalSystemrechtPaar.ALL.map(async (paar: RollenmerkmalSystemrechtPaar): Promise<boolean> => {
-                const wasRequested: boolean = requestedSystemrechte.includes(paar.systemrecht);
-                if (!wasRequested) {
-                    return false;
-                }
-                return this.hasSystemrechtPermission(permissions, paar.systemrecht, selectedAndPermittedOrgas);
-            }),
-        );
-        return RollenmerkmalSystemrechtPaar.ALL.filter(
-            (_paar: RollenmerkmalSystemrechtPaar, index: number) => !hasPermissionPerPaar[index],
-        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
-    }
-
-    private async hasSystemrechtPermission(
-        permissions: IPersonPermissions,
-        systemrecht: RollenSystemRecht,
-        organisationIds?: Array<OrganisationID>,
-    ): Promise<boolean> {
-        if (organisationIds) {
-            const individualOrgaPermissions: boolean[] = await Promise.all(
-                organisationIds.map((orga: OrganisationID) =>
-                    permissions.hasSystemrechtAtOrganisation(orga, systemrecht),
+        const organisationIds: OrganisationID[] = selectedAndPermittedOrgas ?? [
+            this.organisationRepository.ROOT_ORGANISATION_ID,
+        ];
+        const merkmalePerOrganisation: RollenMerkmal[][] =
+            organisationIds.length > 0
+                ? await Promise.all(
+                      organisationIds.map((organisationId: OrganisationID) =>
+                          permissions.getPermittedMerkmaleForOrga(organisationId),
+                      ),
+                  )
+                : [];
+        const permittedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+            (merkmal: RollenMerkmal) =>
+                requestedSystemrechte.some(
+                    (systemrecht: RollenSystemRecht) =>
+                        RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)?.systemrecht === systemrecht,
+                ) &&
+                organisationIds.length > 0 &&
+                merkmalePerOrganisation.every((organisationMerkmale: RollenMerkmal[]) =>
+                    organisationMerkmale.includes(merkmal),
                 ),
-            );
-            return individualOrgaPermissions.every(Boolean);
-        } else {
-            return permissions.hasSystemrechteAtRootOrganisation([systemrecht]);
-        }
+        );
+        return RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+            (merkmal: RollenMerkmal) => !permittedMerkmale.includes(merkmal),
+        );
     }
 
     /**

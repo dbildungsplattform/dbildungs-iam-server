@@ -2,6 +2,8 @@ import { IPersonPermissions } from '../../shared/permissions/person-permissions.
 import { OrganisationID, PersonID } from '../../shared/types/index.js';
 import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
+import { RollenMerkmal } from '../rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import {
     PermittedOrgas,
     PersonenkontextRolleWithOrganisation,
@@ -280,6 +282,22 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
         systemrecht: RollenSystemRecht,
     ): Promise<boolean> {
         return this.hasSystemrechteAtOrganisation(organisationId, [systemrecht], true);
+    }
+
+    public async getPermittedMerkmaleForOrga(organisationId: OrganisationID): Promise<RollenMerkmal[]> {
+        return RollenmerkmalSystemrechtPaar.getPermittedMerkmaleForOrga(this, organisationId);
+    }
+
+    public async hasPermissionForGatedMerkmale(
+        merkmale: Iterable<RollenMerkmal>,
+        organisationId: OrganisationID,
+    ): Promise<boolean> {
+        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
+        if (requiredMerkmale.length === 0) {
+            return true;
+        }
+        const permittedMerkmale: RollenMerkmal[] = await this.getPermittedMerkmaleForOrga(organisationId);
+        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {

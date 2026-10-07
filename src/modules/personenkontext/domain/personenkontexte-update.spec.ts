@@ -267,6 +267,18 @@ describe('PersonenkontexteUpdate', () => {
                                 systemrecht !== deniedSystemrecht || organisationId === regularPK.organisationId,
                             ),
                     );
+                    const deniedMerkmal: RollenMerkmal =
+                        RollenmerkmalSystemrechtPaar.bySystemrecht(deniedSystemrecht)!.merkmal;
+                    permissions.getPermittedMerkmaleForOrga.mockImplementation(
+                        (organisationId: string): Promise<RollenMerkmal[]> =>
+                            Promise.resolve(
+                                organisationId === regularPK.organisationId
+                                    ? Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE)
+                                    : RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+                                          (merkmal: RollenMerkmal) => merkmal !== deniedMerkmal,
+                                      ),
+                            ),
+                    );
                 });
 
                 it.each(['add', 'remove', 'change Befristung'])(
@@ -312,10 +324,7 @@ describe('PersonenkontexteUpdate', () => {
                         const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
 
                         expect(result).toBeInstanceOf(MissingPermissionsError);
-                        expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                            mptPK.organisationId,
-                            deniedSystemrecht,
-                        );
+                        expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(mptPK.organisationId);
                         expect(dBiamPersonenkontextRepoInternalMock.save).not.toHaveBeenCalled();
                         expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
                         expect(personRepoMock.updatePersonMetadata).not.toHaveBeenCalled();
@@ -349,10 +358,7 @@ describe('PersonenkontexteUpdate', () => {
                     const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
 
                     expect(result).toBeInstanceOf(Array);
-                    expect(permissions.hasSystemrechtAtOrganisation).not.toHaveBeenCalledWith(
-                        mptPK.organisationId,
-                        deniedSystemrecht,
-                    );
+                    expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledTimes(1);
                     expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
                     expect(dBiamPersonenkontextRepoInternalMock.save).toHaveBeenCalledWith(
                         expect.objectContaining({ rolleId: regularPK.rolleId }),
@@ -360,7 +366,9 @@ describe('PersonenkontexteUpdate', () => {
                 });
 
                 it('should allow a gated addition when all corresponding systemrechte are held', async () => {
-                    permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+                    permissions.getPermittedMerkmaleForOrga.mockResolvedValue(
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                    );
                     dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(regularPK).mockResolvedValueOnce(undefined);
                     dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([regularPK]);
                     dBiamPersonenkontextRepoInternalMock.save.mockResolvedValue(mptPK);
@@ -377,10 +385,7 @@ describe('PersonenkontexteUpdate', () => {
                     const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
 
                     expect(result).toBeInstanceOf(Array);
-                    expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                        mptPK.organisationId,
-                        deniedSystemrecht,
-                    );
+                    expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(mptPK.organisationId);
                     expect(dBiamPersonenkontextRepoInternalMock.save).toHaveBeenCalledWith(
                         expect.objectContaining({ rolleId: mptPK.rolleId }),
                     );

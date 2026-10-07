@@ -1000,7 +1000,8 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should return an error for MPT rollen without MPT_ROLLEN_ZUORDNEN permission', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([]);
 
             const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
                 id: faker.string.uuid(),
@@ -1024,11 +1025,7 @@ describe('PersonenkontextWorkflow', () => {
                 'orgId',
                 RollenSystemRecht.PERSONEN_ANLEGEN,
             );
-            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                2,
-                'orgId',
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
+            expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith('orgId');
         });
 
         it('should allow a non-allowlisted MPT rolle with limited creation and MPT permissions', async () => {
@@ -1040,6 +1037,7 @@ describe('PersonenkontextWorkflow', () => {
                 .mockResolvedValueOnce(false)
                 .mockResolvedValueOnce(true)
                 .mockResolvedValueOnce(true);
+            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([RollenMerkmal.MPT_ROLLE]);
 
             const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
                 id: faker.string.uuid(),
@@ -1069,6 +1067,7 @@ describe('PersonenkontextWorkflow', () => {
                 .mockResolvedValueOnce(false)
                 .mockResolvedValueOnce(true)
                 .mockResolvedValueOnce(true);
+            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([RollenMerkmal.MPT_ROLLE]);
 
             const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
                 id: faker.string.uuid(),

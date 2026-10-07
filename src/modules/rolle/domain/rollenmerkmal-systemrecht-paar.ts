@@ -1,4 +1,4 @@
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { RollenSystemRecht } from './systemrecht.js';
@@ -91,29 +91,17 @@ export class RollenmerkmalSystemrechtPaar {
         );
     }
 
-    /**
-     * Checks whether the caller may see/assign/manage a Rolle carrying the given gated Merkmale at the given
-     * organisation, i.e. whether they hold every RollenSystemRecht paired with those Merkmale (AND logic: if a
-     * Rolle has e.g. MPT_ROLLE and PILOT_1_ROLLE, both MPT_ROLLEN_ZUORDNEN and PILOT_1_ROLLEN_ZUORDNEN are required).
-     */
-    public static async hasPermissionForGatedMerkmale(
-        gatedMerkmale: Iterable<RollenMerkmal>,
-        organisationId: OrganisationID,
+    public static async getPermittedMerkmaleForOrga(
         permissions: IPersonPermissions,
-    ): Promise<boolean> {
-        const requiredSystemrechte: RollenSystemRecht[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(
-            gatedMerkmale,
-        ).map((merkmal: RollenMerkmal) => RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)!.systemrecht);
-
-        if (requiredSystemrechte.length === 0) {
-            return true;
-        }
-
-        const results: boolean[] = await Promise.all(
-            requiredSystemrechte.map((systemrecht: RollenSystemRecht) =>
-                permissions.hasSystemrechtAtOrganisation(organisationId, systemrecht),
+        organisationId: OrganisationID,
+    ): Promise<RollenMerkmal[]> {
+        const permissionsPerPaar: boolean[] = await Promise.all(
+            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) =>
+                permissions.hasSystemrechtAtOrganisation(organisationId, paar.systemrecht),
             ),
         );
-        return results.every(Boolean);
+        return RollenmerkmalSystemrechtPaar.ALL.filter(
+            (_paar: RollenmerkmalSystemrechtPaar, index: number) => permissionsPerPaar[index],
+        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
     }
 }

@@ -14,7 +14,6 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
@@ -232,10 +231,9 @@ export class PersonenkontexteUpdate {
                 modifiedPKs
                     .filter((pk: Personenkontext<true>) => modifiedRollen.has(pk.rolleId))
                     .map((pk: Personenkontext<true>) =>
-                        RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
+                        this.permissions.hasPermissionForGatedMerkmale(
                             modifiedRollen.get(pk.rolleId)!.merkmale,
                             pk.organisationId,
-                            this.permissions,
                         ),
                     ),
             )

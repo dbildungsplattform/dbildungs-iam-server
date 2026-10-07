@@ -18,7 +18,6 @@ import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-me
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
-import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
 interface TunknownResultForAngebot {
@@ -178,12 +177,10 @@ export class ApplyRollenerweiterungForAngebotService {
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
                     };
                 }
-                const hasPermissionForGatedMerkmale: boolean =
-                    await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
-                        rolle.merkmale,
-                        orgaId,
-                        permissions,
-                    );
+                const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForGatedMerkmale(
+                    rolle.merkmale,
+                    orgaId,
+                );
                 if (!hasPermissionForGatedMerkmale) {
                     return {
                         rolleId,
@@ -240,12 +237,10 @@ export class ApplyRollenerweiterungForAngebotService {
                         result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
                     };
                 }
-                const hasPermissionForGatedMerkmale: boolean =
-                    await RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(
-                        rolle.merkmale,
-                        orgaId,
-                        permissions,
-                    );
+                const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForGatedMerkmale(
+                    rolle.merkmale,
+                    orgaId,
+                );
                 if (!hasPermissionForGatedMerkmale) {
                     return {
                         rolleId,
