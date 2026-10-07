@@ -368,7 +368,7 @@ export class SetEmailAddressForSpshPersonService {
 
             // Persist the e-mail as failed
             newPrimaryEmail.setStatus(EmailAddressStatusEnum.FAILED);
-            newPrimaryEmail = await this.updateEmailIgnoreMissing(newPrimaryEmail);
+            await this.updateEmailIgnoreMissing(newPrimaryEmail);
 
             return ldapUndiResult;
         }
