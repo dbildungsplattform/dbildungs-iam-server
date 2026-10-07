@@ -158,6 +158,12 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     });
 
     describe('processStep', () => {
+        beforeEach(() => {
+            personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+            );
+        });
+
         describe(`when context is ${OperationContext.PERSON_ANLEGEN}`, () => {
             it('should return organisations', async () => {
                 const traeger: Organisation<true> = await organisationRepo.save(
