@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsString, IsUUID } from 'class-validator';
 
 export class ApplyRollenerweiterungBodyParams {
     @IsArray()
+    @IsUUID(undefined, { each: true })
     @IsString({ each: true })
     @ApiProperty({
         description: 'List of rolleIds to apply.',
@@ -13,6 +14,7 @@ export class ApplyRollenerweiterungBodyParams {
     public readonly addErweiterungenForRolleIds!: string[];
 
     @IsArray()
+    @IsUUID(undefined, { each: true })
     @IsString({ each: true })
     @ApiProperty({
         description: 'List of rolleIds to apply.',

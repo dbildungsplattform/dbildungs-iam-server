@@ -23,7 +23,7 @@ import { RolleID } from '../../../shared/types/aggregate-ids.types.js';
 
 interface TunknownResultForAngebot {
     rolleId: string;
-    errorIdType: ErrorIdType.ANGEBOT;
+    errorIdType: ErrorIdType.ANGEBOT | ErrorIdType.ROLLE;
     result: Result<unknown, DomainError>;
 }
 
@@ -56,7 +56,7 @@ interface RemoveRollenerweiterungenFromAngebotParams {
 }
 
 function isErrorResultForRolle<T>(r: { result: Result<T, DomainError> }): r is TerrorResultForAngebot {
-    return r.result.ok === false;
+    return !r.result.ok;
 }
 
 @Injectable()
@@ -180,7 +180,7 @@ export class ApplyRollenerweiterungForAngebotService {
                 if (!rolle) {
                     return Promise.resolve({
                         rolleId,
-                        errorIdType: ErrorIdType.ANGEBOT,
+                        errorIdType: ErrorIdType.ROLLE,
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
                     });
                 }
@@ -227,7 +227,7 @@ export class ApplyRollenerweiterungForAngebotService {
                 if (!rolle) {
                     return Promise.resolve({
                         rolleId,
-                        errorIdType: ErrorIdType.ANGEBOT,
+                        errorIdType: ErrorIdType.ROLLE,
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
                     });
                 }
