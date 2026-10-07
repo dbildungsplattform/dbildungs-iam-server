@@ -104,4 +104,17 @@ export class RollenmerkmalSystemrechtPaar {
             (_paar: RollenmerkmalSystemrechtPaar, index: number) => permissionsPerPaar[index],
         ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
     }
+
+    public static async hasPermissionForGatedMerkmale(
+        permissions: IPersonPermissions,
+        merkmale: Iterable<RollenMerkmal>,
+        organisationId: OrganisationID,
+    ): Promise<boolean> {
+        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
+        if (requiredMerkmale.length === 0) {
+            return true;
+        }
+        const permittedMerkmale: RollenMerkmal[] = await permissions.getPermittedMerkmaleForOrga(organisationId);
+        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
+    }
 }

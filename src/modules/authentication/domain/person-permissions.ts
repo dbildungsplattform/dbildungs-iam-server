@@ -152,16 +152,11 @@ export class PersonPermissions implements IPersonPermissions {
         return RollenmerkmalSystemrechtPaar.getPermittedMerkmaleForOrga(this, organisationId);
     }
 
-    public async hasPermissionForGatedMerkmale(
+    public hasPermissionForGatedMerkmale(
         merkmale: Iterable<RollenMerkmal>,
         organisationId: OrganisationID,
     ): Promise<boolean> {
-        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
-        if (requiredMerkmale.length === 0) {
-            return true;
-        }
-        const permittedMerkmale: RollenMerkmal[] = await this.getPermittedMerkmaleForOrga(organisationId);
-        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
+        return RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(this, merkmale, organisationId);
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {
