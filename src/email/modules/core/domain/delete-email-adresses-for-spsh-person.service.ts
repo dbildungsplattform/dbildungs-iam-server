@@ -112,7 +112,6 @@ export class DeleteEmailsAddressesForSpshPersonService {
 
         //Deleting the Group Relations extra is not necessary as Ox deletes them automatically when deleting the user
         let deleteUserResult: Result<void, Error>;
-
         if (!this.oxAdapter.useOx()) {
             const oxUserAddresses: object = personEmailAddresses.map((emailAddress: EmailAddress<true>) => ({
                 address: emailAddress.address,
@@ -160,6 +159,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
             return true;
         }
 
+        let deleteLdapPersonResult: Result<void, Error>;
         if (!this.ldapClientAdapter.useLdap()) {
             const ldapUserAddresses: object = personEmailAddresses.map((emailAddress: EmailAddress<true>) => ({
                 address: emailAddress.address,
@@ -172,22 +172,21 @@ export class DeleteEmailsAddressesForSpshPersonService {
                     ldapUserAddresses,
                 )}`,
             );
-        } else {
-            const deleteLdapPersonResult: Result<void, Error> = await this.ldapClientAdapter.deletePerson(
-                externalId,
-                domain,
-            );
 
-            if (!deleteLdapPersonResult.ok) {
-                return false;
-            }
+            deleteLdapPersonResult = Ok(undefined);
+        } else {
+            deleteLdapPersonResult = await this.ldapClientAdapter.deletePerson(externalId, domain);
         }
 
-        this.logger.info(
-            `Successfully deleted for spshPerson ${spshPersonId} the LDAP user with uid: ${externalId} in domain ${domain}.`,
-        );
+        if (deleteLdapPersonResult.ok) {
+            this.logger.info(
+                `Successfully deleted for spshPerson ${spshPersonId} the LDAP user with uid: ${externalId} in domain ${domain}.`,
+            );
 
-        return true;
+            return true;
+        }
+
+        return false;
     }
 
     private async deleteUndiLdapPerson(spshPersonId: string): Promise<boolean> {
@@ -198,17 +197,18 @@ export class DeleteEmailsAddressesForSpshPersonService {
 
         const ldapUndiDeleteResult: Result<void> = await this.ldapUndiClientAdapter.deletePerson(spshPersonId);
 
-        if (!ldapUndiDeleteResult.ok) {
-            this.logger.logUnknownAsError(
-                `Could not delete person ${spshPersonId} in UNDI LDAP`,
-                ldapUndiDeleteResult.error,
-            );
-            return false;
+        if (ldapUndiDeleteResult.ok) {
+            this.logger.info(`Successfully deleted person ${spshPersonId} in UNDI LDAP`);
+
+            return true;
         }
 
-        this.logger.info(`Successfully deleted person ${spshPersonId} in UNDI LDAP`);
+        this.logger.logUnknownAsError(
+            `Could not delete person ${spshPersonId} in UNDI LDAP`,
+            ldapUndiDeleteResult.error,
+        );
 
-        return true;
+        return false;
     }
 
     private async deleteEmailAddressesFromDatabase(
