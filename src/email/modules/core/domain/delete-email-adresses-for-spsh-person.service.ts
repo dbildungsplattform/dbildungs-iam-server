@@ -24,34 +24,35 @@ export class DeleteEmailsAddressesForSpshPersonService {
 
     public async deleteEmailAddressesForSpshPerson(params: { spshPersonId: string }): Promise<void> {
         this.logger.info(`Received request to delete all email addresses for spshPerson ${params.spshPersonId}.`);
-        const addresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
+        const personEmailAddresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
             params.spshPersonId,
         );
 
-        if (addresses.length === 0) {
+        if (personEmailAddresses.length === 0) {
             this.logger.info(`No email addresses found for spshPerson ${params.spshPersonId}. Skipping deletion.`);
             return;
         }
-        addresses.forEach((a: EmailAddress<true>) => {
+        personEmailAddresses.forEach((a: EmailAddress<true>) => {
             a.setStatus(EmailAddressStatusEnum.TO_BE_DELETED);
             a.markedForCron = new Date();
         });
-        await Promise.all(addresses.map((a: EmailAddress<true>) => this.emailAddressRepo.save(a)));
+        await Promise.all(personEmailAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.save(a)));
 
         //If any of the external deletion operations fail, we keep the email addresses in DB with status TO_BE_DELETED for retry by the cronjob
         let canDbDeleteAllAdresses: boolean = true;
 
-        const oxUserCounter: OXUserID | undefined = addresses.find(
+        const oxUserCounter: OXUserID | undefined = personEmailAddresses.find(
             (a: EmailAddress<true>) => a.oxUserCounter,
         )?.oxUserCounter;
-        const externalId: string | undefined = addresses.find((a: EmailAddress<true>) => a.externalId)?.externalId;
-        const domain: string | undefined = addresses.find((a: EmailAddress<true>) => a.getDomain())?.getDomain();
+        const externalId: string | undefined = personEmailAddresses.find((a: EmailAddress<true>) => a.externalId)?.externalId;
+        const domain: string | undefined = personEmailAddresses.find((a: EmailAddress<true>) => a.getDomain())?.getDomain();
+
         if (oxUserCounter) {
             //Deleting the Group Relations extra is not necessary as Ox deletes them automatically when deleting the user
             let deleteUserResult: Result<void, Error>;
 
             if (!this.oxAdapter.useOx()) {
-                const oxUserAddresses: object = addresses.map((a: EmailAddress<true>) => ({
+                const oxUserAddresses: object = personEmailAddresses.map((a: EmailAddress<true>) => ({
                     address: a.address,
                     priority: a.priority,
                     externalId: a.externalId,
@@ -81,11 +82,12 @@ export class DeleteEmailsAddressesForSpshPersonService {
                 `No oxUserCounter found for spshPerson ${params.spshPersonId} when deleting email addresses. Skipping Ox deletion`,
             );
         }
+
         if (externalId && domain) {
             let deleteLdapPersonResult: Result<void, Error>;
 
             if (!this.ldapClientAdapter.useLdap()) {
-                const ldapUserAddresses: object = addresses.map((a: EmailAddress<true>) => ({
+                const ldapUserAddresses: object = personEmailAddresses.map((a: EmailAddress<true>) => ({
                     address: a.address,
                     priority: a.priority,
                     externalId: a.externalId,
@@ -132,7 +134,8 @@ export class DeleteEmailsAddressesForSpshPersonService {
         }
 
         if (canDbDeleteAllAdresses) {
-            await Promise.all(addresses.map((a: EmailAddress<true>) => this.emailAddressRepo.delete(a)));
+            const deletePromises: Promise<void>[] = personEmailAddresses.map((a: EmailAddress<true>) => this.emailAddressRepo.delete(a));
+            await Promise.all(deletePromises);
             this.logger.info(`Successfully deleted all email addresses for spshPerson ${params.spshPersonId} from DB.`);
         } else {
             this.logger.warning(
@@ -141,10 +144,10 @@ export class DeleteEmailsAddressesForSpshPersonService {
         }
 
         // Webhook notify
-        const previousPrimaryEmail: string | undefined = addresses.find(
+        const previousPrimaryEmail: string | undefined = personEmailAddresses.find(
             (a: EmailAddress<true>) => a.priority === 0,
         )?.address;
-        const previousAlternativeEmail: string | undefined = addresses.find(
+        const previousAlternativeEmail: string | undefined = personEmailAddresses.find(
             (a: EmailAddress<true>) => a.priority === 1,
         )?.address;
 
