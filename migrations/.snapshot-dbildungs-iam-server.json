@@ -284,12 +284,12 @@
             "ACTIVE",
             "DEACTIVE",
             "SUSPENDED",
-            "TO_BE_DELETED",
             "FAILED",
+            "TO_BE_DELETED",
             "EXISTS_ONLY_IN_OX"
           ],
-          "mappedType": "unknown",
-          "nativeEnumName": "email.email_address_status_enum"
+          "mappedType": "enum",
+          "nativeEnumName": "email_address_status_enum"
         },
         "updated_at": {
           "name": "updated_at",
@@ -643,7 +643,7 @@
             "DELETED_OX",
             "DELETED"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "email_address_status_enum"
         },
         "updated_at": {
@@ -771,7 +771,7 @@
           "enumItems": [
             "LDAP"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "external_id_enum"
         }
       },
@@ -949,7 +949,7 @@
             "SUCCESS",
             "PENDING"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "import_data_item_status_enum"
         },
         "updated_at": {
@@ -1223,16 +1223,16 @@
           "comment": null,
           "collation": null,
           "enumItems": [
-            "STARTED",
-            "VALID",
-            "INVALID",
-            "INPROGRESS",
             "CANCELLED",
             "COMPLETED",
             "FAILED",
-            "FINISHED"
+            "FINISHED",
+            "INPROGRESS",
+            "INVALID",
+            "STARTED",
+            "VALID"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "import_status_enum"
         },
         "updated_at": {
@@ -1400,7 +1400,7 @@
             "VEROEFFENTLICHT",
             "NICHT_VEROEFFENTLICHT"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "meldung_status_enum"
         },
         "updated_at": {
@@ -1493,23 +1493,6 @@
           "enumItems": [],
           "mappedType": "string"
         },
-        "email_domain": {
-          "name": "email_domain",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
         "id": {
           "name": "id",
           "type": "uuid",
@@ -1557,7 +1540,7 @@
           "scale": null,
           "default": null,
           "comment": null,
-          "collation": "alphanumeric",
+          "collation": null,
           "enumItems": [],
           "mappedType": "string"
         },
@@ -1591,7 +1574,7 @@
           "scale": null,
           "default": null,
           "comment": null,
-          "collation": "alphanumeric",
+          "collation": null,
           "enumItems": [],
           "mappedType": "string"
         },
@@ -1634,7 +1617,7 @@
             "05",
             "06"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "traegerschaft_enum"
         },
         "typ": {
@@ -1661,8 +1644,25 @@
             "SONSTIGE ORGANISATION / EINRICHTUNG",
             "UNBESTAETIGT"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "organisations_typ_enum"
+        },
+        "uem_ldap_ou": {
+          "name": "uem_ldap_ou",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
         },
         "updated_at": {
           "name": "updated_at",
@@ -2055,7 +2055,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": true,
+          "unique": false,
           "length": 255,
           "precision": null,
           "scale": null,
@@ -2106,7 +2106,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "unique": true,
+          "unique": false,
           "length": 255,
           "precision": null,
           "scale": null,
@@ -2174,13 +2174,13 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "unique": true,
+          "unique": false,
           "length": 255,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
-          "collation": "alphanumeric",
+          "collation": null,
           "enumItems": [],
           "mappedType": "string"
         },
@@ -2212,7 +2212,7 @@
           "keyName": "person_familienname_trgm_index",
           "primary": false,
           "unique": false,
-          "type": "gin"
+          "expression": "create index \"person_familienname_trgm_index\" on \"person\" using gin (\"familienname\" gin_trgm_ops);"
         },
         {
           "columnNames": [
@@ -2222,7 +2222,8 @@
           "constraint": false,
           "keyName": "person_keycloak_user_id_unique",
           "primary": false,
-          "unique": true
+          "unique": false,
+          "expression": "create unique index \"person_keycloak_user_id_unique\" on \"person\" (\"keycloak_user_id\") nulls not distinct;"
         },
         {
           "columnNames": [
@@ -2233,7 +2234,7 @@
           "keyName": "person_personalnummer_trgm_index",
           "primary": false,
           "unique": false,
-          "type": "gin"
+          "expression": "create index \"person_personalnummer_trgm_index\" on \"public\".\"person\" using gin (\"personalnummer\" gin_trgm_ops);"
         },
         {
           "columnNames": [
@@ -2243,7 +2244,8 @@
           "constraint": false,
           "keyName": "person_personalnummer_unique",
           "primary": false,
-          "unique": true
+          "unique": false,
+          "expression": "create unique index \"person_personalnummer_unique\" on \"public\".\"person\" (\"personalnummer\") nulls distinct;"
         },
         {
           "columnNames": [
@@ -2264,7 +2266,7 @@
           "keyName": "person_referrer_trgm_index",
           "primary": false,
           "unique": false,
-          "type": "gin"
+          "expression": "create index \"person_referrer_trgm_index\" on \"public\".\"person\" using gin (\"username\" gin_trgm_ops);"
         },
         {
           "columnNames": [
@@ -2274,7 +2276,8 @@
           "constraint": false,
           "keyName": "person_username_unique",
           "primary": false,
-          "unique": true
+          "unique": false,
+          "expression": "create unique index \"person_username_unique\" on \"public\".\"person\" (\"username\") nulls distinct;"
         },
         {
           "columnNames": [
@@ -2285,7 +2288,7 @@
           "keyName": "person_vorname_trgm_index",
           "primary": false,
           "unique": false,
-          "type": "gin"
+          "expression": "create index \"person_vorname_trgm_index\" on \"public\".\"person\" using gin (\"vorname\" gin_trgm_ops);"
         }
       ],
       "checks": [],
@@ -2388,7 +2391,7 @@
             "09",
             "10"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "jahrgangsstufe_enum"
         },
         "loeschung_zeitpunkt": {
@@ -2476,7 +2479,7 @@
           "enumItems": [
             "AKTIV"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "personenstatus_enum"
         },
         "revision": {
@@ -2779,7 +2782,7 @@
             "SCHB",
             "NLEHR"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "rollen_art_enum"
         },
         "updated_at": {
@@ -2867,7 +2870,7 @@
             "KOPERS_PFLICHT",
             "MPT_ROLLE"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "rollen_merkmal_enum"
         },
         "rolle_id": {
@@ -3071,26 +3074,25 @@
             "MPT_ROLLEN_ZUORDNEN",
             "PERSONEN_SOFORT_LOESCHEN",
             "PERSONEN_VERWALTEN",
+            "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
+            "EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN",
             "SCHULEN_VERWALTEN",
             "KLASSEN_VERWALTEN",
             "SCHULTRAEGER_VERWALTEN",
-            "MIGRATION_DURCHFUEHREN",
             "PERSON_SYNCHRONISIEREN",
             "CRON_DURCHFUEHREN",
-            "IMPORT_DURCHFUEHREN",
             "PERSONEN_ANLEGEN",
+            "IMPORT_DURCHFUEHREN",
             "PERSONEN_LESEN",
             "BULK_VERWALTEN",
             "SCHULPORTAL_VERWALTEN",
             "HINWEISE_BEARBEITEN",
-            "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
-            "EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN",
             "ROLLEN_ERWEITERN",
             "ANGEBOTE_VERWALTEN",
             "ANGEBOTE_EINGESCHRAENKT_VERWALTEN",
             "SCHULISCHE_VIDIS_ANGEBOTE_ABRUFEN"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "rollen_system_recht_enum"
         }
       },
@@ -3416,7 +3418,7 @@
             "DONE",
             "FAILED"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "db_seed_status_enum"
         }
       },
@@ -3459,11 +3461,11 @@
             "PERSON",
             "ORGANISATION",
             "ROLLE",
+            "ROLLENERWEITERUNG",
             "SERVICE_PROVIDER",
-            "EMAIL_DOMAIN",
-            "ROLLENERWEITERUNG"
+            "EMAIL_DOMAIN"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "referenced_entity_type_enum"
         },
         "uuid": {
@@ -3560,7 +3562,7 @@
             "ITSLEARNING",
             "UEM"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "service_provider_system_enum"
         },
         "id": {
@@ -3598,10 +3600,10 @@
             "EMAIL",
             "UNTERRICHT",
             "VERWALTUNG",
-            "HINWEISE",
-            "SCHULISCH"
+            "SCHULISCH",
+            "HINWEISE"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "service_provider_kategorie_enum"
         },
         "keycloak_client_id": {
@@ -3774,10 +3776,10 @@
           "enumItems": [
             "NONE",
             "URL",
-            "SCHULPORTAL_ADMINISTRATION",
-            "EMAIL"
+            "EMAIL",
+            "SCHULPORTAL_ADMINISTRATION"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "service_provider_target_enum"
         },
         "updated_at": {
@@ -3842,7 +3844,7 @@
           "keyName": "service_provider_name_trgm_index",
           "primary": false,
           "unique": false,
-          "type": "gin"
+          "expression": "create index \"service_provider_name_trgm_index\" on \"public\".\"service_provider\" using gin (\"name\" gin_trgm_ops);"
         },
         {
           "columnNames": [
@@ -3869,9 +3871,8 @@
       "checks": [
         {
           "name": "logo_or_logo_id_consistency",
-          "expression": "((logo_id IS NULL) AND (logo IS NULL)) OR ((logo_id IS NULL) AND (logo IS NOT NULL)) OR ((logo_id IS NOT NULL) AND (logo IS NULL))",
-          "definition": "CHECK ((((logo_id IS NULL) AND (logo IS NULL)) OR ((logo_id IS NULL) AND (logo IS NOT NULL)) OR ((logo_id IS NOT NULL) AND (logo IS NULL))))",
-          "columnName": "logo"
+          "expression": "(\"logo_id\" IS NULL AND \"logo\" IS NULL) OR (\"logo_id\" IS NULL AND \"logo\" IS NOT NULL) OR (\"logo_id\" IS NOT NULL AND \"logo\" IS NULL)",
+          "definition": "check ((\"logo_id\" IS NULL AND \"logo\" IS NULL) OR (\"logo_id\" IS NULL AND \"logo\" IS NOT NULL) OR (\"logo_id\" IS NOT NULL AND \"logo\" IS NULL))"
         }
       ],
       "triggers": [],
@@ -3902,7 +3903,7 @@
             "ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG",
             "ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "service_provider_merkmal_enum"
         },
         "service_provider_id": {
@@ -3993,7 +3994,7 @@
             "SCHB",
             "NLEHR"
           ],
-          "mappedType": "unknown",
+          "mappedType": "enum",
           "nativeEnumName": "rollen_art_enum"
         },
         "service_provider_id": {
@@ -4032,7 +4033,7 @@
           ],
           "composite": false,
           "constraint": false,
-          "keyName": "service_provider_rollenarten_whitelist_service_provider_id_inde",
+          "keyName": "service_provider_rollenarten_whitelist_service_provider_id_index",
           "primary": false,
           "unique": false
         }
@@ -4241,8 +4242,8 @@
         "ACTIVE",
         "DEACTIVE",
         "SUSPENDED",
-        "TO_BE_DELETED",
         "FAILED",
+        "TO_BE_DELETED",
         "EXISTS_ONLY_IN_OX"
       ]
     },
@@ -4279,14 +4280,14 @@
       "name": "import_status_enum",
       "schema": "public",
       "items": [
-        "STARTED",
-        "VALID",
-        "INVALID",
-        "INPROGRESS",
         "CANCELLED",
         "COMPLETED",
         "FAILED",
-        "FINISHED"
+        "FINISHED",
+        "INPROGRESS",
+        "INVALID",
+        "STARTED",
+        "VALID"
       ]
     },
     "jahrgangsstufe_enum": {
@@ -4341,9 +4342,9 @@
         "PERSON",
         "ORGANISATION",
         "ROLLE",
+        "ROLLENERWEITERUNG",
         "SERVICE_PROVIDER",
-        "EMAIL_DOMAIN",
-        "ROLLENERWEITERUNG"
+        "EMAIL_DOMAIN"
       ]
     },
     "rollen_art_enum": {
@@ -4378,20 +4379,19 @@
         "MPT_ROLLEN_ZUORDNEN",
         "PERSONEN_SOFORT_LOESCHEN",
         "PERSONEN_VERWALTEN",
+        "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
+        "EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN",
         "SCHULEN_VERWALTEN",
         "KLASSEN_VERWALTEN",
         "SCHULTRAEGER_VERWALTEN",
-        "MIGRATION_DURCHFUEHREN",
         "PERSON_SYNCHRONISIEREN",
         "CRON_DURCHFUEHREN",
-        "IMPORT_DURCHFUEHREN",
         "PERSONEN_ANLEGEN",
+        "IMPORT_DURCHFUEHREN",
         "PERSONEN_LESEN",
         "BULK_VERWALTEN",
         "SCHULPORTAL_VERWALTEN",
         "HINWEISE_BEARBEITEN",
-        "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
-        "EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN",
         "ROLLEN_ERWEITERN",
         "ANGEBOTE_VERWALTEN",
         "ANGEBOTE_EINGESCHRAENKT_VERWALTEN",
@@ -4405,8 +4405,8 @@
         "EMAIL",
         "UNTERRICHT",
         "VERWALTUNG",
-        "HINWEISE",
-        "SCHULISCH"
+        "SCHULISCH",
+        "HINWEISE"
       ]
     },
     "service_provider_merkmal_enum": {
@@ -4435,8 +4435,8 @@
       "items": [
         "NONE",
         "URL",
-        "SCHULPORTAL_ADMINISTRATION",
-        "EMAIL"
+        "EMAIL",
+        "SCHULPORTAL_ADMINISTRATION"
       ]
     },
     "traegerschaft_enum": {
