@@ -227,12 +227,12 @@ describe('PersonenkontexteUpdate', () => {
         ])(
             'gated permissions for $merkmale',
             ({ merkmale, deniedSystemrecht }: { merkmale: RollenMerkmal[]; deniedSystemrecht: RollenSystemRecht }) => {
-                let mptPK: Personenkontext<true>;
+                let gatedPK: Personenkontext<true>;
                 let regularPK: Personenkontext<true>;
                 let permissions: DeepMocked<PersonPermissions>;
 
                 beforeEach(() => {
-                    mptPK = DoFactory.createPersonenkontext(true, {
+                    gatedPK = DoFactory.createPersonenkontext(true, {
                         personId,
                         updatedAt: lastModified,
                         befristung: new Date('2099-07-31'),
@@ -242,8 +242,8 @@ describe('PersonenkontexteUpdate', () => {
                         updatedAt: lastModified,
                         befristung: undefined,
                     });
-                    const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
-                        id: mptPK.rolleId,
+                    const rolleWithGatedMerkmale: Rolle<true> = DoFactory.createRolle(true, {
+                        id: gatedPK.rolleId,
                         rollenart: RollenArt.LEHR,
                         merkmale,
                     });
@@ -254,7 +254,7 @@ describe('PersonenkontexteUpdate', () => {
                     });
                     rolleRepoMock.findByIds.mockResolvedValue(
                         new Map([
-                            [mptRolle.id, mptRolle],
+                            [rolleWithGatedMerkmale.id, rolleWithGatedMerkmale],
                             [regularRolle.id, regularRolle],
                         ]),
                     );
@@ -285,7 +285,7 @@ describe('PersonenkontexteUpdate', () => {
                     'should reject an unauthorized gated %s before any writes',
                     async (operation: string) => {
                         const existing: Personenkontext<true>[] =
-                            operation === 'add' ? [regularPK] : [regularPK, mptPK];
+                            operation === 'add' ? [regularPK] : [regularPK, gatedPK];
                         const sent: DbiamPersonenkontextBodyParams[] =
                             operation === 'remove'
                                 ? [regularPK]
@@ -293,12 +293,12 @@ describe('PersonenkontexteUpdate', () => {
                                       regularPK,
                                       {
                                           personId,
-                                          organisationId: mptPK.organisationId,
-                                          rolleId: mptPK.rolleId,
+                                          organisationId: gatedPK.organisationId,
+                                          rolleId: gatedPK.rolleId,
                                           befristung:
                                               operation === 'change Befristung'
                                                   ? new Date('2099-08-01')
-                                                  : mptPK.befristung,
+                                                  : gatedPK.befristung,
                                       },
                                   ];
                         dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue(existing);
@@ -324,7 +324,7 @@ describe('PersonenkontexteUpdate', () => {
                         const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
 
                         expect(result).toBeInstanceOf(MissingPermissionsError);
-                        expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(mptPK.organisationId);
+                        expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(gatedPK.organisationId);
                         expect(dBiamPersonenkontextRepoInternalMock.save).not.toHaveBeenCalled();
                         expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
                         expect(personRepoMock.updatePersonMetadata).not.toHaveBeenCalled();
@@ -335,15 +335,15 @@ describe('PersonenkontexteUpdate', () => {
                 it('should allow a regular addition while retaining an unchanged gated context', async () => {
                     const fetchedMptPK: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
                         personId,
-                        organisationId: mptPK.organisationId,
-                        rolleId: mptPK.rolleId,
-                        befristung: new Date(mptPK.befristung!),
+                        organisationId: gatedPK.organisationId,
+                        rolleId: gatedPK.rolleId,
+                        befristung: new Date(gatedPK.befristung!),
                         updatedAt: lastModified,
                     });
                     dBiamPersonenkontextRepoMock.find
                         .mockResolvedValueOnce(fetchedMptPK)
                         .mockResolvedValueOnce(undefined);
-                    dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([mptPK]);
+                    dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([gatedPK]);
                     dBiamPersonenkontextRepoInternalMock.save.mockResolvedValue(regularPK);
                     personRepoMock.findById.mockResolvedValueOnce(DoFactory.createPerson(true, { id: personId }));
                     personRepoMock.findById.mockResolvedValue(undefined);
@@ -371,23 +371,23 @@ describe('PersonenkontexteUpdate', () => {
                     );
                     dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(regularPK).mockResolvedValueOnce(undefined);
                     dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([regularPK]);
-                    dBiamPersonenkontextRepoInternalMock.save.mockResolvedValue(mptPK);
+                    dBiamPersonenkontextRepoInternalMock.save.mockResolvedValue(gatedPK);
                     personRepoMock.findById.mockResolvedValueOnce(DoFactory.createPerson(true, { id: personId }));
                     personRepoMock.findById.mockResolvedValue(undefined);
                     const update: PersonenkontexteUpdate = dbiamPersonenkontextFactory.createNewPersonenkontexteUpdate(
                         personId,
                         lastModified,
                         1,
-                        [regularPK, mptPK],
+                        [regularPK, gatedPK],
                         permissions,
                     );
 
                     const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
 
                     expect(result).toBeInstanceOf(Array);
-                    expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(mptPK.organisationId);
+                    expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(gatedPK.organisationId);
                     expect(dBiamPersonenkontextRepoInternalMock.save).toHaveBeenCalledWith(
-                        expect.objectContaining({ rolleId: mptPK.rolleId }),
+                        expect.objectContaining({ rolleId: gatedPK.rolleId }),
                     );
                 });
             },

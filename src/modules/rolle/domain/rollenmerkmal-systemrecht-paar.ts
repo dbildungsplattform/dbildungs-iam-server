@@ -91,6 +91,13 @@ export class RollenmerkmalSystemrechtPaar {
         );
     }
 
+    public static getGatedMerkmaleNotIncludedIn(merkmale: Iterable<RollenMerkmal>): RollenMerkmal[] {
+        const includedMerkmale: Set<RollenMerkmal> = new Set(merkmale);
+        return RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+            (merkmal: RollenMerkmal) => !includedMerkmale.has(merkmal),
+        );
+    }
+
     public static async getPermittedMerkmaleForOrga(
         permissions: IPersonPermissions,
         organisationId: OrganisationID,

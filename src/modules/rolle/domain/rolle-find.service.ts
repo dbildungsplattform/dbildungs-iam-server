@@ -347,13 +347,11 @@ export class RolleFindService {
                         allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
                         rollenArten: await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas),
                     },
-                    (
-                        await this.resolveExcludedGatedMerkmale(
-                            params.permissions,
-                            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
-                            organisationBounds.selectedAndPermittedOrgas,
-                        )
-                    ).filter((merkmal: RollenMerkmal) => merkmal !== paar.merkmal),
+                    await this.resolveExcludedGatedMerkmaleForRequiredMerkmal(
+                        params.permissions,
+                        paar.merkmal,
+                        organisationBounds.selectedAndPermittedOrgas,
+                    ),
                 );
                 break;
             case OrganisationBoundsKind.UNBOUNDED:
@@ -363,12 +361,7 @@ export class RolleFindService {
                         allowedOrganisationIds: undefined,
                         rollenArten: undefined,
                     },
-                    (
-                        await this.resolveExcludedGatedMerkmale(
-                            params.permissions,
-                            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
-                        )
-                    ).filter((merkmal: RollenMerkmal) => merkmal !== paar.merkmal),
+                    await this.resolveExcludedGatedMerkmaleForRequiredMerkmal(params.permissions, paar.merkmal),
                 );
         }
 
@@ -415,6 +408,19 @@ export class RolleFindService {
         };
     }
 
+    private async resolveExcludedGatedMerkmaleForRequiredMerkmal(
+        permissions: IPersonPermissions,
+        requiredMerkmal: RollenMerkmal,
+        selectedAndPermittedOrgas?: Array<OrganisationID>,
+    ): Promise<RollenMerkmal[]> {
+        const excludedMerkmale: RollenMerkmal[] = await this.resolveExcludedGatedMerkmale(
+            permissions,
+            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
+            selectedAndPermittedOrgas,
+        );
+        return excludedMerkmale.filter((merkmal: RollenMerkmal) => merkmal !== requiredMerkmal);
+    }
+
     /**
      * Resolves the gated Merkmale (MPT_ROLLE, PILOT_1_ROLLE, ...) that must be excluded from the result, i.e. those
      * that either were not requested via `requestedSystemrechte` or for which the caller lacks the paired
@@ -447,9 +453,7 @@ export class RolleFindService {
                     organisationMerkmale.includes(merkmal),
                 ),
         );
-        return RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
-            (merkmal: RollenMerkmal) => !permittedMerkmale.includes(merkmal),
-        );
+        return RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(permittedMerkmale);
     }
 
     /**

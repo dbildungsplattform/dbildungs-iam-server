@@ -519,9 +519,8 @@ export class RolleRepo {
             where.name = { $ilike: `%${params.searchStr}%` };
         }
         if (params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0) {
-            const unauthorizedGatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
-                (merkmal: RollenMerkmal) => !params.gatedBucket!.authorizedMerkmale.includes(merkmal),
-            );
+            const unauthorizedGatedMerkmale: RollenMerkmal[] =
+                RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(params.gatedBucket.authorizedMerkmale);
             where.$or = [
                 {
                     rollenart: { $in: params.allowedRollenarten },

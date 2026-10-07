@@ -17,6 +17,7 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
@@ -1028,35 +1029,39 @@ describe('PersonenkontextWorkflow', () => {
             expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith('orgId');
         });
 
-        it('should allow a non-allowlisted MPT rolle with limited creation and MPT permissions', async () => {
-            configMock.getOrThrow.mockReturnValueOnce({
-                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],
-            });
-            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissions.hasSystemrechtAtOrganisation
-                .mockResolvedValueOnce(false)
-                .mockResolvedValueOnce(true)
-                .mockResolvedValueOnce(true);
-            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([RollenMerkmal.MPT_ROLLE]);
+        it.each(
+            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) => ({
+                merkmal: paar.merkmal,
+            })),
+        )(
+            'should allow a non-allowlisted role with $merkmal and its permission',
+            async ({ merkmal }: { merkmal: RollenMerkmal }) => {
+                configMock.getOrThrow.mockReturnValueOnce({
+                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],
+                });
+                const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+                permissions.getPermittedMerkmaleForOrga.mockResolvedValue([merkmal]);
 
-            const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
-                id: faker.string.uuid(),
-                rollenart: RollenArt.LEIT,
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
-            rolleRepoMock.findByIds.mockResolvedValue(new Map([[mptRolle.id, mptRolle]]));
+                const rolleWithGatedMerkmal: Rolle<true> = DoFactory.createRolle(true, {
+                    id: faker.string.uuid(),
+                    rollenart: RollenArt.LEIT,
+                    merkmale: [merkmal],
+                });
+                rolleRepoMock.findByIds.mockResolvedValue(new Map([[rolleWithGatedMerkmal.id, rolleWithGatedMerkmal]]));
 
-            const result: Result<void, DomainError> = await anlage.checkPermissions(
-                permissions,
-                undefined,
-                'orgId',
-                [mptRolle.id],
-                OperationContext.PERSON_ANLEGEN,
-            );
+                const result: Result<void, DomainError> = await anlage.checkPermissions(
+                    permissions,
+                    undefined,
+                    'orgId',
+                    [rolleWithGatedMerkmal.id],
+                    OperationContext.PERSON_ANLEGEN,
+                );
 
-            expectOkResult(result);
-            expect(result.value).toBeUndefined();
-        });
+                expectOkResult(result);
+                expect(result.value).toBeUndefined();
+            },
+        );
 
         it('should reject a mixed assignment with a non-allowlisted non-MPT rolle', async () => {
             configMock.getOrThrow.mockReturnValueOnce({

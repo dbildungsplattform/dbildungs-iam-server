@@ -506,9 +506,9 @@ describe('RolleRepo', () => {
             permissions.getOrgIdsWithSystemrecht.mockImplementation(
                 (systemrechte: RollenSystemRecht[]): Promise<PermittedOrgas> =>
                     Promise.resolve(
-                        systemrechte.includes(RollenSystemRecht.ROLLEN_VERWALTEN)
-                            ? { all: false, orgaIds: [] }
-                            : { all: true },
+                        systemrechte.includes(RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN)
+                            ? { all: true }
+                            : { all: false, orgaIds: [] },
                     ),
             );
 
