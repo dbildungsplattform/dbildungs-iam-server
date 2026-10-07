@@ -437,7 +437,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -466,7 +465,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -477,7 +475,7 @@ describe('RolleRepo', () => {
             expect(total).toBe(0);
         });
 
-        it('should fallback to ROLLEN_VERWALTEN when systemrechte are not provided', async () => {
+        it('should always require ROLLEN_VERWALTEN', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const organisationId: OrganisationID = organisation.id;
             await sut.save(DoFactory.createRolle(false, { administeredBySchulstrukturknoten: organisationId }));
@@ -487,7 +485,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                undefined,
                 false,
                 undefined,
                 10,
@@ -503,7 +500,7 @@ describe('RolleRepo', () => {
             expect(total).toBe(1);
         });
 
-        it('should deny a mixed global-list request without ROLLEN_VERWALTEN', async () => {
+        it('should deny the global list when only Pilot rights are held', async () => {
             await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE] });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.getOrgIdsWithSystemrecht.mockImplementation(
@@ -515,11 +512,7 @@ describe('RolleRepo', () => {
                     ),
             );
 
-            const result: Counted<Rolle<true>> = await sut.findRollenAuthorized(
-                permissions,
-                [RollenSystemRecht.ROLLEN_VERWALTEN, RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
-                false,
-            );
+            const result: Counted<Rolle<true>> = await sut.findRollenAuthorized(permissions, false);
 
             expect(result).toEqual([[], 0]);
             expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
@@ -562,7 +555,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -586,7 +578,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -630,7 +621,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -670,7 +660,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
                 false,
                 undefined,
                 10,
@@ -694,7 +683,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -715,7 +703,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -744,7 +731,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 'Test',
                 10,
@@ -765,7 +751,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -788,7 +773,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -811,7 +795,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 true,
                 undefined,
                 10,
@@ -844,7 +827,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -883,7 +865,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,
@@ -931,7 +912,6 @@ describe('RolleRepo', () => {
 
             const [rolleResult, total]: [Option<Rolle<true>[]>, number] = await sut.findRollenAuthorized(
                 permissions,
-                [],
                 false,
                 undefined,
                 10,

@@ -381,7 +381,6 @@ export class RolleRepo {
 
     public async findRollenAuthorized(
         permissions: IPersonPermissions,
-        _systemrechte: RollenSystemRecht[] | undefined,
         includeTechnische: boolean,
         searchStr?: string,
         limit?: number,

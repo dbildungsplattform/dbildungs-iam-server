@@ -169,7 +169,6 @@ export class RolleController {
         } else {
             rollenAndTotal = await this.rolleRepo.findRollenAuthorized(
                 permissions,
-                queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
                 false,
                 queryParams.searchStr,
                 queryParams.limit,
