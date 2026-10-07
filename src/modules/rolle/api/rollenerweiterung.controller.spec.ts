@@ -11,14 +11,15 @@ import { PersonPermissions } from '../../authentication/domain/person-permission
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { faker } from '@faker-js/faker';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { ApplyRollenerweiterungForAngebotService } from '../domain/apply-rollenerweiterungen-for-angebot-service.js';
 import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-changes.service.js';
+import { ErrorIdType } from './ErrorIdType.enum.js';
 
 describe('RollenerweiterungController', () => {
     let controller: RollenerweiterungController;
-    let applyRollenerweiterungServiceMock: DeepMocked<ApplyRollenerweiterungForAngebotService>;
+    let applyRollenerweiterungServiceMock: DeepMocked<ApplyRollenerweiterungService>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -33,17 +34,15 @@ describe('RollenerweiterungController', () => {
                     useValue: createMock<ClassLogger>(ClassLogger),
                 },
                 {
-                    provide: ApplyRollenerweiterungForAngebotService,
-                    useValue: createMock<ApplyRollenerweiterungForAngebotService>(
-                        ApplyRollenerweiterungForAngebotService,
-                    ),
+                    provide: ApplyRollenerweiterungService,
+                    useValue: createMock<ApplyRollenerweiterungService>(ApplyRollenerweiterungService),
                 },
                 RollenerweiterungController,
             ],
         }).compile();
 
         controller = module.get(RollenerweiterungController);
-        applyRollenerweiterungServiceMock = module.get(ApplyRollenerweiterungForAngebotService);
+        applyRollenerweiterungServiceMock = module.get(ApplyRollenerweiterungService);
     });
 
     beforeEach(() => {
@@ -103,8 +102,16 @@ describe('RollenerweiterungController', () => {
             applyRollenerweiterungServiceMock.applyRollenerweiterungChangesForAngebot.mockResolvedValueOnce({
                 ok: false,
                 error: new ApplyRollenerweiterungError([
-                    { id: 'rollenId2', error: errorRollenId2 as unknown as DomainError },
-                    { id: 'rollenId4', error: errorRollenId4 as unknown as DomainError },
+                    {
+                        id: 'rollenId2',
+                        error: errorRollenId2 as unknown as DomainError,
+                        errorIdType: ErrorIdType.ROLLE,
+                    },
+                    {
+                        id: 'rollenId4',
+                        error: errorRollenId4 as unknown as DomainError,
+                        errorIdType: ErrorIdType.ROLLE,
+                    },
                 ]),
             });
 
