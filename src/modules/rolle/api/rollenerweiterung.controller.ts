@@ -20,7 +20,7 @@ import { ApplyRollenerweiterungBodyParams } from './apply-rollenerweiterung.body
 import { DbiamApplyRollenerweiterungMultiError } from './dbiam-apply-rollenerweiterung-multi.error.js';
 import { RollenerweiterungExceptionFilter } from './rollenerweiterung-exception-filter.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-changes.service.js';
 
 @UseFilters(new RollenerweiterungExceptionFilter(), new ApplyRollenerweiterungMultiExceptionFilter())
 @ApiTags('rolle')

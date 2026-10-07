@@ -470,6 +470,7 @@ describe('DbSeedService', () => {
                 'utf-8',
             );
 
+            // eslint-disable-next-line @typescript-eslint/typedef
             const { organisation, rolle, serviceProvider } = configureValidRollenerweiterungReferences();
 
             const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(true, {
@@ -498,6 +499,7 @@ describe('DbSeedService', () => {
                 'utf-8',
             );
 
+            // eslint-disable-next-line @typescript-eslint/typedef
             const { organisation, rolle, serviceProvider } = configureValidRollenerweiterungReferences();
 
             const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(true, {

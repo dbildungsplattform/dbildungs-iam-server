@@ -7,7 +7,7 @@ import { ServiceProviderModule } from '../service-provider/service-provider.modu
 import { PersonModule } from '../person/person.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
 import { RollenerweiterungController } from './api/rollenerweiterung.controller.js';
-import { ApplyRollenerweiterungService } from './domain/apply-rollenerweiterung-service.js';
+import { ApplyRollenerweiterungService } from './domain/apply-rollenerweiterung-changes.service.js';
 
 @Module({
     imports: [

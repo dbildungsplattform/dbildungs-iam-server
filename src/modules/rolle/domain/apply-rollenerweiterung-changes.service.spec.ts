@@ -8,6 +8,7 @@ import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { Ok } from '../../../shared/util/result.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
@@ -19,12 +20,11 @@ import { ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
+import { ApplyRollenerweiterungService } from './apply-rollenerweiterung-changes.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
-import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
+import { Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
-import { Ok } from '../../../shared/util/result.js';
-import { ApplyRollenerweiterungService } from './apply-rollenerweiterung-service.js';
 
 describe('ApplyRollenerweiterungService', () => {
     let service: ApplyRollenerweiterungService;
@@ -512,6 +512,113 @@ describe('ApplyRollenerweiterungService', () => {
             expect(serviceProviderRepoMock.findByIds).toHaveBeenCalledWith([serviceProviderId]);
             expect(rollenerweiterungRepoMock.create).toHaveBeenCalledTimes(1);
         });
+
+        it('should return ApplyRollenerweiterungError and not persist if the ServiceProvider is unavailable', async () => {
+            const organisationId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                id: organisationId,
+            });
+
+            const rolle: Rolle<true> = createValidRolle({
+                id: rolleId,
+            });
+
+            const serviceProvider: ServiceProvider<true> = createValidServiceProvider({
+                id: serviceProviderId,
+                merkmale: [],
+            });
+
+            organisationRepoMock.findById.mockResolvedValueOnce(organisation);
+
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map<string, Rolle<true>>([[rolleId, rolle]]));
+
+            rollenerweiterungRepoMock.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
+
+            serviceProviderRepoMock.findByIds.mockResolvedValueOnce(
+                new Map<string, ServiceProvider<true>>([[serviceProviderId, serviceProvider]]),
+            );
+
+            const body: ApplyRollenerweiterungChangesBodyParams = {
+                addErweiterungenForServiceProviderIds: [serviceProviderId],
+                removeErweiterungenForServiceProviderIds: [],
+            };
+
+            const permissions: DeepMocked<PersonPermissions> = createPermissions();
+
+            const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
+                await service.applyRollenerweiterungChangesForRolle(organisationId, rolleId, body, permissions);
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected operation to fail');
+            }
+            expect(result.error).toBeInstanceOf(ApplyRollenerweiterungError);
+            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
+            expect(rollenerweiterungRepoMock.deleteByComposedId).not.toHaveBeenCalled();
+        });
+
+        it('should add a Rollenerweiterung for an MPT Rolle when MPT permission is granted', async () => {
+            const organisationId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                id: organisationId,
+            });
+
+            const rolle: Rolle<true> = createValidRolle({
+                id: rolleId,
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+            });
+
+            const serviceProvider: ServiceProvider<true> = createValidServiceProvider({
+                id: serviceProviderId,
+            });
+
+            const persistedRollenerweiterung: Rollenerweiterung<true> = createPersistedRollenerweiterung(
+                organisationId,
+                rolleId,
+                serviceProviderId,
+            );
+
+            organisationRepoMock.findById.mockResolvedValueOnce(organisation);
+
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map<string, Rolle<true>>([[rolleId, rolle]]));
+
+            rollenerweiterungRepoMock.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
+
+            serviceProviderRepoMock.findByIds.mockResolvedValueOnce(
+                new Map<string, ServiceProvider<true>>([[serviceProviderId, serviceProvider]]),
+            );
+
+            rollenerweiterungRepoMock.create.mockResolvedValueOnce(persistedRollenerweiterung);
+
+            const body: ApplyRollenerweiterungChangesBodyParams = {
+                addErweiterungenForServiceProviderIds: [serviceProviderId],
+                removeErweiterungenForServiceProviderIds: [],
+            };
+
+            const permissions: DeepMocked<PersonPermissions> = createPermissions(true, true);
+
+            const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
+                await service.applyRollenerweiterungChangesForRolle(organisationId, rolleId, body, permissions);
+
+            expect(result.ok).toBe(true);
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
+                1,
+                organisationId,
+                RollenSystemRecht.ROLLEN_ERWEITERN,
+            );
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
+                2,
+                organisationId,
+                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+            );
+            expect(rollenerweiterungRepoMock.create).toHaveBeenCalledOnce();
+        });
     });
 
     describe('applyRollenerweiterungChangesForAngebot', () => {
@@ -941,374 +1048,6 @@ describe('ApplyRollenerweiterungService', () => {
             expect(serviceProviderRepoMock.findById).toHaveBeenCalledWith(serviceProviderId);
             expect(rollenerweiterungRepoMock.findManyByOrganisationIdAndServiceProviderId).not.toHaveBeenCalled();
             expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('createRollenerweiterung', () => {
-        it('should create and persist a valid Rollenerweiterung', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
-                id: organisationId,
-            });
-
-            const rolle: Rolle<true> = createValidRolle({
-                id: rolleId,
-            });
-
-            const serviceProvider: ServiceProvider<true> = createValidServiceProvider({
-                id: serviceProviderId,
-            });
-
-            const persisted: Rollenerweiterung<true> = createPersistedRollenerweiterung(
-                organisationId,
-                rolleId,
-                serviceProviderId,
-            );
-
-            organisationRepoMock.findById.mockResolvedValueOnce(organisation);
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleId, rolle]]));
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(serviceProvider);
-
-            rollenerweiterungRepoMock.create.mockResolvedValueOnce(persisted);
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(true);
-            if (!result.ok) {
-                throw result.error;
-            }
-            expect(result.value).toBe(persisted);
-            expect(rollenerweiterungRepoMock.create).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    organisationId,
-                    rolleId,
-                    serviceProviderId,
-                }),
-            );
-        });
-
-        it('should return MissingPermissionsError if base permission is missing', async () => {
-            const permissions: DeepMocked<PersonPermissions> = createPermissions(false);
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(
-                faker.string.uuid(),
-                faker.string.uuid(),
-                faker.string.uuid(),
-                permissions,
-            );
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            expect(organisationRepoMock.findById).not.toHaveBeenCalled();
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should return MissingPermissionsError for an MPT Rolle without MPT permission', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
-                id: organisationId,
-            });
-
-            const rolle: Rolle<true> = createValidRolle({
-                id: rolleId,
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
-
-            const serviceProvider: ServiceProvider<true> = createValidServiceProvider({
-                id: serviceProviderId,
-            });
-
-            organisationRepoMock.findById.mockResolvedValueOnce(organisation);
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map<string, Rolle<true>>([[rolleId, rolle]]));
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(serviceProvider);
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions(true, false);
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                1,
-                organisationId,
-                RollenSystemRecht.ROLLEN_ERWEITERN,
-            );
-            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                2,
-                organisationId,
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should return EntityNotFoundError if ServiceProvider does not exist', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            organisationRepoMock.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, {
-                    id: organisationId,
-                }),
-            );
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(
-                new Map([
-                    [
-                        rolleId,
-                        createValidRolle({
-                            id: rolleId,
-                        }),
-                    ],
-                ]),
-            );
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(undefined);
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should return a domain error and not persist if ServiceProvider is unavailable', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            organisationRepoMock.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, {
-                    id: organisationId,
-                }),
-            );
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(
-                new Map([
-                    [
-                        rolleId,
-                        createValidRolle({
-                            id: rolleId,
-                        }),
-                    ],
-                ]),
-            );
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(
-                createValidServiceProvider({
-                    id: serviceProviderId,
-                    merkmale: [],
-                }),
-            );
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should return a domain error and not persist a redundant Rollenerweiterung', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            organisationRepoMock.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, {
-                    id: organisationId,
-                }),
-            );
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(
-                new Map([
-                    [
-                        rolleId,
-                        createValidRolle({
-                            id: rolleId,
-                            serviceProviderIds: [serviceProviderId],
-                        }),
-                    ],
-                ]),
-            );
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(
-                createValidServiceProvider({
-                    id: serviceProviderId,
-                }),
-            );
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should allow creation of an MPT Rolle when MPT permission is granted', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
-                id: organisationId,
-            });
-
-            const rolle: Rolle<true> = createValidRolle({
-                id: rolleId,
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
-
-            const serviceProvider: ServiceProvider<true> = createValidServiceProvider({
-                id: serviceProviderId,
-            });
-
-            const persistedRollenerweiterung: Rollenerweiterung<true> = createPersistedRollenerweiterung(
-                organisationId,
-                rolleId,
-                serviceProviderId,
-            );
-
-            organisationRepoMock.findById.mockResolvedValueOnce(organisation);
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolleId, rolle]]));
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(serviceProvider);
-
-            rollenerweiterungRepoMock.create.mockResolvedValueOnce(persistedRollenerweiterung);
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions(true, true);
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(true);
-            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                organisationId,
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
-            expect(rollenerweiterungRepoMock.create).toHaveBeenCalledOnce();
-        });
-
-        it('should return EntityNotFoundError if Organisation does not exist', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            organisationRepoMock.findById.mockResolvedValueOnce(undefined);
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(
-                new Map<string, Rolle<true>>([
-                    [
-                        rolleId,
-                        createValidRolle({
-                            id: rolleId,
-                        }),
-                    ],
-                ]),
-            );
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(
-                createValidServiceProvider({
-                    id: serviceProviderId,
-                }),
-            );
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            expect(organisationRepoMock.findById).toHaveBeenCalledWith(organisationId);
-            expect(rolleRepoMock.findByIds).toHaveBeenCalledWith([rolleId]);
-            expect(serviceProviderRepoMock.findById).toHaveBeenCalledWith(serviceProviderId);
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
-        });
-
-        it('should return EntityNotFoundError if Rolle does not exist', async () => {
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            const serviceProviderId: string = faker.string.uuid();
-
-            organisationRepoMock.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, {
-                    id: organisationId,
-                }),
-            );
-
-            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map<string, Rolle<true>>());
-
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(
-                createValidServiceProvider({
-                    id: serviceProviderId,
-                }),
-            );
-
-            const permissions: DeepMocked<PersonPermissions> = createPermissions();
-
-            const result: Result<
-                Rollenerweiterung<true>,
-                EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError
-            > = await service.createRollenerweiterung(organisationId, rolleId, serviceProviderId, permissions);
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            expect(rolleRepoMock.findByIds).toHaveBeenCalledWith([rolleId]);
-            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
         });
     });
 

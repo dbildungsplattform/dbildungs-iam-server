@@ -61,10 +61,6 @@ interface OrganisationAndServiceProviderContext {
     serviceProvider: ServiceProvider<true>;
 }
 
-interface CreateRollenerweiterungContext extends OrganisationAndRolleContext {
-    serviceProvider: ServiceProvider<true>;
-}
-
 type ApplyChangesResult = Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError>;
 
 function isErrorResult(
@@ -222,48 +218,6 @@ export class ApplyRollenerweiterungService {
         return this.combineResults([...addResults, ...removeResults]);
     }
 
-    public async createRollenerweiterung(
-        organisationId: OrganisationID,
-        rolleId: RolleID,
-        serviceProviderId: ServiceProviderID,
-        permissions: IPersonPermissions,
-    ): Promise<
-        Result<Rollenerweiterung<true>, EntityNotFoundError | MissingPermissionsError | CreateRollenerweiterungError>
-    > {
-        const permissionResult: Result<null, MissingPermissionsError> = await this.checkBasePermission(
-            permissions,
-            organisationId,
-        );
-        if (!permissionResult.ok) {
-            return permissionResult;
-        }
-
-        const contextResult: Result<CreateRollenerweiterungContext, EntityNotFoundError> =
-            await this.loadCreateRollenerweiterungContext(organisationId, rolleId, serviceProviderId);
-        if (!contextResult.ok) {
-            this.logger.error(
-                `createRollenerweiterung called by ` +
-                    `${permissions.personFields.username} - ` +
-                    `${permissions.personFields.id}. ` +
-                    `Error: ${contextResult.error.message}`,
-            );
-
-            return contextResult;
-        }
-        const { organisation, rolle, serviceProvider }: CreateRollenerweiterungContext = contextResult.value;
-
-        const mptPermissionResult: Result<null, MissingPermissionsError> = await this.checkMptPermissionForRolle(
-            permissions,
-            organisationId,
-            rolle,
-        );
-        if (!mptPermissionResult.ok) {
-            return mptPermissionResult;
-        }
-
-        return this.createAndPersistRollenerweiterung(organisation, rolle, serviceProvider);
-    }
-
     public async findRollenerweiterungenForRolleAndOrganisation(
         organisationId: OrganisationID,
         rolleId: RolleID,
@@ -354,39 +308,6 @@ export class ApplyRollenerweiterungService {
 
         return Ok({
             organisation,
-            serviceProvider,
-        });
-    }
-
-    private async loadCreateRollenerweiterungContext(
-        organisationId: OrganisationID,
-        rolleId: RolleID,
-        serviceProviderId: ServiceProviderID,
-    ): Promise<Result<CreateRollenerweiterungContext, EntityNotFoundError>> {
-        const [organisation, rollen, serviceProvider]: [
-            Option<Organisation<true>>,
-            Map<string, Rolle<true>>,
-            Option<ServiceProvider<true>>,
-        ] = await Promise.all([
-            this.organisationRepo.findById(organisationId),
-            this.rolleRepo.findByIds([rolleId]),
-            this.serviceProviderRepo.findById(serviceProviderId),
-        ]);
-        if (!organisation) {
-            return Err(new EntityNotFoundError('Orga', organisationId));
-        }
-
-        const rolle: Rolle<true> | undefined = rollen.get(rolleId);
-        if (!rolle) {
-            return Err(new EntityNotFoundError('Rolle', rolleId));
-        }
-        if (!serviceProvider) {
-            return Err(new EntityNotFoundError('ServiceProvider', serviceProviderId));
-        }
-
-        return Ok({
-            organisation,
-            rolle,
             serviceProvider,
         });
     }

@@ -49,11 +49,11 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-changes.service.js';
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { ApplyRollenerweiterungChangesBodyParams } from './apply-rollenerweiterung-changes.body.params.js';
@@ -61,20 +61,17 @@ import { ApplyRollenerweiterungForRollePathParams } from './apply-rollenerweiter
 import { ApplyRollenerweiterungMultiExceptionFilter } from './apply-rollenerweiterung-multi-exception-filter.js';
 import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
-import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
+import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
 import { FindRollenQueryParams } from './find-rollen-query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
-import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
 import { RolleResponse } from './rolle.response.js';
-import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
-import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
 
 @UseFilters(new RolleExceptionFilter(), new ApplyRollenerweiterungMultiExceptionFilter())
 @ApiTags('rolle')
@@ -438,52 +435,6 @@ export class RolleController {
         }
 
         this.logger.info(`Admin: ${permissions.personFields.id}) hat eine Rolle entfernt: ${rolleName}.`);
-    }
-
-    @Post('erweiterung')
-    @UseGuards(StepUpGuard)
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ description: 'Create a new rollenerweiterung.' })
-    @ApiCreatedResponse({
-        description: 'The rollenerweiterung was successfully created.',
-        type: RollenerweiterungResponse,
-    })
-    @ApiBadRequestResponse({ description: 'The input was not valid.', type: DbiamRolleError })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to create the rollenerweiterung.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permissions to create the rollenerweiterung.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while creating the rollenerweiterung.' })
-    public async createRollenerweiterung(
-        @Body() params: CreateRollenerweiterungBodyParams,
-        @Permissions() permissions: IPersonPermissions,
-    ): Promise<RollenerweiterungResponse> {
-        const result: Result<
-            Rollenerweiterung<true>,
-            DomainError
-        > = await this.applyRollenerweiterungService.createRollenerweiterung(
-            params.organisationId,
-            params.rolleId,
-            params.serviceProviderId,
-            permissions,
-        );
-
-        if (!result.ok) {
-            this.logger.error(
-                `Admin: ${permissions.personFields.id} hat versucht, ` +
-                    `die Rolle ${params.rolleId} zu erweitern. ` +
-                    `Fehler: ${result.error.message}.`,
-            );
-
-            throw result.error;
-        }
-
-        this.logger.info(
-            `Admin: ${permissions.personFields.id} hat eine Rolle erweitert. ` +
-                `organisationId: ${result.value.organisationId} ` +
-                `rolleId: ${result.value.rolleId} ` +
-                `serviceProviderId: ${result.value.serviceProviderId}.`,
-        );
-
-        return new RollenerweiterungResponse(result.value);
     }
 
     private async returnRolleWithServiceProvidersResponse(

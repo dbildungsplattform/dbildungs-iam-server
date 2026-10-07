@@ -19,24 +19,21 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-changes.service.js';
 import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing-space.error.js';
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
-import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
 import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { RolleController } from './rolle.controller.js';
 import { RolleResponse } from './rolle.response.js';
-import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 
 describe('Rolle API with mocked ServiceProviderRepo', () => {
     let rolleRepoMock: DeepMocked<RolleRepo>;
@@ -124,101 +121,6 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
                 await expect(rolleController.createRolle(createRolleParams, permissionsMock)).rejects.toThrow(
                     NameForRolleWithTrailingSpaceError,
                 );
-            });
-        });
-    });
-
-    describe('POST rolle/erweiterung', () => {
-        describe('createRollenerweiterung', () => {
-            let createRollenerweiterungParams: CreateRollenerweiterungBodyParams;
-            let permissions: IPersonPermissions;
-
-            beforeEach(() => {
-                createRollenerweiterungParams = new CreateRollenerweiterungBodyParams();
-                Object.assign(createRollenerweiterungParams, {
-                    organisationId: faker.string.uuid(),
-                    rolleId: faker.string.uuid(),
-                    serviceProviderId: faker.string.uuid(),
-                });
-                permissions = createPersonPermissionsMock();
-            });
-
-            it('should delegate creation to ApplyRollenerweiterungService', async () => {
-                const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(
-                    true,
-                    createRollenerweiterungParams,
-                );
-
-                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
-                    ok: true,
-                    value: persistedRollenerweiterung,
-                });
-
-                await rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions);
-
-                expect(applyRollenerweiterungServiceMock.createRollenerweiterung).toHaveBeenCalledOnce();
-
-                expect(applyRollenerweiterungServiceMock.createRollenerweiterung).toHaveBeenCalledWith(
-                    createRollenerweiterungParams.organisationId,
-                    createRollenerweiterungParams.rolleId,
-                    createRollenerweiterungParams.serviceProviderId,
-                    permissions,
-                );
-            });
-
-            it('should return a RollenerweiterungResponse', async () => {
-                const persistedRollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung<true>(
-                    true,
-                    createRollenerweiterungParams,
-                );
-
-                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
-                    ok: true,
-                    value: persistedRollenerweiterung,
-                });
-
-                const result: RollenerweiterungResponse = await rolleController.createRollenerweiterung(
-                    createRollenerweiterungParams,
-                    permissions,
-                );
-
-                expect(result).toBeInstanceOf(RollenerweiterungResponse);
-                expect(result).toEqual(
-                    expect.objectContaining({
-                        organisationId: createRollenerweiterungParams.organisationId,
-                        rolleId: createRollenerweiterungParams.rolleId,
-                        serviceProviderId: createRollenerweiterungParams.serviceProviderId,
-                    }),
-                );
-            });
-
-            it('should throw when ApplyRollenerweiterungService returns a domain error', async () => {
-                const error: MissingPermissionsError = new MissingPermissionsError('dummy error');
-
-                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
-                    ok: false,
-                    error,
-                });
-
-                await expect(
-                    rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions),
-                ).rejects.toThrow(MissingPermissionsError);
-            });
-
-            it('should throw EntityNotFoundError returned by ApplyRollenerweiterungService', async () => {
-                const error: EntityNotFoundError = new EntityNotFoundError(
-                    'Rolle',
-                    createRollenerweiterungParams.rolleId,
-                );
-
-                applyRollenerweiterungServiceMock.createRollenerweiterung.mockResolvedValueOnce({
-                    ok: false,
-                    error,
-                });
-
-                await expect(
-                    rolleController.createRollenerweiterung(createRollenerweiterungParams, permissions),
-                ).rejects.toThrow(EntityNotFoundError);
             });
         });
     });

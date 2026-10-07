@@ -14,7 +14,7 @@ import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
-import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-service.js';
+import { ApplyRollenerweiterungService } from '../domain/apply-rollenerweiterung-changes.service.js';
 import { ErrorIdType } from './ErrorIdType.enum.js';
 
 describe('RollenerweiterungController', () => {
