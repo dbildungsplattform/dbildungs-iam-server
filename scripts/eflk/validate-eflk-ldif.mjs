@@ -67,7 +67,7 @@ function foldLogicalLines(raw) {
         const line = physicalLines[i];
         if (line.startsWith('#')) continue;
         if (line.startsWith(' ') && logical.length > 0) {
-            logical[logical.length - 1].text += line.slice(1);
+            logical.at(-1).text += line.slice(1);
             continue;
         }
         logical.push({ text: line, lineNumber: i + 1 });
@@ -220,30 +220,34 @@ function validateChangetype(record, addIssue) {
     }
 }
 
+function validateAttributeEncoding(dn, attr, entry, addIssue) {
+    if (entry.isUrl) return;
+    if (entry.isBase64 && entry.decodeError) {
+        addIssue('ERROR', dn, entry.lineNumber, `Attribut '${attr}': ungueltige base64-Kodierung`);
+        return;
+    }
+    if (!entry.isBase64 && needsBase64(entry.value)) {
+        addIssue(
+            'ERROR',
+            dn,
+            entry.lineNumber,
+            `Attribut '${attr}': Wert benoetigt laut RFC 2849 base64-Kodierung, ist aber als Klartext geschrieben`,
+        );
+    } else if (entry.isBase64 && entry.value !== undefined && !needsBase64(entry.value)) {
+        addIssue(
+            'WARN',
+            dn,
+            entry.lineNumber,
+            `Attribut '${attr}': unnoetig base64-kodiert (Wert waere auch als Klartext gueltig)`,
+        );
+    }
+}
+
 // Encoding sanity: check every non-base64 encoded line for whether it should have been.
 function validateEncoding(record, addIssue) {
     for (const [attr, list] of record.attrs) {
         for (const entry of list) {
-            if (entry.isUrl) continue;
-            if (entry.isBase64 && entry.decodeError) {
-                addIssue('ERROR', record.dn, entry.lineNumber, `Attribut '${attr}': ungueltige base64-Kodierung`);
-                continue;
-            }
-            if (!entry.isBase64 && needsBase64(entry.value)) {
-                addIssue(
-                    'ERROR',
-                    record.dn,
-                    entry.lineNumber,
-                    `Attribut '${attr}': Wert benoetigt laut RFC 2849 base64-Kodierung, ist aber als Klartext geschrieben`,
-                );
-            } else if (entry.isBase64 && entry.value !== undefined && !needsBase64(entry.value)) {
-                addIssue(
-                    'WARN',
-                    record.dn,
-                    entry.lineNumber,
-                    `Attribut '${attr}': unnoetig base64-kodiert (Wert waere auch als Klartext gueltig)`,
-                );
-            }
+            validateAttributeEncoding(record.dn, attr, entry, addIssue);
         }
     }
 }
@@ -480,20 +484,23 @@ function partitionBySeverity(issues) {
 function formatReport({ issues, stats }, inFile) {
     const { errors, warnings } = partitionBySeverity(issues);
 
-    const lines = [];
-    lines.push('EFLK LDIF Validation Report');
-    lines.push(`Eingabedatei: ${inFile}`);
-    lines.push(`Erzeugt am: ${new Date().toISOString()}`);
-    lines.push('');
-    lines.push('Zusammenfassung:');
-    lines.push(`  Eintraege gesamt: ${stats.total}`);
-    lines.push(`  Personen: ${stats.person}`);
-    lines.push(`  Gruppen: ${stats.group}`);
-    lines.push(`  Container (OU/Rollen): ${stats.container}`);
+    const lines = [
+        'EFLK LDIF Validation Report',
+        `Eingabedatei: ${inFile}`,
+        `Erzeugt am: ${new Date().toISOString()}`,
+        '',
+        'Zusammenfassung:',
+        `  Eintraege gesamt: ${stats.total}`,
+        `  Personen: ${stats.person}`,
+        `  Gruppen: ${stats.group}`,
+        `  Container (OU/Rollen): ${stats.container}`,
+    ];
     if (stats.unknown > 0) lines.push(`  Unbekannte Eintraege: ${stats.unknown}`);
-    lines.push(`  Fehler (ERROR): ${errors.length}`);
-    lines.push(`  Warnungen (WARN): ${warnings.length}`);
-    lines.push('');
+    lines.push(
+        `  Fehler (ERROR): ${errors.length}`,
+        `  Warnungen (WARN): ${warnings.length}`,
+        '',
+    );
 
     const renderIssue = (issue) => {
         const location = issue.line ? `Zeile ${issue.line}` : 'Zeile unbekannt';
@@ -501,12 +508,14 @@ function formatReport({ issues, stats }, inFile) {
         return `[${location}] dn=${dn}\n  ${issue.message}`;
     };
 
-    lines.push('=== ERROR ===');
-    lines.push(...(errors.length > 0 ? errors.map(renderIssue) : ['(keine)']));
-    lines.push('');
-    lines.push('=== WARN ===');
-    lines.push(...(warnings.length > 0 ? warnings.map(renderIssue) : ['(keine)']));
-    lines.push('');
+    lines.push(
+        '=== ERROR ===',
+        ...(errors.length > 0 ? errors.map(renderIssue) : ['(keine)']),
+        '',
+        '=== WARN ===',
+        ...(warnings.length > 0 ? warnings.map(renderIssue) : ['(keine)']),
+        '',
+    );
 
     return lines.join('\n');
 }
@@ -528,7 +537,9 @@ async function main() {
     process.exitCode = errors.length > 0 ? 1 : 0;
 }
 
-main().catch((err) => {
+try {
+    await main();
+} catch (err) {
     console.error(err);
     process.exitCode = 1;
-});
+}

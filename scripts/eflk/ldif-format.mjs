@@ -83,8 +83,10 @@ export function buildPersonEntry(person, ou, baseDn) {
         lines.push(ldifLine('mailAlternativeAddress', alt.address));
     }
 
-    lines.push(ldifLine('deaktiviert', boolStr(person.deaktiviert)));
-    lines.push(ldifLine('gesperrt', boolStr(person.gesperrt)));
+    lines.push(
+        ldifLine('deaktiviert', boolStr(person.deaktiviert)),
+        ldifLine('gesperrt', boolStr(person.gesperrt)),
+    );
 
     return { dn, lines };
 }
@@ -100,8 +102,10 @@ export function buildGroupEntry(organisationId, organisation, ou, baseDn, member
     ];
 
     if (organisation?.kennung) {
-        lines.push(ldifLine('description', `Lehrer - ${organisation.kennung}`));
-        lines.push(ldifLine('ou', organisation.kennung));
+        lines.push(
+            ldifLine('description', `Lehrer - ${organisation.kennung}`),
+            ldifLine('ou', organisation.kennung),
+        );
     }
 
     if (organisation?.name) {

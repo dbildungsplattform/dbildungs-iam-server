@@ -185,12 +185,10 @@ async function fetchPersonsWithEmail(client) {
     }
 
     const organisationIdsByPerson = new Map();
-    const allOrganisationIds = new Set();
     for (const row of kontextRows) {
         const set = organisationIdsByPerson.get(row.person_id) ?? new Set();
         set.add(row.organisation_id);
         organisationIdsByPerson.set(row.person_id, set);
-        allOrganisationIds.add(row.organisation_id);
     }
 
     return personRows.map((p) => toPersonRecord(p, { gesperrtePersonenIds, emailsByPerson, organisationIdsByPerson }));
@@ -217,13 +215,12 @@ function logEmailKontextDiagnostics(persons) {
 
 async function classifyAllOrganisations(client, organisationIds, roots) {
     const classificationCache = new Map();
-    const ouByOrganisation = new Map();
-    for (const organisationId of organisationIds) {
+    const entries = await Promise.all(organisationIds.map(async (organisationId) => {
         const classification = await classifyOrganisation(client, organisationId, roots, classificationCache);
-        ouByOrganisation.set(organisationId, classification === 'ERSATZ' ? 'ersatz' : 'oeffentlich');
-    }
+        return [organisationId, classification === 'ERSATZ' ? 'ersatz' : 'oeffentlich'];
+    }));
 
-    return ouByOrganisation;
+    return new Map(entries);
 }
 
 // Bucket of the person = bucket of the first assigned school (analogous to the "mainSchool" fallback per the target schema)
@@ -332,11 +329,13 @@ async function main() {
     }
 }
 
-main().catch((err) => {
+try {
+    await main();
+} catch (err) {
     console.error(err);
     process.exitCode = 1;
-}).finally(() => {
+} finally {
     // The spawned ssh tunnel process (with its piped stdio) can keep the event loop
     // alive even after kill() - force-exit once our own cleanup has run.
     process.exit(process.exitCode ?? 0);
-});
+}

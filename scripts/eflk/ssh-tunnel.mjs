@@ -170,7 +170,9 @@ export async function openSshTunnel({ sshHost, sshPort, sshUser, sshKey, dbHost,
     } catch (err) {
         child.kill();
         if (askPassScript) await unlink(askPassScript).catch(() => {});
-        throw new Error(`${err.message}${stderr ? `\nssh stderr: ${stderr.trim()}` : ''}`);
+        const stderrDetails = stderr ? `\nssh stderr: ${stderr.trim()}` : '';
+
+        throw new Error(`${err.message}${stderrDetails}`);
     }
 
     const tunnel = { child, askPassScript };
