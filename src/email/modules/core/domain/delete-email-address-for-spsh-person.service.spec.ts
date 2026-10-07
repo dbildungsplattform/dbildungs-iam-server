@@ -90,7 +90,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
     }
 
     it('should log and return if no addresses found', async () => {
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([]);
         const spshPersonId: string = faker.string.uuid();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -115,11 +115,11 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
-        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok(undefined));
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -155,10 +155,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
-        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -186,10 +186,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(undefined);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
-        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -221,10 +221,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Err(new Error('fail')));
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Err(new Error('fail')));
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
 
@@ -254,10 +254,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Err(new Error('fail')));
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok(undefined));
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Err(new Error('fail')));
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
 
@@ -288,9 +288,9 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Err(new Error('fail')));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValueOnce(Err(new Error('fail')));
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
 
@@ -320,10 +320,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         email.externalId = externalId;
         vi.spyOn(email, 'getDomain').mockReturnValue(domain);
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue({ ok: false, error: new OxNoSuchUserError('no such user') });
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
+        oxAdapterMock.deleteUser.mockResolvedValueOnce({ ok: false, error: new OxNoSuchUserError('no such user') });
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -348,9 +348,9 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         const spshPersonId: string = faker.string.uuid();
         const email: EmailAddress<true> = makeEmail();
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok(undefined));
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -376,9 +376,9 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         const email: EmailAddress<true> = makeEmail();
         email.oxUserCounter = faker.string.uuid();
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok(undefined));
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -404,10 +404,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         const email: EmailAddress<true> = makeEmail();
         email.oxUserCounter = faker.string.uuid();
 
-        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValueOnce([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
-        oxAdapterMock.deleteUser.mockResolvedValue(Ok());
-        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok());
+        oxAdapterMock.deleteUser.mockResolvedValueOnce(Ok());
+        ldapClientAdapterMock.deletePerson.mockResolvedValueOnce(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
