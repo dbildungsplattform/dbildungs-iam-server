@@ -5,6 +5,7 @@ import { AxiosResponse } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
+import { UpdateOrganisationBodyParams } from '../../../email/modules/core/api/dtos/params/update-organisation.bodyparams.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { EmailMicroserviceConfig } from '../../../shared/config/email-microservice.config.js';
@@ -18,6 +19,8 @@ import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { SetEmailAddressesSuspendedBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-addresses-suspended.bodyparams.js';
 
 export interface PersonIdWithEmailResponse {
     personId: string;
@@ -137,10 +140,11 @@ export class EmailResolverService {
     public async setEmailForSpshPerson(params: {
         spshPersonId: string;
         spshUsername: string;
-        kennungen: string[];
+        organisationen: Organisation<true>[];
         firstName: string;
         lastName: string;
         spshServiceProviderId: string;
+        gesperrt: boolean;
     }): Promise<void> {
         try {
             // For now just mocking the post
@@ -148,15 +152,32 @@ export class EmailResolverService {
                 `Setting email for person ${params.spshPersonId} via email microservice with spId ${params.spshServiceProviderId}`,
             );
             this.logger.info(`Params: ${JSON.stringify(params)}`);
+
+            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = params.organisationen
+                .map((o: Organisation<true>) => ({
+                    id: o.id,
+                    kennung: o.kennung,
+                    name: o.name,
+                }))
+                .filter(
+                    (o: {
+                        id: string;
+                        kennung: string | undefined;
+                        name: string | undefined;
+                    }): o is SetEmailAddressForSpshPersonBodyParams['organisationen'][number] =>
+                        !!o.kennung && !!o.name, // Ignore organisations without a kennung or name
+                );
+
             await lastValueFrom(
                 this.httpService.post(
                     this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-email`,
                     {
                         spshUsername: params.spshUsername,
-                        kennungen: params.kennungen,
+                        organisationen,
                         firstName: params.firstName,
                         lastName: params.lastName,
                         spshServiceProviderId: params.spshServiceProviderId,
+                        gesperrt: params.gesperrt,
                     } satisfies SetEmailAddressForSpshPersonBodyParams,
                     {
                         headers: {
@@ -188,13 +209,54 @@ export class EmailResolverService {
         }
     }
 
-    public async setEmailsSuspendedForSpshPerson(params: { spshPersonId: string }): Promise<void> {
+    public async deleteSchool(params: { organisationId: string }): Promise<void> {
+        try {
+            this.logger.info(`Deleting school ${params.organisationId} via email microservice`);
+            await lastValueFrom(
+                this.httpService.delete(
+                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    {
+                        headers: {
+                            'api-key': this.getApiKey(),
+                        },
+                    },
+                ),
+            );
+        } catch (error) {
+            this.logger.logUnknownAsError(`Failed to delete school ${params.organisationId}`, error);
+        }
+    }
+
+    public async updateSchoolName(params: { organisationId: string; newName: string }): Promise<void> {
+        try {
+            this.logger.info(`Updating school ${params.organisationId} via email microservice`);
+            await lastValueFrom(
+                this.httpService.patch(
+                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                    {
+                        name: params.newName,
+                    } satisfies UpdateOrganisationBodyParams,
+                    {
+                        headers: {
+                            'api-key': this.getApiKey(),
+                        },
+                    },
+                ),
+            );
+        } catch (error) {
+            this.logger.logUnknownAsError(`Failed to update school ${params.organisationId}`, error);
+        }
+    }
+
+    public async setEmailsSuspendedForSpshPerson(params: { spshPersonId: string; gesperrt: boolean }): Promise<void> {
         try {
             this.logger.info(`Setting emails for person ${params.spshPersonId} to suspended`);
             await lastValueFrom(
                 this.httpService.post(
                     this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-suspended`,
-                    {},
+                    {
+                        gesperrt: params.gesperrt,
+                    } satisfies SetEmailAddressesSuspendedBodyParams,
                     {
                         headers: {
                             'api-key': this.getApiKey(),

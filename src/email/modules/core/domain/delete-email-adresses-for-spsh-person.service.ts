@@ -9,6 +9,7 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { OxNoSuchUserError } from '../../ox/adapter/domain/error/ox-no-such-user.error.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { Ok } from '../../../../shared/util/result.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 
 @Injectable()
 export class DeleteEmailsAddressesForSpshPersonService {
@@ -17,8 +18,10 @@ export class DeleteEmailsAddressesForSpshPersonService {
         private readonly oxAdapter: OxAdapter,
         private readonly logger: ClassLogger,
         private readonly ldapClientAdapter: LdapClientAdapter,
+        private readonly ldapUndiClientAdapter: LdapUndiClientAdapter,
         private readonly webhookService: WebhookService,
     ) {}
+
     public async deleteEmailAddressesForSpshPerson(params: { spshPersonId: string }): Promise<void> {
         this.logger.info(`Received request to delete all email addresses for spshPerson ${params.spshPersonId}.`);
         const addresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
@@ -109,6 +112,25 @@ export class DeleteEmailsAddressesForSpshPersonService {
                 `No externalId or domain found for spshPerson ${params.spshPersonId} when deleting email addresses. Skipping LDAP deletion`,
             );
         }
+
+        if (this.ldapUndiClientAdapter.useLdap()) {
+            const ldapUndiDeleteResult: Result<void> = await this.ldapUndiClientAdapter.deletePerson(
+                params.spshPersonId,
+            );
+
+            if (ldapUndiDeleteResult.ok) {
+                this.logger.info(`Successfully deleted person ${params.spshPersonId} in UNDI LDAP`);
+            } else {
+                canDbDeleteAllAdresses = false;
+                this.logger.logUnknownAsError(
+                    `Could not delete person ${params.spshPersonId} in UNDI LDAP`,
+                    ldapUndiDeleteResult.error,
+                );
+            }
+        } else {
+            this.logger.info(`LDAP UNDI disabled -> faking deletePerson. Data: spshPersonId=${params.spshPersonId}`);
+        }
+
         if (canDbDeleteAllAdresses) {
             await Promise.all(addresses.map((a: EmailAddress<true>) => this.emailAddressRepo.delete(a)));
             this.logger.info(`Successfully deleted all email addresses for spshPerson ${params.spshPersonId} from DB.`);

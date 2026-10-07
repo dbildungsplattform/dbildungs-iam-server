@@ -1,0 +1,17 @@
+# memberof overlay: maintain memberOf from member on groupOfEntries entries.
+# Modify the overlay installed by osixia/openldap.
+
+# BEFORE APPLYING: check and update database DN ({1}mdb), if necessary
+dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
+changetype: modify
+replace: olcMemberOfRefInt
+olcMemberOfRefInt: TRUE
+-
+replace: olcMemberOfGroupOC
+olcMemberOfGroupOC: groupOfEntries
+-
+replace: olcMemberOfMemberAD
+olcMemberOfMemberAD: member
+-
+replace: olcMemberOfMemberOfAD
+olcMemberOfMemberOfAD: memberOf

@@ -16,6 +16,12 @@
         "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
         "PASSWORD": "admin"
     },
+    "LDAP_UNDI": {
+        "ENABLED": true,
+        "URL": "ldap://localhost",
+        "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
+        "PASSWORD": "admin"
+    },
     "OX": {
         "ENABLED": false,
         "ENDPOINT": "https://ox_ip:ox_port/webservices/",

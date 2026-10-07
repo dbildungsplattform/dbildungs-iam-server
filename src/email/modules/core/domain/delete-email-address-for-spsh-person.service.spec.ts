@@ -13,6 +13,7 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { Ok, Err } from '../../../../shared/util/result.js';
 import { OxNoSuchUserError } from '../../ox/adapter/domain/error/ox-no-such-user.error.js';
 import { WebhookService } from '../../webhook/domain/webhook.service.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
 
 describe('DeleteEmailsAddressesForSpshPersonService', () => {
     let module: TestingModule;
@@ -20,6 +21,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
     let emailAddressRepoMock: DeepMocked<EmailAddressRepo>;
     let oxAdapterMock: DeepMocked<OxAdapter>;
     let ldapClientAdapterMock: DeepMocked<LdapClientAdapter>;
+    let ldapUndiClientAdapterMock: DeepMocked<LdapUndiClientAdapter>;
     let loggerMock: DeepMocked<ClassLogger>;
     let webhookServiceMock: DeepMocked<WebhookService>;
 
@@ -41,6 +43,10 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
                     useValue: createMock(LdapClientAdapter),
                 },
                 {
+                    provide: LdapUndiClientAdapter,
+                    useValue: createMock(LdapUndiClientAdapter),
+                },
+                {
                     provide: WebhookService,
                     useValue: createMock(WebhookService),
                 },
@@ -54,6 +60,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock = module.get(EmailAddressRepo);
         oxAdapterMock = module.get(OxAdapter);
         ldapClientAdapterMock = module.get(LdapClientAdapter);
+        ldapUndiClientAdapterMock = module.get(LdapUndiClientAdapter);
         loggerMock = module.get(ClassLogger);
         webhookServiceMock = module.get(WebhookService);
     });
@@ -97,6 +104,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
     it('should set status and markedForCron, save all, and delete from OX and LDAP, then delete from DB', async () => {
         oxAdapterMock.useOx.mockReturnValue(true);
         ldapClientAdapterMock.useLdap.mockReturnValue(true);
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
 
         const spshPersonId: string = faker.string.uuid();
         const oxUserCounter: string = faker.string.uuid();
@@ -111,6 +119,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
         oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
         ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -123,6 +132,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         );
         expect(oxAdapterMock.deleteUser).toHaveBeenCalledWith(oxUserCounter);
         expect(ldapClientAdapterMock.deletePerson).toHaveBeenCalledWith(externalId, domain);
+        expect(ldapUndiClientAdapterMock.deletePerson).toHaveBeenCalledWith(spshPersonId);
         expect(emailAddressRepoMock.delete).toHaveBeenCalledWith(email);
         expect(loggerMock.info).toHaveBeenCalledWith(
             `Successfully deleted all email addresses for spshPerson ${spshPersonId} from DB.`,
@@ -148,6 +158,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
         ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -178,6 +189,7 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
         oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Ok());
         emailAddressRepoMock.delete.mockResolvedValue();
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
@@ -246,6 +258,39 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
         emailAddressRepoMock.save.mockResolvedValue(Ok(email));
         oxAdapterMock.deleteUser.mockResolvedValue(Ok(undefined));
         ldapClientAdapterMock.deletePerson.mockResolvedValue(Err(new Error('fail')));
+
+        await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
+
+        expect(emailAddressRepoMock.delete).not.toHaveBeenCalled();
+        expect(loggerMock.warning).toHaveBeenCalledWith(
+            `Could not delete all external representations for spshPerson ${spshPersonId}. Keeping email addresses in DB with status TO_BE_DELETED for retry.`,
+        );
+        expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
+            spshPersonId,
+            newPrimaryEmail: undefined,
+            newAlternativeEmail: undefined,
+            previousPrimaryEmail: email.address,
+            previousAlternativeEmail: undefined,
+        });
+    });
+
+    it('should not delete from DB if LDAP UNDI deletion fails', async () => {
+        oxAdapterMock.useOx.mockReturnValue(false);
+        ldapClientAdapterMock.useLdap.mockReturnValue(false);
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(true);
+
+        const spshPersonId: string = faker.string.uuid();
+        const oxUserCounter: string = faker.string.uuid();
+        const externalId: string = faker.string.uuid();
+        const domain: string = 'example.com';
+        const email: EmailAddress<true> = makeEmail();
+        email.oxUserCounter = oxUserCounter;
+        email.externalId = externalId;
+        vi.spyOn(email, 'getDomain').mockReturnValue(domain);
+
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.save.mockResolvedValue(Ok(email));
+        ldapUndiClientAdapterMock.deletePerson.mockResolvedValue(Err(new Error('fail')));
 
         await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
 
@@ -340,6 +385,37 @@ describe('DeleteEmailsAddressesForSpshPersonService', () => {
 
         expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('LDAP disabled -> faking deletePerson'));
         expect(ldapClientAdapterMock.deletePerson).not.toHaveBeenCalled();
+        expect(emailAddressRepoMock.delete).toHaveBeenCalledWith(email);
+        expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
+            spshPersonId,
+            newPrimaryEmail: undefined,
+            newAlternativeEmail: undefined,
+            previousPrimaryEmail: email.address,
+            previousAlternativeEmail: undefined,
+        });
+    });
+
+    it('should return early and log if LDAP UNDI is disabled', async () => {
+        oxAdapterMock.useOx.mockReturnValue(true);
+        ldapClientAdapterMock.useLdap.mockReturnValue(true);
+        ldapUndiClientAdapterMock.useLdap.mockReturnValue(false);
+
+        const spshPersonId: string = faker.string.uuid();
+        const email: EmailAddress<true> = makeEmail();
+        email.oxUserCounter = faker.string.uuid();
+
+        emailAddressRepoMock.findBySpshPersonIdSortedByPriorityAsc.mockResolvedValue([email]);
+        emailAddressRepoMock.save.mockResolvedValue(Ok(email));
+        oxAdapterMock.deleteUser.mockResolvedValue(Ok());
+        ldapClientAdapterMock.deletePerson.mockResolvedValue(Ok());
+        emailAddressRepoMock.delete.mockResolvedValue();
+
+        await sut.deleteEmailAddressesForSpshPerson({ spshPersonId });
+
+        expect(loggerMock.info).toHaveBeenCalledWith(
+            expect.stringContaining('LDAP UNDI disabled -> faking deletePerson'),
+        );
+        expect(ldapUndiClientAdapterMock.deletePerson).not.toHaveBeenCalled();
         expect(emailAddressRepoMock.delete).toHaveBeenCalledWith(email);
         expect(webhookServiceMock.sendEmailsChanged).toHaveBeenCalledWith({
             spshPersonId,

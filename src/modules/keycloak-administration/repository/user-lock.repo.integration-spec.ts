@@ -2,12 +2,15 @@ import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DoFactory,
 } from '../../../../test/utils/index.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonLockOccasion } from '../../person/domain/person.enums.js';
@@ -21,6 +24,7 @@ describe('UserLockRepository', () => {
     let orm: MikroORM;
     let module: TestingModule;
     let em: EntityManager;
+    let eventServiceMock: DeepMocked<EventRoutingLegacyKafkaService>;
 
     const createPersonEntity = (): PersonEntity => {
         const person: PersonEntity = em.create(PersonEntity, mapAggregateToData(DoFactory.createPerson(false)));
@@ -30,12 +34,19 @@ describe('UserLockRepository', () => {
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true })],
-            providers: [UserLockRepository],
+            providers: [
+                UserLockRepository,
+                {
+                    provide: EventRoutingLegacyKafkaService,
+                    useValue: createMock(EventRoutingLegacyKafkaService),
+                },
+            ],
         }).compile();
 
         sut = module.get(UserLockRepository);
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
+        eventServiceMock = module.get(EventRoutingLegacyKafkaService);
 
         await DatabaseTestModule.setupDatabase(orm);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
@@ -46,6 +57,7 @@ describe('UserLockRepository', () => {
 
     beforeEach(async () => {
         await DatabaseTestModule.clearDatabase(orm);
+        vi.resetAllMocks();
     });
 
     it('should be defined', () => {
@@ -157,11 +169,12 @@ describe('UserLockRepository', () => {
         it('should create and return a UserLock', async () => {
             const newPerson: PersonEntity = createPersonEntity();
             await em.persist(newPerson).flush();
+            const lockedUntil: Date = faker.date.future();
 
             const userLock: UserLock = UserLock.construct(
                 newPerson.id,
                 faker.string.uuid(),
-                new Date(),
+                lockedUntil,
                 PersonLockOccasion.MANUELL_GESPERRT,
                 new Date(),
             );
@@ -172,6 +185,29 @@ describe('UserLockRepository', () => {
             }
             expect(createdUserLock).toBeTruthy();
             expect(createdUserLock.person).toEqual(userLock.person);
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [],
+                    newLocks: [
+                        {
+                            locked_until: lockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                }),
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [],
+                    newLocks: [
+                        {
+                            locked_until: lockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                    kafkaKey: newPerson.id,
+                }),
+            );
         });
     });
 
@@ -179,11 +215,13 @@ describe('UserLockRepository', () => {
         it('should update an existing UserLock', async () => {
             const newPerson: PersonEntity = createPersonEntity();
             await em.persist(newPerson).flush();
+            const oldLockedUntil: Date = faker.date.soon();
+            const newLockedUntil: Date = faker.date.future();
 
             const userLock: UserLock = UserLock.construct(
                 newPerson.id,
                 faker.string.uuid(),
-                new Date(),
+                oldLockedUntil,
                 PersonLockOccasion.MANUELL_GESPERRT,
                 new Date(),
             );
@@ -195,12 +233,85 @@ describe('UserLockRepository', () => {
             expect(createdUserLock).toBeTruthy();
 
             createdUserLock.locked_by = faker.string.uuid();
+            createdUserLock.locked_until = newLockedUntil;
+            vi.clearAllMocks();
             const updatedUserLock: UserLock | DomainError = await sut.update(createdUserLock);
             if (updatedUserLock instanceof DomainError) {
                 throw new Error();
             }
             expect(updatedUserLock).toBeTruthy();
             expect(updatedUserLock.locked_by).toEqual(createdUserLock.locked_by);
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [
+                        {
+                            locked_until: oldLockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                    newLocks: [
+                        {
+                            locked_until: newLockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                }),
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [
+                        {
+                            locked_until: oldLockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                    newLocks: [
+                        {
+                            locked_until: newLockedUntil,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                }),
+            );
+        });
+
+        it('should publish an event when lock snapshot fields are unchanged', async () => {
+            const newPerson: PersonEntity = createPersonEntity();
+            await em.persist(newPerson).flush();
+            const lockedUntil: Date = faker.date.future();
+            const userLock: UserLock = UserLock.construct(
+                newPerson.id,
+                faker.string.uuid(),
+                lockedUntil,
+                PersonLockOccasion.MANUELL_GESPERRT,
+                new Date(),
+            );
+            const createdUserLock: UserLock | DomainError = await sut.createUserLock(userLock);
+            if (createdUserLock instanceof DomainError) {
+                throw new Error();
+            }
+            vi.clearAllMocks();
+
+            await sut.update(createdUserLock);
+
+            const expectedLocks: object[] = [
+                {
+                    locked_until: lockedUntil,
+                    locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                },
+            ];
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: expectedLocks,
+                    newLocks: expectedLocks,
+                }),
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: expectedLocks,
+                    newLocks: expectedLocks,
+                }),
+            );
         });
 
         it('should throw error when trying to update a non-existent UserLock', async () => {
@@ -220,32 +331,80 @@ describe('UserLockRepository', () => {
         it('should delete UserLocks by person', async () => {
             const newPerson: PersonEntity = createPersonEntity();
             await em.persist(newPerson).flush();
+            const lockedUntil1: Date = faker.date.future();
+            const lockedUntil2: Date = faker.date.future();
 
             const userLock1: UserLock = UserLock.construct(
                 newPerson.id,
                 faker.string.uuid(),
-                new Date(),
+                lockedUntil1,
                 PersonLockOccasion.MANUELL_GESPERRT,
                 new Date(),
             );
             const userLock2: UserLock = UserLock.construct(
                 newPerson.id,
                 faker.string.uuid(),
-                new Date(),
+                lockedUntil2,
                 PersonLockOccasion.KOPERS_GESPERRT,
                 new Date(),
             );
 
             await sut.createUserLock(userLock1);
             await sut.createUserLock(userLock2);
+            vi.clearAllMocks();
 
-            // Delete all UserLocks for the person
             await sut.deleteUserLock(newPerson.id, userLock1.locked_occasion);
-            await sut.deleteUserLock(newPerson.id, userLock2.locked_occasion);
 
             const foundUserLocks: Option<UserLock[]> = await sut.findByPersonId(newPerson.id);
-            // Expect to find an empty array after deletion
-            expect(foundUserLocks).toEqual([]);
+            expect(foundUserLocks).toHaveLength(1);
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [
+                        {
+                            locked_until: lockedUntil2,
+                            locked_occasion: PersonLockOccasion.KOPERS_GESPERRT,
+                        },
+                        {
+                            locked_until: lockedUntil1,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                    newLocks: [
+                        {
+                            locked_until: lockedUntil2,
+                            locked_occasion: PersonLockOccasion.KOPERS_GESPERRT,
+                        },
+                    ],
+                }),
+                expect.objectContaining({
+                    personId: newPerson.id,
+                    oldLocks: [
+                        {
+                            locked_until: lockedUntil2,
+                            locked_occasion: PersonLockOccasion.KOPERS_GESPERRT,
+                        },
+                        {
+                            locked_until: lockedUntil1,
+                            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                        },
+                    ],
+                    newLocks: [
+                        {
+                            locked_until: lockedUntil2,
+                            locked_occasion: PersonLockOccasion.KOPERS_GESPERRT,
+                        },
+                    ],
+                }),
+            );
+        });
+
+        it('should not publish an event when no UserLock is deleted', async () => {
+            const personId: PersonID = faker.string.uuid();
+
+            await sut.deleteUserLock(personId, PersonLockOccasion.MANUELL_GESPERRT);
+
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
         });
     });
     describe('getLocksToUnlock', () => {

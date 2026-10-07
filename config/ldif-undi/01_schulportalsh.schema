@@ -1,0 +1,149 @@
+# Schema für Schulportal SH - LDAP
+
+# Local development: UUID-based OID (07b4f340-bf60-48c9-a7d8-b4d7cf7b5fdb).
+# Before production use, replace with the assigned Dataport / TVM OID range.
+objectIdentifier spshLDAP          2.25.10244143160394805837129617525672992731
+objectIdentifier spshAttributeType spshLDAP:1
+objectIdentifier spshObjectClass   spshLDAP:2
+
+
+#################################################################
+### Custom Attributes ###########################################
+#################################################################
+
+attributetype ( spshAttributeType:1
+		NAME 'mailPrimaryAddress'
+		DESC 'Primary mail address (mailbox)'
+		EQUALITY caseIgnoreIA5Match
+		SUBSTR caseIgnoreSubstringsMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:2
+		NAME 'mailAlternativeAddress'
+		DESC 'Secondary (alias) mail addresses'
+		EQUALITY caseIgnoreIA5Match
+		SUBSTR caseIgnoreSubstringsMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+attributetype ( spshAttributeType:3
+		NAME 'mailBoxType'
+		DESC 'Mailbox type: 0 none, 1 user, 3 room, 4 device'
+		EQUALITY integerMatch
+		ORDERING integerOrderingMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.27
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:4
+		NAME 'dovecotQuota'
+		DESC 'Dovecot quota in MB'
+		EQUALITY integerMatch
+		ORDERING integerOrderingMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.27
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:5
+		NAME 'groupwareQuota'
+		DESC 'Groupware quota in MB (-1 unlimited)'
+		EQUALITY integerMatch
+		ORDERING integerOrderingMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.27
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:8
+		NAME 'mainSchool'
+		DESC 'DN of the primary school group'
+		EQUALITY distinguishedNameMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.12
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:9
+		NAME 'hideFromAddressLists'
+		DESC 'Hide from address books (TRUE or FALSE)'
+		EQUALITY caseIgnoreMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:12
+		NAME 'deaktiviert'
+		DESC 'Teacher has no OX access due to role (TRUE or FALSE)'
+		EQUALITY caseIgnoreMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:13
+		NAME 'gesperrt'
+		DESC 'Teacher is locked in Schulportal SH (TRUE or FALSE)'
+		EQUALITY caseIgnoreMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+		SINGLE-VALUE )
+
+attributetype ( spshAttributeType:14
+		NAME 'members'
+		DESC 'Mailing list member addresses'
+		EQUALITY caseIgnoreMatch
+		SUBSTR caseIgnoreSubstringsMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+
+attributetype ( spshAttributeType:15
+		NAME 'allowedEmailGroups'
+		DESC 'Groups allowed to send to a mailing list'
+		EQUALITY distinguishedNameMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.12 )
+
+attributetype ( spshAttributeType:16
+		NAME 'allowedEmailUsers'
+		DESC 'Mail addresses allowed to send to a mailing list'
+		EQUALITY caseIgnoreIA5Match
+		SUBSTR caseIgnoreSubstringsMatch
+		SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+
+#################################################################
+### Object - Classes ############################################
+#################################################################
+
+objectclass ( spshObjectClass:1
+		NAME 'spshUser'
+		DESC 'Schulportal SH user extension'
+		SUP top AUXILIARY
+		MUST ( mailPrimaryAddress )
+		MAY (
+			mailAlternativeAddress $
+			mailBoxType $
+			dovecotQuota $
+			groupwareQuota $
+			mainSchool $
+			hideFromAddressLists $
+			deaktiviert $
+			gesperrt
+		)
+	)
+
+objectclass ( spshObjectClass:2
+	NAME 'groupOfEntries'
+	DESC 'groupOfNames with optional member'
+	SUP top STRUCTURAL
+	MUST ( cn )
+	MAY (
+		 member $
+		 ou $
+		 o $
+		 description
+	)
+	)
+
+objectclass ( spshObjectClass:3
+		NAME 'spshMailList'
+		DESC 'Schulportal SH mailing list'
+		SUP top STRUCTURAL
+		MUST ( cn $ mailPrimaryAddress )
+		MAY (
+			displayName $
+			description $
+			members $
+			allowedEmailUsers $
+			allowedEmailGroups $
+			hideFromAddressLists
+		)
+	)

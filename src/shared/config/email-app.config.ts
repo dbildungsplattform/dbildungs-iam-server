@@ -31,6 +31,10 @@ export class EmailAppConfig {
     public readonly LDAP!: LdapEmailMicroserviceConfig;
 
     @ValidateNested()
+    @Type(() => LdapEmailMicroserviceConfig)
+    public readonly LDAP_UNDI!: LdapEmailMicroserviceConfig;
+
+    @ValidateNested()
     @Type(() => OxEmailMicroserviceConfig)
     public readonly OX!: OxEmailMicroserviceConfig;
 
