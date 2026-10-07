@@ -915,7 +915,6 @@ describe('VidisSyncService', () => {
             ).syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock);
 
             expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
-                RollenSystemRecht.ANGEBOTE_VERWALTEN,
                 RollenSystemRecht.ROLLEN_ERWEITERN,
             ]);
             expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).toHaveBeenCalledWith(
@@ -961,7 +960,6 @@ describe('VidisSyncService', () => {
             );
 
             expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
-                RollenSystemRecht.ANGEBOTE_VERWALTEN,
                 RollenSystemRecht.ROLLEN_ERWEITERN,
             ]);
             expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).not.toHaveBeenCalled();
