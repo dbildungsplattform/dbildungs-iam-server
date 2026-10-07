@@ -474,6 +474,10 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             describe(`when user does NOT have ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
+                beforeEach(() => {
+                    personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
+                });
+
                 it('should return organisation and rollen matching the selected organisation', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
