@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -35,13 +34,11 @@ import { ClassLogger } from '../../logging/class-logger.js';
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
 import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
-import { LdapModule } from '../ldap.module.js';
 import { LdapEventHandler } from './ldap-event-handler.js';
+import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/escalated-person-permissions.factory.js';
 
-// all repositories are mocked. Not a proper integration test
 describe('LdapEventHandler', () => {
     let app: INestApplication;
-    let orm: MikroORM;
 
     let ldapEventHandler: LdapEventHandler;
     let ldapClientAdapterMock: DeepMocked<LdapAdapter>;
@@ -54,33 +51,41 @@ describe('LdapEventHandler', () => {
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false }), LdapModule],
+            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
             providers: [
+                LdapEventHandler,
+                PersonenkontextFactory,
+                EscalatedPersonPermissionsFactory,
                 {
                     provide: APP_PIPE,
                     useClass: GlobalValidationPipe,
                 },
+                {
+                    provide: LdapAdapter,
+                    useValue: createMock(LdapAdapter),
+                },
+                {
+                    provide: PersonRepository,
+                    useValue: createMock(PersonRepository),
+                },
+                {
+                    provide: RolleRepo,
+                    useValue: createMock(RolleRepo),
+                },
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: createMock(DBiamPersonenkontextRepo),
+                },
+                {
+                    provide: OrganisationRepository,
+                    useValue: createMock(OrganisationRepository),
+                },
+                {
+                    provide: EventRoutingLegacyKafkaService,
+                    useValue: createMock(EventRoutingLegacyKafkaService),
+                },
             ],
-        })
-            .overrideProvider(ClassLogger)
-            .useValue(createMock(ClassLogger))
-            .overrideProvider(LdapAdapter)
-            .useValue(createMock(LdapAdapter))
-            .overrideProvider(PersonRepository)
-            .useValue(createMock(PersonRepository))
-            .overrideProvider(PersonenkontextFactory)
-            .useClass(PersonenkontextFactory)
-            .overrideProvider(RolleRepo)
-            .useValue(createMock(RolleRepo))
-            .overrideProvider(DBiamPersonenkontextRepo)
-            .useValue(createMock(DBiamPersonenkontextRepo))
-            .overrideProvider(OrganisationRepository)
-            .useValue(createMock(OrganisationRepository))
-            .overrideProvider(EventRoutingLegacyKafkaService)
-            .useValue(createMock(EventRoutingLegacyKafkaService))
-            .compile();
-
-        orm = module.get(MikroORM);
+        }).compile();
 
         ldapEventHandler = module.get(LdapEventHandler);
         ldapClientAdapterMock = module.get(LdapAdapter);
@@ -91,7 +96,6 @@ describe('LdapEventHandler', () => {
         eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         loggerMock = module.get(ClassLogger);
 
-        await DatabaseTestModule.setupDatabase(module.get(MikroORM));
         app = module.createNestApplication();
         await app.init();
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
@@ -100,9 +104,8 @@ describe('LdapEventHandler', () => {
         await app.close();
     });
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
-        await DatabaseTestModule.clearDatabase(orm);
     });
 
     describe('handlePersonDeletedEvent', () => {
