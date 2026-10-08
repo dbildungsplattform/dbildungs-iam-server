@@ -1,9 +1,10 @@
 import { EntityManager, RequiredEntityData } from '@mikro-orm/core';
+import { faker } from '@faker-js/faker';
+
 import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
+import { OrganisationEntity } from '../../src/modules/organisation/persistence/organisation.entity.js';
 import { OrganisationRepository } from '../../src/modules/organisation/persistence/organisation.repository.js';
 import { OrganisationID } from '../../src/shared/types/index.js';
-import { OrganisationEntity } from '../../src/modules/organisation/persistence/organisation.entity.js';
-import { faker } from '@faker-js/faker';
 
 export async function createAndPersistRootOrganisation(
     em: EntityManager,
@@ -11,6 +12,7 @@ export async function createAndPersistRootOrganisation(
 ): Promise<OrganisationEntity> {
     const organisationData: RequiredEntityData<OrganisationEntity> = {
         id: organisationRepository.ROOT_ORGANISATION_ID,
+        name: 'Root',
         typ: OrganisationsTyp.ROOT,
         itslearningEnabled: false,
     };
@@ -30,9 +32,9 @@ export async function createAndPersistOrganisation(
     const organisationData: RequiredEntityData<OrganisationEntity> = {
         administriertVon: parentOrga,
         zugehoerigZu: parentOrga,
+        name: fakeNames ? faker.company.name() : 'Testorganisation',
         typ,
         kennung: fakeNames ? faker.lorem.word() : undefined,
-        name: fakeNames ? faker.company.name() : undefined,
         namensergaenzung: fakeNames ? faker.company.name() : undefined,
         kuerzel: fakeNames ? faker.lorem.word() : undefined,
         itslearningEnabled: false,

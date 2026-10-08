@@ -8,7 +8,7 @@ describe('KafkaSchuleItslearningEnabledEvent', () => {
 
         const event: KafkaSchuleItslearningEnabledEvent = new KafkaSchuleItslearningEnabledEvent(
             orga.id,
-            orga.typ!,
+            orga.typ,
             orga.kennung,
             orga.name,
         );
