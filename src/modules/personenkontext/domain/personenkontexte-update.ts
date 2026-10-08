@@ -231,13 +231,11 @@ export class PersonenkontexteUpdate {
             const rolle: Rolle<true> | undefined = modifiedRollen.get(pk.rolleId);
             if (rolle) {
                 permissionChecks.push(
-                    this.permissions.hasPermissionForGatedMerkmale(rolle.merkmale, pk.organisationId),
+                    this.permissions.hasPermissionForRolleMerkmale(rolle.merkmale, pk.organisationId),
                 );
             }
         }
-        const hasGatedRollenPermissions: boolean = (await Promise.all(permissionChecks)).every(
-            (hasPermission: boolean) => hasPermission,
-        );
+        const hasGatedRollenPermissions: boolean = (await Promise.all(permissionChecks)).every(Boolean);
 
         if (!hasGatedRollenPermissions) {
             return new MissingPermissionsError('Unauthorized to modify MPT/Pilot-Rollen at the organisation');

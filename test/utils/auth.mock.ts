@@ -81,7 +81,7 @@ export class PersonPermissionsMock implements IPersonPermissions {
         return Promise.resolve(Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE));
     }
 
-    public hasPermissionForGatedMerkmale(): Promise<boolean> {
+    public hasPermissionForRolleMerkmale(): Promise<boolean> {
         return Promise.resolve(true);
     }
 
@@ -97,7 +97,7 @@ export function createPersonPermissionsMock(personFields?: Partial<PersonFields>
     personPermissions.getPermittedMerkmaleForOrga = vi
         .fn()
         .mockResolvedValue(Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE));
-    personPermissions.hasPermissionForGatedMerkmale = vi.fn(
+    personPermissions.hasPermissionForRolleMerkmale = vi.fn(
         async (merkmale: Iterable<RollenMerkmal>, organisationId: OrganisationID): Promise<boolean> => {
             const gatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
             const permittedMerkmale: RollenMerkmal[] =

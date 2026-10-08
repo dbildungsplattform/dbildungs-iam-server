@@ -530,9 +530,7 @@ export class RolleRepo {
                     rollenart: { $in: params.gatedBucket.allowedRollenarten },
                     $and: [
                         { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
-                        ...unauthorizedGatedMerkmale.map((merkmal: RollenMerkmal) => ({
-                            merkmale: { $none: { merkmal } },
-                        })),
+                        { merkmale: { $none: { merkmal: { $in: unauthorizedGatedMerkmale } } } },
                     ],
                 },
             ];

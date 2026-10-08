@@ -527,7 +527,7 @@ describe('EscalatedPersonPermission', () => {
         });
     });
 
-    describe('hasPermissionForGatedMerkmale', () => {
+    describe('hasPermissionForRolleMerkmale', () => {
         it('should require every matching right from escalated permissions', async () => {
             const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
                 { name: 'testInstance' },
@@ -537,7 +537,7 @@ describe('EscalatedPersonPermission', () => {
                 logger,
             );
 
-            const result: boolean = await escalatedPersonPermission.hasPermissionForGatedMerkmale(
+            const result: boolean = await escalatedPersonPermission.hasPermissionForRolleMerkmale(
                 [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
                 rootOrga.id,
             );

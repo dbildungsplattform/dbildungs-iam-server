@@ -177,11 +177,11 @@ export class ApplyRollenerweiterungForAngebotService {
                         result: Err(new EntityNotFoundError('Rolle', rolleId)),
                     };
                 }
-                const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForGatedMerkmale(
+                const hasPermissionForRolleMerkmale: boolean = await permissions.hasPermissionForRolleMerkmale(
                     rolle.merkmale,
                     orgaId,
                 );
-                if (!hasPermissionForGatedMerkmale) {
+                if (!hasPermissionForRolleMerkmale) {
                     return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,
@@ -237,11 +237,11 @@ export class ApplyRollenerweiterungForAngebotService {
                         result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
                     };
                 }
-                const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForGatedMerkmale(
+                const hasPermissionForRolleMerkmale: boolean = await permissions.hasPermissionForRolleMerkmale(
                     rolle.merkmale,
                     orgaId,
                 );
-                if (!hasPermissionForGatedMerkmale) {
+                if (!hasPermissionForRolleMerkmale) {
                     return {
                         rolleId,
                         errorIdType: ErrorIdType.ANGEBOT,

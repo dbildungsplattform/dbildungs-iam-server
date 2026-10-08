@@ -434,24 +434,26 @@ export class RolleFindService {
         const organisationIds: OrganisationID[] = selectedAndPermittedOrgas ?? [
             this.organisationRepository.ROOT_ORGANISATION_ID,
         ];
-        const merkmalePerOrganisation: RollenMerkmal[][] =
-            organisationIds.length > 0
-                ? await Promise.all(
-                      organisationIds.map((organisationId: OrganisationID) =>
-                          permissions.getPermittedMerkmaleForOrga(organisationId),
-                      ),
-                  )
-                : [];
-        const permittedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
-            (merkmal: RollenMerkmal) =>
-                requestedSystemrechte.some(
-                    (systemrecht: RollenSystemRecht) =>
-                        RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)?.systemrecht === systemrecht,
-                ) &&
-                organisationIds.length > 0 &&
-                merkmalePerOrganisation.every((organisationMerkmale: RollenMerkmal[]) =>
-                    organisationMerkmale.includes(merkmal),
-                ),
+        if (organisationIds.length === 0) {
+            return Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE);
+        }
+
+        const merkmalePerOrganisation: RollenMerkmal[][] = await Promise.all(
+            organisationIds.map((organisationId: OrganisationID) =>
+                permissions.getPermittedMerkmaleForOrga(organisationId),
+            ),
+        );
+        const requestedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+            (merkmal: RollenMerkmal) => {
+                const pairedSystemrecht: RollenSystemRecht | undefined =
+                    RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)?.systemrecht;
+                return pairedSystemrecht !== undefined && requestedSystemrechte.includes(pairedSystemrecht);
+            },
+        );
+        const permittedMerkmale: RollenMerkmal[] = requestedMerkmale.filter((merkmal: RollenMerkmal) =>
+            merkmalePerOrganisation.every((organisationMerkmale: RollenMerkmal[]) =>
+                organisationMerkmale.includes(merkmal),
+            ),
         );
         return RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(permittedMerkmale);
     }

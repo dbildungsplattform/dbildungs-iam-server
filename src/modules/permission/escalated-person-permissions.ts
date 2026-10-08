@@ -288,11 +288,11 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
         return RollenmerkmalSystemrechtPaar.getPermittedMerkmaleForOrga(this, organisationId);
     }
 
-    public hasPermissionForGatedMerkmale(
+    public hasPermissionForRolleMerkmale(
         merkmale: Iterable<RollenMerkmal>,
         organisationId: OrganisationID,
     ): Promise<boolean> {
-        return RollenmerkmalSystemrechtPaar.hasPermissionForGatedMerkmale(this, merkmale, organisationId);
+        return RollenmerkmalSystemrechtPaar.hasPermissionForRolleMerkmale(this, merkmale, organisationId);
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {

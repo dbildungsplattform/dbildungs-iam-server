@@ -9,7 +9,7 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
@@ -302,13 +302,9 @@ export class PersonenkontextWorkflowAggregate {
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
         const hasUnauthorizedGatedRolle: boolean = (
             await Promise.all(
-                Array.from(rollen.values()).map(async (rolle: Rolle<true>) => {
-                    const gatedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale);
-                    if (gatedMerkmale.length === 0) {
-                        return true;
-                    }
-                    return permissions.hasPermissionForGatedMerkmale(gatedMerkmale, organisationId);
-                }),
+                Array.from(rollen.values()).map((rolle: Rolle<true>) =>
+                    permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
+                ),
             )
         ).some((hasPermission: boolean) => !hasPermission);
         if (hasUnauthorizedGatedRolle) {

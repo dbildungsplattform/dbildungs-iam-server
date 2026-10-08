@@ -112,7 +112,7 @@ export class RollenmerkmalSystemrechtPaar {
         ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
     }
 
-    public static async hasPermissionForGatedMerkmale(
+    public static async hasPermissionForRolleMerkmale(
         permissions: IPersonPermissions,
         merkmale: Iterable<RollenMerkmal>,
         organisationId: OrganisationID,

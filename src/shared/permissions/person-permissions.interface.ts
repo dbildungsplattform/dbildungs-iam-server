@@ -21,7 +21,8 @@ export type IPersonPermissions = {
 
     getPermittedMerkmaleForOrga(organisationId: OrganisationID): Promise<RollenMerkmal[]>;
 
-    hasPermissionForGatedMerkmale(merkmale: Iterable<RollenMerkmal>, organisationId: OrganisationID): Promise<boolean>;
+    /** Checks the gated rights in a Rolle's full Merkmal list; non-gated Merkmale require no additional right. */
+    hasPermissionForRolleMerkmale(merkmale: Iterable<RollenMerkmal>, organisationId: OrganisationID): Promise<boolean>;
 
     hasSystemrechteAtRootOrganisation(systemrechte: RollenSystemRecht[], matchAll?: boolean): Promise<boolean>;
 

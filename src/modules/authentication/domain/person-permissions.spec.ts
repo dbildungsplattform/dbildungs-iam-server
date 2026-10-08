@@ -415,7 +415,7 @@ describe('PersonPermissions', () => {
         });
     });
 
-    describe('hasPermissionForGatedMerkmale', () => {
+    describe('hasPermissionForRolleMerkmale', () => {
         it('should require every matching system right', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockImplementation(
@@ -429,7 +429,7 @@ describe('PersonPermissions', () => {
                 person,
             );
 
-            const result: boolean = await permissions.hasPermissionForGatedMerkmale(
+            const result: boolean = await permissions.hasPermissionForRolleMerkmale(
                 [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
                 'orga-1',
             );
@@ -445,7 +445,7 @@ describe('PersonPermissions', () => {
                 DoFactory.createPerson(true),
             );
 
-            const result: boolean = await permissions.hasPermissionForGatedMerkmale(
+            const result: boolean = await permissions.hasPermissionForRolleMerkmale(
                 [RollenMerkmal.BEFRISTUNG_PFLICHT],
                 'orga-1',
             );
