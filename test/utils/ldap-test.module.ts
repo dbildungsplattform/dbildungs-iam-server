@@ -33,10 +33,12 @@ export class LdapTestModule implements OnModuleDestroy {
                                     LDAP_ADMIN_PASSWORD: 'admin',
                                     LDAP_CONFIG_PASSWORD: 'config',
                                     LDAP_BASE_DN: 'dc=schule-sh,dc=de',
+                                    LDAP_DOMAIN: 'schule-sh.de',
+                                    LDAP_ORGANISATION: 'schule-sh-de',
                                 })
                                 .withCommand(['--copy-service']) // '--loglevel', 'debug'
                                 .withStartupTimeout(240000)
-                                .withWaitStrategy(Wait.forLogMessage(/openldap | w+ slapd starting/))
+                                .withWaitStrategy(Wait.forLogMessage(/slapd starting/))
                                 .start();
                         }
 

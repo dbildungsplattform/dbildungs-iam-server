@@ -140,6 +140,7 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
                 kennung: '9000001',
                 administriertVon: landOeffentlich.id,
                 typ: OrganisationsTyp.SCHULE,
+                uemLdapOu: undefined,
             }),
         );
         const savedPerson: Person<true> | DomainError = await personRepository.save(
@@ -336,7 +337,7 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
         async (operation: string) => {
             const schuleWithoutUemLdapOu: Organisation<true> = await organisationRepository.save(
                 DoFactory.createOrganisation(false, {
-                    kennung: '9000001',
+                    kennung: '9000002',
                     administriertVon: rootOrga.id,
                     typ: OrganisationsTyp.SCHULE,
                     uemLdapOu: undefined,
@@ -355,18 +356,17 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
                     befristung: undefined,
                 }),
             );
+            const event: PersonenkontextUpdatedEvent = PersonenkontextUpdatedEvent.fromPersonenkontexte(
+                personWithoutOu,
+                operation === 'creation' ? [[personenkontext, schuleWithoutUemLdapOu, rolleWithUem]] : [],
+                operation === 'removal' ? [[personenkontext, schuleWithoutUemLdapOu, rolleWithUem]] : [],
+                [],
+            );
 
             orm.em.clear();
             const before: Entry[] = await search('(objectClass=*)');
 
-            const result: Result<unknown> = await sut.handlePersonenkontextUpdatedEvent(
-                new PersonenkontextUpdatedEvent(
-                    personWithoutOu,
-                    operation === 'creation' ? [kontext] : [],
-                    operation === 'removal' ? [kontext] : [],
-                    [],
-                ),
-            );
+            const result: Result<unknown> = await sut.handlePersonenkontextUpdatedEvent(event);
 
             expect(result.ok).toBe(false);
             expect(await search('(objectClass=*)')).toEqual(before);
