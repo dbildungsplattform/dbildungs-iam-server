@@ -43,6 +43,7 @@ export default defineConfig({
                 '**/test/**',
                 '**/*.d.ts',
                 '**/*.types.ts',
+                'scripts/**',
                 'vite.config.ts',
             ],
             thresholds: {
