@@ -125,11 +125,21 @@ describe('ImportVorgangRepository', () => {
     }
 
     async function createOrga(): Promise<string> {
-        const organisation: OrganisationEntity = new OrganisationEntity();
-        organisation.typ = OrganisationsTyp.SCHULE;
+        const organisationData: RequiredEntityData<OrganisationEntity> = {
+            name: faker.company.name(),
+            typ: OrganisationsTyp.SCHULE,
+            itslearningEnabled: false,
+        };
+
+        const organisation: OrganisationEntity = em.create(OrganisationEntity, organisationData);
+
         await em.persist(organisation).flush();
-        await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
-        return organisation.id;
+
+        const persistedOrganisation: OrganisationEntity = await em.findOneOrFail(OrganisationEntity, {
+            id: organisation.id,
+        });
+
+        return persistedOrganisation.id;
     }
 
     async function createRolle(orgaId: string): Promise<Rolle<true>> {

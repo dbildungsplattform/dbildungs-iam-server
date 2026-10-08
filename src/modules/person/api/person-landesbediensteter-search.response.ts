@@ -63,7 +63,7 @@ export class PersonLandesbediensteterSearchResponse {
                         kontext.rolle.id,
                         kontext.rolle.name,
                         kontext.organisation.id,
-                        kontext.organisation.name!,
+                        kontext.organisation.name,
                         kontext.organisation.kennung!,
                     ),
             ),
