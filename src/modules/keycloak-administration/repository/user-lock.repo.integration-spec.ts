@@ -116,7 +116,7 @@ describe('UserLockRepository', () => {
             expect(result.get(personA.id)).toHaveLength(2);
             expect(result.get(personB.id)).toHaveLength(1);
             expect(result.get(personD.id)).toHaveLength(0);
-            expect(result.get(personC.id)).toEqual(undefined);
+            expect(result.get(personC.id)).toBeUndefined();
         });
 
         it('should return an empty Map', async () => {
@@ -183,6 +183,7 @@ describe('UserLockRepository', () => {
             if (createdUserLock instanceof DomainError) {
                 throw new Error();
             }
+
             expect(createdUserLock).toBeTruthy();
             expect(createdUserLock.person).toEqual(userLock.person);
             expect(eventServiceMock.publish).toHaveBeenCalledWith(
@@ -239,6 +240,7 @@ describe('UserLockRepository', () => {
             if (updatedUserLock instanceof DomainError) {
                 throw new Error();
             }
+
             expect(updatedUserLock).toBeTruthy();
             expect(updatedUserLock.locked_by).toEqual(createdUserLock.locked_by);
             expect(eventServiceMock.publish).toHaveBeenCalledWith(
@@ -433,6 +435,7 @@ describe('UserLockRepository', () => {
                 PersonLockOccasion.MANUELL_GESPERRT,
                 new Date(),
             );
+
             await sut.createUserLock(userLock1);
             await sut.createUserLock(userLock2);
             //create userLock within limitation
