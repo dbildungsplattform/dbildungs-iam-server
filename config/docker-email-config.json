@@ -6,7 +6,7 @@
         "DEFAULT_LOG_LEVEL": "info"
     },
     "DB": {
-        "CLIENT_URL": "postgres://localhost:5432",
+        "CLIENT_URL": "postgres://db:5432",
         "DB_NAME": "dbildungs-iam-server",
         "USERNAME": "admin",
         "SECRET": "password",
