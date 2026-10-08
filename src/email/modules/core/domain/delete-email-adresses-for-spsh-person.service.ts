@@ -80,13 +80,15 @@ export class DeleteEmailsAddressesForSpshPersonService {
         );
         const undiLdapAllowsDatabaseDeletion: boolean = await this.deleteUndiLdapPerson(spshPersonId);
 
-        const isDeletionSuccessful: boolean = oxAllowsDatabaseDeletion && ldapAllowsDatabaseDeletion && undiLdapAllowsDatabaseDeletion;
-        
+        const isDeletionSuccessful: boolean =
+            oxAllowsDatabaseDeletion && ldapAllowsDatabaseDeletion && undiLdapAllowsDatabaseDeletion;
+
         return isDeletionSuccessful;
     }
 
     private findOxUserCounter(personEmailAddresses: EmailAddress<true>[]): OXUserID | undefined {
-        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.oxUserCounter)?.oxUserCounter;
+        return personEmailAddresses.find((emailAddress: EmailAddress<true>) => emailAddress.oxUserCounter)
+            ?.oxUserCounter;
     }
 
     private findExternalId(personEmailAddresses: EmailAddress<true>[]): string | undefined {
@@ -232,8 +234,7 @@ export class DeleteEmailsAddressesForSpshPersonService {
 
     private notifyEmailAddressesChanged(spshPersonId: string, personEmailAddresses: EmailAddress<true>[]): void {
         const previousPrimaryEmail: string | undefined = this.findEmailAddressByPriority(personEmailAddresses, 0);
-        const previousAlternativeEmail: string | undefined =
-            this.findEmailAddressByPriority(personEmailAddresses, 1);
+        const previousAlternativeEmail: string | undefined = this.findEmailAddressByPriority(personEmailAddresses, 1);
 
         this.webhookService.sendEmailsChanged({
             spshPersonId,

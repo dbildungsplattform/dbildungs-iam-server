@@ -154,7 +154,10 @@ export class SetEmailAddressForSpshPersonService {
                     result.error,
                 );
             } catch (err) {
-                this.logger.logUnknownAsError(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Unknown error`, err);
+                this.logger.logUnknownAsError(
+                    `SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Unknown error`,
+                    err,
+                );
             }
         }
 
