@@ -29,6 +29,13 @@ import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-
 import { LdapSetPersonGroupsError } from './error/ldap-set-person-groups.error.js';
 import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 
+function createLdapChange(operation: 'add' | 'delete' | 'replace', type: string, values: string[]): Change {
+    return new Change({
+        operation,
+        modification: new Attribute({ type, values }),
+    });
+}
+
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
         _func: () => Promise<Result<T>>,
@@ -305,55 +312,17 @@ describe('LDAP UNDI Client Adapter', () => {
                 attributes: [],
             });
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.COMMON_NAME,
-                        values: [person.username],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.GIVEN_NAME,
-                        values: [person.firstName],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.SUR_NAME,
-                        values: [person.lastName],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS,
-                        values: [person.mailPrimaryAddress],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
-                        values: [person.mailSecondaryAddress].filter(Boolean),
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.DEAKTIVIERT,
-                        values: ['FALSE'],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.GESPERRT,
-                        values: ['TRUE'],
-                    }),
-                }),
+                createLdapChange('replace', LdapUndiClientAdapter.COMMON_NAME, [person.username]),
+                createLdapChange('replace', LdapUndiClientAdapter.GIVEN_NAME, [person.firstName]),
+                createLdapChange('replace', LdapUndiClientAdapter.SUR_NAME, [person.lastName]),
+                createLdapChange('replace', LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS, [person.mailPrimaryAddress]),
+                createLdapChange(
+                    'replace',
+                    LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
+                    [person.mailSecondaryAddress].filter(Boolean),
+                ),
+                createLdapChange('replace', LdapUndiClientAdapter.DEAKTIVIERT, ['FALSE']),
+                createLdapChange('replace', LdapUndiClientAdapter.GESPERRT, ['TRUE']),
             ]);
             expect(clientMock.add).not.toHaveBeenCalled();
         });
@@ -404,27 +373,9 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(
                 dn,
                 expect.arrayContaining([
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
-                            values: [],
-                        }),
-                    }),
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.DEAKTIVIERT,
-                            values: ['TRUE'],
-                        }),
-                    }),
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.GESPERRT,
-                            values: ['FALSE'],
-                        }),
-                    }),
+                    createLdapChange('replace', LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS, []),
+                    createLdapChange('replace', LdapUndiClientAdapter.DEAKTIVIERT, ['TRUE']),
+                    createLdapChange('replace', LdapUndiClientAdapter.GESPERRT, ['FALSE']),
                 ]),
             );
             expect(clientMock.add).not.toHaveBeenCalled();
@@ -580,22 +531,10 @@ describe('LDAP UNDI Client Adapter', () => {
                     expect(clientMock.search).not.toHaveBeenCalledWith(retainedDn, expect.anything());
                     expect(clientMock.modify).toHaveBeenCalledTimes(3);
                     expect(clientMock.modify).toHaveBeenNthCalledWith(2, groupDn, [
-                        new Change({
-                            operation: 'add',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('add', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.modify).toHaveBeenNthCalledWith(3, removedDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -643,13 +582,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expectOkResult(result);
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'add',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('add', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -670,13 +603,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     expect(clientMock.add).not.toHaveBeenCalled();
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'add',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('add', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                 });
 
@@ -792,13 +719,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -824,13 +745,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -856,13 +771,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -888,13 +797,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -944,13 +847,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'add',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('add', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -976,13 +873,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     });
                     expect(clientMock.modify).toHaveBeenCalledTimes(2);
                     expect(clientMock.modify).toHaveBeenLastCalledWith(groupDn, [
-                        new Change({
-                            operation: 'delete',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [dn],
-                            }),
-                        }),
+                        createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                     ]);
                     expect(clientMock.add).not.toHaveBeenCalled();
                 });
@@ -1087,6 +978,7 @@ describe('LDAP UNDI Client Adapter', () => {
             expectOkResult(result);
             expect(clientMock.search).toHaveBeenNthCalledWith(1, instanceConfig.BASE_DN, {
                 filter: `(uid=${id})`,
+                scope: 'sub',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
             expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
@@ -1136,13 +1028,7 @@ describe('LDAP UNDI Client Adapter', () => {
                     attributes: [LdapUndiClientAdapter.MEMBER],
                 });
                 expect(clientMock.modify).toHaveBeenCalledWith(groupDn, [
-                    new Change({
-                        operation: 'delete',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.MEMBER,
-                            values: [dn],
-                        }),
-                    }),
+                    createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
                 ]);
             });
             expect(clientMock.del).toHaveBeenCalledExactlyOnceWith(dn);
@@ -1194,13 +1080,7 @@ describe('LDAP UNDI Client Adapter', () => {
             });
             expect(result.error).toHaveProperty('details.0.details', [error]);
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(groupDn, [
-                new Change({
-                    operation: 'delete',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MEMBER,
-                        values: [dn],
-                    }),
-                }),
+                createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
             ]);
             expect(clientMock.del).not.toHaveBeenCalled();
             expect(clientMock.add).not.toHaveBeenCalled();
@@ -1279,6 +1159,7 @@ describe('LDAP UNDI Client Adapter', () => {
             expectOkResult(result);
             expect(clientMock.search).toHaveBeenNthCalledWith(1, instanceConfig.BASE_DN, {
                 filter: `(uid=${id})`,
+                scope: 'sub',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
             expect(clientMock.search).toHaveBeenNthCalledWith(2, instanceConfig.BASE_DN, {
@@ -1293,29 +1174,11 @@ describe('LDAP UNDI Client Adapter', () => {
             });
             expect(clientMock.modify).toHaveBeenCalledTimes(2);
             expect(clientMock.modify).toHaveBeenNthCalledWith(1, groupDn, [
-                new Change({
-                    operation: 'delete',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MEMBER,
-                        values: [dn],
-                    }),
-                }),
+                createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
             ]);
             expect(clientMock.modify).toHaveBeenNthCalledWith(2, dn, [
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.GESPERRT,
-                        values: ['TRUE'],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.DEAKTIVIERT,
-                        values: ['TRUE'],
-                    }),
-                }),
+                createLdapChange('replace', LdapUndiClientAdapter.GESPERRT, ['TRUE']),
+                createLdapChange('replace', LdapUndiClientAdapter.DEAKTIVIERT, ['TRUE']),
             ]);
             expect(clientMock.add).not.toHaveBeenCalled();
             expect(clientMock.del).not.toHaveBeenCalled();
@@ -1339,20 +1202,8 @@ describe('LDAP UNDI Client Adapter', () => {
 
             expectOkResult(result);
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(dn, [
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.GESPERRT,
-                        values: [gesperrt ? 'TRUE' : 'FALSE'],
-                    }),
-                }),
-                new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.DEAKTIVIERT,
-                        values: ['TRUE'],
-                    }),
-                }),
+                createLdapChange('replace', LdapUndiClientAdapter.GESPERRT, [gesperrt ? 'TRUE' : 'FALSE']),
+                createLdapChange('replace', LdapUndiClientAdapter.DEAKTIVIERT, ['TRUE']),
             ]);
         });
 
@@ -1380,13 +1231,7 @@ describe('LDAP UNDI Client Adapter', () => {
             });
             expect(result.error).toHaveProperty('details.0.details', [error]);
             expect(clientMock.modify).toHaveBeenCalledExactlyOnceWith(groupDn, [
-                new Change({
-                    operation: 'delete',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.MEMBER,
-                        values: [dn],
-                    }),
-                }),
+                createLdapChange('delete', LdapUndiClientAdapter.MEMBER, [dn]),
             ]);
             expect(clientMock.add).not.toHaveBeenCalled();
             expect(clientMock.del).not.toHaveBeenCalled();
@@ -1441,6 +1286,10 @@ describe('LDAP UNDI Client Adapter', () => {
             const result: Result<void> = await ldapClientAdapter.updateGroup(id, name);
 
             expectOkResult(result);
+            expect(clientMock.search).toHaveBeenCalledExactlyOnceWith(instanceConfig.BASE_DN, {
+                filter: `(&(cn=${id})(objectClass=groupOfEntries))`,
+                scope: 'sub',
+            });
             expect(clientMock.modify).toHaveBeenCalled();
         });
 
@@ -1502,6 +1351,10 @@ describe('LDAP UNDI Client Adapter', () => {
             const result: Result<void> = await ldapClientAdapter.deleteGroup(id);
 
             expectOkResult(result);
+            expect(clientMock.search).toHaveBeenCalledExactlyOnceWith(instanceConfig.BASE_DN, {
+                filter: `(&(cn=${id})(objectClass=groupOfEntries))`,
+                scope: 'sub',
+            });
             expect(clientMock.del).toHaveBeenCalledWith(dn);
         });
 

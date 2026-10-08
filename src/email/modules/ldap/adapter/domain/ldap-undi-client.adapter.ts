@@ -83,7 +83,7 @@ export class LdapUndiClientAdapter {
 
     public static readonly ATTRIBUTE_VALUE_EMPTY: string = 'empty';
 
-    private mutex: Mutex;
+    private readonly mutex: Mutex;
 
     public constructor(
         private readonly ldapClient: LdapUndiClient,
@@ -126,10 +126,15 @@ export class LdapUndiClientAdapter {
     }
     //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
 
+    private createReplaceChange(type: string, values: string[]): Change {
+        return new Change({
+            operation: 'replace',
+            modification: new Attribute({ type, values }),
+        });
+    }
+
     private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES != null
-            ? this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES
-            : LdapUndiClientAdapter.FALLBACK_RETRIES;
+        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES ?? LdapUndiClientAdapter.FALLBACK_RETRIES;
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -173,7 +178,7 @@ export class LdapUndiClientAdapter {
         };
     }
 
-    private async upsertPersonInternal(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
+    private upsertPersonInternal(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
         return this.mutex.runExclusive(async () => {
             const rootNameResult: Result<string> = this.getRootName(person.domain);
             if (!rootNameResult.ok) {
@@ -196,80 +201,27 @@ export class LdapUndiClientAdapter {
             });
 
             if (!searchResultPerson.searchEntries[0]) {
-                // Create new person
-                try {
-                    await client.add(personDN, {
-                        [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'spshUser'],
-                        [LdapUndiClientAdapter.UID]: person.uid,
-                        [LdapUndiClientAdapter.COMMON_NAME]: person.username,
-                        [LdapUndiClientAdapter.GIVEN_NAME]: person.firstName,
-                        [LdapUndiClientAdapter.SUR_NAME]: person.lastName,
-                        [LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS]: person.mailPrimaryAddress,
-                        [LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS]: person.mailSecondaryAddress ?? '',
-                        [LdapUndiClientAdapter.DEAKTIVIERT]: person.deaktiviert ? 'TRUE' : 'FALSE',
-                        [LdapUndiClientAdapter.GESPERRT]: person.gesperrt ? 'TRUE' : 'FALSE',
-
-                        mailBoxType: '1',
-                        hideFromAddressLists: 'FALSE',
-                    });
-                } catch (e) {
-                    this.logger.logUnknownAsError(`Could not create person!`, e);
-                    return Err(new LdapCreatePersonError([e]));
+                const createResult: Result<void> = await this.createPersonInternal(client, personDN, person);
+                if (!createResult.ok) {
+                    return createResult;
                 }
             } else {
                 try {
                     const changes: Change[] = [
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.COMMON_NAME,
-                                values: [person.username],
-                            }),
-                        }),
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.GIVEN_NAME,
-                                values: [person.firstName],
-                            }),
-                        }),
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.SUR_NAME,
-                                values: [person.lastName],
-                            }),
-                        }),
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS,
-                                values: [person.mailPrimaryAddress],
-                            }),
-                        }),
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
-                                values: [person.mailSecondaryAddress].filter(Boolean),
-                            }),
-                        }),
-
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.DEAKTIVIERT,
-                                values: [person.deaktiviert ? 'TRUE' : 'FALSE'],
-                            }),
-                        }),
-
-                        new Change({
-                            operation: 'replace',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.GESPERRT,
-                                values: [person.gesperrt ? 'TRUE' : 'FALSE'],
-                            }),
-                        }),
+                        this.createReplaceChange(LdapUndiClientAdapter.COMMON_NAME, [person.username]),
+                        this.createReplaceChange(LdapUndiClientAdapter.GIVEN_NAME, [person.firstName]),
+                        this.createReplaceChange(LdapUndiClientAdapter.SUR_NAME, [person.lastName]),
+                        this.createReplaceChange(LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS, [
+                            person.mailPrimaryAddress,
+                        ]),
+                        this.createReplaceChange(
+                            LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS,
+                            person.mailSecondaryAddress ? [person.mailSecondaryAddress] : [],
+                        ),
+                        this.createReplaceChange(LdapUndiClientAdapter.DEAKTIVIERT, [
+                            person.deaktiviert ? 'TRUE' : 'FALSE',
+                        ]),
+                        this.createReplaceChange(LdapUndiClientAdapter.GESPERRT, [person.gesperrt ? 'TRUE' : 'FALSE']),
                     ];
 
                     await client.modify(personDN, changes);
@@ -292,7 +244,35 @@ export class LdapUndiClientAdapter {
         });
     }
 
-    private async setPersonSuspendedByIdInternal(personId: string, gesperrt: boolean): Promise<Result<void>> {
+    private async createPersonInternal(
+        client: Client,
+        personDN: string,
+        person: PersonDataUndi,
+    ): Promise<Result<void>> {
+        try {
+            await client.add(personDN, {
+                [LdapUndiClientAdapter.OBJECT_CLASS]: ['inetOrgPerson', 'spshUser'],
+                [LdapUndiClientAdapter.UID]: person.uid,
+                [LdapUndiClientAdapter.COMMON_NAME]: person.username,
+                [LdapUndiClientAdapter.GIVEN_NAME]: person.firstName,
+                [LdapUndiClientAdapter.SUR_NAME]: person.lastName,
+                [LdapUndiClientAdapter.MAIL_PRIMARY_ADDRESS]: person.mailPrimaryAddress,
+                [LdapUndiClientAdapter.MAIL_ALTERNATIVE_ADDRESS]: person.mailSecondaryAddress ?? '',
+                [LdapUndiClientAdapter.DEAKTIVIERT]: person.deaktiviert ? 'TRUE' : 'FALSE',
+                [LdapUndiClientAdapter.GESPERRT]: person.gesperrt ? 'TRUE' : 'FALSE',
+
+                mailBoxType: '1',
+                hideFromAddressLists: 'FALSE',
+            });
+        } catch (error) {
+            this.logger.logUnknownAsError(`Could not create person!`, error);
+            return Err(new LdapCreatePersonError([error]));
+        }
+
+        return Ok();
+    }
+
+    private setPersonSuspendedByIdInternal(personId: string, gesperrt: boolean): Promise<Result<void>> {
         return this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -302,6 +282,7 @@ export class LdapUndiClientAdapter {
 
             const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
                 filter: `(uid=${personId})`,
+                scope: 'sub',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
 
@@ -323,20 +304,8 @@ export class LdapUndiClientAdapter {
 
             try {
                 const changes: Change[] = [
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.GESPERRT,
-                            values: [gesperrt ? 'TRUE' : 'FALSE'],
-                        }),
-                    }),
-                    new Change({
-                        operation: 'replace',
-                        modification: new Attribute({
-                            type: LdapUndiClientAdapter.DEAKTIVIERT,
-                            values: ['TRUE'],
-                        }),
-                    }),
+                    this.createReplaceChange(LdapUndiClientAdapter.GESPERRT, [gesperrt ? 'TRUE' : 'FALSE']),
+                    this.createReplaceChange(LdapUndiClientAdapter.DEAKTIVIERT, ['TRUE']),
                 ];
 
                 await client.modify(personDN, changes);
@@ -349,7 +318,7 @@ export class LdapUndiClientAdapter {
         });
     }
 
-    private async deletePersonInternal(personUid: string): Promise<Result<void>> {
+    private deletePersonInternal(personUid: string): Promise<Result<void>> {
         return this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -359,6 +328,7 @@ export class LdapUndiClientAdapter {
 
             const searchResultPerson: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
                 filter: `(uid=${personUid})`,
+                scope: 'sub',
                 attributes: [LdapUndiClientAdapter.MEMBER_OF],
             });
 
@@ -482,31 +452,29 @@ export class LdapUndiClientAdapter {
                 this.logger.logUnknownAsError(`Could not create group ${groupDn}`, e);
                 return Err(new LdapCreateGroupError(groupData.id, [e]));
             }
-        } else {
-            if (
-                !this.getEntryAttributeAsStringArray(
-                    searchResultOrgUnit.searchEntries[0],
-                    LdapUndiClientAdapter.MEMBER,
-                ).includes(personDN)
-            ) {
-                // GroupOfEntries already exists, modify members
-                try {
-                    await client.modify(groupDn, [
-                        new Change({
-                            operation: 'add',
-                            modification: new Attribute({
-                                type: LdapUndiClientAdapter.MEMBER,
-                                values: [personDN],
-                            }),
+        } else if (
+            !this.getEntryAttributeAsStringArray(
+                searchResultOrgUnit.searchEntries[0],
+                LdapUndiClientAdapter.MEMBER,
+            ).includes(personDN)
+        ) {
+            // GroupOfEntries already exists, modify members
+            try {
+                await client.modify(groupDn, [
+                    new Change({
+                        operation: 'add',
+                        modification: new Attribute({
+                            type: LdapUndiClientAdapter.MEMBER,
+                            values: [personDN],
                         }),
-                    ]);
-                } catch (e) {
-                    this.logger.logUnknownAsError(`Could not add person ${personDN} to group ${groupDn}`, e);
-                    return Err(new LdapAddPersonToGroupError([e]));
-                }
-            } else {
-                this.logger.info(`Person ${personDN} already is member of group ${groupDn}`);
+                    }),
+                ]);
+            } catch (e) {
+                this.logger.logUnknownAsError(`Could not add person ${personDN} to group ${groupDn}`, e);
+                return Err(new LdapAddPersonToGroupError([e]));
             }
+        } else {
+            this.logger.info(`Person ${personDN} already is member of group ${groupDn}`);
         }
 
         return Ok();
@@ -570,7 +538,8 @@ export class LdapUndiClientAdapter {
             }
 
             const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-                filter: `(cn=${id}&objectClass=groupOfEntries)`,
+                filter: `(&(cn=${id})(objectClass=groupOfEntries))`,
+                scope: 'sub',
             });
 
             if (!searchResultOrgUnit.searchEntries[0]) {
@@ -582,13 +551,7 @@ export class LdapUndiClientAdapter {
             const dn: string = searchResultOrgUnit.searchEntries[0].dn;
 
             try {
-                const change: Change = new Change({
-                    operation: 'replace',
-                    modification: new Attribute({
-                        type: LdapUndiClientAdapter.ORGANISATION_NAME,
-                        values: [name],
-                    }),
-                });
+                const change: Change = this.createReplaceChange(LdapUndiClientAdapter.ORGANISATION_NAME, [name]);
 
                 await client.modify(dn, change);
             } catch (e) {
@@ -609,7 +572,8 @@ export class LdapUndiClientAdapter {
             }
 
             const searchResultOrgUnit: SearchResult = await client.search(this.ldapInstanceConfig.BASE_DN, {
-                filter: `(cn=${id}&objectClass=groupOfEntries)`,
+                filter: `(&(cn=${id})(objectClass=groupOfEntries))`,
+                scope: 'sub',
             });
 
             if (!searchResultOrgUnit.searchEntries[0]) {
