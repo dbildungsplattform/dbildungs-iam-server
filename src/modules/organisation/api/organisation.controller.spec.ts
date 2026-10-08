@@ -124,6 +124,7 @@ describe('OrganisationController', () => {
                 expect(organisationServiceMock.createOrganisation).toHaveBeenCalledTimes(1);
             });
         });
+
         it('should throw an error if Organisation.createNew returns a DomainError', async () => {
             const params: CreateOrganisationBodyParams = new CreateOrganisationBodyParams();
             Object.assign(params, {
@@ -142,13 +143,13 @@ describe('OrganisationController', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Öffentliche Schulen Land Schleswig-Holstein',
+                OrganisationsTyp.ROOT,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
-                'Öffentliche Schulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
             const ersatz: Organisation<true> = Organisation.construct(
@@ -156,13 +157,13 @@ describe('OrganisationController', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Ersatzschulen Land Schleswig-Holstein',
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
-                'Ersatzschulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
             const mockedRepoResponse: [Organisation<true> | undefined, Organisation<true> | undefined] = [
@@ -188,13 +189,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Öffentliche Schulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                     undefined,
                 );
                 const ersatz: Organisation<true> = Organisation.construct(
@@ -202,13 +203,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Ersatzschulen Land Schleswig-Holstein',
+                    OrganisationsTyp.SCHULE,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Ersatzschulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.SCHULE,
                     undefined,
                 );
                 const mockedRepoResponse: [Organisation<true> | undefined, Organisation<true> | undefined] = [
@@ -235,13 +236,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Öffentliche Schulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                     undefined,
                 );
                 const ersatz: Organisation<true> = Organisation.construct(
@@ -249,13 +250,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Ersatzschulen Land Schleswig-Holstein',
+                    OrganisationsTyp.SCHULE,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Ersatzschulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.SCHULE,
                     undefined,
                 );
                 const mockedRepoResponse: [Organisation<true> | undefined, Organisation<true> | undefined] = [
@@ -344,6 +345,7 @@ describe('OrganisationController', () => {
                 expect(organisationServiceMock.updateOrganisation).toHaveBeenCalledTimes(1);
             });
         });
+
         describe('when usecase returns a OrganisationSpecificationError', () => {
             it('should throw a domain error', async () => {
                 organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
@@ -361,6 +363,7 @@ describe('OrganisationController', () => {
                 expect(organisationServiceMock.updateOrganisation).toHaveBeenCalledTimes(1);
             });
         });
+
         describe('when usecase returns a domain error', () => {
             it('should throw a domain error', async () => {
                 organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
@@ -378,6 +381,7 @@ describe('OrganisationController', () => {
                 expect(organisationServiceMock.updateOrganisation).toHaveBeenCalledTimes(1);
             });
         });
+
         describe('when organisation is not found', () => {
             it('should throw a NotFoundException', async () => {
                 const organisationId: string = faker.string.uuid();
@@ -392,6 +396,7 @@ describe('OrganisationController', () => {
                 expect(organisationRepositoryMock.findById).toHaveBeenCalledTimes(1);
             });
         });
+
         it('should throw a domain error if user lacks KLASSEN_VERWALTEN permission for KLASSE type', async () => {
             const params: OrganisationByIdParams = {
                 organisationId: faker.string.uuid(),
@@ -552,13 +557,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Öffentliche Schulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                     undefined,
                 );
                 const ersatz: Organisation<true> = Organisation.construct(
@@ -566,13 +571,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Ersatzschulen Land Schleswig-Holstein',
+                    OrganisationsTyp.SCHULE,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Ersatzschulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.SCHULE,
                     undefined,
                 );
                 const mockedRepoResponse: [Organisation<true> | undefined, Organisation<true> | undefined] = [
@@ -590,6 +595,7 @@ describe('OrganisationController', () => {
                 expect(result.oeffentlich).toEqual(new OrganisationResponse(oeffentlich));
             });
         });
+
         describe('when oeffentlich || ersatz could not be found', () => {
             it('should return an error', async () => {
                 const mockedRepoResponse: [Organisation<true> | undefined, Organisation<true> | undefined] = [
@@ -615,13 +621,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    faker.lorem.word(),
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
-                    faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                 ),
             );
             organisationRepositoryMock.findParentOrgasForIds.mockResolvedValue(mockedRepoResponse);
@@ -805,13 +811,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Öffentliche Schulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                     undefined,
                 );
                 const params: OrganisationByIdParams = {
@@ -900,13 +906,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Öffentliche Schulen Land Schleswig-Holstein',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.ROOT,
                     undefined,
                 );
                 const params: OrganisationByIdParams = {
@@ -977,6 +983,7 @@ describe('OrganisationController', () => {
                 organisationId: faker.string.uuid(),
             };
         });
+
         describe('when enabling ITSLearning succeeds for organisation', () => {
             it('should not throw an error', async () => {
                 const schule: Organisation<true> = Organisation.construct(
@@ -984,13 +991,13 @@ describe('OrganisationController', () => {
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
+                    'Schule',
+                    OrganisationsTyp.SCHULE,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
-                    'Schule',
                     faker.lorem.word(),
                     faker.string.uuid(),
-                    OrganisationsTyp.SCHULE,
                     undefined,
                 );
                 organisationRepositoryMock.setEnabledForitslearning.mockResolvedValueOnce(schule);
@@ -1000,6 +1007,7 @@ describe('OrganisationController', () => {
                 ).resolves.not.toThrow();
             });
         });
+
         describe('when enabling ITSLearning for organisation returns a OrganisationSpecificationError', () => {
             it('should throw a HttpException', async () => {
                 organisationRepositoryMock.setEnabledForitslearning.mockResolvedValueOnce(
