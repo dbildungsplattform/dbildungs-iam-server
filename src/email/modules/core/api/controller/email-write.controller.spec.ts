@@ -214,6 +214,28 @@ describe('Email Write Controller', () => {
             );
         });
 
+        it('should log error if modifyOrganisationNameInLdap resolves with an Err result', async () => {
+            const organisationId: string = faker.string.uuid();
+            const params: UpdateOrganisationPathParams = Object.assign(new UpdateOrganisationPathParams(), {
+                organisationId,
+            });
+            const bodyParams: UpdateOrganisationBodyParams = { name: faker.company.name() };
+            const error: Error = new Error('LDAP update failed');
+            modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            const result: void = emailWriteController.updateOrganisation(params, bodyParams);
+
+            expect(result).toBeUndefined();
+            await vi.runAllTimersAsync();
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                'Error in background LDAP organisation update',
+                error,
+            );
+        });
+
         it('should log error if modifyOrganisationNameInLdap fails', async () => {
             const organisationId: string = faker.string.uuid();
             const params: UpdateOrganisationPathParams = Object.assign(new UpdateOrganisationPathParams(), {
