@@ -1,4 +1,3 @@
-import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -35,14 +34,13 @@ import { LdapFetchAttributeError } from '../adapter/domain/error/ldap-fetch-attr
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
-import { LdapModule } from '../ldap.module.js';
+import { LdapConfigModule } from '../adapter/technical/ldap-config.module.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
 
 describe('LdapSyncEventHandler', () => {
     const oeffentlicheSchulenDomain: string = 'oeffentlicheSchulen';
 
     let app: INestApplication;
-    let orm: MikroORM;
 
     let sut: LdapSyncEventHandler;
     let ldapClientAdapterMock: DeepMocked<LdapAdapter>;
@@ -71,56 +69,67 @@ describe('LdapSyncEventHandler', () => {
     let mailAlternativeAddress: string;
 
     beforeAll(async () => {
+        loggerMock = createMock(ClassLogger);
+        ldapClientAdapterMock = createMock(LdapAdapter);
+        personRepositoryMock = createMock(PersonRepository);
+        rolleRepoMock = createMock(RolleRepo);
+        dBiamPersonenkontextRepoMock = createMock(DBiamPersonenkontextRepo);
+        organisationRepositoryMock = createMock(OrganisationRepository);
+        emailRepoMock = createMock(EmailRepo);
+        eventServiceMock = createMock(EventRoutingLegacyKafkaService);
+        emailResolverServiceMock = createMock(EmailResolverService);
+
         const module: TestingModule = await Test.createTestingModule({
-            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true }), LdapModule],
+            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false }), LdapConfigModule],
             providers: [
+                LdapSyncEventHandler,
                 {
                     provide: APP_PIPE,
                     useClass: GlobalValidationPipe,
                 },
+                {
+                    provide: ClassLogger,
+                    useValue: loggerMock,
+                },
+                {
+                    provide: LdapAdapter,
+                    useValue: ldapClientAdapterMock,
+                },
+                {
+                    provide: PersonRepository,
+                    useValue: personRepositoryMock,
+                },
+                {
+                    provide: RolleRepo,
+                    useValue: rolleRepoMock,
+                },
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: dBiamPersonenkontextRepoMock,
+                },
+                {
+                    provide: OrganisationRepository,
+                    useValue: organisationRepositoryMock,
+                },
+                {
+                    provide: EmailRepo,
+                    useValue: emailRepoMock,
+                },
+                {
+                    provide: EventRoutingLegacyKafkaService,
+                    useValue: eventServiceMock,
+                },
+                {
+                    provide: EmailResolverService,
+                    useValue: emailResolverServiceMock,
+                },
             ],
-        })
-            .overrideProvider(ClassLogger)
-            .useValue(createMock(ClassLogger))
-            .overrideProvider(LdapAdapter)
-            .useValue(createMock(LdapAdapter))
-            .overrideProvider(PersonRepository)
-            .useValue(createMock(PersonRepository))
-            .overrideProvider(RolleRepo)
-            .useValue(createMock(RolleRepo))
-            .overrideProvider(DBiamPersonenkontextRepo)
-            .useValue(createMock(DBiamPersonenkontextRepo))
-            .overrideProvider(OrganisationRepository)
-            .useValue(createMock(OrganisationRepository))
-            .overrideProvider(EmailRepo)
-            .useValue(createMock(EmailRepo))
-            .overrideProvider(EventRoutingLegacyKafkaService)
-            .useValue(createMock(EventRoutingLegacyKafkaService))
-            .overrideProvider(ClassLogger)
-            .useValue(createMock<ClassLogger>(ClassLogger))
-            .overrideProvider(EmailResolverService)
-            .useValue(createMock<EmailResolverService>(EmailResolverService))
-            .compile();
-
-        orm = module.get(MikroORM);
-
-        loggerMock = module.get(ClassLogger);
+        }).compile();
 
         sut = module.get(LdapSyncEventHandler);
-        ldapClientAdapterMock = module.get(LdapAdapter);
-        personRepositoryMock = module.get(PersonRepository);
-        dBiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
-        rolleRepoMock = module.get(RolleRepo);
-        organisationRepositoryMock = module.get(OrganisationRepository);
-        emailRepoMock = module.get(EmailRepo);
-        eventServiceMock = module.get(EventRoutingLegacyKafkaService);
-        loggerMock = module.get(ClassLogger);
-
-        emailResolverServiceMock = module.get(EmailResolverService);
 
         emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
 
-        await DatabaseTestModule.setupDatabase(module.get(MikroORM));
         app = module.createNestApplication();
         await app.init();
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
@@ -272,9 +281,8 @@ describe('LdapSyncEventHandler', () => {
         await app.close();
     });
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
-        await DatabaseTestModule.clearDatabase(orm);
     });
 
     //* This test case is just for coverage, all real test cases for syncing are handled in test for 'personExternalSystemSyncEventHandler */
