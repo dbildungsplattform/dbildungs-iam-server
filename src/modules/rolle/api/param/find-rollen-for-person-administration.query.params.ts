@@ -1,29 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
 
-import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
-import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
-import { PagedQueryParams } from '../../../shared/paging/paged.query.params.js';
+import { OrganisationID } from '../../../../shared/types/index.js';
+import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
+import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
+import { FindRollenBaseQueryParams } from './find-rollen-base.query.params.js';
 
-export class FindRolleForPersonAdministrationQueryParams extends PagedQueryParams {
-    @IsOptional()
-    @IsString()
-    @ApiProperty({
-        description: 'The name for the role.',
-        required: false,
-    })
-    public readonly searchStr?: string;
-
+export class FindRollenForPersonAdministrationQueryParams extends FindRollenBaseQueryParams {
     @IsOptional()
     @IsArray()
     @IsUUID('all', { each: true })
     @TransformToArray<string>()
     @ApiProperty({
-        description: 'OrganisationIds to filter rollen.',
+        description: 'Filters the result to roles administered by any of the given organisations.',
         required: false,
         isArray: true,
     })
-    public readonly organisationIds?: string[];
+    public readonly organisationIds?: OrganisationID[];
 
     @IsOptional()
     @TransformToArray()

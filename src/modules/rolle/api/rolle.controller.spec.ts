@@ -29,7 +29,7 @@ import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
-import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 import { RolleController } from './rolle.controller.js';
 import { RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
@@ -176,7 +176,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
     describe('GET rolle/for-person-administration', () => {
         it('should delegate to RolleFindService and wrap the paged response', async () => {
             const permissions: IPersonPermissions = createPersonPermissionsMock();
-            const queryParams: FindRolleForPersonAdministrationQueryParams = {
+            const queryParams: FindRollenForPersonAdministrationQueryParams = {
                 searchStr: faker.string.alpha({ length: 10 }),
                 limit: 25,
                 offset: 0,
@@ -216,7 +216,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
 
         it('should return limit and offset from query params', async () => {
             const permissions: IPersonPermissions = createPersonPermissionsMock();
-            const queryParams: FindRolleForPersonAdministrationQueryParams = {
+            const queryParams: FindRollenForPersonAdministrationQueryParams = {
                 searchStr: faker.string.alpha({ length: 8 }),
                 limit: 7,
                 offset: 13,
@@ -240,7 +240,7 @@ describe('Rolle API with mocked ServiceProviderRepo', () => {
 
         it('should return default paging values when limit and offset are not provided', async () => {
             const permissions: IPersonPermissions = createPersonPermissionsMock();
-            const queryParams: FindRolleForPersonAdministrationQueryParams = {
+            const queryParams: FindRollenForPersonAdministrationQueryParams = {
                 searchStr: faker.string.alpha({ length: 8 }),
                 organisationIds: [faker.string.uuid()],
             };
