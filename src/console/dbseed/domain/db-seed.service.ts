@@ -23,7 +23,6 @@ import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { CreateRollenerweiterungError, Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../../modules/rolle/repo/rollenerweiterung.repo.js';
 import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { ServiceProviderFactory } from '../../../modules/service-provider/domain/service-provider.factory.js';
@@ -43,6 +42,7 @@ import { ServiceProviderFile } from '../file/service-provider-file.js';
 import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 import { DbSeedReferenceRepo } from '../repo/db-seed-reference.repo.js';
 import { DbSeedReference } from './db-seed-reference.js';
+import { InternalRollenerweiterungService } from '../../../modules/rolle/domain/internal-rollenerweiterung.service.js';
 
 @Injectable()
 export class DbSeedService {
@@ -56,7 +56,7 @@ export class DbSeedService {
         private readonly organisationRepository: OrganisationRepository,
         private readonly rolleRepo: RolleRepo,
         private readonly rolleFactory: RolleFactory,
-        private readonly rollenerweiterungRepo: RollenerweiterungRepo,
+        private readonly rollenerweiterungService: InternalRollenerweiterungService,
         private readonly serviceProviderRepo: ServiceProviderRepo,
         private readonly serviceProviderFactory: ServiceProviderFactory,
         private readonly emailDomainRepo: EmailDomainRepo,
@@ -210,9 +210,10 @@ export class DbSeedService {
             );
 
             const createResult: Result<
-                Rollenerweiterung<false>,
+                Rollenerweiterung<true>,
                 CreateRollenerweiterungError
-            > = Rollenerweiterung.createNew(organisation.id, rolle, serviceProvider);
+            > = await this.rollenerweiterungService.create(organisation, rolle, serviceProvider);
+
             if (!createResult.ok) {
                 this.logger.error(
                     `Could not seed Rollenerweiterung ` +
@@ -225,9 +226,7 @@ export class DbSeedService {
                 throw createResult.error;
             }
 
-            const persistedRollenerweiterung: Rollenerweiterung<true> = await this.rollenerweiterungRepo.create(
-                createResult.value,
-            );
+            const persistedRollenerweiterung: Rollenerweiterung<true> = createResult.value;
 
             if (file.id != null) {
                 const dbSeedReference: DbSeedReference = DbSeedReference.createNew(
@@ -235,6 +234,7 @@ export class DbSeedService {
                     file.id,
                     persistedRollenerweiterung.id,
                 );
+
                 await this.dbSeedReferenceRepo.create(dbSeedReference);
             } else {
                 this.logger.error('Rollenerweiterung without seed ID is not referenceable:');

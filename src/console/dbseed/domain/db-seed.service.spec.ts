@@ -31,12 +31,13 @@ import { DBiamPersonenkontextRepoInternal } from '../../../modules/personenkonte
 import { EmailDomainRepo } from '../../../email/modules/core/persistence/email-domain.repo.js';
 import { EmailDomain } from '../../../email/modules/core/domain/email-domain.js';
 import { DbSeedReference } from './db-seed-reference.js';
-import { RollenerweiterungRepo } from '../../../modules/rolle/repo/rollenerweiterung.repo.js';
 import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
 import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
 import { Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
 import { ServiceProviderMerkmal } from '../../../modules/service-provider/domain/service-provider.enum.js';
+import { InternalRollenerweiterungService } from '../../../modules/rolle/domain/internal-rollenerweiterung.service.js';
+import { Ok } from '../../../shared/util/result.js';
 
 function createDbSeedReference(): DbSeedReference {
     return DbSeedReference.createNew(ReferencedEntityType.ORGANISATION, faker.number.int(), faker.string.uuid());
@@ -47,7 +48,7 @@ describe('DbSeedService', () => {
     let dbSeedService: DbSeedService;
     let organisationRepositoryMock: DeepMocked<OrganisationRepository>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
-    let rollenerweiterungenRepoMock: DeepMocked<RollenerweiterungRepo>;
+    let rollenerweiterungServiceMock: DeepMocked<InternalRollenerweiterungService>;
     let personRepoMock: DeepMocked<PersonRepository>;
     let serviceProviderRepoMock: DeepMocked<ServiceProviderRepo>;
     let emailDomainRepoMock: DeepMocked<EmailDomainRepo>;
@@ -98,8 +99,8 @@ describe('DbSeedService', () => {
                     useValue: createMock(RolleRepo),
                 },
                 {
-                    provide: RollenerweiterungRepo,
-                    useValue: createMock(RollenerweiterungRepo),
+                    provide: InternalRollenerweiterungService,
+                    useValue: createMock(InternalRollenerweiterungService),
                 },
                 {
                     provide: ServiceProviderRepo,
@@ -122,7 +123,7 @@ describe('DbSeedService', () => {
         dbSeedService = module.get(DbSeedService);
         organisationRepositoryMock = module.get(OrganisationRepository);
         rolleRepoMock = module.get(RolleRepo);
-        rollenerweiterungenRepoMock = module.get(RollenerweiterungRepo);
+        rollenerweiterungServiceMock = module.get(InternalRollenerweiterungService);
         personRepoMock = module.get(PersonRepository);
         serviceProviderRepoMock = module.get(ServiceProviderRepo);
         personenkontextServiceMock = module.get(DBiamPersonenkontextService);
@@ -479,17 +480,11 @@ describe('DbSeedService', () => {
                 serviceProviderId: serviceProvider.id,
             });
 
-            rollenerweiterungenRepoMock.create.mockResolvedValueOnce(persistedRollenerweiterung);
+            rollenerweiterungServiceMock.create.mockResolvedValueOnce(Ok(persistedRollenerweiterung));
 
             await expect(dbSeedService.seedRollenerweiterung(fileContentAsStr)).resolves.not.toThrow();
-            expect(rollenerweiterungenRepoMock.create).toHaveBeenCalledOnce();
-            expect(rollenerweiterungenRepoMock.create).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    organisationId: organisation.id,
-                    rolleId: rolle.id,
-                    serviceProviderId: serviceProvider.id,
-                }),
-            );
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledOnce();
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledWith(organisation, rolle, serviceProvider);
             expect(dbSeedReferenceRepoMock.create).not.toHaveBeenCalled();
         });
 
@@ -508,19 +503,13 @@ describe('DbSeedService', () => {
                 serviceProviderId: serviceProvider.id,
             });
 
-            rollenerweiterungenRepoMock.create.mockResolvedValueOnce(persistedRollenerweiterung);
+            rollenerweiterungServiceMock.create.mockResolvedValueOnce(Ok(persistedRollenerweiterung));
 
             dbSeedReferenceRepoMock.create.mockResolvedValueOnce(createDbSeedReference());
 
             await expect(dbSeedService.seedRollenerweiterung(fileContentAsStr)).resolves.not.toThrow();
-            expect(rollenerweiterungenRepoMock.create).toHaveBeenCalledOnce();
-            expect(rollenerweiterungenRepoMock.create).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    organisationId: organisation.id,
-                    rolleId: rolle.id,
-                    serviceProviderId: serviceProvider.id,
-                }),
-            );
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledOnce();
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledWith(organisation, rolle, serviceProvider);
             expect(dbSeedReferenceRepoMock.create).toHaveBeenCalledOnce();
             expect(dbSeedReferenceRepoMock.create).toHaveBeenCalledWith(
                 expect.objectContaining({
