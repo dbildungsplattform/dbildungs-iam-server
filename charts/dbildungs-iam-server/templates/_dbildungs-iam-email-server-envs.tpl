@@ -26,6 +26,16 @@
     secretKeyRef:
         name: {{ default .Values.emailMicroserviceAuth.existingSecret .Values.emailMicroserviceAuth.secretName }}
         key: ldap-admin-password
+- name: LDAP_UNDI_BIND_DN
+  valueFrom:
+    secretKeyRef:
+        name: {{ default .Values.emailMicroserviceAuth.existingSecret .Values.emailMicroserviceAuth.secretName }}
+        key: ldap-undi-bind-dn
+- name: LDAP_UNDI_ADMIN_PASSWORD
+  valueFrom:
+    secretKeyRef:
+        name: {{ default .Values.emailMicroserviceAuth.existingSecret .Values.emailMicroserviceAuth.secretName }}
+        key: ldap-undi-admin-password
 - name: OX_PASSWORD
   valueFrom:
     secretKeyRef:

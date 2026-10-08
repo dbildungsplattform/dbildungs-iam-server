@@ -6,6 +6,8 @@ import { WebhookService } from '../../webhook/domain/webhook.service.js';
 import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 import { EmailAddressRepo } from '../persistence/email-address.repo.js';
 import { EmailAddress } from './email-address.js';
+import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';
+import { Ok } from '../../../../shared/util/result.js';
 
 @Injectable()
 export class SetEmailSuspendedService {
@@ -15,6 +17,7 @@ export class SetEmailSuspendedService {
     public constructor(
         private readonly emailAddressRepo: EmailAddressRepo,
         private readonly oxAdapter: OxAdapter,
+        private readonly ldapUndiClientAdapter: LdapUndiClientAdapter,
         private readonly logger: ClassLogger,
         private readonly webhookService: WebhookService,
         config: EmailAppConfig,
@@ -23,7 +26,7 @@ export class SetEmailSuspendedService {
             config.EMAIL.NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS ?? 90;
     }
 
-    public async setEmailsSuspended(params: { spshPersonId: string }): Promise<void> {
+    public async setEmailsSuspended(params: { spshPersonId: string; gesperrt: boolean }): Promise<void> {
         this.logger.info(`Received request to set email addresses to suspended for spshPerson ${params.spshPersonId}.`);
         const addresses: EmailAddress<true>[] = await this.emailAddressRepo.findBySpshPersonIdSortedByPriorityAsc(
             params.spshPersonId,
@@ -72,6 +75,11 @@ export class SetEmailSuspendedService {
             );
         }
 
+        const ldapUndiUpdateResult: Result<void> = await this.ldapUndiSuspendUser(params.spshPersonId, params.gesperrt);
+        if (!ldapUndiUpdateResult.ok) {
+            this.logger.logUnknownAsError('Error while updating user in LDAP UNDI.', ldapUndiUpdateResult.error);
+        }
+
         // Webhook update
         const previousPrimaryEmail: string | undefined = eligibleAddresses.find(
             (a: EmailAddress<true>) => a.priority === 0,
@@ -87,5 +95,14 @@ export class SetEmailSuspendedService {
             previousPrimaryEmail,
             previousAlternativeEmail,
         });
+    }
+
+    private async ldapUndiSuspendUser(personId: string, gesperrt: boolean): Promise<Result<void>> {
+        if (!this.ldapUndiClientAdapter.useLdap()) {
+            this.logger.info(`LDAP Undi is disabled -> skip suspending user - spshPersonId=${personId}`);
+            return Ok();
+        }
+
+        return this.ldapUndiClientAdapter.setPersonSuspendedById(personId, gesperrt);
     }
 }

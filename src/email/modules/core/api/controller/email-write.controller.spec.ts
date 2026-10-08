@@ -15,12 +15,18 @@ import { SetEmailAddressForSpshPersonPathParams } from '../dtos/params/set-email
 import { DeleteEmailAddressesForSpshPersonPathParams } from '../dtos/params/delete-email-addresses-for-spsh-person.pathparams.js';
 import { SetEmailAddressesSuspendedPathParams } from '../dtos/params/set-email-addresses-suspended.pathparams.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
+import { ModifyOrganisationInLdapService } from '../../domain/modify-organisation-in-ldap.service.js';
+import { SetEmailAddressesSuspendedBodyParams } from '../dtos/params/set-email-addresses-suspended.bodyparams.js';
+import { UpdateOrganisationBodyParams } from '../dtos/params/update-organisation.bodyparams.js';
+import { UpdateOrganisationPathParams } from '../dtos/params/update-organisation.pathparams.js';
 
 describe('Email Write Controller', () => {
     let emailWriteController: EmailWriteController;
     let setEmailAddressForSpshPersonServiceMock: DeepMocked<SetEmailAddressForSpshPersonService>;
     let setEmailSuspendedServiceMock: DeepMocked<SetEmailSuspendedService>;
     let deleteEmailsAddressesForSpshPersonServiceMock: DeepMocked<DeleteEmailsAddressesForSpshPersonService>;
+    let modifyOrganisationInLdapServiceMock: DeepMocked<ModifyOrganisationInLdapService>;
+    let loggerMock: DeepMocked<ClassLogger>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -32,6 +38,7 @@ describe('Email Write Controller', () => {
                 },
                 EmailWriteController,
                 SetEmailAddressForSpshPersonService,
+                ModifyOrganisationInLdapService,
                 SetEmailSuspendedService,
                 DeleteEmailsAddressesForSpshPersonService,
                 ClassLogger,
@@ -43,6 +50,8 @@ describe('Email Write Controller', () => {
             .useValue(createMock<DeleteEmailsAddressesForSpshPersonService>(DeleteEmailsAddressesForSpshPersonService))
             .overrideProvider(SetEmailSuspendedService)
             .useValue(createMock<SetEmailSuspendedService>(SetEmailSuspendedService))
+            .overrideProvider(ModifyOrganisationInLdapService)
+            .useValue(createMock(ModifyOrganisationInLdapService))
             .overrideProvider(ClassLogger)
             .useValue(createMock<ClassLogger>(ClassLogger))
             .compile();
@@ -51,6 +60,8 @@ describe('Email Write Controller', () => {
         setEmailAddressForSpshPersonServiceMock = module.get(SetEmailAddressForSpshPersonService);
         setEmailSuspendedServiceMock = module.get(SetEmailSuspendedService);
         deleteEmailsAddressesForSpshPersonServiceMock = module.get(DeleteEmailsAddressesForSpshPersonService);
+        modifyOrganisationInLdapServiceMock = module.get(ModifyOrganisationInLdapService);
+        loggerMock = module.get(ClassLogger);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {
@@ -69,7 +80,7 @@ describe('Email Write Controller', () => {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: faker.string.uuid(),
-                kennungen: [],
+                organisationen: [],
                 spshUsername: faker.internet.username(),
             });
             setEmailAddressForSpshPersonServiceMock.setEmailAddressForSpshPerson.mockResolvedValue();
@@ -91,7 +102,7 @@ describe('Email Write Controller', () => {
                 firstName: faker.person.firstName(),
                 lastName: faker.person.lastName(),
                 spshServiceProviderId: faker.string.uuid(),
-                kennungen: [],
+                organisationen: [],
                 spshUsername: faker.internet.username(),
             });
             const requestParams: SetEmailAddressForSpshPersonPathParams = new SetEmailAddressForSpshPersonPathParams();
@@ -140,17 +151,85 @@ describe('Email Write Controller', () => {
         });
     });
 
+    describe('deleteOrganisation', () => {
+        it('should resolve immediately if deleteOrganisationFromLdap succeeds', () => {
+            const organisationId: string = faker.string.uuid();
+            modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap.mockResolvedValue({
+                ok: true,
+                value: undefined,
+            });
+            const result: void = emailWriteController.deleteOrganisation(organisationId);
+            expect(result).toBeUndefined();
+            vi.runAllTimers();
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(organisationId);
+        });
+
+        it('should log error if deleteOrganisationFromLdap fails', async () => {
+            const organisationId: string = faker.string.uuid();
+            const error: Error = new Error('Delete failed');
+            modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap.mockRejectedValue(error);
+            const result: void = emailWriteController.deleteOrganisation(organisationId);
+            expect(result).toBeUndefined();
+            await vi.runAllTimersAsync();
+            expect(modifyOrganisationInLdapServiceMock.deleteOrganisationFromLdap).toHaveBeenCalledWith(organisationId);
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `Error in background LDAP organisation deletion: ${error.message}`,
+            );
+        });
+    });
+
+    describe('updateOrganisation', () => {
+        it('should resolve immediately if modifyOrganisationNameInLdap succeeds', () => {
+            const organisationId: string = faker.string.uuid();
+            const params: UpdateOrganisationPathParams = new UpdateOrganisationPathParams();
+            const bodyParams: UpdateOrganisationBodyParams = { name: faker.company.name() };
+            Object.assign(params, { organisationId });
+            modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap.mockResolvedValue({
+                ok: true,
+                value: undefined,
+            });
+            const result: void = emailWriteController.updateOrganisation(params, bodyParams);
+            expect(result).toBeUndefined();
+            vi.runAllTimers();
+            expect(modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap).toHaveBeenCalledWith(
+                organisationId,
+                bodyParams.name,
+            );
+        });
+
+        it('should log error if modifyOrganisationNameInLdap fails', async () => {
+            const organisationId: string = faker.string.uuid();
+            const params: UpdateOrganisationPathParams = new UpdateOrganisationPathParams();
+            const bodyParams: UpdateOrganisationBodyParams = { name: faker.company.name() };
+            Object.assign(params, { organisationId });
+            const error: Error = new Error('Update failed');
+            modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap.mockRejectedValue(error);
+            const result: void = emailWriteController.updateOrganisation(params, bodyParams);
+            expect(result).toBeUndefined();
+            await vi.runAllTimersAsync();
+            expect(modifyOrganisationInLdapServiceMock.modifyOrganisationNameInLdap).toHaveBeenCalledWith(
+                organisationId,
+                bodyParams.name,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `Error in background LDAP organisation update: ${error.message}`,
+            );
+        });
+    });
+
     describe('setEmailsSuspendedForSpshPerson', () => {
         it('should resolve immediatly if setEmailsSuspended succeeds', () => {
             const spshPersonId: string = faker.string.uuid();
             setEmailSuspendedServiceMock.setEmailsSuspended.mockResolvedValue();
             const params: SetEmailAddressesSuspendedPathParams = new SetEmailAddressesSuspendedPathParams();
+            const bodyParams: SetEmailAddressesSuspendedBodyParams = { gesperrt: true };
             Object.assign(params, { spshPersonId });
-            const result: void = emailWriteController.setEmailsSuspended(params);
+            const result: void = emailWriteController.setEmailsSuspended(params, bodyParams);
             expect(result).toBeUndefined();
             vi.runAllTimers();
             expect(setEmailSuspendedServiceMock.setEmailsSuspended).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
+                gesperrt: bodyParams.gesperrt,
             });
         });
 
@@ -158,12 +237,14 @@ describe('Email Write Controller', () => {
             const spshPersonId: string = faker.string.uuid();
             setEmailSuspendedServiceMock.setEmailsSuspended.mockRejectedValue(new Error('Test error'));
             const params: SetEmailAddressesSuspendedPathParams = new SetEmailAddressesSuspendedPathParams();
+            const bodyParams: SetEmailAddressesSuspendedBodyParams = { gesperrt: true };
             Object.assign(params, { spshPersonId });
-            const result: void = emailWriteController.setEmailsSuspended(params);
+            const result: void = emailWriteController.setEmailsSuspended(params, bodyParams);
             expect(result).toBeUndefined();
             vi.runAllTimers();
             expect(setEmailSuspendedServiceMock.setEmailsSuspended).toHaveBeenCalledWith({
                 spshPersonId: spshPersonId,
+                gesperrt: bodyParams.gesperrt,
             });
         });
     });

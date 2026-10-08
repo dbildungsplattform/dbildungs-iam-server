@@ -9,6 +9,7 @@ import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
+    DoFactory,
     expectErrResult,
     expectOkResult,
 } from '../../../../test/utils/index.js';
@@ -23,8 +24,11 @@ import { EmailPersistenceModule } from '../../email/email-persistence.module.js'
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
 import { EmailMicroserviceModule } from '../email-microservice.module.js';
 import { EmailResolverService, PersonIdWithEmailResponse } from './email-resolver.service.js';
+
+type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;
 
 describe('EmailResolverService', () => {
     let module: TestingModule;
@@ -409,13 +413,24 @@ describe('EmailResolverService', () => {
     describe('setEmailForSpshPerson', () => {
         it('should send email data to microservice successfully', async () => {
             const spshPersonId: string = faker.string.uuid();
-            const params: SetEmailAddressForSpshPersonBodyParams = {
+            const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                kennung: '0706054',
+                name: 'Testschule',
+            });
+            const mockOrganisationWithoutKennung: Organisation<true> = DoFactory.createOrganisation(true, {
+                kennung: '',
+            });
+            const mockOrganisationWithoutName: Organisation<true> = DoFactory.createOrganisation(true, {
+                name: '',
+            });
+            const params: SetEmailParams = {
                 spshUsername: 'mmustermann',
-                kennungen: ['0706054'],
+                organisationen: [mockOrganisation, mockOrganisationWithoutKennung, mockOrganisationWithoutName],
                 firstName: 'Max',
                 lastName: 'Mustermann',
                 spshServiceProviderId: faker.string.uuid(),
-            } satisfies SetEmailAddressForSpshPersonBodyParams;
+                gesperrt: false,
+            };
             const mockAxiosResponse: AxiosResponse<EmailAddressResponse[]> = {
                 data: [],
                 status: 200,
@@ -425,12 +440,15 @@ describe('EmailResolverService', () => {
                     headers: new AxiosHeaders(),
                 },
             };
-            mockHttpService.post.mockReturnValue(of(mockAxiosResponse));
+            mockHttpService.post.mockReturnValueOnce(of(mockAxiosResponse));
             await sut.setEmailForSpshPerson({ spshPersonId: spshPersonId, ...params });
 
             expect(mockHttpService.post).toHaveBeenCalledWith(
                 `http://localhost:9091/api/write/${spshPersonId}/set-email`,
-                { ...params },
+                {
+                    ...params,
+                    organisationen: [{ id: mockOrganisation.id, kennung: '0706054', name: 'Testschule' }],
+                } satisfies SetEmailAddressForSpshPersonBodyParams,
                 {
                     headers: {
                         'api-key': 'api-key',
@@ -445,16 +463,17 @@ describe('EmailResolverService', () => {
 
         it('should log error when microservice post call fails', async () => {
             const spshPersonId: string = faker.string.uuid();
-            const params: SetEmailAddressForSpshPersonBodyParams = {
+            const params: SetEmailParams = {
                 spshUsername: 'mmustermann',
-                kennungen: ['0706054'],
+                organisationen: [DoFactory.createOrganisation(true, { kennung: '0706054', name: 'Testschule' })],
                 firstName: 'Max',
                 lastName: 'Mustermann',
                 spshServiceProviderId: faker.string.uuid(),
-            } satisfies SetEmailAddressForSpshPersonBodyParams;
+                gesperrt: false,
+            };
             const error: Error = new Error('Microservice failure');
 
-            mockHttpService.post.mockImplementation(() => {
+            mockHttpService.post.mockImplementationOnce(() => {
                 throw error;
             });
 
@@ -478,12 +497,12 @@ describe('EmailResolverService', () => {
                     headers: new AxiosHeaders(),
                 },
             };
-            mockHttpService.post.mockReturnValue(of(mockAxiosResponse));
-            await sut.setEmailsSuspendedForSpshPerson({ spshPersonId: spshPersonId });
+            mockHttpService.post.mockReturnValueOnce(of(mockAxiosResponse));
+            await sut.setEmailsSuspendedForSpshPerson({ spshPersonId: spshPersonId, gesperrt: false });
 
             expect(mockHttpService.post).toHaveBeenCalledWith(
                 `http://localhost:9091/api/write/${spshPersonId}/set-suspended`,
-                {},
+                { gesperrt: false },
                 {
                     headers: {
                         'api-key': 'api-key',
@@ -497,11 +516,11 @@ describe('EmailResolverService', () => {
             const spshPersonId: string = faker.string.uuid();
             const error: Error = new Error('Microservice failure');
 
-            mockHttpService.post.mockImplementation(() => {
+            mockHttpService.post.mockImplementationOnce(() => {
                 throw error;
             });
 
-            await sut.setEmailsSuspendedForSpshPerson({ spshPersonId: spshPersonId });
+            await sut.setEmailsSuspendedForSpshPerson({ spshPersonId: spshPersonId, gesperrt: false });
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                 `Failed to set emails for person ${spshPersonId} to suspended`,
                 error,
@@ -640,13 +659,18 @@ describe('EmailResolverService', () => {
 
     it('should use correct endpoint from config in post call', async () => {
         const spshPersonId: string = faker.string.uuid();
-        const params: SetEmailAddressForSpshPersonBodyParams = {
+        const mockOrganisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            kennung: '0706054',
+            name: 'Testschule',
+        });
+        const params: SetEmailParams = {
             spshUsername: 'mmustermann',
-            kennungen: ['0706054'],
+            organisationen: [mockOrganisation],
             firstName: 'Max',
             lastName: 'Mustermann',
             spshServiceProviderId: faker.string.uuid(),
-        } satisfies SetEmailAddressForSpshPersonBodyParams;
+            gesperrt: false,
+        };
 
         mockHttpService.post.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
 
@@ -654,7 +678,10 @@ describe('EmailResolverService', () => {
 
         expect(mockHttpService.post).toHaveBeenCalledWith(
             expect.stringMatching(/\/api\/write\/[a-f0-9-]+\/set-email$/),
-            { ...params },
+            {
+                ...params,
+                organisationen: [{ id: mockOrganisation.id, kennung: '0706054', name: 'Testschule' }],
+            } satisfies SetEmailAddressForSpshPersonBodyParams,
             {
                 headers: {
                     'api-key': 'api-key',
@@ -730,6 +757,79 @@ describe('EmailResolverService', () => {
 
         const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
         expect(result).toEqual(new PersonEmailResponse(EmailAddressStatus.DISABLED, mockEmail));
+    });
+
+    describe('deleteSchool', () => {
+        it('should call httpService.delete with correct URL and log info', async () => {
+            const organisationId: string = faker.string.uuid();
+
+            mockHttpService.delete.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+
+            await sut.deleteSchool({ organisationId });
+
+            expect(loggerMock.info).toHaveBeenCalledWith(`Deleting school ${organisationId} via email microservice`);
+            expect(mockHttpService.delete).toHaveBeenCalledWith(
+                `http://localhost:9091/api/write/organisation/${organisationId}`,
+                {
+                    headers: {
+                        'api-key': 'api-key',
+                    },
+                },
+            );
+        });
+
+        it('should log error when httpService.delete throws', async () => {
+            const organisationId: string = faker.string.uuid();
+            const error: Error = new Error('Microservice failure');
+            mockHttpService.delete.mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await sut.deleteSchool({ organisationId });
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `Failed to delete school ${organisationId}`,
+                error,
+            );
+        });
+    });
+
+    describe('updateSchoolName', () => {
+        it('should call httpService.patch with correct URL and log info', async () => {
+            const organisationId: string = faker.string.uuid();
+            const newName: string = faker.company.name();
+
+            mockHttpService.patch.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+
+            await sut.updateSchoolName({ organisationId, newName });
+
+            expect(loggerMock.info).toHaveBeenCalledWith(`Updating school ${organisationId} via email microservice`);
+            expect(mockHttpService.patch).toHaveBeenCalledWith(
+                `http://localhost:9091/api/write/organisation/${organisationId}`,
+                { name: newName },
+                {
+                    headers: {
+                        'api-key': 'api-key',
+                    },
+                },
+            );
+        });
+
+        it('should log error when httpService.patch throws', async () => {
+            const organisationId: string = faker.string.uuid();
+            const newName: string = faker.company.name();
+            const error: Error = new Error('Microservice failure');
+            mockHttpService.patch.mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await sut.updateSchoolName({ organisationId, newName });
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `Failed to update school ${organisationId}`,
+                error,
+            );
+        });
     });
 
     describe('deleteEmailsForSpshPerson', () => {
