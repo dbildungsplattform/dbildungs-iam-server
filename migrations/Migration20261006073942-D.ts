@@ -17,14 +17,9 @@ export class Migration20260903120000 extends Migration {
     }
 
     override down(): void | Promise<void> {
-        this.addSql(
-            `update "organisation" set "uem_ldap_ou" = 'qs.schule-sh.de' where "uem_ldap_ou"='oeffentlicheSchulen';`,
-        );
+        // In Stage environment, revert needs to be done manually
         this.addSql(
             `update "organisation" set "uem_ldap_ou" = 'schule-sh.de' where "uem_ldap_ou"='oeffentlicheSchulen';`,
-        );
-        this.addSql(
-            `update "organisation" set "uem_ldap_ou" = 'qs.ersatzschule-sh.de' where "uem_ldap_ou"='ersatzSchulen';`,
         );
         this.addSql(
             `update "organisation" set "uem_ldap_ou" = 'ersatzschule-sh.de' where "uem_ldap_ou"='ersatzSchulen';`,
