@@ -835,7 +835,7 @@ describe('ServiceProvider API', () => {
                         name: serviceProvider.name,
                         administrationsebene: {
                             id: organisation.id,
-                            name: organisation.name!,
+                            name: organisation.name,
                             kennung: organisation.kennung!,
                         },
                         kategorie: serviceProvider.kategorie,
@@ -847,7 +847,7 @@ describe('ServiceProvider API', () => {
                                 {
                                     organisation: {
                                         id: organisation.id,
-                                        name: organisation.name!,
+                                        name: organisation.name,
                                         kennung: organisation.kennung!,
                                     },
                                     rolle: {
@@ -858,7 +858,7 @@ describe('ServiceProvider API', () => {
                                 {
                                     organisation: {
                                         id: organisation.id,
-                                        name: organisation.name!,
+                                        name: organisation.name,
                                         kennung: organisation.kennung!,
                                     },
                                     rolle: {
@@ -953,7 +953,7 @@ describe('ServiceProvider API', () => {
                 name: serviceProvider.name,
                 administrationsebene: {
                     id: organisation.id,
-                    name: organisation.name!,
+                    name: organisation.name,
                     kennung: organisation.kennung!,
                 },
                 kategorie: serviceProvider.kategorie,

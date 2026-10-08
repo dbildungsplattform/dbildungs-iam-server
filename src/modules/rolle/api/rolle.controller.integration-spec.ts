@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
 import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -166,287 +166,22 @@ describe('Rolle API', () => {
         vi.clearAllMocks();
     });
 
-    describe('/POST rolle', () => {
-        const url: string = '/rolle';
-        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+    async function createOrganisationEntity(
+        overrides: Partial<RequiredEntityData<OrganisationEntity>> = {},
+    ): Promise<OrganisationEntity> {
+        const organisationData: RequiredEntityData<OrganisationEntity> = {
+            name: faker.company.name(),
+            typ: OrganisationsTyp.SONSTIGE,
+            itslearningEnabled: false,
+            ...overrides,
+        };
 
-        it('should persist multiple pilot attributes and system rights when creating a rolle', async () => {
-            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const merkmale: RollenMerkmal[] = [
-                RollenMerkmal.PILOT_1_ROLLE,
-                RollenMerkmal.PILOT_2_ROLLE,
-                RollenMerkmal.PILOT_3_ROLLE,
-                RollenMerkmal.PILOT_4_ROLLE,
-                RollenMerkmal.PILOT_5_ROLLE,
-            ];
-            const systemrechte: RollenSystemRechtEnum[] = [
-                RollenSystemRechtEnum.PILOT_1_ROLLEN_ZUORDNEN,
-                RollenSystemRechtEnum.PILOT_2_ROLLEN_ZUORDNEN,
-                RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
-                RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN,
-                RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN,
-            ];
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: RollenArt.LEHR,
-                merkmale,
-                systemrechte,
-                serviceProviderIds: [],
-            };
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+        const organisation: OrganisationEntity = em.create(OrganisationEntity, organisationData);
 
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
+        await em.persist(organisation).flush();
 
-            expect(response.status).toBe(201);
-            const created: RolleResponse = response.body as RolleResponse;
-            const reloaded: Response = await request(app.getHttpServer() as App).get(buildUrl(created.id));
-            expect(reloaded.status).toBe(200);
-            const rolle: RolleResponse = reloaded.body as RolleResponse;
-            expect(rolle.merkmale).toEqual(expect.arrayContaining(merkmale));
-            expect(rolle.merkmale).toHaveLength(merkmale.length);
-            expect(rolle.systemrechte).toEqual(
-                expect.arrayContaining(
-                    systemrechte.map((name: RollenSystemRechtEnum) => ({ name, isTechnical: false })),
-                ),
-            );
-            expect(rolle.systemrechte).toHaveLength(systemrechte.length);
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                organisation.id,
-                RollenSystemRecht.ROLLEN_VERWALTEN,
-            );
-        });
-
-        it('should return created rolle', async () => {
-            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
-            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
-            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
-                {
-                    organisation: savedUserOrganisation,
-                    rolle: { systemrechte: [], serviceProviderIds: [] },
-                },
-            ];
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
-            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
-
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
-                systemrechte: [],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-
-            expect(response.status).toBe(201);
-            expect(response.body as RolleWithServiceProvidersResponse).toEqual(
-                expect.objectContaining({
-                    name: params.name,
-                    administeredBySchulstrukturknoten: params.administeredBySchulstrukturknoten,
-                    rollenart: params.rollenart,
-                    merkmale: params.merkmale,
-                    systemrechte: [],
-                    serviceProviders: [],
-                } satisfies Partial<RolleWithServiceProvidersResponse>),
-            );
-        });
-
-        it('should save rolle to db', async () => {
-            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
-            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
-            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
-                {
-                    organisation: savedUserOrganisation,
-                    rolle: { systemrechte: [], serviceProviderIds: [] },
-                },
-            ];
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
-            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
-
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
-                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-            const rolle: RolleResponse = response.body as RolleResponse;
-
-            await em.findOneOrFail(RolleEntity, { id: rolle.id });
-        });
-
-        it('should fail if user is missing permissions for the organisation', async () => {
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: faker.string.uuid(),
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
-                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-
-            expect(response.status).toBe(404);
-        });
-
-        it('should fail if rollenart is invalid', async () => {
-            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
-            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
-            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
-                {
-                    organisation: savedUserOrganisation,
-                    rolle: { systemrechte: [], serviceProviderIds: [] },
-                },
-            ];
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
-            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
-
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: 'INVALID' as RollenArt,
-                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
-                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-
-            expect(response.status).toBe(400);
-        });
-
-        it('should fail if merkmal is invalid', async () => {
-            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
-            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
-            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
-                {
-                    organisation: savedUserOrganisation,
-                    rolle: { systemrechte: [], serviceProviderIds: [] },
-                },
-            ];
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
-            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
-
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: ['INVALID' as RollenMerkmal],
-                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-
-            expect(response.status).toBe(400);
-        });
-
-        it('should fail if merkmale are not unique', async () => {
-            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
-            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
-            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
-                {
-                    organisation: savedUserOrganisation,
-                    rolle: { systemrechte: [], serviceProviderIds: [] },
-                },
-            ];
-            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
-            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
-
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            const params: CreateRolleBodyParams = {
-                name: faker.person.jobTitle(),
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT, RollenMerkmal.BEFRISTUNG_PFLICHT],
-                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-
-            expect(response.status).toBe(400);
-        });
-
-        it('should fail Rolle-Name-Unique-On-SSK specification is violated', async () => {
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
-
-            const rolleName: string = faker.person.jobTitle();
-            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: organisation.id,
-                    name: rolleName,
-                }),
-            );
-            if (rolle instanceof DomainError) {
-                throw Error();
-            }
-
-            const params: CreateRolleBodyParams = {
-                name: rolleName,
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: faker.helpers.enumValue(RollenArt),
-                merkmale: [],
-                systemrechte: [],
-                serviceProviderIds: [],
-            };
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .post(url)
-                .send(params);
-            const responseBody: DbiamRolleError = response.body as DbiamRolleError;
-
-            expect(response.status).toBe(400);
-            expect(responseBody.i18nKey).toStrictEqual('ROLLE_NAME_UNIQUE_ON_SSK');
-            expect(responseBody.code).toStrictEqual(400);
-        });
-    });
+        return organisation;
+    }
 
     describe('/GET rolle', () => {
         const url: string = '/rolle';
@@ -1533,6 +1268,18 @@ describe('Rolle API', () => {
         });
     });
 
+    describe('GET systemrechte', () => {
+        const url: string = '/rolle/systemrechte';
+
+        it('should return all systemrechte', async () => {
+            const response: Response = await request(app.getHttpServer() as App).get(url);
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(
+                RollenSystemRecht.ALL.map((sr: RollenSystemRecht) => new SystemRechtResponse(sr)),
+            );
+        });
+    });
+
     describe('/GET rolle/:rolleId', () => {
         const url: string = '/rolle';
         const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
@@ -1615,6 +1362,282 @@ describe('Rolle API', () => {
         });
     });
 
+    describe('/POST rolle', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+
+        it('should persist multiple pilot attributes and system rights when creating a rolle', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const merkmale: RollenMerkmal[] = [
+                RollenMerkmal.PILOT_1_ROLLE,
+                RollenMerkmal.PILOT_2_ROLLE,
+                RollenMerkmal.PILOT_3_ROLLE,
+                RollenMerkmal.PILOT_4_ROLLE,
+                RollenMerkmal.PILOT_5_ROLLE,
+            ];
+            const systemrechte: RollenSystemRechtEnum[] = [
+                RollenSystemRechtEnum.PILOT_1_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_2_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN,
+                RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN,
+            ];
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEHR,
+                merkmale,
+                systemrechte,
+                serviceProviderIds: [],
+            };
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(201);
+            const created: RolleResponse = response.body as RolleResponse;
+            const reloaded: Response = await request(app.getHttpServer() as App).get(buildUrl(created.id));
+            expect(reloaded.status).toBe(200);
+            const rolle: RolleResponse = reloaded.body as RolleResponse;
+            expect(rolle.merkmale).toEqual(expect.arrayContaining(merkmale));
+            expect(rolle.merkmale).toHaveLength(merkmale.length);
+            expect(rolle.systemrechte).toEqual(
+                expect.arrayContaining(
+                    systemrechte.map((name: RollenSystemRechtEnum) => ({ name, isTechnical: false })),
+                ),
+            );
+            expect(rolle.systemrechte).toHaveLength(systemrechte.length);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                organisation.id,
+                RollenSystemRecht.ROLLEN_VERWALTEN,
+            );
+        });
+
+        it('should return created rolle', async () => {
+            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
+            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
+                {
+                    organisation: savedUserOrganisation,
+                    rolle: { systemrechte: [], serviceProviderIds: [] },
+                },
+            ];
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
+                systemrechte: [],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(201);
+            expect(response.body as RolleWithServiceProvidersResponse).toEqual(
+                expect.objectContaining({
+                    name: params.name,
+                    administeredBySchulstrukturknoten: params.administeredBySchulstrukturknoten,
+                    rollenart: params.rollenart,
+                    merkmale: params.merkmale,
+                    systemrechte: [],
+                    serviceProviders: [],
+                } satisfies Partial<RolleWithServiceProvidersResponse>),
+            );
+        });
+
+        it('should save rolle to db', async () => {
+            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
+            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
+                {
+                    organisation: savedUserOrganisation,
+                    rolle: { systemrechte: [], serviceProviderIds: [] },
+                },
+            ];
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
+                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+            const rolle: RolleResponse = response.body as RolleResponse;
+
+            await em.findOneOrFail(RolleEntity, { id: rolle.id });
+        });
+
+        it('should fail if user is missing permissions for the organisation', async () => {
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: faker.string.uuid(),
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
+                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(404);
+        });
+
+        it('should fail if rollenart is invalid', async () => {
+            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
+            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
+                {
+                    organisation: savedUserOrganisation,
+                    rolle: { systemrechte: [], serviceProviderIds: [] },
+                },
+            ];
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: 'INVALID' as RollenArt,
+                merkmale: [faker.helpers.enumValue(RollenMerkmal)],
+                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should fail if merkmal is invalid', async () => {
+            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
+            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
+                {
+                    organisation: savedUserOrganisation,
+                    rolle: { systemrechte: [], serviceProviderIds: [] },
+                },
+            ];
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: ['INVALID' as RollenMerkmal],
+                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should fail if merkmale are not unique', async () => {
+            const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
+            const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
+                {
+                    organisation: savedUserOrganisation,
+                    rolle: { systemrechte: [], serviceProviderIds: [] },
+                },
+            ];
+            personpermissionsRepoMock.loadPersonPermissions.mockResolvedValue(permissionsMock);
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+            permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
+
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            const params: CreateRolleBodyParams = {
+                name: faker.person.jobTitle(),
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT, RollenMerkmal.BEFRISTUNG_PFLICHT],
+                systemrechte: [faker.helpers.enumValue(RollenSystemRechtEnum)],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should fail Rolle-Name-Unique-On-SSK specification is violated', async () => {
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+
+            const rolleName: string = faker.person.jobTitle();
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    name: rolleName,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const params: CreateRolleBodyParams = {
+                name: rolleName,
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: faker.helpers.enumValue(RollenArt),
+                merkmale: [],
+                systemrechte: [],
+                serviceProviderIds: [],
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(url)
+                .send(params);
+            const responseBody: DbiamRolleError = response.body as DbiamRolleError;
+
+            expect(response.status).toBe(400);
+            expect(responseBody.i18nKey).toStrictEqual('ROLLE_NAME_UNIQUE_ON_SSK');
+            expect(responseBody.code).toStrictEqual(400);
+        });
+    });
+
     describe('/GET rolleId/serviceProviders', () => {
         const url: string = '/rolle';
         const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}/serviceProviders`;
@@ -1646,18 +1669,6 @@ describe('Rolle API', () => {
 
                 expect(response.status).toBe(404);
             });
-        });
-    });
-
-    describe('GET systemrechte', () => {
-        const url: string = '/rolle/systemrechte';
-
-        it('should return all systemrechte', async () => {
-            const response: Response = await request(app.getHttpServer() as App).get(url);
-            expect(response.status).toBe(200);
-            expect(response.body).toEqual(
-                RollenSystemRecht.ALL.map((sr: RollenSystemRecht) => new SystemRechtResponse(sr)),
-            );
         });
     });
 
@@ -1741,8 +1752,7 @@ describe('Rolle API', () => {
             permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
+            const organisation: OrganisationEntity = await createOrganisationEntity();
             await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
 
             const rolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1822,8 +1832,7 @@ describe('Rolle API', () => {
                 },
             ];
 
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
+            const organisation: OrganisationEntity = await createOrganisationEntity();
             await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
 
             const rolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1870,8 +1879,7 @@ describe('Rolle API', () => {
                 },
             ];
 
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
+            const organisation: OrganisationEntity = await createOrganisationEntity();
             await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
 
             const rolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1934,9 +1942,10 @@ describe('Rolle API', () => {
                     throw person;
                 }
 
-                const organisation: OrganisationEntity = new OrganisationEntity();
-                organisation.typ = OrganisationsTyp.SCHULE;
-                await em.persist(organisation).flush();
+                const organisation: OrganisationEntity = await createOrganisationEntity({
+                    name: 'Testschule',
+                    typ: OrganisationsTyp.SCHULE,
+                });
                 await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
 
                 const rolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1993,8 +2002,7 @@ describe('Rolle API', () => {
                 },
             ];
 
-            const organisation: OrganisationEntity = new OrganisationEntity();
-            await em.persist(organisation).flush();
+            const organisation: OrganisationEntity = await createOrganisationEntity();
 
             await em.findOneOrFail(OrganisationEntity, { id: organisation.id });
 
