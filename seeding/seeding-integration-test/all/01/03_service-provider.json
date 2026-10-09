@@ -10,7 +10,8 @@
             "logoMimeType": "image/png",
             "logoBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQAAAAA3bvkkAAAACklEQVR4AWNgAAAAAgABc3UBGAAAAABJRU5ErkJggg==",
             "providedOnSchulstrukturknoten": 1,
-            "requires2fa": true
+            "requires2fa": true,
+            "merkmale": ["VERFUEGBAR_FUER_ROLLENERWEITERUNG"]
         },
         {
             "id": 1,
@@ -19,7 +20,8 @@
             "url": "https://example.com/",
             "kategorie": "UNTERRICHT",
             "providedOnSchulstrukturknoten": 1,
-            "requires2fa": false
+            "requires2fa": false,
+            "merkmale": ["VERFUEGBAR_FUER_ROLLENERWEITERUNG"]
         }
     ]
 }

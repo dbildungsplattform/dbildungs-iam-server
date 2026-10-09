@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Client } from 'openid-client';
@@ -13,6 +13,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EntityNotFoundError, MissingAttributeError } from '../../../shared/error/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
+import { OrganisationID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { StreamableFileFactory } from '../../../shared/util/streamable-file.factory.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
@@ -24,6 +25,7 @@ import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rolle
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
+import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { InvalidLogoCombinationError } from '../domain/errors/invalid-logo-combination.error.js';
@@ -41,7 +43,6 @@ import {
     ManageableServiceProviderWithReferencedObjects,
     ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from '../domain/types.js';
-import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderApiModule } from '../service-provider-api.module.js';
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
@@ -137,6 +138,7 @@ describe('Provider Controller Test', () => {
             rollenerweiterungRepoMock = createMock(RollenerweiterungRepo);
             rolleRepoMock = createMock(RolleRepo);
             organisationRepositoryMock = createMock(OrganisationRepository);
+
             providerController = new ProviderController(
                 createMock(StreamableFileFactory),
                 createMock(ServiceProviderFactory),
@@ -151,30 +153,65 @@ describe('Provider Controller Test', () => {
             );
         });
 
-        it('should throw UnauthorizedException if user has no permitted orgas', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [] });
+        it('should throw MissingPermissionsError if the repository rejects access', async () => {
+            const permissionError: MissingPermissionsError = new MissingPermissionsError(
+                'No permission to read Rollenerweiterungen',
+            );
+
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Err(permissionError),
+            );
+
             const pathParams: RollenerweiterungByServiceProvidersIdPathParams =
                 new RollenerweiterungByServiceProvidersIdPathParams();
-            Object.assign(pathParams, { angebotId: faker.string.uuid() });
-            const bodyParams: ManageableServiceProvidersParams = new ManageableServiceProvidersParams();
-            Object.assign(bodyParams, { offset: 0, limit: 10 });
+
+            Object.assign(pathParams, {
+                angebotId: faker.string.uuid(),
+            });
+
+            const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
+                new RollenerweiterungByServiceProvidersIdQueryParams();
+
+            Object.assign(queryParams, {
+                offset: 0,
+                limit: 10,
+            });
 
             await expect(
-                providerController.findRollenerweiterungenByServiceProviderId(permissionsMock, pathParams, bodyParams),
-            ).rejects.toBeInstanceOf(UnauthorizedException);
+                providerController.findRollenerweiterungenByServiceProviderId(permissionsMock, pathParams, queryParams),
+            ).rejects.toBe(permissionError);
+            expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
+                pathParams.angebotId,
+                permissionsMock,
+                undefined,
+                undefined,
+                0,
+                10,
+            );
+            expect(organisationRepositoryMock.findByIds).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
         });
 
-        it('should return paged response with items and correct total if user is only permitted on some orgas', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: ['FixedOrgaId'] });
+        it('should return paged response with items and correct total for permitted organisations', async () => {
+            const angebotId: ServiceProviderID = faker.string.uuid();
 
-            const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true);
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([
-                [rollenerweiterung],
-                1,
-            ]);
+            const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
+                organisationId: 'FixedOrgaId',
+            });
 
-            const offset: number = faker.number.int({ min: 1, max: 100 });
-            const limit: number = faker.number.int({ min: 1, max: 100 });
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[rollenerweiterung], 1]),
+            );
+
+            const offset: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
+
+            const limit: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
 
             organisationRepositoryMock.findByIds.mockResolvedValue(
                 new Map([
@@ -188,11 +225,15 @@ describe('Provider Controller Test', () => {
                     ],
                 ]),
             );
+
             rolleRepoMock.findByIds.mockResolvedValue(
                 new Map([
                     [
                         rollenerweiterung.rolleId,
-                        DoFactory.createRolle(true, { id: rollenerweiterung.rolleId, name: 'FixedRolleName' }),
+                        DoFactory.createRolle(true, {
+                            id: rollenerweiterung.rolleId,
+                            name: 'FixedRolleName',
+                        }),
                     ],
                 ]),
             );
@@ -200,18 +241,24 @@ describe('Provider Controller Test', () => {
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
-                    { angebotId: faker.string.uuid() },
-                    { offset: offset, limit: limit, rolleIds: [rollenerweiterung.rolleId] },
+                    {
+                        angebotId,
+                    },
+                    {
+                        offset,
+                        limit,
+                        rolleIds: [rollenerweiterung.rolleId],
+                    },
                 );
 
             expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
-                expect.any(String),
-                ['FixedOrgaId'],
+                angebotId,
+                permissionsMock,
+                undefined,
                 [rollenerweiterung.rolleId],
                 offset,
                 limit,
             );
-
             expect(result).toBeInstanceOf(RawPagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
@@ -223,40 +270,50 @@ describe('Provider Controller Test', () => {
             expect(result.items[0]?.organisationKennung).toBe('FixedOrgaKennung');
         });
 
-        it('should return paged response with items and correct total if user is only permitted on some orgas and is filtering for one of his permitted orgas', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
-                all: false,
-                orgaIds: ['FixedOrgaId1', 'FixedOrgaId2'],
-            });
+        it('should pass requested organisationIds to the repository', async () => {
+            const angebotId: ServiceProviderID = faker.string.uuid();
+
+            const requestedOrganisationId: OrganisationID = 'FixedOrgaId2';
 
             const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
-                organisationId: 'FixedOrgaId2',
+                organisationId: requestedOrganisationId,
             });
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([
-                [rollenerweiterung],
-                1,
-            ]);
 
-            const offset: number = faker.number.int({ min: 1, max: 100 });
-            const limit: number = faker.number.int({ min: 1, max: 100 });
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[rollenerweiterung], 1]),
+            );
+
+            const offset: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
+
+            const limit: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
 
             organisationRepositoryMock.findByIds.mockResolvedValue(
                 new Map([
                     [
-                        'FixedOrgaId2',
+                        requestedOrganisationId,
                         DoFactory.createOrganisation(true, {
-                            id: 'FixedOrgaId2',
+                            id: requestedOrganisationId,
                             name: 'FixedOrgaName2',
                             kennung: 'FixedOrgaKennung2',
                         }),
                     ],
                 ]),
             );
+
             rolleRepoMock.findByIds.mockResolvedValue(
                 new Map([
                     [
                         rollenerweiterung.rolleId,
-                        DoFactory.createRolle(true, { id: rollenerweiterung.rolleId, name: 'FixedRolleName' }),
+                        DoFactory.createRolle(true, {
+                            id: rollenerweiterung.rolleId,
+                            name: 'FixedRolleName',
+                        }),
                     ],
                 ]),
             );
@@ -264,23 +321,25 @@ describe('Provider Controller Test', () => {
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
-                    { angebotId: faker.string.uuid() },
                     {
-                        offset: offset,
-                        limit: limit,
-                        organisationIds: ['FixedOrgaId2'],
+                        angebotId,
+                    },
+                    {
+                        offset,
+                        limit,
+                        organisationIds: [requestedOrganisationId],
                         rolleIds: [rollenerweiterung.rolleId],
                     },
                 );
 
             expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
-                expect.any(String),
-                ['FixedOrgaId2'],
+                angebotId,
+                permissionsMock,
+                [requestedOrganisationId],
                 [rollenerweiterung.rolleId],
                 offset,
                 limit,
             );
-
             expect(result).toBeInstanceOf(RawPagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
@@ -292,37 +351,63 @@ describe('Provider Controller Test', () => {
             expect(result.items[0]?.organisationKennung).toBe('FixedOrgaKennung2');
         });
 
-        it('should throw MissingPermissionsError when user lacks permission when filtering for orga', async () => {
-            const permissions: DeepMocked<PersonPermissions> = createMock(PersonPermissions);
-            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
-                all: false,
-                orgaIds: ['org-2'],
-            });
-            const pathparams: RollenerweiterungByServiceProvidersIdPathParams = { angebotId: faker.string.uuid() };
-            const queryparams: RollenerweiterungByServiceProvidersIdQueryParams =
+        it('should throw MissingPermissionsError when repository rejects the requested organisationIds', async () => {
+            const angebotId: ServiceProviderID = faker.string.uuid();
+
+            const permissionError: MissingPermissionsError = new MissingPermissionsError(
+                'Insufficient permissions for the requested organisationId',
+            );
+
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Err(permissionError),
+            );
+
+            const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
                 new RollenerweiterungByServiceProvidersIdQueryParams();
-            Object.assign(queryparams, {
+
+            Object.assign(queryParams, {
                 organisationIds: ['org-1'],
                 limit: 10,
                 offset: 0,
             });
 
             await expect(
-                providerController.findRollenerweiterungenByServiceProviderId(permissions, pathparams, queryparams),
-            ).rejects.toBeInstanceOf(MissingPermissionsError);
+                providerController.findRollenerweiterungenByServiceProviderId(
+                    permissionsMock,
+                    {
+                        angebotId,
+                    },
+                    queryParams,
+                ),
+            ).rejects.toBe(permissionError);
+            expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
+                angebotId,
+                permissionsMock,
+                ['org-1'],
+                undefined,
+                0,
+                10,
+            );
         });
 
         it('should return paged response with items and correct total', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
+            const angebotId: ServiceProviderID = faker.string.uuid();
 
             const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true);
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([
-                [rollenerweiterung],
-                1,
-            ]);
 
-            const offset: number = faker.number.int({ min: 1, max: 100 });
-            const limit: number = faker.number.int({ min: 1, max: 100 });
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[rollenerweiterung], 1]),
+            );
+
+            const offset: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
+
+            const limit: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
 
             organisationRepositoryMock.findByIds.mockResolvedValue(
                 new Map([
@@ -336,30 +421,44 @@ describe('Provider Controller Test', () => {
                     ],
                 ]),
             );
+
             rolleRepoMock.findByIds.mockResolvedValue(
                 new Map([
                     [
                         rollenerweiterung.rolleId,
-                        DoFactory.createRolle(true, { id: rollenerweiterung.rolleId, name: 'FixedRolleName' }),
+                        DoFactory.createRolle(true, {
+                            id: rollenerweiterung.rolleId,
+                            name: 'FixedRolleName',
+                        }),
                     ],
                 ]),
             );
 
             const pathParams: RollenerweiterungByServiceProvidersIdPathParams =
                 new RollenerweiterungByServiceProvidersIdPathParams();
-            Object.assign(pathParams, { angebotId: faker.string.uuid() });
-            const bodyParams: ManageableServiceProvidersParams = new ManageableServiceProvidersParams();
-            Object.assign(bodyParams, { offset, limit });
+
+            Object.assign(pathParams, {
+                angebotId,
+            });
+
+            const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
+                new RollenerweiterungByServiceProvidersIdQueryParams();
+
+            Object.assign(queryParams, {
+                offset,
+                limit,
+            });
 
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
-                    bodyParams,
+                    queryParams,
                 );
 
             expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
-                expect.any(String),
+                angebotId,
+                permissionsMock,
                 undefined,
                 undefined,
                 offset,
@@ -377,32 +476,48 @@ describe('Provider Controller Test', () => {
             expect(result.items[0]?.organisationKennung).toBe('FixedOrgaKennung');
         });
 
-        it('should return fallbacks as empty strings for extended data of related aggregate is mising', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
+        it('should return fallbacks as empty strings if extended data for related aggregates is missing', async () => {
+            const angebotId: ServiceProviderID = faker.string.uuid();
 
             const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true);
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([
-                [rollenerweiterung],
-                1,
-            ]);
+
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[rollenerweiterung], 1]),
+            );
 
             organisationRepositoryMock.findByIds.mockResolvedValue(new Map());
             rolleRepoMock.findByIds.mockResolvedValue(new Map());
 
-            const offset: number = faker.number.int({ min: 1, max: 100 });
-            const limit: number = faker.number.int({ min: 1, max: 100 });
+            const offset: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
+
+            const limit: number = faker.number.int({
+                min: 1,
+                max: 100,
+            });
 
             const pathParams: RollenerweiterungByServiceProvidersIdPathParams =
                 new RollenerweiterungByServiceProvidersIdPathParams();
-            Object.assign(pathParams, { angebotId: faker.string.uuid() });
-            const bodyParams: ManageableServiceProvidersParams = new ManageableServiceProvidersParams();
-            Object.assign(bodyParams, { offset, limit });
+
+            Object.assign(pathParams, {
+                angebotId,
+            });
+
+            const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
+                new RollenerweiterungByServiceProvidersIdQueryParams();
+
+            Object.assign(queryParams, {
+                offset,
+                limit,
+            });
 
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
-                    bodyParams,
+                    queryParams,
                 );
 
             expect(result).toBeInstanceOf(RawPagedResponse);
@@ -417,19 +532,22 @@ describe('Provider Controller Test', () => {
         });
 
         it('should return paged response with default offset and limit if not provided', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
+            const angebotId: ServiceProviderID = faker.string.uuid();
 
             const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true);
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([
-                [rollenerweiterung],
-                1,
-            ]);
+
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[rollenerweiterung], 1]),
+            );
 
             rolleRepoMock.findByIds.mockResolvedValue(
                 new Map([
                     [
                         rollenerweiterung.rolleId,
-                        DoFactory.createRolle(true, { id: rollenerweiterung.rolleId, name: faker.person.firstName() }),
+                        DoFactory.createRolle(true, {
+                            id: rollenerweiterung.rolleId,
+                            name: faker.person.firstName(),
+                        }),
                     ],
                 ]),
             );
@@ -449,35 +567,58 @@ describe('Provider Controller Test', () => {
 
             const pathParams: RollenerweiterungByServiceProvidersIdPathParams =
                 new RollenerweiterungByServiceProvidersIdPathParams();
-            Object.assign(pathParams, { angebotId: faker.string.uuid() });
-            const bodyParams: ManageableServiceProvidersParams = new ManageableServiceProvidersParams();
+
+            Object.assign(pathParams, {
+                angebotId,
+            });
+
+            const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
+                new RollenerweiterungByServiceProvidersIdQueryParams();
 
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
-                    bodyParams,
+                    queryParams,
                 );
 
+            expect(rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung).toHaveBeenCalledWith(
+                angebotId,
+                permissionsMock,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+            );
             expect(result.offset).toBe(0);
             expect(result.limit).toBe(1);
             expect(result.total).toBe(1);
             expect(result.items).toHaveLength(1);
         });
 
-        it('should return empty items if repo returns empty array', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
-            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce([[], 0]);
+        it('should return empty items if repository returns an empty result', async () => {
+            const angebotId: ServiceProviderID = faker.string.uuid();
+
+            rollenerweiterungRepoMock.findByServiceProviderIdPagedAndSortedByOrgaKennung.mockResolvedValueOnce(
+                Ok([[], 0]),
+            );
 
             const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
-                    { angebotId: faker.string.uuid() },
-                    { offset: 0, limit: 10 },
+                    {
+                        angebotId,
+                    },
+                    {
+                        offset: 0,
+                        limit: 10,
+                    },
                 );
 
             expect(result.items).toHaveLength(0);
             expect(result.total).toBe(0);
+            expect(rolleRepoMock.findByIds).toHaveBeenCalledWith([]);
+            expect(organisationRepositoryMock.findByIds).toHaveBeenCalledWith([]);
         });
     });
 

@@ -39,7 +39,6 @@ import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import {
     ServiceProviderKategorie,
     ServiceProviderMerkmal,
@@ -60,13 +59,14 @@ import { ManageableServiceProvidersParams } from './manageable-service-providers
 import { RollenerweiterungForManageableServiceProviderResponse } from './RollenerweiterungForManageableServiceProviderResponse.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
+import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
 
 describe('ServiceProvider API', () => {
     let app: INestApplication;
     let orm: MikroORM;
     let em: EntityManager;
     let rolleRepo: RolleRepo;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
     let organisationRepo: OrganisationRepository;
 
     let permissionsMock: DeepMocked<PersonPermissions>;
@@ -109,7 +109,7 @@ describe('ServiceProvider API', () => {
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         rolleRepo = module.get(RolleRepo);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
         organisationRepo = module.get(OrganisationRepository);
 
         await DatabaseTestModule.setupDatabase(module.get(MikroORM));
