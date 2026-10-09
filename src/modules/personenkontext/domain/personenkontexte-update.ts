@@ -14,6 +14,7 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
@@ -177,7 +178,7 @@ export class PersonenkontexteUpdate {
                         pk.personId === existingPK.personId &&
                         pk.organisationId === existingPK.organisationId &&
                         pk.rolleId === existingPK.rolleId &&
-                        pk.befristung === existingPK.befristung,
+                        pk.befristung?.getTime() === existingPK.befristung?.getTime(),
                 )
             ) {
                 modifiedPKs.push(existingPK);
@@ -191,7 +192,7 @@ export class PersonenkontexteUpdate {
                         pk.personId === sentPK.personId &&
                         pk.organisationId === sentPK.organisationId &&
                         pk.rolleId === sentPK.rolleId &&
-                        pk.befristung === sentPK.befristung,
+                        pk.befristung?.getTime() === sentPK.befristung?.getTime(),
                 )
             ) {
                 modifiedPKs.push(sentPK);
@@ -213,6 +214,36 @@ export class PersonenkontexteUpdate {
 
         if (!hasPermissions) {
             return new MissingPermissionsError('Can not modify person');
+        }
+
+        const modifiedRollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds([
+            ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
+        ]);
+
+        return this.checkMptPermissions(modifiedPKs, modifiedRollen);
+    }
+
+    private async checkMptPermissions(
+        modifiedPKs: Personenkontext<true>[],
+        modifiedRollen: Map<RolleID, Rolle<true>>,
+    ): Promise<Option<DomainError>> {
+        const hasMptPermissions: boolean = (
+            await Promise.all(
+                modifiedPKs
+                    .filter((pk: Personenkontext<true>) =>
+                        modifiedRollen.get(pk.rolleId)?.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+                    )
+                    .map((pk: Personenkontext<true>) =>
+                        this.permissions.hasSystemrechtAtOrganisation(
+                            pk.organisationId,
+                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                        ),
+                    ),
+            )
+        ).every(Boolean);
+
+        if (!hasMptPermissions) {
+            return new MissingPermissionsError('Unauthorized to modify MPT-Rollen at the organisation');
         }
 
         return undefined;

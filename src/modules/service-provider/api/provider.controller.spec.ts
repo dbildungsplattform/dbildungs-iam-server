@@ -587,6 +587,8 @@ describe('Provider Controller Test', () => {
                     organisationId,
                     personPermissionsMock,
                     queryParams.rollenArten,
+                    queryParams.limit,
+                    queryParams.offset,
                 );
                 expect(result).toBeInstanceOf(RawPagedResponse);
                 expect(result.total).toBe(1);
