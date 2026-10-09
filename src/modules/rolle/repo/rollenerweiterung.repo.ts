@@ -113,6 +113,12 @@ export class RollenerweiterungRepo {
         return Ok(rollenerweiterungen);
     }
 
+    /**
+     * Returns the number of references for the given ServiceProviders.
+     *
+     * This method performs no Rollenerweiterung permission check because it is
+     * used only as a technical reference check before deleting a ServiceProvider.
+     */
     public async countByServiceProviderIds(
         serviceProviderIds: ServiceProviderID[],
     ): Promise<Record<ServiceProviderID, number>> {

@@ -219,6 +219,10 @@ export class InternalRollenerweiterungRepo {
         serviceProviderIds: ServiceProviderID[],
         organisationIds?: OrganisationID[],
     ): Promise<Record<ServiceProviderID, number>> {
+        if (serviceProviderIds.length === 0) {
+            return {};
+        }
+
         const where: FilterQuery<RollenerweiterungEntity> = {
             serviceProviderId: {
                 $in: serviceProviderIds,
