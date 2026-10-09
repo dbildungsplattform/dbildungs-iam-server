@@ -51,7 +51,6 @@ import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleEntity } from '../entity/rolle.entity.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { RolleApiModule } from '../rolle-api.module.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
@@ -63,13 +62,14 @@ import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.respons
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
 import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
     let orm: MikroORM;
     let em: EntityManager;
     let rolleRepo: RolleRepo;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
     let personRepo: PersonRepository;
     let organisationRepo: OrganisationRepository;
     let dBiamPersonenkontextRepoInternal: DBiamPersonenkontextRepoInternal;
@@ -135,7 +135,7 @@ describe('Rolle API', () => {
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         rolleRepo = module.get(RolleRepo);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
         personRepo = module.get(PersonRepository);
         organisationRepo = module.get(OrganisationRepository);
         personFactory = module.get(PersonFactory);

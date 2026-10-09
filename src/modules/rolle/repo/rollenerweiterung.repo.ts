@@ -113,66 +113,6 @@ export class RollenerweiterungRepo {
         return Ok(rollenerweiterungen);
     }
 
-    public async deleteByOrganisationIdAndServiceProviderIds(
-        organisationId: OrganisationID,
-        serviceProviderIds: ServiceProviderID[],
-        permissions: IPersonPermissions,
-    ): Promise<Result<null, DomainError | MissingPermissionsError>> {
-        const permissionResult: Result<null, MissingPermissionsError> = await this.checkPermission(
-            organisationId,
-            permissions,
-        );
-
-        if (!permissionResult.ok) {
-            return permissionResult;
-        }
-
-        return this.internalRollenerweiterungRepo.deleteByOrganisationIdAndServiceProviderIds(
-            organisationId,
-            serviceProviderIds,
-        );
-    }
-
-    public async deleteByServiceProviderIdAndRollenarten(
-        serviceProviderId: ServiceProviderID,
-        permissions: IPersonPermissions,
-        rollenarten?: RollenArt[],
-    ): Promise<Result<null, DomainError | MissingPermissionsError>> {
-        const affectedRollenerweiterungen: Rollenerweiterung<true>[] =
-            await this.internalRollenerweiterungRepo.findByServiceProviderIdAndRollenarten(
-                serviceProviderId,
-                rollenarten,
-            );
-
-        const affectedOrganisationIds: OrganisationID[] = Array.from(
-            new Set(
-                affectedRollenerweiterungen.map(
-                    (rollenerweiterung: Rollenerweiterung<true>): OrganisationID => rollenerweiterung.organisationId,
-                ),
-            ),
-        );
-
-        const permissionResults: boolean[] = await Promise.all(
-            affectedOrganisationIds.map(
-                (organisationId: OrganisationID): Promise<boolean> =>
-                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.ROLLEN_ERWEITERN),
-            ),
-        );
-
-        const isAuthorizedForAllAffectedOrganisations: boolean = permissionResults.every(
-            (hasPermission: boolean): boolean => hasPermission,
-        );
-
-        if (!isAuthorizedForAllAffectedOrganisations) {
-            return Err(new MissingPermissionsError('Not authorized'));
-        }
-
-        return this.internalRollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
-            serviceProviderId,
-            rollenarten,
-        );
-    }
-
     public async countByServiceProviderIds(
         serviceProviderIds: ServiceProviderID[],
     ): Promise<Record<ServiceProviderID, number>> {
@@ -262,5 +202,65 @@ export class RollenerweiterungRepo {
             );
 
         return Ok(result);
+    }
+
+    public async deleteByOrganisationIdAndServiceProviderIds(
+        organisationId: OrganisationID,
+        serviceProviderIds: ServiceProviderID[],
+        permissions: IPersonPermissions,
+    ): Promise<Result<null, DomainError | MissingPermissionsError>> {
+        const permissionResult: Result<null, MissingPermissionsError> = await this.checkPermission(
+            organisationId,
+            permissions,
+        );
+
+        if (!permissionResult.ok) {
+            return permissionResult;
+        }
+
+        return this.internalRollenerweiterungRepo.deleteByOrganisationIdAndServiceProviderIds(
+            organisationId,
+            serviceProviderIds,
+        );
+    }
+
+    public async deleteByServiceProviderIdAndRollenarten(
+        serviceProviderId: ServiceProviderID,
+        permissions: IPersonPermissions,
+        rollenarten?: RollenArt[],
+    ): Promise<Result<null, DomainError | MissingPermissionsError>> {
+        const affectedRollenerweiterungen: Rollenerweiterung<true>[] =
+            await this.internalRollenerweiterungRepo.findByServiceProviderIdAndRollenarten(
+                serviceProviderId,
+                rollenarten,
+            );
+
+        const affectedOrganisationIds: OrganisationID[] = Array.from(
+            new Set(
+                affectedRollenerweiterungen.map(
+                    (rollenerweiterung: Rollenerweiterung<true>): OrganisationID => rollenerweiterung.organisationId,
+                ),
+            ),
+        );
+
+        const permissionResults: boolean[] = await Promise.all(
+            affectedOrganisationIds.map(
+                (organisationId: OrganisationID): Promise<boolean> =>
+                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.ROLLEN_ERWEITERN),
+            ),
+        );
+
+        const isAuthorizedForAllAffectedOrganisations: boolean = permissionResults.every(
+            (hasPermission: boolean): boolean => hasPermission,
+        );
+
+        if (!isAuthorizedForAllAffectedOrganisations) {
+            return Err(new MissingPermissionsError('Not authorized'));
+        }
+
+        return this.internalRollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
+            serviceProviderId,
+            rollenarten,
+        );
     }
 }
