@@ -16,6 +16,8 @@ import {
 } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
@@ -457,6 +459,117 @@ describe('OrganisationService', () => {
             expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new TraegerUnterRootChildError(),
+            });
+        });
+
+        it('should create a Behoerde when name is unique and administriertVon is a Land', async () => {
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
+            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: land.id,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(land);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
+            organisationRepositoryMock.save.mockResolvedValue(behoerde as unknown as Organisation<true>);
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: true,
+                value: behoerde as unknown as Organisation<true>,
+            });
+        });
+
+        it('should create a Behoerde when name is unique and administriertVon is a Behoerde', async () => {
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            const parentBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: parentBehoerde.id,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(parentBehoerde);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
+            organisationRepositoryMock.save.mockResolvedValue(behoerde as unknown as Organisation<true>);
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: true,
+                value: behoerde as unknown as Organisation<true>,
+            });
+        });
+
+        it('should return a domain error if Behoerde administriertVon is not set', async () => {
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: undefined,
+            });
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new BehoerdeAdministriertVonError(),
+            });
+        });
+
+        it('should return a domain error if Behoerde administriertVon is neither Behoerde nor Land', async () => {
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: schule.id,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(schule);
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new BehoerdeAdministriertVonError(),
+            });
+        });
+
+        it('should return a domain error if Behoerde name is not unique', async () => {
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
+            const name: string = faker.company.name();
+            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: land.id,
+                name,
+            });
+            const existingBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+                name,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(land);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce([[existingBehoerde], 1]);
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new BehoerdeNameEindeutigError(),
             });
         });
     });

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
@@ -373,6 +373,42 @@ describe('Organisation', () => {
 
                 expect(result).toBeInstanceOf(SchultraegerNameEindeutigError);
             });
+        });
+    });
+
+    describe('isBehoerde', () => {
+        it('should return true if organisation is a Behoerde', () => {
+            const behoerde: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+
+            expect(behoerde.isBehoerde()).toBe(true);
+        });
+
+        it('should return false if organisation is not a Behoerde', () => {
+            const traeger: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                typ: OrganisationsTyp.TRAEGER,
+            });
+
+            expect(traeger.isBehoerde()).toBe(false);
+        });
+    });
+
+    describe('isLand', () => {
+        it('should return true if organisation is a Land', () => {
+            const land: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                typ: OrganisationsTyp.LAND,
+            });
+
+            expect(land.isLand()).toBe(true);
+        });
+
+        it('should return false if organisation is not a Land', () => {
+            const traeger: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+                typ: OrganisationsTyp.TRAEGER,
+            });
+
+            expect(traeger.isLand()).toBe(false);
         });
     });
 });
