@@ -49,9 +49,7 @@ describe('BehoerdeAdministriertVon Specification', () => {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: faker.string.uuid(),
             });
-            orgaRepoMock.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, { typ: parentTyp }),
-            );
+            orgaRepoMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: parentTyp }));
 
             await expect(sut.isSatisfiedBy(behoerde)).resolves.toBe(true);
         },
