@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { uniq } from 'lodash-es';
-// invalid import
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
@@ -26,12 +25,14 @@ interface EmailAddressInfo {
 }
 
 type PermittedPersonenkontext = {
-    dienststellennr: string;
+    dienststellennr?: string;
     rolleId: RolleID;
     rollenart: RollenArt;
 };
 
-type ExternalPkDataWithRequiredFields = ExternalPkData & { kennung: string; rollenart: RollenArt };
+type PermittedPersonenkontextWithDienststellennr = PermittedPersonenkontext & {
+    dienststellennr: string;
+};
 
 type OptionalEmailData = {
     emailAdresse?: string;
@@ -42,8 +43,9 @@ export type UserExternalData = OptionalEmailData & {
     personId: string;
     vorname: string;
     nachname: string;
-    rollenart?: RollenArt;
-    personenkontexte: Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[];
+    rollenart: RollenArt;
+    dienststellennr: string[];
+    personenkontexte: Pick<PermittedPersonenkontextWithDienststellennr, 'dienststellennr' | 'rolleId'>[];
 };
 
 @Injectable()
@@ -77,7 +79,7 @@ export class UserExternaldataService {
             return permissionCheckResult;
         }
 
-        const rollenartResult: Result<RollenArt | undefined, MultipleRollenartenError> =
+        const rollenartResult: Result<RollenArt, MultipleRollenartenError> =
             this.getSingleRollenart(permittedPersonenkontexte);
         if (!rollenartResult.ok) {
             return rollenartResult;
@@ -96,6 +98,7 @@ export class UserExternaldataService {
             vorname: person.vorname,
             nachname: person.familienname,
             rollenart: rollenartResult.value,
+            dienststellennr: this.mapToDienststellennr(permittedPersonenkontexte),
             personenkontexte: this.mapToPersonenkontexte(permittedPersonenkontexte),
             ...emailDataResult.value,
         };
@@ -139,15 +142,15 @@ export class UserExternaldataService {
 
     private getSingleRollenart(
         permittedPersonenkontexte: PermittedPersonenkontext[],
-    ): Result<RollenArt | undefined, MultipleRollenartenError> {
+    ): Result<RollenArt, MultipleRollenartenError> {
         const uniqueRollenarten: RollenArt[] = uniq(
             permittedPersonenkontexte.map((pk: PermittedPersonenkontext) => pk.rollenart),
         );
-        if (uniqueRollenarten.length > 1) {
+        if (uniqueRollenarten.length > 1 || !uniqueRollenarten[0]) {
             return Err(new MultipleRollenartenError(uniqueRollenarten));
         }
 
-        const singleRollenArt: RollenArt | undefined = uniqueRollenarten[0];
+        const singleRollenArt: RollenArt = uniqueRollenarten[0];
 
         return Ok(singleRollenArt);
     }
@@ -182,15 +185,29 @@ export class UserExternaldataService {
         });
     }
 
+    private mapToDienststellennr(permittedPersonenkontexte: PermittedPersonenkontext[]): string[] {
+        const dienststellennrList: string[] = permittedPersonenkontexte
+            .map((pk: PermittedPersonenkontext) => pk.dienststellennr)
+            .filter((dienststellennr: string | undefined): dienststellennr is string => Boolean(dienststellennr));
+
+        return dienststellennrList;
+    }
+
     private mapToPersonenkontexte(
         permittedPersonenkontexte: PermittedPersonenkontext[],
-    ): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[] {
-        return permittedPersonenkontexte.map(
-            (pk: PermittedPersonenkontext): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'> => ({
-                dienststellennr: pk.dienststellennr,
-                rolleId: pk.rolleId,
-            }),
-        );
+    ): Pick<PermittedPersonenkontextWithDienststellennr, 'dienststellennr' | 'rolleId'>[] {
+        return permittedPersonenkontexte
+            .filter((pk: PermittedPersonenkontext): pk is PermittedPersonenkontextWithDienststellennr =>
+                Boolean(pk.dienststellennr),
+            )
+            .map(
+                (
+                    pk: PermittedPersonenkontextWithDienststellennr,
+                ): Pick<PermittedPersonenkontextWithDienststellennr, 'dienststellennr' | 'rolleId'> => ({
+                    dienststellennr: pk.dienststellennr,
+                    rolleId: pk.rolleId,
+                }),
+            );
     }
 
     // ----
@@ -200,17 +217,12 @@ export class UserExternaldataService {
         erweiterungenByPkId: Map<string, ServiceProvider<true>[]>,
         keycloakClientId: string,
     ): PermittedPersonenkontext[] {
-        const pkDataWithRequiredFields: ExternalPkDataWithRequiredFields[] = externalPkData.filter(
-            (pk: ExternalPkData): pk is ExternalPkDataWithRequiredFields => Boolean(pk.kennung && pk.rollenart),
-        );
-
-        const permittedPkData: ExternalPkDataWithRequiredFields[] = pkDataWithRequiredFields.filter(
-            (pk: ExternalPkDataWithRequiredFields) =>
-                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
+        const permittedPkData: ExternalPkData[] = externalPkData.filter((pk: ExternalPkData) =>
+            this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
         );
 
         const permittedPersonenkontexte: PermittedPersonenkontext[] = permittedPkData.map(
-            (pk: ExternalPkDataWithRequiredFields): PermittedPersonenkontext => ({
+            (pk: ExternalPkData): PermittedPersonenkontext => ({
                 dienststellennr: pk.kennung,
                 rolleId: pk.rolleId,
                 rollenart: pk.rollenart,
