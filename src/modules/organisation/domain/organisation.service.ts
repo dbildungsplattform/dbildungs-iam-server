@@ -15,7 +15,11 @@ import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
+import { BehoerdeAdministriertVon } from '../specification/behoerde-administriert-von.js';
+import { BehoerdeNameUnique } from '../specification/behoerde-name-eindeutig.js';
 import { EmailAdressOnOrganisationTyp } from '../specification/email-on-organisation-type.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
@@ -135,12 +139,14 @@ export class OrganisationService {
         const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
         if (referenceError) {
             await this.logCreation(permissions, organisationDo, referenceError);
+
             return { ok: false, error: referenceError };
         }
 
         const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
         if (validationError) {
             await this.logCreation(permissions, organisationDo, validationError);
+
             return { ok: false, error: validationError };
         }
 
@@ -148,6 +154,7 @@ export class OrganisationService {
             await this.validateSchulSpecifications(organisationDo);
         if (schulSpecificationsError) {
             await this.logCreation(permissions, organisationDo, schulSpecificationsError);
+
             return { ok: false, error: schulSpecificationsError };
         }
 
@@ -155,18 +162,28 @@ export class OrganisationService {
             await this.validateSchultraegerSpecifications(organisationDo);
         if (!schultraegerResult.ok) {
             await this.logCreation(permissions, organisationDo, schultraegerResult.error);
+
             return { ok: false, error: schultraegerResult.error };
+        }
+
+        const behoerdenResult: Result<void, DomainError> = await this.validateBehoerdenSpecifications(organisationDo);
+        if (!behoerdenResult.ok) {
+            await this.logCreation(permissions, organisationDo, behoerdenResult.error);
+
+            return { ok: false, error: behoerdenResult.error };
         }
 
         const organisation: Organisation<true> | OrganisationSpecificationError =
             await this.organisationRepo.save(organisationDo);
         if (organisation instanceof Organisation) {
             await this.logCreation(permissions, organisation);
+
             return { ok: true, value: organisation };
         }
 
         const error: DomainError = new EntityCouldNotBeCreated(`Organization could not be created`);
         await this.logCreation(permissions, organisationDo, error);
+
         return { ok: false, error: error };
     }
 
@@ -446,6 +463,29 @@ export class OrganisationService {
         return { ok: true, value: undefined };
     }
 
+    private async validateBehoerdenSpecifications(
+        organisationDo: Organisation<false>,
+    ): Promise<Result<void, DomainError>> {
+        if (!organisationDo.isBehoerde()) {
+            return { ok: true, value: undefined };
+        }
+
+        const behoerdeAdministriertVon: BehoerdeAdministriertVon = new BehoerdeAdministriertVon(this.organisationRepo);
+        const isBehoerdeAdministriertVonSatisfied: boolean =
+            await behoerdeAdministriertVon.isSatisfiedBy(organisationDo);
+        if (!isBehoerdeAdministriertVonSatisfied) {
+            return { ok: false, error: new BehoerdeAdministriertVonError(organisationDo.id ?? undefined) };
+        }
+
+        const behoerdeNameEindeutig: BehoerdeNameUnique = new BehoerdeNameUnique(this.organisationRepo);
+        const isBehoerdeNameEindeutigSatisfied: boolean = await behoerdeNameEindeutig.isSatisfiedBy(organisationDo);
+        if (!isBehoerdeNameEindeutigSatisfied) {
+            return { ok: false, error: new BehoerdeNameEindeutigError(organisationDo.id ?? undefined) };
+        }
+
+        return { ok: true, value: undefined };
+    }
+
     private async validateStructureSpecifications(
         childOrganisation: Organisation<true>,
     ): Promise<Result<boolean, OrganisationSpecificationError>> {
@@ -568,6 +608,8 @@ export class OrganisationService {
                 return RollenSystemRecht.SCHULEN_VERWALTEN;
             case OrganisationsTyp.KLASSE:
                 return RollenSystemRecht.KLASSEN_VERWALTEN;
+            case OrganisationsTyp.BEHOERDE:
+                return RollenSystemRecht.BEHOERDEN_VERWALTEN;
             default:
                 return;
         }

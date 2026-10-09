@@ -592,6 +592,50 @@ describe('PersonPermissions', () => {
             );
         });
 
+        it('should return true if person has BEHOERDEN_VERWALTEN Recht at the root organisation', async () => {
+            const person: Person<true> = DoFactory.createPerson(true);
+            dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
+
+            const personPermissions: IPersonPermissions = new PersonPermissions(
+                dbiamPersonenkontextRepoMock,
+                organisationRepoMock,
+                rolleRepoMock,
+                person,
+            );
+
+            const result: boolean = await personPermissions.hasOrgVerwaltenRechtAtOrga(OrganisationsTyp.BEHOERDE);
+
+            expect(result).toBe(true);
+            expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).toHaveBeenCalledTimes(1);
+            expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                person.id,
+                organisationRepoMock.ROOT_ORGANISATION_ID,
+                RollenSystemRecht.BEHOERDEN_VERWALTEN,
+            );
+        });
+
+        it('should return false if person is missing BEHOERDEN_VERWALTEN Recht at the root organisation', async () => {
+            const person: Person<true> = DoFactory.createPerson(true);
+            dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
+
+            const personPermissions: IPersonPermissions = new PersonPermissions(
+                dbiamPersonenkontextRepoMock,
+                organisationRepoMock,
+                rolleRepoMock,
+                person,
+            );
+
+            const result: boolean = await personPermissions.hasOrgVerwaltenRechtAtOrga(OrganisationsTyp.BEHOERDE);
+
+            expect(result).toBe(false);
+            expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).toHaveBeenCalledTimes(1);
+            expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                person.id,
+                organisationRepoMock.ROOT_ORGANISATION_ID,
+                RollenSystemRecht.BEHOERDEN_VERWALTEN,
+            );
+        });
+
         it('should return true if person has SCHULTRAEGER_VERWALTEN Recht at the root organisation', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);

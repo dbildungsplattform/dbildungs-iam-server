@@ -227,6 +227,8 @@ export class PersonPermissions implements IPersonPermissions {
             );
         } else if (typ === OrganisationsTyp.SCHULE) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULEN_VERWALTEN]);
+        } else if (typ === OrganisationsTyp.BEHOERDE) {
+            return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.BEHOERDEN_VERWALTEN]);
         } else if (typ === OrganisationsTyp.TRAEGER) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULTRAEGER_VERWALTEN]);
         }

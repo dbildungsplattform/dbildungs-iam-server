@@ -12,6 +12,7 @@ export enum RollenSystemRechtEnum {
     EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN = 'EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN',
     SCHULEN_VERWALTEN = 'SCHULEN_VERWALTEN',
     KLASSEN_VERWALTEN = 'KLASSEN_VERWALTEN',
+    BEHOERDEN_VERWALTEN = 'BEHOERDEN_VERWALTEN',
     SCHULTRAEGER_VERWALTEN = 'SCHULTRAEGER_VERWALTEN',
     PERSON_SYNCHRONISIEREN = 'PERSON_SYNCHRONISIEREN',
     CRON_DURCHFUEHREN = 'CRON_DURCHFUEHREN',
@@ -105,6 +106,11 @@ export class RollenSystemRecht {
     public static readonly KLASSEN_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
         false,
         RollenSystemRechtEnum.KLASSEN_VERWALTEN,
+    );
+
+    public static readonly BEHOERDEN_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
+        false,
+        RollenSystemRechtEnum.BEHOERDEN_VERWALTEN,
     );
 
     public static readonly SCHULTRAEGER_VERWALTEN: RollenSystemRecht = new RollenSystemRecht(
@@ -231,6 +237,8 @@ export class RollenSystemRecht {
                 return RollenSystemRecht.SCHULEN_VERWALTEN;
             case RollenSystemRechtEnum.KLASSEN_VERWALTEN:
                 return RollenSystemRecht.KLASSEN_VERWALTEN;
+            case RollenSystemRechtEnum.BEHOERDEN_VERWALTEN:
+                return RollenSystemRecht.BEHOERDEN_VERWALTEN;
             case RollenSystemRechtEnum.SCHULTRAEGER_VERWALTEN:
                 return RollenSystemRecht.SCHULTRAEGER_VERWALTEN;
             case RollenSystemRechtEnum.PERSON_SYNCHRONISIEREN:
