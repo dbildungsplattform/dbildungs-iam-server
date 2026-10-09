@@ -1,7 +1,7 @@
 import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Client, Entry, SearchResult } from 'ldapts';
+import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
 import assert from 'node:assert';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
@@ -38,6 +38,9 @@ import { LdapModule } from '../ldap.module.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
 import { Mock } from 'vitest';
 import { OrganisationKennung, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
+import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
+import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 
 describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
     let app: INestApplication;
@@ -50,6 +53,7 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
     let personenkontextRepo: DBiamPersonenkontextRepoInternal;
     let logger: DeepMocked<ClassLogger>;
     let eventService: DeepMocked<EventRoutingLegacyKafkaService>;
+    let emailResolverService: DeepMocked<EmailResolverService>;
     let ldapAdapter: LdapAdapter;
     let ldap: Client;
     let ldapConfig: LdapInstanceConfig;
@@ -88,6 +92,8 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
             .useValue(createMock(ClassLogger))
             .overrideProvider(EventRoutingLegacyKafkaService)
             .useValue(createMock(EventRoutingLegacyKafkaService))
+            .overrideProvider(EmailResolverService)
+            .useValue(createMock(EmailResolverService))
             .compile();
 
         orm = module.get(MikroORM);
@@ -99,6 +105,7 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
         personenkontextRepo = module.get(DBiamPersonenkontextRepoInternal);
         logger = module.get(ClassLogger);
         eventService = module.get(EventRoutingLegacyKafkaService);
+        emailResolverService = module.get(EmailResolverService);
         ldapAdapter = module.get(LdapAdapter);
         ldapConfig = module.get(LdapInstanceConfig);
         ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 1;
@@ -114,6 +121,8 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
     beforeEach(async () => {
         vi.restoreAllMocks();
         vi.clearAllMocks();
+        emailResolverService.findEmailBySpshPerson.mockReset();
+        emailResolverService.findEmailBySpshPerson.mockResolvedValue(undefined);
         await DatabaseTestModule.clearDatabase(orm);
         orm.em.clear();
         rootOrga = await organisationRepository.saveSeedData(
@@ -259,7 +268,9 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
         expect(savePerson).not.toHaveBeenCalled();
         expect(addToGroup).not.toHaveBeenCalled();
         expect(removeFromGroup).not.toHaveBeenCalled();
-        expect(logger.warning).not.toHaveBeenCalled();
+        expect(logger.warning).toHaveBeenCalledExactlyOnceWith(
+            `Mismatch for enabledEmailAddress, person:null, LDAP:empty, personId:${person.id}, username:${person.username}`,
+        );
         expect(eventService.publish).toHaveBeenCalledOnce();
     });
 
@@ -280,6 +291,86 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
         expect(logger.warning).toHaveBeenCalledWith(expect.stringContaining('Mismatch for givenName'));
         expect(logger.warning).toHaveBeenCalledWith(expect.stringContaining('Mismatch for surName'));
     });
+
+    it('corrects a stale LDAP common name', async () => {
+        const teacher: Entry = await createTeacher();
+        await ldap.modify(
+            teacher.dn,
+            new Change({ operation: 'replace', modification: new Attribute({ type: 'cn', values: ['Stale name'] }) }),
+        );
+        logger.warning.mockClear();
+
+        await sut.triggerLdapSync(person.id);
+
+        const entries: Entry[] = await search(`(uid=${person.username})`);
+        expect(entries[0]?.['cn']).toBe(person.username);
+        expect(logger.warning).toHaveBeenCalledWith(expect.stringContaining('Mismatch for cn'));
+        expect(eventService.publish).toHaveBeenCalledOnce();
+    });
+
+    it('replaces a stale LDAP email with the enabled email from the resolver', async () => {
+        await createTeacher();
+        const address: string = 'integration.teacher@schule-sh.de';
+        emailResolverService.findEmailBySpshPerson.mockResolvedValue(
+            new PersonEmailResponse(EmailAddressStatus.ENABLED, address),
+        );
+
+        await sut.triggerLdapSync(person.id);
+
+        const entries: Entry[] = await search(`(uid=${person.username})`);
+        expect(entries[0]?.['mailPrimaryAddress']).toBe(address);
+        expect(emailResolverService.findEmailBySpshPerson).toHaveBeenLastCalledWith(person.id);
+        expect(eventService.publish).toHaveBeenLastCalledWith(
+            expect.objectContaining({ personId: person.id, constructor: LdapSyncCompletedEvent }),
+            expect.objectContaining({ personId: person.id, constructor: KafkaLdapSyncCompletedEvent }),
+        );
+    });
+
+    it('does not rewrite an already synchronized email address', async () => {
+        const address: string = 'integration.teacher@schule-sh.de';
+        emailResolverService.findEmailBySpshPerson.mockResolvedValue(
+            new PersonEmailResponse(EmailAddressStatus.ENABLED, address),
+        );
+        await createTeacher();
+        const changeEmail: Mock<LdapAdapter['changeEmailAddressByPersonId']> = vi.spyOn(
+            ldapAdapter,
+            'changeEmailAddressByPersonId',
+        );
+        logger.warning.mockClear();
+
+        await sut.triggerLdapSync(person.id);
+
+        const entries: Entry[] = await search(`(uid=${person.username})`);
+        expect(entries[0]?.['mailPrimaryAddress']).toBe(address);
+        expect(changeEmail).not.toHaveBeenCalled();
+        expect(logger.warning).not.toHaveBeenCalled();
+        expect(eventService.publish).toHaveBeenCalledOnce();
+    });
+
+    it.each([undefined, EmailAddressStatus.DISABLED, EmailAddressStatus.REQUESTED])(
+        'retains the LDAP email when the resolver status is %s',
+        async (status: EmailAddressStatus | undefined) => {
+            const address: string = 'existing.teacher@schule-sh.de';
+            emailResolverService.findEmailBySpshPerson.mockResolvedValue(
+                new PersonEmailResponse(EmailAddressStatus.ENABLED, address),
+            );
+            await createTeacher();
+            emailResolverService.findEmailBySpshPerson.mockResolvedValue(
+                status === undefined ? undefined : new PersonEmailResponse(status, 'inactive.teacher@schule-sh.de'),
+            );
+            const changeEmail: Mock<LdapAdapter['changeEmailAddressByPersonId']> = vi.spyOn(
+                ldapAdapter,
+                'changeEmailAddressByPersonId',
+            );
+
+            await sut.triggerLdapSync(person.id);
+
+            const entries: Entry[] = await search(`(uid=${person.username})`);
+            expect(entries[0]?.['mailPrimaryAddress']).toBe(address);
+            expect(changeEmail).not.toHaveBeenCalled();
+            expect(eventService.publish).toHaveBeenCalledOnce();
+        },
+    );
 
     it('removes orphaned school membership while retaining current membership', async () => {
         const teacher: Entry = await createTeacher();
@@ -365,6 +456,20 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
         await sut.triggerLdapSync(person.id);
 
         expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Could not find organisation'));
+        expect(eventService.publish).not.toHaveBeenCalled();
+        expect(await search(`(uid=${person.username})`)).toHaveLength(0);
+    });
+
+    it('aborts when a school has no kennung', async () => {
+        schule.kennung = undefined;
+        await organisationRepository.save(schule);
+        eventService.publish.mockClear();
+
+        await sut.triggerLdapSync(person.id);
+
+        expect(logger.error).toHaveBeenCalledWith(
+            `Required kennung is missing on organisation, orgaId:${schule.id}, pkId:${personenkontext.id}`,
+        );
         expect(eventService.publish).not.toHaveBeenCalled();
         expect(await search(`(uid=${person.username})`)).toHaveLength(0);
     });
