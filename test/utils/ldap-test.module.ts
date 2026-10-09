@@ -28,7 +28,7 @@ export class LdapTestModule implements OnModuleDestroy {
                                     },
                                 ])
                                 .withPullPolicy(PullPolicy.defaultPolicy())
-                                .withExposedPorts(636)
+                                .withExposedPorts(389)
                                 .withEnvironment({
                                     LDAP_ADMIN_PASSWORD: 'admin',
                                     LDAP_CONFIG_PASSWORD: 'config',
@@ -38,19 +38,19 @@ export class LdapTestModule implements OnModuleDestroy {
                                 })
                                 .withCommand(['--copy-service']) // '--loglevel', 'debug'
                                 .withStartupTimeout(240000)
-                                .withWaitStrategy(Wait.forLogMessage(/openldap | w+ slapd starting/))
+                                .withWaitStrategy(Wait.forLogMessage(/slapd starting/))
                                 .start();
                         }
 
                         const baseUrl: string = this.ldap
-                            ? `ldap://${this.ldap.getHost()}:${this.ldap.getFirstMappedPort()}`
+                            ? `ldap://${this.ldap.getHost()}:${this.ldap.getMappedPort(389)}`
                             : ldapConfig.URL;
 
                         return new LdapInstanceConfig(
                             baseUrl,
-                            ldapConfig.BIND_DN,
-                            ldapConfig.ADMIN_PASSWORD,
-                            ldapConfig.BASE_DN,
+                            options?.isLdapRequired ? 'cn=admin,dc=schule-sh,dc=de' : ldapConfig.BIND_DN,
+                            options?.isLdapRequired ? 'admin' : ldapConfig.ADMIN_PASSWORD,
+                            options?.isLdapRequired ? 'dc=schule-sh,dc=de' : ldapConfig.BASE_DN,
                         );
                     },
                     inject: [ConfigService],

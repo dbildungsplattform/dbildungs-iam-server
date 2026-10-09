@@ -27,8 +27,6 @@ import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
 import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
 import { LdapDeleteOrganisationError } from './error/ldap-delete-organisation.error.js';
-import { LdapEmailAddressError } from './error/ldap-email-address.error.js';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
 import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
 import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
@@ -61,8 +59,6 @@ describe('LDAP Adapter', () => {
     let person: Person<true>;
     const mockLdapInstanceConfig: LdapInstanceConfig = {
         BASE_DN: 'dc=example,dc=com',
-        OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
-        ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
         RETRY_WRAPPER_DEFAULT_RETRIES: 2,
         URL: '',
         BIND_DN: '',
@@ -468,62 +464,8 @@ describe('LDAP Adapter', () => {
         });
     });
 
-    describe('getRootName', () => {
-        it('when emailDomain is neither schule-sh.de nor ersatzschule-sh.de should return LdapEmailDomainError', async () => {
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.add.mockResolvedValueOnce();
-                clientMock.search.mockResolvedValueOnce({
-                    searchEntries: [],
-                    searchReferences: [],
-                });
-                return clientMock;
-            });
-            const result: Result<boolean> = await ldapClientAdapter.isLehrerExisting('user123', 'wrong-domain.de');
-
-            assert(!result.ok);
-            expect(result.error).toBeInstanceOf(LdapEmailDomainError);
-        });
-
-        it('when emailDomain is one that is explicitly set in config but neither schule-sh.de nor ersatzschule-sh.de it should go through', async () => {
-            ldapClientMock.getClient.mockImplementation(() => {
-                clientMock.bind.mockResolvedValue();
-                clientMock.add.mockResolvedValueOnce();
-                clientMock.search.mockResolvedValueOnce({
-                    searchEntries: [],
-                    searchReferences: [],
-                });
-                return clientMock;
-            });
-
-            instanceConfig.OEFFENTLICHE_SCHULEN_DOMAIN = 'weird-domain.ina.foreign.country.co.uk';
-            instanceConfig.ERSATZSCHULEN_DOMAIN = 'normaldomain.co.jp';
-
-            const resultOeffentlich: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
-                'user123',
-                'weird-domain.ina.foreign.country.co.uk',
-            );
-
-            const resultErsatz: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
-                'user123',
-                'normaldomain.co.jp',
-            );
-            const resultOldDefault: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
-                'user123',
-                'schule-sh.de',
-            );
-
-            instanceConfig.OEFFENTLICHE_SCHULEN_DOMAIN = undefined;
-            instanceConfig.ERSATZSCHULEN_DOMAIN = undefined;
-
-            expect(resultOeffentlich.ok).toBeTruthy();
-            expect(resultErsatz.ok).toBeTruthy();
-            expect(resultOldDefault.ok).toBeTruthy();
-        });
-    });
-
     describe('isLehrerExisting', () => {
-        const fakeEmailDomain: string = 'schule-sh.de';
+        const fakeEmailDomain: string = 'oeffentlicheSchulen';
         it('when lehrer exists should return true', async () => {
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
@@ -564,15 +506,6 @@ describe('LDAP Adapter', () => {
             const result: Result<boolean> = await ldapClientAdapter.isLehrerExisting('user123', fakeEmailDomain);
 
             expect(result.ok).toBeFalsy();
-        });
-        it('when called with invalid emailDomain returns LdapEmailDomainError', async () => {
-            const result: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
-                'user123',
-                'wrong-email-domain.de',
-            );
-
-            assert(!result.ok);
-            expect(result.error).toBeInstanceOf(LdapEmailDomainError);
         });
     });
 
@@ -806,47 +739,6 @@ describe('LDAP Adapter', () => {
     describe('removeMailAlternativeAddress', () => {
         const personId: PersonID = faker.string.uuid();
         const username: PersonUsername = faker.internet.username();
-
-        describe('when emailAddress CANNOT be splitted at @', () => {
-            it('should return error', async () => {
-                const address: string = 'vorname.nachname';
-                makeMockClient((client: DeepMocked<Client>) => {
-                    mockBind();
-
-                    client.search.mockResolvedValueOnce({
-                        searchEntries: [],
-                        searchReferences: [],
-                    });
-                });
-
-                const result: Result<boolean> = await ldapClientAdapter.removeMailAlternativeAddress(
-                    personId,
-                    username,
-                    address,
-                );
-
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailAddressError);
-            });
-        });
-
-        describe('when getting root-name fails', () => {
-            it('should return error', async () => {
-                const domain: string = 'not-a-valid-domain.de';
-                const address: string = 'vorname.nachname@' + domain;
-                const result: Result<boolean> = await ldapClientAdapter.removeMailAlternativeAddress(
-                    personId,
-                    username,
-                    address,
-                );
-
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailDomainError);
-                expect(loggerMock.error).toHaveBeenCalledWith(
-                    `Could not get root-name because email-domain is invalid, domain:${domain}`,
-                );
-            });
-        });
 
         describe('when bind fails', () => {
             it('should return error', async () => {
@@ -1097,7 +989,7 @@ describe('LDAP Adapter', () => {
         it('when operation fails and returns Error it should automatically retry the operation  with nr of retries set via env', async () => {
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
-                clientMock.search.mockResolvedValue({} as SearchResult);
+                clientMock.search.mockResolvedValue({ searchEntries: [], searchReferences: [] });
                 return clientMock;
             });
             const result: Result<PersonID> = await ldapClientAdapter.changeEmailAddressByPersonId(
@@ -1107,7 +999,7 @@ describe('LDAP Adapter', () => {
             );
 
             expect(result.ok).toBeFalsy();
-            expect(clientMock.bind).toHaveBeenCalledTimes(0);
+            expect(clientMock.bind).toHaveBeenCalledTimes(2);
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                 expect.stringContaining('Attempt 1 failed'),
                 expect.any(Error),
@@ -1120,7 +1012,7 @@ describe('LDAP Adapter', () => {
     });
 
     describe('creation', () => {
-        const fakeEmailDomain: string = 'schule-sh.de';
+        const fakeEmailDomain: string = 'oeffentlicheSchulen';
         const fakeOrgaKennung: string = '123';
 
         describe('lehrer', () => {
@@ -1242,7 +1134,7 @@ describe('LDAP Adapter', () => {
                 expect(result.error).toEqual(new LdapCreateLehrerError());
             });
 
-            it('when called with explicit domain "ersatzschule-sh.de" should return truthy result', async () => {
+            it('when called with explicit OU "ersatzSchulen" should return truthy result', async () => {
                 makeMockClient((client: DeepMocked<Client>) => {
                     mockBind();
                     mockAddPersonToGroup();
@@ -1264,7 +1156,7 @@ describe('LDAP Adapter', () => {
                 });
 
                 const testLehrer: PersonData = getPersonData();
-                const fakeErsatzSchuleAddressDomain: string = 'ersatzschule-sh.de';
+                const fakeErsatzSchuleAddressDomain: string = 'ersatzSchulen';
                 const lehrerUid: string =
                     'uid=' + testLehrer.username + ',ou=ersatzSchulen,' + mockLdapInstanceConfig.BASE_DN;
                 const result: Result<PersonData> = await ldapClientAdapter.createLehrer(
@@ -1373,15 +1265,26 @@ describe('LDAP Adapter', () => {
                 );
             });
 
-            it('when called with invalid emailDomain returns LdapEmailDomainError', async () => {
+            it('should use a custom LDAP OU without mapping an email domain', async () => {
+                const customOu: string = 'customSchools';
+                vi.spyOn(ldapClientAdapter, 'addPersonToGroup').mockResolvedValue(Ok(true));
+                ldapClientMock.getClient.mockReturnValue(clientMock);
+                clientMock.bind.mockResolvedValue();
+                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn: '' }], searchReferences: [] });
+                clientMock.search.mockResolvedValueOnce({
+                    searchEntries: [{ dn: '', entryUUID: faker.string.uuid() }],
+                    searchReferences: [],
+                });
                 const result: Result<PersonData> = await ldapClientAdapter.createLehrer(
                     person,
-                    'wrong-email-domain.de',
+                    customOu,
                     fakeOrgaKennung,
                 );
 
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailDomainError);
+                assert(result.ok);
+                expect(clientMock.search).toHaveBeenCalledWith(`ou=${customOu},${mockLdapInstanceConfig.BASE_DN}`, {
+                    filter: `(uid=${person.username})`,
+                });
             });
 
             it('should log an error and return the failed result if addPersonToGroup fails', async () => {
@@ -1424,7 +1327,7 @@ describe('LDAP Adapter', () => {
     });
 
     describe('deletion', () => {
-        const fakeEmailDomain: string = 'schule-sh.de';
+        const fakeEmailDomain: string = 'oeffentlicheSchulen';
         const fakeOrgaKennung: string = '123';
         describe('delete lehrer', () => {
             it('should return truthy result', async () => {
@@ -1533,15 +1436,23 @@ describe('LDAP Adapter', () => {
                 expect(result.ok).toBeFalsy();
             });
 
-            it('when called with invalid emailDomain returns LdapEmailDomainError', async () => {
+            it('should use a custom LDAP OU when deleting a teacher', async () => {
+                const customOu: string = 'customSchools';
+                vi.spyOn(ldapClientAdapter, 'removePersonFromGroup').mockResolvedValue(Ok(true));
+                ldapClientMock.getClient.mockReturnValue(clientMock);
+                clientMock.bind.mockResolvedValue();
+                clientMock.search.mockResolvedValueOnce({ searchEntries: [{ dn: '' }], searchReferences: [] });
+                clientMock.del.mockResolvedValue();
                 const result: Result<PersonData> = await ldapClientAdapter.deleteLehrer(
                     person,
                     fakeOrgaKennung,
-                    'wrong-email-domain.de',
+                    customOu,
                 );
 
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailDomainError);
+                assert(result.ok);
+                expect(clientMock.search).toHaveBeenCalledWith(`ou=${customOu},${mockLdapInstanceConfig.BASE_DN}`, {
+                    filter: `(uid=${person.username})`,
+                });
             });
         });
 
@@ -1756,7 +1667,7 @@ describe('LDAP Adapter', () => {
         const username: PersonUsername = faker.internet.username();
         const personId: PersonID = faker.string.uuid();
         const dn: string = 'dn';
-        const oeffentlicheSchulenDoamin: string = 'schule-sh.de';
+        const oeffentlicheSchulenDoamin: string = 'oeffentlicheSchulen';
         const givenName: string = faker.person.firstName();
         const sn: string = faker.person.lastName();
         const cn: string = username;
@@ -1828,11 +1739,13 @@ describe('LDAP Adapter', () => {
                 });
             });
 
-            describe('when implicit creation of empty PersonEntry fails because rootName CANNOT be chosen', () => {
+            describe('when implicit creation in a custom LDAP OU fails', () => {
                 it('should log error and return', async () => {
-                    const invalidEmailDomain: string = 'not-a-valid-domain.de';
+                    const customOu: string = 'customSchools';
+                    const creationError: Error = new Error('Create user failed');
                     ldapClientMock.getClient.mockImplementation(() => {
-                        clientMock.bind.mockResolvedValueOnce();
+                        clientMock.bind.mockResolvedValue();
+                        clientMock.add.mockRejectedValueOnce(creationError);
                         clientMock.search.mockResolvedValueOnce({
                             searchEntries: [],
                             searchReferences: [],
@@ -1844,15 +1757,16 @@ describe('LDAP Adapter', () => {
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
                         personId,
                         username,
-                        invalidEmailDomain,
+                        customOu,
                     );
-                    const lehrerUid: string = `uid=${username},ou=oeffentlicheSchulen,dc=example,dc=com`;
+                    const lehrerUid: string = `uid=${username},ou=${customOu},${mockLdapInstanceConfig.BASE_DN}`;
 
                     expect(loggerMock.warning).toHaveBeenCalledWith(
                         `Fetching person-attributes FAILED, no entry for username:${username}, personId:${personId}`,
                     );
-                    expect(loggerMock.error).toHaveBeenCalledWith(
-                        `Could not get root-name because email-domain is invalid, domain:${invalidEmailDomain}`,
+                    expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                        `LDAP: Creating empty PersonEntry FAILED, DN:${lehrerUid}`,
+                        creationError,
                     );
                     expect(loggerMock.info).not.toHaveBeenCalledWith(
                         `LDAP: Successfully created empty PersonEntry, DN:${lehrerUid}`,
@@ -1860,7 +1774,7 @@ describe('LDAP Adapter', () => {
                     expect(result.ok).toBeFalsy();
                     expect(result).toEqual({
                         ok: false,
-                        error: new LdapEmailDomainError(),
+                        error: new LdapCreateLehrerError(),
                     });
                 });
             });
@@ -2430,29 +2344,27 @@ describe('LDAP Adapter', () => {
             });
         });
 
-        describe('when called with invalid emailDomain', () => {
-            it('should return LdapEmailDomainError', async () => {
+        describe('when the email domain does not match the LDAP OU', () => {
+            it('should search from the base DN and update the address', async () => {
+                ldapClientMock.getClient.mockReturnValue(clientMock);
+                clientMock.bind.mockResolvedValue();
+                clientMock.search.mockResolvedValueOnce({
+                    searchEntries: [{ dn: fakeDN, mailPrimaryAddress: currentEmailAddress }],
+                    searchReferences: [],
+                });
+                clientMock.modify.mockResolvedValue();
                 const result: Result<PersonID> = await ldapClientAdapter.changeEmailAddressByPersonId(
-                    faker.string.uuid(),
-                    faker.internet.username(),
-                    'user@wrong-email-domain.de',
+                    fakePersonID,
+                    fakeUsername,
+                    'user@custom-domain.de',
                 );
 
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailDomainError);
-            });
-        });
-
-        describe('when called with newEmailAddress that is not splittable', () => {
-            it('should return LdapEmailAddressError', async () => {
-                const result: Result<PersonID> = await ldapClientAdapter.changeEmailAddressByPersonId(
-                    faker.string.uuid(),
-                    faker.internet.username(),
-                    'user-at-wrong-email-domain.de',
+                assert(result.ok);
+                expect(clientMock.search).toHaveBeenCalledWith(
+                    mockLdapInstanceConfig.BASE_DN,
+                    expect.objectContaining({ filter: `(uid=${fakeUsername})`, scope: 'sub' }),
                 );
-
-                assert(!result.ok);
-                expect(result.error).toBeInstanceOf(LdapEmailAddressError);
+                expect(clientMock.modify).toHaveBeenCalledWith(fakeDN, expect.any(Array));
             });
         });
 
@@ -2924,8 +2836,8 @@ describe('LDAP Adapter', () => {
         const fakeGroupDn: string = `cn=${fakeGroupId},${mockLdapInstanceConfig.BASE_DN}`;
         const fakeLehrerUid: string = `uid=${fakePersonUid},ou=oeffentlicheSchulen,${mockLdapInstanceConfig.BASE_DN}`;
         const fakeDienstStellenNummer: string = '123';
-        const fakeValidDomain: string = 'schule-sh.de';
-        const fakeInvalidDomain: string = 'not-a-valid-domain-sh.de';
+        const fakeValidDomain: string = 'oeffentlicheSchulen';
+        const customOu: string = 'customSchools';
 
         it('should successfully remove person from group with multiple members', async () => {
             ldapClientMock.getClient.mockImplementation(() => {
@@ -2968,7 +2880,8 @@ describe('LDAP Adapter', () => {
             );
         });
 
-        it('should return error when getting root-name fails', async () => {
+        it('should use the supplied custom OU when removing a group member', async () => {
+            const customLehrerDn: string = `uid=${fakePersonUid},ou=${customOu},${mockLdapInstanceConfig.BASE_DN}`;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValueOnce();
                 clientMock.search.mockResolvedValueOnce({
@@ -2976,7 +2889,7 @@ describe('LDAP Adapter', () => {
                         {
                             dn: fakeGroupDn,
                             member: [
-                                `${fakeLehrerUid}`,
+                                customLehrerDn,
                                 'uid=otherUser,ou=oeffentlicheSchulen,' + mockLdapInstanceConfig.BASE_DN,
                             ],
                         },
@@ -2991,14 +2904,16 @@ describe('LDAP Adapter', () => {
             const result: Result<boolean> = await ldapClientAdapter.removePersonFromGroupByUsernameAndKennung(
                 fakePersonUid,
                 fakeDienstStellenNummer,
-                fakeInvalidDomain,
+                customOu,
             );
 
-            expect(result.ok).toBeFalsy();
-            expect(clientMock.modify).toHaveBeenCalledTimes(0);
-            expect(loggerMock.error).toHaveBeenCalledWith(
-                `Could not get root-name because email-domain is invalid, domain:${fakeInvalidDomain}`,
-            );
+            assert(result.ok);
+            expect(clientMock.modify).toHaveBeenCalledWith(fakeGroupDn, [
+                new Change({
+                    operation: 'delete',
+                    modification: new Attribute({ type: 'member', values: [customLehrerDn] }),
+                }),
+            ]);
         });
     });
 

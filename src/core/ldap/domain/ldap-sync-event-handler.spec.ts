@@ -1,4 +1,3 @@
-import { MikroORM } from '@mikro-orm/core';
 import { INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -25,25 +24,24 @@ import { Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
-import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
 import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
-import { PersonIdentifier } from '../../logging/person-identifier.js';
+import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 import { LdapFetchAttributeError } from '../adapter/domain/error/ldap-fetch-attribute.error.js';
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
-import { LdapModule } from '../ldap.module.js';
+import { LdapConfigModule } from '../adapter/technical/ldap-config.module.js';
+import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
 
 describe('LdapSyncEventHandler', () => {
-    const oeffentlicheSchulenDomain: string = 'schule-sh.de';
+    const oeffentlicheSchulenDomain: string = 'oeffentlicheSchulen';
 
     let app: INestApplication;
-    let orm: MikroORM;
 
     let sut: LdapSyncEventHandler;
     let ldapClientAdapterMock: DeepMocked<LdapAdapter>;
@@ -72,71 +70,70 @@ describe('LdapSyncEventHandler', () => {
     let mailAlternativeAddress: string;
 
     beforeAll(async () => {
+        loggerMock = createMock(ClassLogger);
+        ldapClientAdapterMock = createMock(LdapAdapter);
+        personRepositoryMock = createMock(PersonRepository);
+        rolleRepoMock = createMock(RolleRepo);
+        dBiamPersonenkontextRepoMock = createMock(DBiamPersonenkontextRepo);
+        organisationRepositoryMock = createMock(OrganisationRepository);
+        emailRepoMock = createMock(EmailRepo);
+        eventServiceMock = createMock(EventRoutingLegacyKafkaService);
+        emailResolverServiceMock = createMock(EmailResolverService);
+
         const module: TestingModule = await Test.createTestingModule({
-            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true }), LdapModule],
+            imports: [CommonTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false }), LdapConfigModule],
             providers: [
+                LdapSyncEventHandler,
                 {
                     provide: APP_PIPE,
                     useClass: GlobalValidationPipe,
                 },
+                {
+                    provide: ClassLogger,
+                    useValue: loggerMock,
+                },
+                {
+                    provide: LdapAdapter,
+                    useValue: ldapClientAdapterMock,
+                },
+                {
+                    provide: PersonRepository,
+                    useValue: personRepositoryMock,
+                },
+                {
+                    provide: RolleRepo,
+                    useValue: rolleRepoMock,
+                },
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: dBiamPersonenkontextRepoMock,
+                },
+                {
+                    provide: OrganisationRepository,
+                    useValue: organisationRepositoryMock,
+                },
+                {
+                    provide: EmailRepo,
+                    useValue: emailRepoMock,
+                },
+                {
+                    provide: EventRoutingLegacyKafkaService,
+                    useValue: eventServiceMock,
+                },
+                {
+                    provide: EmailResolverService,
+                    useValue: emailResolverServiceMock,
+                },
             ],
-        })
-            .overrideProvider(ClassLogger)
-            .useValue(createMock(ClassLogger))
-            .overrideProvider(LdapAdapter)
-            .useValue(createMock(LdapAdapter))
-            .overrideProvider(PersonRepository)
-            .useValue(createMock(PersonRepository))
-            .overrideProvider(RolleRepo)
-            .useValue(createMock(RolleRepo))
-            .overrideProvider(DBiamPersonenkontextRepo)
-            .useValue(createMock(DBiamPersonenkontextRepo))
-            .overrideProvider(OrganisationRepository)
-            .useValue(createMock(OrganisationRepository))
-            .overrideProvider(EmailRepo)
-            .useValue(createMock(EmailRepo))
-            .overrideProvider(EventRoutingLegacyKafkaService)
-            .useValue(createMock(EventRoutingLegacyKafkaService))
-            .overrideProvider(ClassLogger)
-            .useValue(createMock<ClassLogger>(ClassLogger))
-            .overrideProvider(EmailResolverService)
-            .useValue(createMock<EmailResolverService>(EmailResolverService))
-            .compile();
-
-        orm = module.get(MikroORM);
-
-        loggerMock = module.get(ClassLogger);
+        }).compile();
 
         sut = module.get(LdapSyncEventHandler);
-        ldapClientAdapterMock = module.get(LdapAdapter);
-        personRepositoryMock = module.get(PersonRepository);
-        dBiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
-        rolleRepoMock = module.get(RolleRepo);
-        organisationRepositoryMock = module.get(OrganisationRepository);
-        emailRepoMock = module.get(EmailRepo);
-        eventServiceMock = module.get(EventRoutingLegacyKafkaService);
-        loggerMock = module.get(ClassLogger);
-
-        emailResolverServiceMock = module.get(EmailResolverService);
 
         emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
 
-        await DatabaseTestModule.setupDatabase(module.get(MikroORM));
         app = module.createNestApplication();
         await app.init();
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
-
-    function getEmailAddress(personsId: PersonID, address: string, status: EmailAddressStatus): EmailAddress<true> {
-        return EmailAddress.construct(
-            faker.string.uuid(),
-            faker.date.past(),
-            faker.date.recent(),
-            personsId,
-            address,
-            status,
-            undefined,
-        );
-    }
 
     function getOrga(
         kennung: string = faker.string.numeric({ length: 7 }),
@@ -207,14 +204,7 @@ describe('LdapSyncEventHandler', () => {
             faker.string.numeric({ length: 7 }),
             OrganisationsTyp.KLASSE,
         );
-        const lehrPKOnKlasse: Personenkontext<true> = DoFactory.createPersonenkontext<true>(true, {
-            id: faker.string.uuid(),
-            organisationId: lehrOrgaForPkOnKlasse.id,
-            rolleId: lehrRolleForPKOnKlasse.id,
-            personId: pkPerson.id,
-        });
-
-        const pk: Personenkontext<true>[] = [lehrPk1, lehrPk2, lernPk1, lehrPKOnKlasse];
+        const pk: Personenkontext<true>[] = [lehrPk1, lehrPk2, lernPk1];
         const orgaMap: Map<OrganisationID, Organisation<true>> = getOrgaMap(
             lehrOrga1,
             lehrOrga2,
@@ -272,9 +262,9 @@ describe('LdapSyncEventHandler', () => {
         });
         email = faker.internet.email();
         enabledEmailAddress = DoFactory.createEmailAddress<true>(true, email);
-        givenName = faker.person.firstName();
-        surName = faker.person.lastName();
-        cn = faker.internet.username();
+        givenName = `${vorname}-ldap`;
+        surName = `${familienname}-ldap`;
+        cn = `${username}-ldap`;
         mailPrimaryAddress = faker.internet.email();
         mailAlternativeAddress = faker.internet.email();
         personAttributes = {
@@ -292,9 +282,8 @@ describe('LdapSyncEventHandler', () => {
         await app.close();
     });
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
-        await DatabaseTestModule.clearDatabase(orm);
     });
 
     //* This test case is just for coverage, all real test cases for syncing are handled in test for 'personExternalSystemSyncEventHandler */
@@ -342,18 +331,13 @@ describe('LdapSyncEventHandler', () => {
     });
 
     describe('personExternalSystemSyncEventHandler', () => {
-        let personInfo: PersonIdentifier;
         beforeEach(() => {
             personId = faker.string.uuid();
             username = faker.internet.username();
             event = new PersonExternalSystemsSyncEvent(personId);
-            person = DoFactory.createPerson<true>(true, { username: username });
+            person = DoFactory.createPerson<true>(true, { id: personId, username: username });
             email = faker.internet.email();
             enabledEmailAddress = DoFactory.createEmailAddress<true>(true, email);
-            personInfo = {
-                personId: personId,
-                username: username,
-            };
         });
 
         describe('when person CANNOT be found by events personID', () => {
@@ -384,113 +368,60 @@ describe('LdapSyncEventHandler', () => {
             });
         });
 
-        describe('when person has NO enabled/active email-address', () => {
-            it('should log error, return without proceeding and publish LdapSyncFailedEvent', async () => {
-                personRepositoryMock.findById.mockResolvedValueOnce(person);
-                emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(undefined);
-                const emailAddress: EmailAddress<true> = new EmailAddress(
-                    faker.string.uuid(),
-                    faker.date.past(),
-                    faker.date.recent(),
-                    faker.string.uuid(),
-                    faker.internet.email(),
-                    EmailAddressStatus.FAILED,
-                );
-
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([emailAddress]);
-
-                await sut.personExternalSystemSyncEventHandler(event);
-
-                expect(eventServiceMock.publish).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        personId: personId,
-                        username: username,
-                    }),
-                    expect.objectContaining({
-                        personId: personId,
-                        username: username,
-                    }),
-                );
-                expect(loggerMock.warningPersonalized).toHaveBeenCalledWith(
-                    `Could not find ENABLED EmailAddress, searching for FAILED EmailAddress`,
-                    personInfo,
-                );
-            });
-
-            describe('and not any FAILED EmailAddress could be found', () => {
-                it('should log error, return without proceeding and publish LdapSyncFailedEvent', async () => {
-                    personRepositoryMock.findById.mockResolvedValueOnce(person);
-                    //mock search for ENABLED EmailAddress
-                    emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(undefined);
-                    //mock search for FAILED EmailAddresses
-                    emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([]);
+        describe('when the resolver returns no enabled email address', () => {
+            it.each([undefined, EmailAddressStatus.FAILED, EmailAddressStatus.DISABLED])(
+                'should preserve the LDAP email and complete sync for status %s',
+                async (status: EmailAddressStatus | undefined) => {
+                    createDataFetchedByRepositoriesAndLDAP();
+                    mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
+                    const [kontexte, orgaMap, rolleMap]: [
+                        Personenkontext<true>[],
+                        Map<OrganisationID, Organisation<true>>,
+                        Map<RolleID, Rolle<true>>,
+                    ] = getPkArrayOrgaMapAndRolleMap(person);
+                    mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
+                        oeffentlicheSchulenDomain,
+                    );
+                    mockPersonAttributesFoundGroupsNotFound();
+                    emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                        status === undefined ? undefined : new PersonEmailResponse(status, email),
+                    );
 
                     await sut.personExternalSystemSyncEventHandler(event);
 
-                    expect(eventServiceMock.publish).toHaveBeenCalledTimes(0);
-                    expect(loggerMock.errorPersonalized).toHaveBeenCalledWith(
-                        `Could not find any FAILED EmailAddress after no ENABLED EmaiLAddress could be found, ABORTING LDAP-Sync`,
-                        personInfo,
+                    expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
+                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+                    expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                        expect.objectContaining({ personId, username }),
+                        expect.objectContaining({ personId, username }),
                     );
-                });
-            });
-
-            describe('and FAILED EmailAddress is found but already has an oxUserId', () => {
-                it('should log error, return without proceeding and publish LdapSyncFailedEvent', async () => {
-                    personRepositoryMock.findById.mockResolvedValueOnce(person);
-                    //mock search for ENABLED EmailAddress
-                    emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(undefined);
-                    //mock search for FAILED EmailAddresses
-                    const failedEmailAddress: EmailAddress<true> = DoFactory.createEmailAddress<true>(true, email, {
-                        status: EmailAddressStatus.FAILED,
-                    });
-                    emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([failedEmailAddress]);
-
-                    await sut.personExternalSystemSyncEventHandler(event);
-
-                    expect(eventServiceMock.publish).toHaveBeenCalledTimes(0);
-                    expect(loggerMock.errorPersonalized).toHaveBeenCalledWith(
-                        `Most recent FAILED EmailAddress already has an oxUserId, ABORTING LDAP-Sync`,
-                        personInfo,
-                    );
-                });
-            });
+                },
+            );
         });
 
-        describe('when no DISABLED email-addresses can be found for person', () => {
-            it('should log info and proceed', async () => {
+        describe('when LDAP creates a new person entry', () => {
+            it('should persist the LDAP entry UUID and complete sync', async () => {
+                createDataFetchedByRepositoriesAndLDAP();
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
-                emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(enabledEmailAddress);
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([]);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValue('example.org');
-
-                // create PKs, orgaMap and rolleMap
                 const [kontexte, orgaMap, rolleMap]: [
                     Personenkontext<true>[],
                     Map<OrganisationID, Organisation<true>>,
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-
-                ldapClientAdapterMock.getPersonAttributes.mockResolvedValueOnce({
-                    ok: true,
-                    value: {
-                        entryUUID: faker.string.uuid(),
-                        dn: 'dn',
-                    },
-                });
-
-                ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({
-                    ok: true,
-                    value: [],
-                });
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
+                    oeffentlicheSchulenDomain,
+                );
+                const entryUUID: string = faker.string.uuid();
+                personAttributes.entryUUID = entryUUID;
+                mockPersonAttributesFoundGroupsNotFound();
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `No DISABLED EmailAddress(es) for Person with ID ${event.personId}`,
-                );
-                expect(eventServiceMock.publish).toBeCalledWith(
+                expect(person.externalIds.LDAP).toBe(entryUUID);
+                expect(personRepositoryMock.save).toHaveBeenCalledExactlyOnceWith(person);
+                expect(eventServiceMock.publish).toHaveBeenCalledWith(
                     expect.objectContaining({ personId, username }),
                     expect.objectContaining({ personId, username }),
                 );
@@ -509,7 +440,7 @@ describe('LdapSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -542,7 +473,7 @@ describe('LdapSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
                 personAttributes = {
@@ -590,7 +521,7 @@ describe('LdapSyncEventHandler', () => {
                 } as unknown as Map<OrganisationID, Organisation<true>>;
 
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, mockedMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -621,7 +552,7 @@ describe('LdapSyncEventHandler', () => {
                 }
                 orgaWithoutKennung.kennung = undefined;
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -656,7 +587,7 @@ describe('LdapSyncEventHandler', () => {
             });
         });
 
-        describe('when emailDomain CANNOT be found in organisation tree recursively', () => {
+        describe('when LDAP OU CANNOT be found in organisation tree recursively', () => {
             it('should log error and return without syncing', async () => {
                 mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
 
@@ -674,13 +605,13 @@ describe('LdapSyncEventHandler', () => {
                 }
                 orgaWithoutKennung.kennung = undefined;
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(undefined);
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
                 expect(loggerMock.error).toHaveBeenCalledWith(
                     expect.stringContaining(
-                        `Could NOT fetch domain from organisations, LDAP-root CANNOT be chosen, ABORTING SYNC, personId:${personId}`,
+                        `Could NOT fetch LDAP OU from organisations, LDAP-root CANNOT be chosen, ABORTING SYNC, personId:${personId}`,
                     ),
                 );
                 expect(loggerMock.info).not.toHaveBeenCalledWith(
@@ -696,9 +627,82 @@ describe('LdapSyncEventHandler', () => {
             createDataFetchedByRepositoriesAndLDAP();
         });
 
-        describe('when email microservice is enabled', () => {
-            it('should ignore email data completly', async () => {
-                emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+        it.each([undefined, 'old@example.org'])(
+            'should update the enabled email when the LDAP email is %s',
+            async (ldapEmail: string | undefined) => {
+                personRepositoryMock.findById.mockResolvedValueOnce(person);
+                const [kontexte, orgaMap, rolleMap]: [
+                    Personenkontext<true>[],
+                    Map<OrganisationID, Organisation<true>>,
+                    Map<RolleID, Rolle<true>>,
+                ] = getPkArrayOrgaMapAndRolleMap(person);
+                mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
+                    oeffentlicheSchulenDomain,
+                );
+                personAttributes.mailPrimaryAddress = ldapEmail;
+                mockPersonAttributesFoundGroupsNotFound();
+                emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                    new PersonEmailResponse(EmailAddressStatus.ENABLED, email),
+                );
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledExactlyOnceWith(
+                    personId,
+                    username,
+                    email,
+                );
+                expect(loggerMock.warning).toHaveBeenCalledWith(
+                    `Mismatch for enabledEmailAddress, person:${email}, LDAP:${ldapEmail}, personId:${personId}, username:${username}`,
+                );
+            },
+        );
+
+        it('should not warn or change email and groups when LDAP already matches', async () => {
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            const [kontexte, orgaMap, rolleMap]: [
+                Personenkontext<true>[],
+                Map<OrganisationID, Organisation<true>>,
+                Map<RolleID, Rolle<true>>,
+            ] = getPkArrayOrgaMapAndRolleMap(person);
+            const ldapConfig: LdapInstanceConfig = app.get(LdapInstanceConfig);
+            const groupDns: string[] = kontexte
+                .filter((kontext: Personenkontext<true>) => rolleMap.get(kontext.rolleId)?.hasUemServiceProvider())
+                .map((kontext: Personenkontext<true>) => {
+                    const kennung: string | undefined = orgaMap.get(kontext.organisationId)?.kennung;
+                    assert(kennung);
+                    return `cn=lehrer-${kennung},cn=groups,ou=${kennung},${ldapConfig.BASE_DN}`;
+                });
+            mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
+            organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(oeffentlicheSchulenDomain);
+            ldapClientAdapterMock.getPersonAttributes.mockResolvedValueOnce({
+                ok: true,
+                value: {
+                    dn: 'dn',
+                    givenName: vorname,
+                    surName: familienname,
+                    cn: username,
+                    mailPrimaryAddress: email,
+                },
+            });
+            ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({ ok: true, value: groupDns });
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                new PersonEmailResponse(EmailAddressStatus.ENABLED, email),
+            );
+
+            await sut.personExternalSystemSyncEventHandler(event);
+
+            expect(loggerMock.warning).not.toHaveBeenCalled();
+            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+            expect(ldapClientAdapterMock.addPersonToGroup).not.toHaveBeenCalled();
+            expect(ldapClientAdapterMock.removePersonFromGroup).not.toHaveBeenCalled();
+            expect(personRepositoryMock.save).not.toHaveBeenCalled();
+        });
+
+        describe('when the email resolver returns no address', () => {
+            it('should sync attributes without changing the LDAP email', async () => {
+                emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
 
                 // create PKs, orgaMap and rolleMap
@@ -708,7 +712,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -716,13 +720,17 @@ describe('LdapSyncEventHandler', () => {
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `skipping email resolution for personId:${personId} since email microservice is active`,
+                expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
+                expect(ldapClientAdapterMock.modifyPersonAttributes).toHaveBeenCalledWith(
+                    username,
+                    vorname,
+                    familienname,
+                    username,
                 );
 
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `skipping email setting in ldap for :${personId} since email microservice is active`,
-                );
+                expect(emailRepoMock.findEnabledByPerson).not.toHaveBeenCalled();
+                expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+                expect(ldapClientAdapterMock.setMailAlternativeAddress).not.toHaveBeenCalled();
             });
         });
 
@@ -739,7 +747,7 @@ describe('LdapSyncEventHandler', () => {
                     Map<RolleID, Rolle<true>>,
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -764,7 +772,7 @@ describe('LdapSyncEventHandler', () => {
 
         describe('when enabled EmailAddress and mailPrimaryAddress DO NOT match', () => {
             describe('and mailPrimaryAddress is undefined', () => {
-                it('should log warning and change mailPrimaryAddress in LDAP', async () => {
+                it('should sync person attributes without changing LDAP email addresses', async () => {
                     //mock mailPrimaryAddress found in LDAP is undefined;
                     personAttributes.mailPrimaryAddress = undefined;
                     mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
@@ -776,7 +784,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -787,22 +795,19 @@ describe('LdapSyncEventHandler', () => {
                     expect(loggerMock.info).toHaveBeenCalledWith(
                         `Syncing data to LDAP for personId:${personId}, username:${username}`,
                     );
-                    expect(loggerMock.warning).toHaveBeenCalledWith(
-                        `Mismatch mailPrimaryAddress, person:${email}, LDAP:undefined, personId:${personId}, username:${username}`,
-                    );
-                    expect(loggerMock.warning).toHaveBeenCalledWith(
-                        `MailPrimaryAddress undefined for personId:${personId}, username:${username}`,
-                    );
-                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
-                        personId,
+                    expect(ldapClientAdapterMock.modifyPersonAttributes).toHaveBeenCalledWith(
                         username,
-                        email,
+                        person.vorname,
+                        person.familienname,
+                        username,
                     );
+                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+                    expect(ldapClientAdapterMock.setMailAlternativeAddress).not.toHaveBeenCalled();
                 });
             });
 
             describe('and mailPrimaryAddress CANNOT be found in disabled EmailAddresses', () => {
-                it('should log critical and abort sync', async () => {
+                it('should complete sync without reconciling email addresses', async () => {
                     mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
 
                     // create PKs, orgaMap and rolleMap
@@ -812,7 +817,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -823,18 +828,17 @@ describe('LdapSyncEventHandler', () => {
                     expect(loggerMock.info).toHaveBeenCalledWith(
                         `Syncing data to LDAP for personId:${personId}, username:${username}`,
                     );
-                    expect(loggerMock.warning).toHaveBeenCalledWith(
-                        `Mismatch mailPrimaryAddress, person:${email}, LDAP:${mailPrimaryAddress}, personId:${personId}, username:${username}`,
-                    );
-                    expect(loggerMock.crit).toHaveBeenCalledWith(
-                        `COULD NOT find ${mailPrimaryAddress} in DISABLED addresses, Overwriting ABORTED, personId:${personId}, username:${username}`,
-                    );
+                    expect(loggerMock.crit).not.toHaveBeenCalled();
                     expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
+                    expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                        expect.objectContaining({ personId, username }),
+                        expect.objectContaining({ personId, username }),
+                    );
                 });
             });
 
             describe('and mailPrimaryAddress can be found in disabled EmailAddresses', () => {
-                it('should log info, change mailPrimaryAddress in LDAP', async () => {
+                it('should leave LDAP email addresses and persisted email data unchanged', async () => {
                     personRepositoryMock.findById.mockResolvedValueOnce(person);
                     emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(enabledEmailAddress);
                     emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([
@@ -842,16 +846,6 @@ describe('LdapSyncEventHandler', () => {
                             status: EmailAddressStatus.DISABLED,
                         }),
                     ]);
-                    emailRepoMock.save.mockImplementation(async (emailAddress: EmailAddress<boolean>) =>
-                        Promise.resolve(
-                            DoFactory.createEmailAddress<true>(true, emailAddress.address, {
-                                personId: emailAddress.personId,
-                                status: emailAddress.status,
-                                oxUserID: emailAddress.oxUserID,
-                            }),
-                        ),
-                    );
-
                     // create PKs, orgaMap and rolleMap
                     const [kontexte, orgaMap, rolleMap]: [
                         Personenkontext<true>[],
@@ -859,7 +853,7 @@ describe('LdapSyncEventHandler', () => {
                         Map<RolleID, Rolle<true>>,
                     ] = getPkArrayOrgaMapAndRolleMap(person);
                     mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                    organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                    organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                         oeffentlicheSchulenDomain,
                     );
 
@@ -870,20 +864,9 @@ describe('LdapSyncEventHandler', () => {
                     expect(loggerMock.info).toHaveBeenCalledWith(
                         `Syncing data to LDAP for personId:${personId}, username:${username}`,
                     );
-                    expect(loggerMock.warning).toHaveBeenCalledWith(
-                        `Mismatch mailPrimaryAddress, person:${email}, LDAP:${mailPrimaryAddress}, personId:${personId}, username:${username}`,
-                    );
-                    expect(loggerMock.info).toHaveBeenCalledWith(
-                        `Found ${mailPrimaryAddress} in DISABLED addresses, personId:${personId}, username:${username}`,
-                    );
-                    expect(loggerMock.info).toHaveBeenCalledWith(
-                        `Overwriting LDAP:${mailPrimaryAddress} with person:${email}, personId:${personId}, username:${username}`,
-                    );
-                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
-                        personId,
-                        username,
-                        email,
-                    );
+                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+                    expect(ldapClientAdapterMock.setMailAlternativeAddress).not.toHaveBeenCalled();
+                    expect(emailRepoMock.save).not.toHaveBeenCalled();
                 });
             });
         });
@@ -908,7 +891,7 @@ describe('LdapSyncEventHandler', () => {
                 mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
 
                 mockPersonenKontextRelatedRepositoryCalls(pks, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(
                     oeffentlicheSchulenDomain,
                 );
 
@@ -924,7 +907,7 @@ describe('LdapSyncEventHandler', () => {
                 //mock: LDAP-group for existing PK (orga1Kennung) is NOT found, but an LDAP-group for non-existing PK and a corrupt group-dn are found
                 ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({
                     ok: true,
-                    value: [groupWithoutPkDn, corruptGroupDn1, corruptGroupDn2],
+                    value: [groupWithoutPkDn, corruptGroupDn1, corruptGroupDn2, ''],
                 });
 
                 await sut.personExternalSystemSyncEventHandler(event);
@@ -939,80 +922,15 @@ describe('LdapSyncEventHandler', () => {
                     `Orphan group detected, no existing PK for groupDN:${groupWithoutPkDn}`,
                 );
                 expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Split on ,cn=groups, failed'));
-            });
-        });
-    });
-
-    //* createDisabledEmailAddress is tested via calling personExternalSystemSyncEventHandler and syncDataToLdap */
-    describe('createDisabledEmailAddress', () => {
-        beforeEach(() => {
-            createDataFetchedByRepositoriesAndLDAP();
-        });
-
-        describe('when persisting new DISABLED EmailAddress fails', () => {
-            it('should log error', async () => {
-                personRepositoryMock.findById.mockResolvedValueOnce(person);
-                emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(enabledEmailAddress);
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([
-                    DoFactory.createEmailAddress<true>(true, mailPrimaryAddress, {
-                        status: EmailAddressStatus.DISABLED,
-                    }),
-                ]);
-
-                // create PKs, orgaMap and rolleMap
-                const [kontexte, orgaMap, rolleMap]: [
-                    Personenkontext<true>[],
-                    Map<OrganisationID, Organisation<true>>,
-                    Map<RolleID, Rolle<true>>,
-                ] = getPkArrayOrgaMapAndRolleMap(person);
-                mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
-                    oeffentlicheSchulenDomain,
+                expect(ldapClientAdapterMock.addPersonToGroup).toHaveBeenCalledExactlyOnceWith(
+                    username,
+                    orga1Kennung,
+                    personAttributes.dn,
                 );
-
-                mockPersonAttributesFoundGroupsNotFound();
-
-                emailRepoMock.save.mockResolvedValueOnce(new EntityCouldNotBeCreated('EmailAddress'));
-
-                await sut.personExternalSystemSyncEventHandler(event);
-
-                expect(loggerMock.error).toHaveBeenCalledWith(
-                    `Could not persist email for personId:${personId}, username:${username}, error:EmailAddress could not be created`,
-                );
-            });
-        });
-
-        describe('when persisting new DISABLED EmailAddress succeeds', () => {
-            it('should log info', async () => {
-                personRepositoryMock.findById.mockResolvedValueOnce(person);
-                emailRepoMock.findEnabledByPerson.mockResolvedValueOnce(enabledEmailAddress);
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([
-                    DoFactory.createEmailAddress<true>(true, mailPrimaryAddress, {
-                        status: EmailAddressStatus.DISABLED,
-                    }),
-                ]);
-
-                // create PKs, orgaMap and rolleMap
-                const [kontexte, orgaMap, rolleMap]: [
-                    Personenkontext<true>[],
-                    Map<OrganisationID, Organisation<true>>,
-                    Map<RolleID, Rolle<true>>,
-                ] = getPkArrayOrgaMapAndRolleMap(person);
-                mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(
-                    oeffentlicheSchulenDomain,
-                );
-
-                mockPersonAttributesFoundGroupsNotFound();
-
-                emailRepoMock.save.mockResolvedValueOnce(
-                    getEmailAddress(personId, mailAlternativeAddress, EmailAddressStatus.DISABLED),
-                );
-
-                await sut.personExternalSystemSyncEventHandler(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Successfully persisted new DISABLED EmailAddress for address:${mailAlternativeAddress}, personId:${personId}, username:${username}`,
+                expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledExactlyOnceWith(
+                    username,
+                    groupWithoutPkKennung,
+                    personAttributes.dn,
                 );
             });
         });
