@@ -48,7 +48,7 @@ type ErweiterterServiceProviderForPKEntity = {
 export type ExternalPkData = {
     pkId: string;
     rolleId: RolleID;
-    rollenart?: RollenArt;
+    rollenart: RollenArt;
     kennung?: string;
     serviceProvider?: ServiceProvider<true>[];
 };
