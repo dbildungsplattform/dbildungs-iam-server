@@ -10,7 +10,6 @@ import {
     Post,
     Query,
     StreamableFile,
-    UnauthorizedException,
     UseFilters,
     UseGuards,
 } from '@nestjs/common';
@@ -34,19 +33,20 @@ import { uniq } from 'lodash-es';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { Paged } from '../../../shared/paging/index.js';
 import { ApiOkResponsePaginated, RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
 import { StreamableFileFactory } from '../../../shared/util/streamable-file.factory.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rollenerweiterung-with-extended-data.response.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { AttachedRollenError } from '../domain/errors/attached-rollen.error.js';
@@ -68,6 +68,7 @@ import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { AngebotByIdParams } from './angebot-by.id.params.js';
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
 import { CreateServiceProviderResponse } from './create-service-provider.response.js';
+import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
 import { FindServiceProviderForRolleQueryParams } from './find-service-provider-for-rolle-query.params.js';
 import { ManageableLandRootServiceProvidersQueryParams } from './manageable-land-root-service-providers-query.params.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
@@ -81,8 +82,6 @@ import { ServiceProviderByPersonIdParams } from './service-provider-by-person-id
 import { ServiceProviderErrorFilter } from './service-provider-exception.filter.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
-import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
-import { Paged } from '../../../shared/paging/index.js';
 
 @UseFilters(ServiceProviderErrorFilter)
 @ApiTags('provider')
@@ -225,54 +224,48 @@ export class ProviderController {
         @Param() pathParams: RollenerweiterungByServiceProvidersIdPathParams,
         @Query() queryParams: RollenerweiterungByServiceProvidersIdQueryParams,
     ): Promise<RawPagedResponse<RollenerweiterungWithExtendedDataResponse>> {
-        const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
-            [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.ANGEBOTE_VERWALTEN],
-            false,
-            false,
+        const rollenerweiterungenResult: Result<
+            Counted<Rollenerweiterung<true>>,
+            MissingPermissionsError
+        > = await this.rollenerweiterungRepo.findByServiceProviderIdPagedAndSortedByOrgaKennung(
+            pathParams.angebotId,
+            permissions,
+            queryParams.organisationIds,
+            queryParams.rolleIds,
+            queryParams.offset,
+            queryParams.limit,
         );
-        if (!permittedOrgas.all && permittedOrgas.orgaIds.length === 0) {
-            throw new UnauthorizedException('NOT_AUTHORIZED');
+
+        if (!rollenerweiterungenResult.ok) {
+            throw rollenerweiterungenResult.error;
         }
 
-        if (
-            queryParams.organisationIds &&
-            !permittedOrgas.all &&
-            !queryParams.organisationIds.every((id: string) => permittedOrgas.orgaIds.includes(id))
-        ) {
-            throw new MissingPermissionsError('Insufficient permissions for the requested organisationId');
-        }
+        const [rollenerweiterungen, total]: Counted<Rollenerweiterung<true>> = rollenerweiterungenResult.value;
 
-        let filteredOrgaIds: string[] | undefined = permittedOrgas.all ? undefined : permittedOrgas.orgaIds;
-        if (queryParams.organisationIds?.length) {
-            filteredOrgaIds = queryParams.organisationIds;
-        }
+        const rolleIds: RolleID[] = uniq(
+            rollenerweiterungen.map((rollenerweiterung: Rollenerweiterung<true>): RolleID => rollenerweiterung.rolleId),
+        );
 
-        const [rollenerweiterungen, total]: Counted<Rollenerweiterung<true>> =
-            await this.rollenerweiterungRepo.findByServiceProviderIdPagedAndSortedByOrgaKennung(
-                pathParams.angebotId,
-                filteredOrgaIds,
-                queryParams.rolleIds,
-                queryParams.offset,
-                queryParams.limit,
-            );
-
-        const rolleIds: RolleID[] = uniq(rollenerweiterungen.map((re: Rollenerweiterung<true>) => re.rolleId));
         const organisationIds: OrganisationID[] = uniq(
-            rollenerweiterungen.map((re: Rollenerweiterung<true>) => re.organisationId),
+            rollenerweiterungen.map(
+                (rollenerweiterung: Rollenerweiterung<true>): OrganisationID => rollenerweiterung.organisationId,
+            ),
         );
 
         const [rollen, organisationen]: [Map<RolleID, Rolle<true>>, Map<OrganisationID, Organisation<true>>] =
             await Promise.all([this.rolleRepo.findByIds(rolleIds), this.organisationRepo.findByIds(organisationIds)]);
 
-        /* The data is passed as option<> instead of mandatory with error checking,
-        because otherwise a single faulty relation in an extension
-        could cause all other extensions to fail to load */
+        /*
+         * The referenced data is passed as optional because a single faulty
+         * relation in a Rollenerweiterung should not prevent all other
+         * Rollenerweiterungen from being returned.
+         */
         const rollenerweiterungResponses: RollenerweiterungWithExtendedDataResponse[] = rollenerweiterungen.map(
-            (re: Rollenerweiterung<true>) =>
+            (rollenerweiterung: Rollenerweiterung<true>): RollenerweiterungWithExtendedDataResponse =>
                 new RollenerweiterungWithExtendedDataResponse(
-                    re,
-                    rollen.get(re.rolleId),
-                    organisationen.get(re.organisationId),
+                    rollenerweiterung,
+                    rollen.get(rollenerweiterung.rolleId),
+                    organisationen.get(rollenerweiterung.organisationId),
                 ),
         );
 

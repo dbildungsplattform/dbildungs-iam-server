@@ -36,7 +36,6 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { VidisSyncService } from './vidis.sync-service.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 
 type TorgaIds = {
     id: string;
@@ -898,7 +897,6 @@ describe('VidisSyncService', () => {
                 staleServiceProvider,
             ];
 
-            permissionsMock.hasSystemrechteAtOrganisation = vi.fn().mockResolvedValue(true);
             rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(Ok(null));
             serviceProviderRepoMock.deleteByIdAuthorized.mockResolvedValueOnce(Ok(undefined));
 
@@ -914,18 +912,17 @@ describe('VidisSyncService', () => {
                 }
             ).syncForSchoolInternal(orga.id, angeboteInVidis, angeboteInDb, [], permissionsMock);
 
-            expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
-                RollenSystemRecht.ROLLEN_ERWEITERN,
-            ]);
             expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).toHaveBeenCalledWith(
                 orga.id,
                 [staleServiceProvider.id],
+                permissionsMock,
             );
             expect(serviceProviderRepoMock.deleteByIdAuthorized).toHaveBeenCalledWith(
                 permissionsMock,
                 staleServiceProvider.id,
             );
             expect(serviceProviderModificationServiceMock.create).not.toHaveBeenCalled();
+            expect(permissionsMock.hasSystemrechteAtOrganisation).not.toHaveBeenCalled();
         });
 
         it('should skip stale Angebote deletion when required permissions are missing', async () => {
@@ -935,11 +932,12 @@ describe('VidisSyncService', () => {
             };
 
             const staleServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '2');
+            const permissionErrorMessage: string = 'Systemrecht ROLLEN_ERWEITERN required.';
+            const permissionError: MissingPermissionsError = new MissingPermissionsError(permissionErrorMessage);
 
-            const permissionErrorMessage: string =
-                'Systemrechte ANGEBOTE_VERWALTEN and ROLLEN_ERWEITERN required for deleting VIDIS Angebote.';
-
-            permissionsMock.hasSystemrechteAtOrganisation = vi.fn().mockResolvedValue(false);
+            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(
+                Err(permissionError),
+            );
 
             await (
                 sut as unknown as {
@@ -959,11 +957,13 @@ describe('VidisSyncService', () => {
                 permissionsMock,
             );
 
-            expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(orga.id, [
-                RollenSystemRecht.ROLLEN_ERWEITERN,
-            ]);
-            expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).not.toHaveBeenCalled();
+            expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).toHaveBeenCalledWith(
+                orga.id,
+                [staleServiceProvider.id],
+                permissionsMock,
+            );
             expect(serviceProviderRepoMock.deleteByIdAuthorized).not.toHaveBeenCalled();
+            expect(permissionsMock.hasSystemrechteAtOrganisation).not.toHaveBeenCalled();
             expect(loggerMock.error).toHaveBeenCalledWith(
                 `VIDIS sync for organisation ${orga.id} finished with 1 failed operations.`,
             );

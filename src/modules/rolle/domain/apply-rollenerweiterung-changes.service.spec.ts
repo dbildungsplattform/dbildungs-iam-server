@@ -19,19 +19,19 @@ import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerwe
 import { ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung.body.params.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { ApplyRollenerweiterungService } from './apply-rollenerweiterung-changes.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
+import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 
-describe('ApplyRollenerweiterungService', () => {
+describe('ApplyRollenerweiterungChangesService', () => {
     let service: ApplyRollenerweiterungService;
     let organisationRepoMock: DeepMocked<OrganisationRepository>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
     let serviceProviderRepoMock: DeepMocked<ServiceProviderRepo>;
-    let rollenerweiterungRepoMock: DeepMocked<RollenerweiterungRepo>;
+    let rollenerweiterungRepoMock: DeepMocked<InternalRollenerweiterungRepo>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -50,8 +50,8 @@ describe('ApplyRollenerweiterungService', () => {
                     useValue: createMock<ServiceProviderRepo>(ServiceProviderRepo),
                 },
                 {
-                    provide: RollenerweiterungRepo,
-                    useValue: createMock<RollenerweiterungRepo>(RollenerweiterungRepo),
+                    provide: InternalRollenerweiterungRepo,
+                    useValue: createMock<InternalRollenerweiterungRepo>(InternalRollenerweiterungRepo),
                 },
                 ApplyRollenerweiterungService,
             ],
@@ -61,7 +61,7 @@ describe('ApplyRollenerweiterungService', () => {
         organisationRepoMock = module.get(OrganisationRepository);
         rolleRepoMock = module.get(RolleRepo);
         serviceProviderRepoMock = module.get(ServiceProviderRepo);
-        rollenerweiterungRepoMock = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepoMock = module.get(InternalRollenerweiterungRepo);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {

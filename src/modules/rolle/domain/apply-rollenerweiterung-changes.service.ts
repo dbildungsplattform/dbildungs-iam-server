@@ -14,11 +14,11 @@ import { ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { ErrorIdType } from '../api/ErrorIdType.enum.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { Rolle } from './rolle.js';
 import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
+import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 
 interface RollenerweiterungOperationResult {
     id: string;
@@ -76,7 +76,7 @@ export class ApplyRollenerweiterungService {
         private readonly serviceProviderRepo: ServiceProviderRepo,
         private readonly organisationRepo: OrganisationRepository,
         private readonly rolleRepo: RolleRepo,
-        private readonly rollenerweiterungRepo: RollenerweiterungRepo,
+        private readonly rollenerweiterungRepo: InternalRollenerweiterungRepo,
     ) {}
 
     public async applyRollenerweiterungChangesForRolle(

@@ -8,6 +8,7 @@ import { PersonModule } from '../person/person.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
 import { RollenerweiterungController } from './api/rollenerweiterung.controller.js';
 import { ApplyRollenerweiterungService } from './domain/apply-rollenerweiterung-changes.service.js';
+import { InternalRollenerweiterungRepo } from './repo/internal-rollenerweiterung.repo.js';
 
 @Module({
     imports: [
@@ -18,7 +19,7 @@ import { ApplyRollenerweiterungService } from './domain/apply-rollenerweiterung-
         PersonenKontextModule,
         LoggerModule.register(RolleApiModule.name),
     ],
-    providers: [ApplyRollenerweiterungService],
+    providers: [ApplyRollenerweiterungService, InternalRollenerweiterungRepo],
     controllers: [RolleController, RollenerweiterungController],
 })
 export class RolleApiModule {}

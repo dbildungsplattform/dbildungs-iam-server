@@ -38,6 +38,7 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { RemoveServiceProviderUnknownError } from '../error/remove-service-provider.error.js';
+import { ServiceProviderID } from '../../../shared/types/index.js';
 
 type VidisSchoolActivatedAngebot = {
     angebot: VidisServiceResponseAngebot;
@@ -318,35 +319,25 @@ export class VidisSyncService {
 
         if (serviceProviderIdsMissingInVidis.length > 0) {
             try {
-                const hasRequiredPermissions: boolean = await permissions.hasSystemrechteAtOrganisation(
+                const deleteRollenerweiterungenResult: Awaited<
+                    ReturnType<RollenerweiterungRepo['deleteByOrganisationIdAndServiceProviderIds']>
+                > = await this.rollenerweiterungRepo.deleteByOrganisationIdAndServiceProviderIds(
                     organisationId,
-                    [RollenSystemRecht.ROLLEN_ERWEITERN], //dont know if these are required here
+                    serviceProviderIdsMissingInVidis,
+                    permissions,
                 );
-                if (!hasRequiredPermissions) {
-                    syncOperations.push(
-                        Promise.reject(
-                            new MissingPermissionsError(
-                                'Systemrechte ANGEBOTE_VERWALTEN and ROLLEN_ERWEITERN required for deleting VIDIS Angebote.',
-                            ),
-                        ),
-                    );
+
+                if (deleteRollenerweiterungenResult.ok) {
+                    serviceProviderIdsMissingInVidis.forEach((serviceProviderId: ServiceProviderID) => {
+                        const deleteOperation: Promise<DeleteVidisServiceProviderResult> =
+                            this.serviceProviderRepo.deleteByIdAuthorized(permissions, serviceProviderId);
+
+                        deleteOperationsByServiceProviderId.set(serviceProviderId, deleteOperation);
+
+                        syncOperations.push(deleteOperation);
+                    });
                 } else {
-                    const deleteRollenerweiterungenResult: Awaited<
-                        ReturnType<RollenerweiterungRepo['deleteByOrganisationIdAndServiceProviderIds']>
-                    > = await this.rollenerweiterungRepo.deleteByOrganisationIdAndServiceProviderIds(
-                        organisationId,
-                        serviceProviderIdsMissingInVidis,
-                    );
-                    if (deleteRollenerweiterungenResult.ok) {
-                        serviceProviderIdsMissingInVidis.forEach((serviceProviderId: string) => {
-                            const deleteOperation: Promise<DeleteVidisServiceProviderResult> =
-                                this.serviceProviderRepo.deleteByIdAuthorized(permissions, serviceProviderId);
-                            deleteOperationsByServiceProviderId.set(serviceProviderId, deleteOperation);
-                            syncOperations.push(deleteOperation);
-                        });
-                    } else {
-                        syncOperations.push(Promise.reject(deleteRollenerweiterungenResult.error));
-                    }
+                    syncOperations.push(Promise.reject(deleteRollenerweiterungenResult.error));
                 }
             } catch (error) {
                 const rejectionReason: Error =

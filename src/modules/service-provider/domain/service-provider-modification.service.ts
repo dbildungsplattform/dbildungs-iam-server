@@ -136,13 +136,28 @@ export class ServiceProviderModificationService {
         const hasVerfuegbarFuerRollenerweiterungMerkmalBeenRemoved: boolean =
             !serviceProvider.merkmale.includes(ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG) &&
             existingProvider.merkmale.includes(ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG);
+
         if (hasVerfuegbarFuerRollenerweiterungMerkmalBeenRemoved) {
-            await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(serviceProvider.id);
+            const deleteResult: Result<null, DomainError | MissingPermissionsError> =
+                await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
+                    serviceProvider.id,
+                    permissions,
+                );
+
+            if (!deleteResult.ok) {
+                return deleteResult;
+            }
         } else if (hasRollenartenWhitelistChanged && forbiddenRollenarten.length > 0) {
-            await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
-                serviceProvider.id,
-                forbiddenRollenarten,
-            );
+            const deleteResult: Result<null, DomainError | MissingPermissionsError> =
+                await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
+                    serviceProvider.id,
+                    permissions,
+                    forbiddenRollenarten,
+                );
+
+            if (!deleteResult.ok) {
+                return deleteResult;
+            }
         }
 
         const persistedServiceProvider: ServiceProvider<true> =
