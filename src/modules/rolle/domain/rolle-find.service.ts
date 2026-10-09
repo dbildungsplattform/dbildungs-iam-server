@@ -33,7 +33,7 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
     permissions: IPersonPermissions;
     systemrecht: RollenSystemRecht;
     organisationId: OrganisationID;
-    rollenartOfUser?: RollenArt;
+    rollenartForPerson?: RollenArt;
     rolleName?: string;
     rollenIds?: Array<RolleID>;
     limit?: number;
@@ -443,7 +443,7 @@ export class RolleFindService {
     ): Promise<[Array<RollenArt>, Array<RollenArt>]> {
         const rollenArtenForOrganisation: Array<RollenArt> = await this.resolveAllowedRollenArten(
             selectedAndPermittedOrgas,
-            params.rollenartOfUser ? [params.rollenartOfUser] : undefined,
+            params.rollenartForPerson ? [params.rollenartForPerson] : undefined,
         );
         if (rollenArtenForOrganisation.length === 0) {
             return [[], []];
@@ -502,9 +502,6 @@ export class RolleFindService {
         }
 
         const selectedOrgasWithParents: OrganisationID[] = await this.getOrganisationIdsWithParents(narrowedSelection);
-        if (selectedOrgasWithParents.length === 0) {
-            return { kind: OrganisationBoundsKind.EMPTY };
-        }
 
         return {
             selectedAndPermittedOrgas: narrowedSelection,
