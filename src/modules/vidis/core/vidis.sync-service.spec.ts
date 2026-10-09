@@ -36,6 +36,7 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { VidisSyncService } from './vidis.sync-service.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
 type TorgaIds = {
     id: string;
@@ -121,6 +122,8 @@ describe('VidisSyncService', () => {
             new Date('2026-01-01'),
             new Date('2026-01-02'),
             1,
+            faker.lorem.word(),
+            OrganisationsTyp.SCHULE,
             undefined,
             undefined,
             kennung,
@@ -310,7 +313,14 @@ describe('VidisSyncService', () => {
 
             vi.mocked(permissionsMock.hasSystemrechteAtOrganisation).mockResolvedValue(true);
             organisationRepoMock.findById.mockResolvedValue(
-                Organisation.construct(organisationId, new Date('2026-01-01'), new Date('2026-01-02'), 1),
+                Organisation.construct(
+                    organisationId,
+                    new Date('2026-01-01'),
+                    new Date('2026-01-02'),
+                    1,
+                    faker.lorem.word(),
+                    OrganisationsTyp.SCHULE,
+                ),
             );
 
             const result: Result<void, SharedDomainError> = await sut.syncAngeboteForSchool(
@@ -1648,9 +1658,8 @@ describe('VidisSyncService', () => {
                 new Date('2026-01-01'),
                 new Date('2026-01-02'),
                 1,
-                undefined,
-                undefined,
-                undefined,
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
             );
 
             expect(mapOrganisationIdsByKennung([schoolWithoutKennung, createSchool(orga.id, orga.kennung)])).toEqual({

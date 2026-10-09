@@ -1584,7 +1584,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": 255,
           "precision": null,
@@ -1643,7 +1643,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": null,
@@ -2868,7 +2868,12 @@
           "enumItems": [
             "BEFRISTUNG_PFLICHT",
             "KOPERS_PFLICHT",
-            "MPT_ROLLE"
+            "MPT_ROLLE",
+            "PILOT_1_ROLLE",
+            "PILOT_2_ROLLE",
+            "PILOT_3_ROLLE",
+            "PILOT_4_ROLLE",
+            "PILOT_5_ROLLE"
           ],
           "mappedType": "enum",
           "nativeEnumName": "rollen_merkmal_enum"
@@ -3072,6 +3077,11 @@
           "enumItems": [
             "ROLLEN_VERWALTEN",
             "MPT_ROLLEN_ZUORDNEN",
+            "PILOT_1_ROLLEN_ZUORDNEN",
+            "PILOT_2_ROLLEN_ZUORDNEN",
+            "PILOT_3_ROLLEN_ZUORDNEN",
+            "PILOT_4_ROLLEN_ZUORDNEN",
+            "PILOT_5_ROLLEN_ZUORDNEN",
             "PERSONEN_SOFORT_LOESCHEN",
             "PERSONEN_VERWALTEN",
             "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",
@@ -4368,7 +4378,12 @@
       "items": [
         "BEFRISTUNG_PFLICHT",
         "KOPERS_PFLICHT",
-        "MPT_ROLLE"
+        "MPT_ROLLE",
+        "PILOT_1_ROLLE",
+        "PILOT_2_ROLLE",
+        "PILOT_3_ROLLE",
+        "PILOT_4_ROLLE",
+        "PILOT_5_ROLLE"
       ]
     },
     "rollen_system_recht_enum": {
@@ -4377,6 +4392,11 @@
       "items": [
         "ROLLEN_VERWALTEN",
         "MPT_ROLLEN_ZUORDNEN",
+        "PILOT_1_ROLLEN_ZUORDNEN",
+        "PILOT_2_ROLLEN_ZUORDNEN",
+        "PILOT_3_ROLLEN_ZUORDNEN",
+        "PILOT_4_ROLLEN_ZUORDNEN",
+        "PILOT_5_ROLLEN_ZUORDNEN",
         "PERSONEN_SOFORT_LOESCHEN",
         "PERSONEN_VERWALTEN",
         "LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN",

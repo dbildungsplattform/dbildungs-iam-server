@@ -458,15 +458,15 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
                 undefined,
                 undefined,
-            );
+            });
             expect(rollenerweiterungRepo.findByServiceProviderIds).toHaveBeenCalledWith(
                 [serviceProvider.id],
                 permissions,
@@ -534,15 +534,13 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-                undefined,
-                undefined,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map(
@@ -583,15 +581,15 @@ describe('ServiceProviderService', () => {
                 offset,
             );
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
                 limit,
                 offset,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map(
@@ -1092,13 +1090,13 @@ describe('ServiceProviderService', () => {
             );
 
             expect(organisationRepo.findParentOrgasForIds).toHaveBeenCalledWith([organisation.id]);
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrganisation.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
                 ],
-            );
+            });
             expect(result[0]).toContain(serviceProvider);
             expect(result[1]).toBe(1);
         });
@@ -1130,37 +1128,29 @@ describe('ServiceProviderService', () => {
             expect(result[1]).toBe(0);
         });
 
-        it('should filter service providers by rollenArten and include providers with an unrestricted whitelist', async () => {
-            const unrestrictedProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [],
-            });
-            const matchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [RollenArt.LERN],
-            });
-            const nonMatchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [RollenArt.LEHR],
-            });
-
-            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([
-                [unrestrictedProvider, matchingProvider, nonMatchingProvider],
-                3,
-            ]);
+        it('passes rollenArten and pagination to the repository for filtering before paging', async () => {
+            const resultFromRepository: Counted<ServiceProvider<true>> = [[serviceProvider], 1];
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValueOnce(resultFromRepository);
 
             const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
                 organisation.id,
                 permissions,
                 [RollenArt.LERN],
+                10,
+                20,
             );
 
-            expect(result[0]).toEqual([unrestrictedProvider, matchingProvider]);
-            expect(result[0]).not.toContain(nonMatchingProvider);
-            expect(result[1]).toBe(2);
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+                ],
+                rollenArten: [RollenArt.LERN],
+                limit: 10,
+                offset: 20,
+            });
+            expect(result).toBe(resultFromRepository);
         });
     });
 
