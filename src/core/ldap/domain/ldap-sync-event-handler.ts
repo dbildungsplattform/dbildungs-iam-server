@@ -2,9 +2,6 @@ import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { Injectable } from '@nestjs/common';
 import { uniq } from 'lodash-es';
-import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
-import { EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
-import { EmailRepo } from '../../../modules/email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
@@ -16,21 +13,21 @@ import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
-import { KafkaLdapSyncFailedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-failed.event.js';
 import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
-import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { OrganisationID, PersonID, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { EventHandler } from '../../eventbus/decorators/event-handler.decorator.js';
 import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler.decorator.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
-import { PersonIdentifier } from '../../logging/person-identifier.js';
 import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-group-kennung-extraction.error.js';
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
+import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
+import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 
 export type LdapSyncData = {
     givenName: string;
@@ -63,7 +60,6 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
         dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         rolleRepo: RolleRepo,
         organisationRepository: OrganisationRepository,
-        private readonly emailRepo: EmailRepo,
         private readonly eventService: EventRoutingLegacyKafkaService,
         private readonly emailResolverService: EmailResolverService,
         // @ts-expect-error used by EnsureRequestContext decorator
@@ -113,69 +109,6 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
         if (!person.username) {
             return this.logger.error(`Person with personId:${personId} has no username!`);
         }
-        const username: PersonUsername = person.username;
-        const personInfo: PersonIdentifier = {
-            personId: personId,
-            username: username,
-        };
-
-        let enabledEmailAddress: Option<EmailAddress<true>> = null;
-        let failedEmailAddresses: EmailAddress<true>[] = [];
-        let disabledEmailAddressesSorted: EmailAddress<true>[] = [];
-
-        //ONLY IF email-microservice is NOT used
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            // Check person has active, primary EmailAddress
-            enabledEmailAddress = await this.emailRepo.findEnabledByPerson(personId);
-            if (!enabledEmailAddress) {
-                this.logger.warningPersonalized(
-                    `Could not find ENABLED EmailAddress, searching for FAILED EmailAddress`,
-                    personInfo,
-                );
-                failedEmailAddresses = await this.emailRepo.findByPersonSortedByUpdatedAtDesc(
-                    personId,
-                    EmailAddressStatus.FAILED,
-                );
-                //only publish LdapSyncFailedEvent when oxUserId is UNDEFINED, because creation of OxUser-account should be avoided, when oxUserId is already present
-                if (
-                    !this.emailResolverService.shouldUseEmailMicroservice() &&
-                    failedEmailAddresses &&
-                    failedEmailAddresses[0]
-                ) {
-                    if (!failedEmailAddresses[0].oxUserID) {
-                        this.eventService.publish(
-                            new LdapSyncFailedEvent(personId, person.username),
-                            new KafkaLdapSyncFailedEvent(personId, person.username),
-                        );
-                        return this.logger.infoPersonalized(
-                            `Published LdapSyncFailed-event for FAILED EmailAddress, ABORTING LDAP-Sync, address:${failedEmailAddresses[0].address}`,
-                            personInfo,
-                        );
-                    } else {
-                        return this.logger.errorPersonalized(
-                            `Most recent FAILED EmailAddress already has an oxUserId, ABORTING LDAP-Sync`,
-                            personInfo,
-                        );
-                    }
-                } else {
-                    return this.logger.errorPersonalized(
-                        `Could not find any FAILED EmailAddress after no ENABLED EmaiLAddress could be found, ABORTING LDAP-Sync`,
-                        personInfo,
-                    );
-                }
-            }
-
-            // Search for most recent deactivated EmailAddress
-            disabledEmailAddressesSorted = await this.emailRepo.findByPersonSortedByUpdatedAtDesc(
-                personId,
-                EmailAddressStatus.DISABLED,
-            );
-            if (disabledEmailAddressesSorted.length === 0) {
-                this.logger.info(`No DISABLED EmailAddress(es) for Person with ID ${personId}`);
-            }
-        } else {
-            this.logger.info(`skipping email resolution for personId:${personId} since email microservice is active`);
-        }
 
         const personKontextWithUemRolle: Personenkontext<true>[] = await this.findUemKontexts(personId);
 
@@ -224,30 +157,26 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
         );
 
         // Get current attributes for person from LDAP
-        const personAttributes: Result<LdapPersonAttributes> = await this.ldapClientAdapter.getPersonAttributes(
+        const personAttributesFromLdap: Result<LdapPersonAttributes> = await this.ldapClientAdapter.getPersonAttributes(
             personId,
             person.username,
             uemLdapOu.value,
         );
-        if (!personAttributes.ok) {
+        if (!personAttributesFromLdap.ok) {
             return this.logger.error(
-                `Error while fetching attributes for personId:${personId} in LDAP, msg:${personAttributes.error.message}`,
+                `Error while fetching attributes for personId:${personId} in LDAP, msg:${personAttributesFromLdap.error.message}`,
             );
         }
         // entryUUID is only return within LdapPersonAttributes, when an empty PersonEntry had to be created,
         // therefore changed data has to be persisted via repository
-        if (personAttributes.value.entryUUID) {
-            person.externalIds.LDAP = personAttributes.value.entryUUID;
+        if (personAttributesFromLdap.value.entryUUID) {
+            person.externalIds.LDAP = personAttributesFromLdap.value.entryUUID;
             await this.personRepository.save(person);
         }
 
         const givenName: string = person.vorname;
         const surName: string = person.familienname;
         const cn: string = person.username;
-        const mailPrimaryAddress: string | null = enabledEmailAddress?.address ?? null;
-        const mailAlternativeAddresses: string[] = disabledEmailAddressesSorted.map(
-            (ea: EmailAddress<true>) => ea.address,
-        );
 
         // Get current groups for person from LDAP
         const groups: Result<string[]> = await this.ldapClientAdapter.getGroupsForPerson(personId, person.username);
@@ -263,44 +192,60 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
         const groupsToAdd: string[] = this.createGroupAdditionList(schulenDstNrList, groups.value);
         const groupsToRemove: string[] = this.createGroupRemovalList(schulenDstNrList, groups.value);
 
+        const emailRetrieved: Option<PersonEmailResponse> = await this.emailResolverService.findEmailBySpshPerson(
+            person.id,
+        );
+        let emailToSync: string | null = null;
+        if (emailRetrieved && emailRetrieved.status === EmailAddressStatus.ENABLED) {
+            emailToSync = emailRetrieved.address;
+        }
+
         const syncData: LdapSyncData = {
             personId: person.id,
             username: person.username,
             givenName: givenName,
             surName: surName,
             cn: cn,
-            enabledEmailAddress: mailPrimaryAddress,
-            disabledEmailAddresses: mailAlternativeAddresses,
+            enabledEmailAddress: emailToSync, // TODO sync email addresses form microservice
+            disabledEmailAddresses: [],
             groupsToAdd: groupsToAdd,
             groupsToRemove: groupsToRemove,
         };
 
-        await this.syncDataToLdap(syncData, personAttributes.value);
+        await this.syncDataToLdap(syncData, personAttributesFromLdap.value);
         this.eventService.publish(
             new LdapSyncCompletedEvent(personId, person.username),
             new KafkaLdapSyncCompletedEvent(personId, person.username),
         );
     }
 
-    private async syncDataToLdap(ldapSyncData: LdapSyncData, personAttributes: LdapPersonAttributes): Promise<void> {
+    private async syncDataToLdap(
+        ldapSyncData: LdapSyncData,
+        personAttributesFromLdap: LdapPersonAttributes,
+    ): Promise<void> {
         this.logger.info(
             `Syncing data to LDAP for personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
         );
 
         // Check and sync PersonAttributes
-        if (ldapSyncData.givenName !== personAttributes.givenName) {
+        if (ldapSyncData.givenName !== personAttributesFromLdap.givenName) {
             this.logger.warning(
-                `Mismatch for givenName, person:${ldapSyncData.givenName}, LDAP:${personAttributes.givenName}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
+                `Mismatch for givenName, person:${ldapSyncData.givenName}, LDAP:${personAttributesFromLdap.givenName}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
             );
         }
-        if (ldapSyncData.surName !== personAttributes.surName) {
+        if (ldapSyncData.surName !== personAttributesFromLdap.surName) {
             this.logger.warning(
-                `Mismatch for surName, person:${ldapSyncData.surName}, LDAP:${personAttributes.surName}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
+                `Mismatch for surName, person:${ldapSyncData.surName}, LDAP:${personAttributesFromLdap.surName}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
             );
         }
-        if (ldapSyncData.cn !== personAttributes.cn) {
+        if (ldapSyncData.cn !== personAttributesFromLdap.cn) {
             this.logger.warning(
-                `Mismatch for cn, person:${ldapSyncData.cn}, LDAP:${personAttributes.cn}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
+                `Mismatch for cn, person:${ldapSyncData.cn}, LDAP:${personAttributesFromLdap.cn}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
+            );
+        }
+        if (ldapSyncData.enabledEmailAddress !== personAttributesFromLdap.mailPrimaryAddress) {
+            this.logger.warning(
+                `Mismatch for enabledEmailAddress, person:${ldapSyncData.enabledEmailAddress}, LDAP:${personAttributesFromLdap.mailPrimaryAddress}, personId:${ldapSyncData.personId}, username:${ldapSyncData.username}`,
             );
         }
 
@@ -310,15 +255,34 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             ldapSyncData.surName,
             ldapSyncData.cn,
         );
+        // UEM prefers an old email address over no email address, thus we only change the email address if the new one is not null and different from the current one.
+        if (
+            ldapSyncData.enabledEmailAddress != null &&
+            ldapSyncData.enabledEmailAddress !== personAttributesFromLdap.mailPrimaryAddress
+        ) {
+            await this.ldapClientAdapter.changeEmailAddressByPersonId(
+                ldapSyncData.personId,
+                ldapSyncData.username,
+                ldapSyncData.enabledEmailAddress,
+            );
+        }
 
         await Promise.all([
             ...ldapSyncData.groupsToAdd.map(
                 (kennung: string): Promise<Result<boolean>> =>
-                    this.ldapClientAdapter.addPersonToGroup(ldapSyncData.username, kennung, personAttributes.dn),
+                    this.ldapClientAdapter.addPersonToGroup(
+                        ldapSyncData.username,
+                        kennung,
+                        personAttributesFromLdap.dn,
+                    ),
             ),
             ...ldapSyncData.groupsToRemove.map(
                 (kennung: string): Promise<Result<boolean>> =>
-                    this.ldapClientAdapter.removePersonFromGroup(ldapSyncData.username, kennung, personAttributes.dn),
+                    this.ldapClientAdapter.removePersonFromGroup(
+                        ldapSyncData.username,
+                        kennung,
+                        personAttributesFromLdap.dn,
+                    ),
             ),
         ]);
     }
