@@ -152,28 +152,29 @@ describe('UserExternaldataService', () => {
             });
         });
 
-        describe('when Personenkontexte are missing kennung or rollenart', () => {
-            const setup = (): { person: Person<true> } => {
+        describe('when permitted Personenkontexte have no kennung', () => {
+            const setup = (kennung: string | undefined): { person: Person<true>; permittedPk: ExternalPkData } => {
                 const person: Person<true> = DoFactory.createPerson(true);
+                const permittedPk: ExternalPkData = createExternalPkData({
+                    kennung: 'permitted-kennung',
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                });
 
                 personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
                 personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
                 personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
                     createExternalPkData({
-                        kennung: undefined,
+                        kennung,
                         serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                     }),
-                    createExternalPkData({
-                        rollenart: undefined,
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
+                    permittedPk,
                 ]);
 
-                return { person };
+                return { person, permittedPk };
             };
 
-            it('should ignore them and return MissingPermissionsError', async () => {
-                const { person }: { person: Person<true> } = setup();
+            it.each([undefined, ''])('should omit kennung %s', async (kennung: string | undefined) => {
+                const { person, permittedPk }: { person: Person<true>; permittedPk: ExternalPkData } = setup(kennung);
 
                 const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
                     person.keycloakUserId!,
@@ -181,10 +182,16 @@ describe('UserExternaldataService', () => {
                     false,
                 );
 
-                expect(result.ok).toBe(false);
-                if (!result.ok) {
-                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
-                }
+                expect(result).toEqual(
+                    Ok({
+                        personId: person.id,
+                        vorname: person.vorname,
+                        nachname: person.familienname,
+                        rollenart: RollenArt.LEHR,
+                        dienststellennr: ['permitted-kennung'],
+                        personenkontexte: [{ dienststellennr: 'permitted-kennung', rolleId: permittedPk.rolleId }],
+                    }),
+                );
             });
         });
 
