@@ -34,10 +34,10 @@ import { DbSeedReference } from './db-seed-reference.js';
 import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
 import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
-import { Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
+import { CreateRollenerweiterungError, Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
 import { ServiceProviderMerkmal } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { InternalRollenerweiterungService } from '../../../modules/rolle/domain/internal-rollenerweiterung.service.js';
-import { Ok } from '../../../shared/util/result.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 function createDbSeedReference(): DbSeedReference {
     return DbSeedReference.createNew(ReferencedEntityType.ORGANISATION, faker.number.int(), faker.string.uuid());
@@ -516,6 +516,34 @@ describe('DbSeedService', () => {
                     referencedEntityType: ReferencedEntityType.ROLLENERWEITERUNG,
                 }),
             );
+        });
+
+        it('should log and throw if the Rollenerweiterung cannot be created', async () => {
+            const fileContentAsStr: string = fs.readFileSync(
+                './seeding/seeding-integration-test/rollenerweiterungen/01_rollenerweiterung.json',
+                'utf-8',
+            );
+
+            const {
+                organisation,
+                rolle,
+                serviceProvider,
+            }: {
+                organisation: Organisation<true>;
+                rolle: Rolle<true>;
+                serviceProvider: ServiceProvider<true>;
+            } = configureValidRollenerweiterungReferences();
+
+            const createError: CreateRollenerweiterungError = new Error(
+                'Could not create Rollenerweiterung',
+            ) as CreateRollenerweiterungError;
+
+            rollenerweiterungServiceMock.create.mockResolvedValueOnce(Err(createError));
+
+            await expect(dbSeedService.seedRollenerweiterung(fileContentAsStr)).rejects.toBe(createError);
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledOnce();
+            expect(rollenerweiterungServiceMock.create).toHaveBeenCalledWith(organisation, rolle, serviceProvider);
+            expect(dbSeedReferenceRepoMock.create).not.toHaveBeenCalled();
         });
     });
 

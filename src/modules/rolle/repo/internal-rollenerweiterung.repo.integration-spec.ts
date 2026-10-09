@@ -1371,6 +1371,13 @@ describe('InternalRollenerweiterungRepo', () => {
             ).toEqual(expect.arrayContaining([rolle.id, secondRolle.id]));
             expect(count).toBe(2);
         });
+
+        it('should return an empty result if organisationIds is empty', async () => {
+            const result: Counted<Rollenerweiterung<true>> =
+                await sut.findByServiceProviderIdPagedAndSortedByOrgaKennung(serviceProvider.id, []);
+
+            expect(result).toEqual([[], 0]);
+        });
     });
 
     describe('deleteByComposedId', () => {

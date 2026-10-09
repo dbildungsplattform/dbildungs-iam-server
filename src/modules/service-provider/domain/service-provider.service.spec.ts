@@ -10,7 +10,7 @@ import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
@@ -245,6 +245,66 @@ describe('ServiceProviderService', () => {
                         organisationAndRolleIds,
                         permissions,
                     );
+                });
+
+                it('throws MissingPermissionsError when loading Rollenerweiterungen is not permitted', async () => {
+                    const organisationId: OrganisationID = faker.string.uuid();
+
+                    const rolleId: RolleID = faker.string.uuid();
+
+                    const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+                    const permissionError: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+
+                    const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> = {
+                        ok: false,
+                        error: permissionError,
+                    };
+
+                    const organisationAndRolleIds: Array<{
+                        organisationId: OrganisationID;
+                        rolleId: RolleID;
+                    }> = [
+                        {
+                            organisationId,
+                            rolleId,
+                        },
+                    ];
+
+                    rolleRepo.findByIds.mockResolvedValueOnce(
+                        new Map([
+                            [
+                                rolleId,
+                                DoFactory.createRolle(true, {
+                                    id: rolleId,
+                                    serviceProviderIds: [],
+                                }),
+                            ],
+                        ]),
+                    );
+
+                    rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce(
+                        rollenerweiterungenResult,
+                    );
+
+                    await expect(
+                        (
+                            service as unknown as {
+                                getServiceProvidersByOrganisationenAndRollen: (
+                                    ids: Array<{
+                                        organisationId: OrganisationID;
+                                        rolleId: RolleID;
+                                    }>,
+                                    permissions: IPersonPermissions,
+                                ) => Promise<ServiceProvider<true>[]>;
+                            }
+                        ).getServiceProvidersByOrganisationenAndRollen(organisationAndRolleIds, permissions),
+                    ).rejects.toBe(permissionError);
+                    expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith(
+                        organisationAndRolleIds,
+                        permissions,
+                    );
+                    expect(serviceProviderRepo.findByIds).not.toHaveBeenCalled();
                 });
             },
         );
@@ -840,6 +900,38 @@ describe('ServiceProviderService', () => {
             const result: Option<ManageableServiceProviderDetailsWithReferencedObjects> =
                 await service.findManageableById(permissions, serviceProvider.id);
             expect(result?.relevantSystemrechte).toContain(RollenSystemRecht.ROLLEN_ERWEITERN);
+        });
+
+        it('throws MissingPermissionsError when loading Rollenerweiterungen is not permitted', async () => {
+            const permissionError: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+
+            const rollenerweiterungenResult: Result<
+                Map<ServiceProviderID, Rollenerweiterung<true>[]>,
+                MissingPermissionsError
+            > = {
+                ok: false,
+                error: permissionError,
+            };
+
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: true,
+            });
+
+            serviceProviderRepo.findById.mockResolvedValue(serviceProvider);
+
+            organisationRepo.findByIds.mockResolvedValue(
+                new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
+            );
+
+            rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValueOnce(rollenerweiterungenResult);
+
+            await expect(service.findManageableById(permissions, serviceProvider.id)).rejects.toBe(permissionError);
+            expect(rollenerweiterungRepo.findByServiceProviderIds).toHaveBeenCalledWith(
+                [serviceProvider.id],
+                permissions,
+                undefined,
+            );
+            expect(rolleRepo.findByServiceProviderIds).not.toHaveBeenCalled();
         });
     });
 
