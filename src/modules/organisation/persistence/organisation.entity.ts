@@ -19,8 +19,8 @@ export class OrganisationEntity extends TimestampedEntity {
     @Property({ nullable: true })
     public kennung?: string;
 
-    @Property({ nullable: true })
-    public name?: string;
+    @Property({ nullable: false })
+    public name!: string;
 
     @Property({ nullable: true })
     public namensergaenzung?: string;
@@ -29,8 +29,8 @@ export class OrganisationEntity extends TimestampedEntity {
     public kuerzel?: string;
 
     @Index({ name: 'organisation_typ_index' })
-    @Enum({ items: () => OrganisationsTyp, nullable: true, nativeEnumName: 'organisations_typ_enum' })
-    public typ?: OrganisationsTyp;
+    @Enum({ items: () => OrganisationsTyp, nullable: false, nativeEnumName: 'organisations_typ_enum' })
+    public typ!: OrganisationsTyp;
 
     @Enum({ items: () => Traegerschaft, nullable: true, nativeEnumName: 'traegerschaft_enum' })
     public traegerschaft?: Traegerschaft;

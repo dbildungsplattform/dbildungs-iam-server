@@ -47,13 +47,13 @@ describe('Organisation', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.lorem.word(),
                 faker.lorem.word(),
-                faker.lorem.word(),
                 faker.string.uuid(),
-                undefined,
                 undefined,
                 undefined,
                 undefined,
@@ -68,9 +68,10 @@ describe('Organisation', () => {
     describe('createNew', () => {
         it('should return non persisted organisation', () => {
             const organisation: Organisation<false> | DomainError = Organisation.createNew(
-                faker.string.uuid(),
-                faker.string.uuid(),
                 faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 faker.lorem.word(),
                 faker.lorem.word(),
                 faker.string.uuid(),
@@ -83,11 +84,12 @@ describe('Organisation', () => {
         });
         it('should return non persisted organisation', () => {
             const organisation: Organisation<false> | DomainError = Organisation.createNew(
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 'kennung',
                 'name',
-                faker.lorem.word(),
                 faker.string.uuid(),
                 undefined,
                 undefined,
@@ -99,11 +101,12 @@ describe('Organisation', () => {
 
         it('should return an error if name has leading whitespace', () => {
             const result: DomainError | Organisation<false> = Organisation.createNew(
+                'name ',
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 'kennung',
                 ' Test',
-                faker.lorem.word(),
                 faker.string.uuid(),
                 undefined,
                 undefined,
@@ -113,11 +116,12 @@ describe('Organisation', () => {
 
         it('should return an error if dienststellennummer has leading whitespace', () => {
             const result: DomainError | Organisation<false> = Organisation.createNew(
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 ' Test',
                 'name',
-                faker.lorem.word(),
                 faker.string.uuid(),
                 undefined,
                 undefined,

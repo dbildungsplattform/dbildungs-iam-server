@@ -11,13 +11,13 @@ export class OrganisationFile {
 
     public kennung?: string;
 
-    public name?: string;
+    public name!: string;
 
     public namensergaenzung?: string;
 
     public kuerzel?: string;
 
-    public typ?: OrganisationsTyp;
+    public typ!: OrganisationsTyp;
 
     public traegerschaft?: Traegerschaft;
 

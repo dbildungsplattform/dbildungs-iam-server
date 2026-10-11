@@ -158,6 +158,8 @@ export class ProviderController {
                 queryParams.organisationId,
                 permissions,
                 queryParams.rollenArten,
+                queryParams.limit,
+                queryParams.offset,
             );
         }
 
