@@ -794,7 +794,7 @@ describe('RolleFindService', () => {
                 permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
                     Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                 );
-                organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+                organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
                 organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
                 await rolleFindService.findRollenAvailableForPersonenkontextCreation({
@@ -838,7 +838,7 @@ describe('RolleFindService', () => {
                     permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
                         Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
                     );
-                    organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+                    organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
                     organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
                     await rolleFindService.findRollenAvailableForPersonenkontextCreation({
@@ -848,7 +848,7 @@ describe('RolleFindService', () => {
                     });
 
                     const allowedRollenartenForGatedRollen: Array<RollenArt> = Array.from(
-                        OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
+                        OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ),
                     );
                     expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith({
                         organisationId: schule.id,
@@ -871,7 +871,7 @@ describe('RolleFindService', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
             permissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
-            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
             organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
             await rolleFindService.findRollenAvailableForPersonenkontextCreation({
@@ -881,7 +881,7 @@ describe('RolleFindService', () => {
             });
 
             const allowedRollenarten: Array<RollenArt> = Array.from(
-                OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
+                OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ),
             );
             expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith(
                 expect.objectContaining({
