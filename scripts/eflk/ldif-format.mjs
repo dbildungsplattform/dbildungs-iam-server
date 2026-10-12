@@ -64,7 +64,6 @@ export function buildPersonEntry(person, ou, baseDn) {
     const lines = [
         ldifLine('dn', dn),
         'changetype: add',
-        'objectClass: top',
         'objectClass: inetOrgPerson',
         'objectClass: spshUser',
         ldifLine('uid', person.id),
@@ -97,7 +96,6 @@ export function buildGroupEntry(organisationId, organisation, ou, baseDn, member
     const lines = [
         ldifLine('dn', dn),
         'changetype: add',
-        'objectClass: top',
         'objectClass: groupOfEntries',
         ldifLine('cn', organisationId),
     ];
@@ -126,7 +124,6 @@ export function buildContainerEntries(baseDn) {
         lines.push(
             ldifLine('dn', `ou=${ou},${baseDn}`),
             'changetype: add',
-            'objectClass: top',
             'objectClass: organizationalUnit',
             ldifLine('ou', ou),
             '',
@@ -136,7 +133,6 @@ export function buildContainerEntries(baseDn) {
             lines.push(
                 ldifLine('dn', `cn=${cn},ou=${ou},${baseDn}`),
                 'changetype: add',
-                'objectClass: top',
                 'objectClass: organizationalRole',
                 ldifLine('cn', cn),
                 '',

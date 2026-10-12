@@ -228,12 +228,27 @@ async function classifyAllOrganisations(client, organisationIds, roots) {
     return new Map(entries);
 }
 
+function resolvePersonBucketFromEmail(person) {
+    const email = person.emails.find((entry) => entry.priority === 0)
+        ?? person.emails.find((entry) => entry.priority === 1);
+    const domain = email?.address?.split('@')[1]?.toLowerCase();
+    const ou = domain === 'schule-sh.de' ? 'oeffentlich' : domain === 'ersatzschule-sh.de' ? 'ersatz' : undefined;
+    if (!ou) {
+        console.error(
+            `Person ${person.id} ohne Schulzuordnung: Keine gueltige OU aus E-Mail '${email?.address ?? 'nicht vorhanden'}' ableitbar. Person wird nicht exportiert.`,
+            { personId: person.id, username: person.username, emails: person.emails },
+        );
+    }
+
+    return ou;
+}
+
 // Bucket of the person = bucket of the first assigned school (analogous to the "mainSchool" fallback per the target schema)
 function assignPersonBuckets(persons, ouByOrganisation) {
     const ouByPerson = new Map();
     for (const person of persons) {
         const firstOrgId = person.organisationIds[0];
-        ouByPerson.set(person.id, firstOrgId ? ouByOrganisation.get(firstOrgId) : 'oeffentlich');
+        ouByPerson.set(person.id, firstOrgId ? ouByOrganisation.get(firstOrgId) : resolvePersonBucketFromEmail(person));
     }
 
     return ouByPerson;
@@ -245,6 +260,9 @@ function buildPersonEntries(persons, ouByPerson, baseDn) {
     const personDnById = new Map();
     for (const person of persons) {
         const ou = ouByPerson.get(person.id);
+        if (!ou) {
+            continue;
+        }
         const entry = buildPersonEntry(person, ou, baseDn);
         personDnById.set(person.id, entry.dn);
         personLines.push(...entry.lines, '');
@@ -257,6 +275,9 @@ function groupMembersByOrganisation(persons, personDnById) {
     const membersByOrganisation = new Map();
     for (const person of persons) {
         const personDn = personDnById.get(person.id);
+        if (!personDn) {
+            continue;
+        }
         for (const organisationId of person.organisationIds) {
             const list = membersByOrganisation.get(organisationId) ?? [];
             list.push(personDn);
@@ -327,7 +348,7 @@ async function main() {
         const outputLines = [...containerLines, ...personLines, ...groupLines];
 
         await writeFile(args.out, outputLines.join('\n'));
-        console.log(`${persons.length} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);
+        console.log(`${personDnById.size} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);
     } finally {
         // .end() can itself throw if .connect() never succeeded - don't let that hide the real error.
         await client.end().catch(() => {});
