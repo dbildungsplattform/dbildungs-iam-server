@@ -102,13 +102,13 @@ export class DbSeedService {
         }
 
         const organisation: Organisation<false> | DomainError = Organisation.createNew(
+            data.name,
+            data.typ,
             administriertVon,
             zugehoerigZu,
             data.kennung,
-            data.name,
             data.namensergaenzung,
             data.kuerzel,
-            data.typ,
             data.traegerschaft,
             data.emailDomain,
             data.emailAdress,

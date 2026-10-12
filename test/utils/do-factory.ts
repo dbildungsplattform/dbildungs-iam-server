@@ -226,13 +226,13 @@ export class DoFactory {
             withId ? faker.date.past() : undefined,
             withId ? faker.date.recent() : undefined,
             params.version ?? 1,
-            faker.string.uuid(),
-            faker.string.uuid(),
             faker.lorem.word(),
-            faker.lorem.word(),
-            faker.lorem.word(),
-            faker.string.uuid(),
             faker.helpers.enumValue(OrganisationsTyp),
+            faker.string.uuid(),
+            faker.string.uuid(),
+            faker.lorem.word(),
+            faker.lorem.word(),
+            faker.string.uuid(),
             faker.helpers.enumValue(Traegerschaft),
         );
 
