@@ -285,14 +285,26 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
     }
 
     public async getPermittedMerkmaleForOrga(organisationId: OrganisationID): Promise<RollenMerkmal[]> {
-        return RollenmerkmalSystemrechtPaar.getPermittedMerkmaleForOrga(this, organisationId);
+        const permissionsPerPaar: boolean[] = await Promise.all(
+            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) =>
+                this.hasSystemrechtAtOrganisation(organisationId, paar.systemrecht),
+            ),
+        );
+        return RollenmerkmalSystemrechtPaar.ALL.filter(
+            (_paar: RollenmerkmalSystemrechtPaar, index: number) => permissionsPerPaar[index],
+        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
     }
 
-    public hasPermissionForRolleMerkmale(
+    public async hasPermissionForRolleMerkmale(
         merkmale: Iterable<RollenMerkmal>,
         organisationId: OrganisationID,
     ): Promise<boolean> {
-        return RollenmerkmalSystemrechtPaar.hasPermissionForRolleMerkmale(this, merkmale, organisationId);
+        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
+        if (requiredMerkmale.length === 0) {
+            return true;
+        }
+        const permittedMerkmale: RollenMerkmal[] = await this.getPermittedMerkmaleForOrga(organisationId);
+        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {

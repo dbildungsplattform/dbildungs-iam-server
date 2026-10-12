@@ -93,11 +93,11 @@ export class ApplyRollenerweiterungForRolleService {
             );
             return Err(new EntityNotFoundError('Rolle', rolleId));
         }
-        const hasPermissionForGatedMerkmale: boolean = await permissions.hasPermissionForRolleMerkmale(
+        const hasPermissionForRolleMerkmale: boolean = await permissions.hasPermissionForRolleMerkmale(
             rolle.merkmale,
             orgaId,
         );
-        if (!hasPermissionForGatedMerkmale) {
+        if (!hasPermissionForRolleMerkmale) {
             return Err(new MissingPermissionsError('Not authorized'));
         }
 

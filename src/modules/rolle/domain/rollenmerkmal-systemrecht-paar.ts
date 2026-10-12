@@ -1,5 +1,3 @@
-import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { RollenMerkmal } from './rolle.enums.js';
 import { RollenSystemRecht } from './systemrecht.js';
 
@@ -96,32 +94,5 @@ export class RollenmerkmalSystemrechtPaar {
         return RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
             (merkmal: RollenMerkmal) => !includedMerkmale.has(merkmal),
         );
-    }
-
-    public static async getPermittedMerkmaleForOrga(
-        permissions: IPersonPermissions,
-        organisationId: OrganisationID,
-    ): Promise<RollenMerkmal[]> {
-        const permissionsPerPaar: boolean[] = await Promise.all(
-            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) =>
-                permissions.hasSystemrechtAtOrganisation(organisationId, paar.systemrecht),
-            ),
-        );
-        return RollenmerkmalSystemrechtPaar.ALL.filter(
-            (_paar: RollenmerkmalSystemrechtPaar, index: number) => permissionsPerPaar[index],
-        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
-    }
-
-    public static async hasPermissionForRolleMerkmale(
-        permissions: IPersonPermissions,
-        merkmale: Iterable<RollenMerkmal>,
-        organisationId: OrganisationID,
-    ): Promise<boolean> {
-        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
-        if (requiredMerkmale.length === 0) {
-            return true;
-        }
-        const permittedMerkmale: RollenMerkmal[] = await permissions.getPermittedMerkmaleForOrga(organisationId);
-        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
     }
 }
