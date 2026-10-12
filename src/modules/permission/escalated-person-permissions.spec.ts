@@ -528,6 +528,28 @@ describe('EscalatedPersonPermission', () => {
     });
 
     describe('hasPermissionForRolleMerkmale', () => {
+        it('should allow roles without gated Merkmale without checking rights', async () => {
+            const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                { name: 'testInstance' },
+                [],
+                organisationRepo,
+                personenkontextRepo,
+                logger,
+            );
+            const getPermittedMerkmaleForOrgaSpy: Mock = vi.spyOn(
+                escalatedPersonPermission,
+                'getPermittedMerkmaleForOrga',
+            );
+
+            const result: boolean = await escalatedPersonPermission.hasPermissionForRolleMerkmale(
+                [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                rootOrga.id,
+            );
+
+            expect(result).toBe(true);
+            expect(getPermittedMerkmaleForOrgaSpy).not.toHaveBeenCalled();
+        });
+
         it('should require every matching right from escalated permissions', async () => {
             const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
                 { name: 'testInstance' },
