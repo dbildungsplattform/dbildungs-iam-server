@@ -96,13 +96,13 @@ export function buildGroupEntry(organisationId, organisation, ou, baseDn, member
         ldifLine('dn', dn),
         'changetype: add',
         'objectClass: top',
-        'objectClass: groupOfNames',
+        'objectClass: groupOfEntries',
         ldifLine('cn', organisationId),
     ];
 
     if (organisation?.kennung) {
         lines.push(
-            ldifLine('description', `Lehrer - ${organisation.kennung}`),
+            ldifLine('description', `lehrer-${organisation.kennung}`),
             ldifLine('ou', organisation.kennung),
         );
     }

@@ -158,7 +158,7 @@ function getFirstValue(record, attr) {
 function classifyRecord(record) {
     const objectClasses = getValues(record, 'objectClass');
     if (objectClasses.includes('inetOrgPerson')) return 'person';
-    if (objectClasses.includes('groupOfNames')) return 'group';
+    if (objectClasses.includes('groupOfEntries')) return 'group';
     if (objectClasses.includes('organizationalUnit') || objectClasses.includes('organizationalRole')) return 'container';
 
     return 'unknown';
