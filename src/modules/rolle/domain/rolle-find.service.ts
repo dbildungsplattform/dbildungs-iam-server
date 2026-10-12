@@ -434,10 +434,6 @@ export class RolleFindService {
         const organisationIds: OrganisationID[] = selectedAndPermittedOrgas ?? [
             this.organisationRepository.ROOT_ORGANISATION_ID,
         ];
-        if (organisationIds.length === 0) {
-            return Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE);
-        }
-
         const merkmalePerOrganisation: RollenMerkmal[][] = await Promise.all(
             organisationIds.map((organisationId: OrganisationID) =>
                 permissions.getPermittedMerkmaleForOrga(organisationId),
