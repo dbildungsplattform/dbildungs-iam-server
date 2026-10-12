@@ -1,4 +1,4 @@
-# Schema für Schulportal SH - LDAP
+# Schema für Schulportal SH - LDAP UNDI
 
 # Local development: UUID-based OID (07b4f340-bf60-48c9-a7d8-b4d7cf7b5fdb).
 # Before production use, replace with the assigned Dataport / TVM OID range.

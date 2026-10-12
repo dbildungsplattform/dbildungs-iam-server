@@ -9,6 +9,6 @@ import { LdapUndiClientAdapter } from './adapter/domain/ldap-undi-client.adapter
 @Module({
     imports: [LoggerModule.register(EmailLdapModule.name), EmailLdapConfigModule],
     providers: [LdapClientAdapter, LdapUndiClientAdapter, LdapClient, LdapUndiClient],
-    exports: [LdapClientAdapter, LdapUndiClientAdapter, LdapClient, LdapUndiClient],
+    exports: [LdapClientAdapter, LdapUndiClientAdapter],
 })
 export class EmailLdapModule {}
