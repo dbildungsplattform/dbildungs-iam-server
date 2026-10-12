@@ -203,7 +203,6 @@ export class RolleController {
             await this.rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische: false,
                 searchStr: queryParams.searchStr,
                 limit: queryParams.limit,
                 offset: queryParams.offset,

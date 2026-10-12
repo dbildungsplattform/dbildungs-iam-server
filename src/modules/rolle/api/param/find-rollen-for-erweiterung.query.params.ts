@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayContains, ArrayUnique, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { ArrayUnique, IsEnum, IsOptional, IsUUID } from 'class-validator';
 
 import { OrganisationID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
-import { RollenmerkmalSystemrechtPaar } from '../../domain/rollenmerkmal-systemrecht-paar.js';
-import { RollenSystemRecht, RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
+import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
 import { FindRollenForWorkflowQueryParams } from './find-rollen-for-workflow.query.params.js';
+import { IsSystemrechtAndGatedSystemrechte } from './is-systemrecht-and-gated-systemrechte.decorator.js';
 
 export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQueryParams {
     @IsUUID()
@@ -19,16 +19,7 @@ export class FindRollenForErweiterungQueryParams extends FindRollenForWorkflowQu
     @TransformToArray()
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
-    @ArrayContains([RollenSystemRechtEnum.ROLLEN_ERWEITERN])
-    @IsIn(
-        [
-            RollenSystemRechtEnum.ROLLEN_ERWEITERN,
-            ...RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE.map(
-                (systemrecht: RollenSystemRecht) => systemrecht.name,
-            ),
-        ],
-        { each: true },
-    )
+    @IsSystemrechtAndGatedSystemrechte(RollenSystemRechtEnum.ROLLEN_ERWEITERN)
     @ApiProperty({
         enum: RollenSystemRechtEnum,
         nullable: true,

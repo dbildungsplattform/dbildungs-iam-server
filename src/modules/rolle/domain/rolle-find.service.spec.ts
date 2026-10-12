@@ -469,7 +469,6 @@ describe('RolleFindService', () => {
     });
 
     describe('findRollenAuthorizedForGatedSystemrecht', () => {
-        const includeTechnische: boolean = faker.datatype.boolean();
         const searchStr: string = faker.string.alphanumeric();
         const limit: number = faker.number.int();
         const offset: number = faker.number.int();
@@ -498,7 +497,6 @@ describe('RolleFindService', () => {
                 await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                     permissions: permissionsMock,
                     systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                    includeTechnische: false,
                     organisationIds: bounded ? ['schule-1'] : undefined,
                 });
 
@@ -529,7 +527,6 @@ describe('RolleFindService', () => {
             const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.ROLLEN_VERWALTEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -550,7 +547,6 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische: false,
             });
 
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith(
@@ -575,7 +571,6 @@ describe('RolleFindService', () => {
             const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -584,7 +579,7 @@ describe('RolleFindService', () => {
 
             expect(result[1]).toEqual(1);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -607,7 +602,6 @@ describe('RolleFindService', () => {
             const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -636,7 +630,6 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -645,7 +638,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -682,7 +675,6 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -692,7 +684,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -729,7 +721,6 @@ describe('RolleFindService', () => {
             await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
                 permissions: permissionsMock,
                 systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -739,7 +730,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-2']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,

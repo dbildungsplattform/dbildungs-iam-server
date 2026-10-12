@@ -1,15 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayContains, ArrayUnique, IsArray, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { ArrayUnique, IsArray, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { OrganisationID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
-import { RollenmerkmalSystemrechtPaar } from '../../domain/rollenmerkmal-systemrecht-paar.js';
-import { RollenSystemRecht, RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
+import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../../domain/systemrecht.js';
 import { FindRollenBaseQueryParams } from './find-rollen-base.query.params.js';
-
-const ALLOWED_SYSTEMRECHTE: RollenSystemRechtEnum[] = [
-    RollenSystemRechtEnum.PERSONEN_VERWALTEN,
-    ...RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE.map((systemrecht: RollenSystemRecht) => systemrecht.name),
-];
+import { IsSystemrechtAndGatedSystemrechte } from './is-systemrecht-and-gated-systemrechte.decorator.js';
 
 export class FindRollenForPersonAdministrationQueryParams extends FindRollenBaseQueryParams {
     @IsOptional()
@@ -27,10 +22,7 @@ export class FindRollenForPersonAdministrationQueryParams extends FindRollenBase
     @TransformToArray()
     @IsEnum(RollenSystemRechtEnum, { each: true })
     @ArrayUnique()
-    @ArrayContains([RollenSystemRechtEnum.PERSONEN_VERWALTEN])
-    @IsIn(ALLOWED_SYSTEMRECHTE, {
-        each: true,
-    })
+    @IsSystemrechtAndGatedSystemrechte(RollenSystemRechtEnum.PERSONEN_VERWALTEN)
     @ApiProperty({
         enum: RollenSystemRechtEnum,
         nullable: true,

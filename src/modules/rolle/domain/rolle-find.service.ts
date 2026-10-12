@@ -44,7 +44,6 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
 export interface FindGatedRollenAuthorizedParams {
     permissions: IPersonPermissions;
     systemrecht: RollenSystemRecht;
-    includeTechnische: boolean;
     searchStr?: string;
     limit?: number;
     offset?: number;
@@ -333,7 +332,7 @@ export class RolleFindService {
 
         const sharedParams: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'> =
             {
-                includeTechnische: params.includeTechnische,
+                includeTechnische: false,
                 searchStr: params.searchStr,
                 limit: params.limit,
                 offset: params.offset,
