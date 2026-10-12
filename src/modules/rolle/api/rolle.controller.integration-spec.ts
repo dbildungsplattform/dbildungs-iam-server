@@ -56,13 +56,17 @@ import { RolleApiModule } from '../rolle-api.module.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { ErrorIdType } from './ErrorIdType.enum.js';
-import { FindRollenQueryParams } from './find-rollen-query.params.js';
+import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
 import { RolleResponse } from './rolle.response.js';
 import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
 import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
-import { FindRolleForPersonAdministrationQueryParams } from './find-rolle-for-person-administration-query.param.js';
+import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
+import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
+import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
+import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
+import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
@@ -179,13 +183,826 @@ describe('Rolle API', () => {
         return organisation;
     }
 
+    describe('/GET rolle', () => {
+        const url: string = '/rolle';
+
+        it('should return all rollen', async () => {
+            const orgaIds: string[] = (
+                await Promise.all([
+                    rolleRepo.save(DoFactory.createRolle(false)),
+                    rolleRepo.save(DoFactory.createRolle(false)),
+                    rolleRepo.save(DoFactory.createRolle(false)),
+                ])
+            ).map((r: Rolle<true> | DomainError) => {
+                if (r instanceof DomainError) {
+                    throw Error();
+                }
+                return r.administeredBySchulstrukturknoten;
+            });
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(3);
+        });
+
+        it('should return no rollen', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(0);
+        });
+
+        it('should return rollen with the given queried name', async () => {
+            const testRolle: { name: string; administeredBySchulstrukturknoten: string } | DomainError =
+                await rolleRepo.save(DoFactory.createRolle(false));
+            if (testRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [testRolle.administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({ searchStr: testRolle.name } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toContainEqual(expect.objectContaining({ name: testRolle.name }));
+        });
+
+        it('should return rollen assigned on the specified organisation', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const testRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orga.id }),
+            );
+            await rolleRepo.save(DoFactory.createRolle(false));
+            if (testRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [orga.id],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({ organisationIds: [orga.id] } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toContainEqual(
+                expect.objectContaining({
+                    administeredBySchulstrukturknoten: orga.id,
+                }),
+            );
+        });
+
+        it('should return rollen with serviceproviders', async () => {
+            const [sp1, sp2, sp3]: [ServiceProvider<true>, ServiceProvider<true>, ServiceProvider<true>] =
+                await Promise.all([
+                    createAndPersistServiceProvider(em),
+                    createAndPersistServiceProvider(em),
+                    createAndPersistServiceProvider(em),
+                ]);
+
+            const orgaIds: string[] = (
+                await Promise.all([
+                    rolleRepo.save(DoFactory.createRolle(false, { serviceProviderIds: [sp1.id] })),
+                    rolleRepo.save(DoFactory.createRolle(false, { serviceProviderIds: [sp2.id, sp3.id] })),
+                    rolleRepo.save(DoFactory.createRolle(false)),
+                ])
+            ).map((r: Rolle<true> | DomainError) => {
+                if (r instanceof DomainError) {
+                    throw new Error();
+                }
+                return r.administeredBySchulstrukturknoten;
+            });
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(3);
+
+            pagedResponse.items.forEach((item: RolleWithServiceProvidersResponse) => {
+                item.serviceProviders.sort((a: ServiceProviderIdNameResponse, b: ServiceProviderIdNameResponse) =>
+                    a.id.localeCompare(b.id),
+                );
+            });
+
+            expect(pagedResponse.items).toContainEqual(
+                expect.objectContaining({ serviceProviders: [{ id: sp1.id, name: sp1.name }] }),
+            );
+            expect(pagedResponse.items).toContainEqual(
+                expect.objectContaining({
+                    serviceProviders: [
+                        { id: sp2.id, name: sp2.name },
+                        { id: sp3.id, name: sp3.name },
+                    ].sort(
+                        (
+                            a: {
+                                id: string;
+                                name: string;
+                            },
+                            b: {
+                                id: string;
+                                name: string;
+                            },
+                        ) => a.id.localeCompare(b.id),
+                    ),
+                }),
+            );
+            expect(pagedResponse.items).toContainEqual(expect.objectContaining({ serviceProviders: [] }));
+        });
+
+        it('should not return technische rollen', async () => {
+            const orgaIds: string[] = (
+                await Promise.all([
+                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: true })),
+                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
+                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
+                ])
+            ).map((r: Rolle<true> | DomainError) => {
+                if (r instanceof DomainError) {
+                    throw Error();
+                }
+                return r.administeredBySchulstrukturknoten;
+            });
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+        });
+
+        it('should return rollen filtered by multiple systemrechte', async () => {
+            const rolleA: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+            const rolleB: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+            if (rolleA instanceof DomainError || rolleB instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [rolleA.administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    rolleIds: [rolleA.id],
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.ROLLEN_VERWALTEN],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+        });
+
+        it('should keep standard path for multiple systemrechte including MPT_ROLLEN_ZUORDNEN', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.SCHB,
+                }),
+            );
+            const nonMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (mptRolle instanceof DomainError || nonMptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    systemrechte: [RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN, RollenSystemRechtEnum.ROLLEN_VERWALTEN],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(pagedResponse.items).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ id: mptRolle.id }),
+                    expect.objectContaining({ id: nonMptRolle.id }),
+                ]),
+            );
+        });
+
+        it('should return rollen filtered by organisationIds', async () => {
+            const orgaA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const orgaB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaB.id, istTechnisch: false }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    organisationIds: [orgaA.id],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every(
+                    (r: RolleWithServiceProvidersResponse) => r.administeredBySchulstrukturknoten === orgaA.id,
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by merkmale', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        merkmale: [],
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
+                    r.merkmale.includes(RollenMerkmal.BEFRISTUNG_PFLICHT),
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by serviceProviderIds', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const sp1: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const sp2: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp1.id],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp1.id],
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        serviceProviderIds: [sp2.id],
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    serviceProviderIds: [sp1.id],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
+                    r.serviceProviders.some((sp: { id: string; name: string }) => sp.id === sp1.id),
+                ),
+            ).toBe(true);
+        });
+
+        it('should return rollen filtered by rollenarten without operation right', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LEHR,
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LEHR,
+                        istTechnisch: false,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.LERN,
+                        istTechnisch: false,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    rollenarten: [RollenArt.LEHR],
+                } satisfies FindRollenQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+            expect(
+                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) => r.rollenart === RollenArt.LEHR),
+            ).toBe(true);
+        });
+
+        it('should return 400 when organisationIds is not a uuid', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    organisationIds: 'not-a-uuid',
+                })
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+    });
+
+    describe('/GET rolle/available-for-erweiterung', () => {
+        const url: string = '/rolle/available-for-erweiterung';
+
+        it('should return rollen available for erweiterung', async () => {
+            const traeger: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
+            );
+            const schule: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE, administriertVon: traeger.id }),
+            );
+            await Promise.all([
+                rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: traeger.id,
+                        rollenart: RollenArt.LEHR,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: traeger.id,
+                        rollenart: RollenArt.ORGADMIN,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart: RollenArt.LERN,
+                    }),
+                ),
+                rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false, rollenart: RollenArt.LERN })),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({ organisationId: schule.id } satisfies FindRollenForErweiterungQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+        });
+
+        it('should return rollen available for erweiterung if rollenarten are set', async () => {
+            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const administeredBySchulstrukturknoten: string = org.id;
+            const rollenart: RollenArt = RollenArt.LERN;
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { istTechnisch: false, rollenart, administeredBySchulstrukturknoten }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, { istTechnisch: false, rollenart, administeredBySchulstrukturknoten }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        rollenart: RollenArt.SYSADMIN,
+                        administeredBySchulstrukturknoten,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    rollenarten: [rollenart],
+                    organisationId: administeredBySchulstrukturknoten,
+                } satisfies FindRollenForErweiterungQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(2);
+        });
+
+        it('should return rollen available for erweiterung including MPT rollen if both systemrechte are set', async () => {
+            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        rollenart: RollenArt.LEHR,
+                        administeredBySchulstrukturknoten: org.id,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        rollenart: RollenArt.LERN,
+                        administeredBySchulstrukturknoten: org.id,
+                        merkmale: [RollenMerkmal.MPT_ROLLE],
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [org.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN],
+                    organisationId: org.id,
+                } satisfies FindRollenForErweiterungQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            // Both the regular rolle AND the MPT rolle should be returned
+            expect(pagedResponse.items).toHaveLength(2);
+        });
+
+        it('should exclude MPT rollen if only ROLLEN_ERWEITERN systemrecht is set', async () => {
+            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        rollenart: RollenArt.LEHR,
+                        administeredBySchulstrukturknoten: org.id,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        rollenart: RollenArt.LERN,
+                        administeredBySchulstrukturknoten: org.id,
+                        merkmale: [RollenMerkmal.MPT_ROLLE],
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [org.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
+                    organisationId: org.id,
+                } satisfies FindRollenForErweiterungQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            // Only the non-MPT rolle should be returned
+            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
+            expect(pagedResponse.items).toHaveLength(1);
+        });
+    });
+
+    describe('/GET rolle/available-for-import', () => {
+        const url: string = '/rolle/available-for-import';
+
+        it('should return rollen available for import personenkontext with given orga ID', async () => {
+            const schule: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            await Promise.all([
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart: RollenArt.LEHR,
+                    }),
+                ),
+                rolleRepo.save(
+                    DoFactory.createRolle(false, {
+                        istTechnisch: false,
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart: RollenArt.SYSADMIN,
+                    }),
+                ),
+            ]);
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    organisationId: schule.id,
+                } satisfies FindRollenForImportQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
+            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
+                true,
+                false,
+            );
+        });
+
+        it('should return 400 when organisationId is missing for import', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({} satisfies Partial<FindRollenForImportQueryParams>)
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should return rollen available for import personenkontext', async () => {
+            const schule: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            const schule2: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            const [role1, , role3]: [Rolle<true> | DomainError, Rolle<true> | DomainError, Rolle<true> | DomainError] =
+                await Promise.all([
+                    rolleRepo.save(
+                        DoFactory.createRolle(false, {
+                            istTechnisch: false,
+                            administeredBySchulstrukturknoten: schule.id,
+                            rollenart: RollenArt.LEHR,
+                        }),
+                    ),
+                    rolleRepo.save(
+                        DoFactory.createRolle(false, {
+                            istTechnisch: false,
+                            administeredBySchulstrukturknoten: schule.id,
+                            rollenart: RollenArt.SYSADMIN,
+                        }),
+                    ),
+                    rolleRepo.save(
+                        DoFactory.createRolle(false, {
+                            istTechnisch: false,
+                            administeredBySchulstrukturknoten: schule2.id,
+                            rollenart: RollenArt.LEHR,
+                        }),
+                    ),
+                ]);
+            if (role1 instanceof DomainError || role3 instanceof DomainError) {
+                expect.fail('error during test setup. role was not persisted');
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({
+                    rollenarten: [RollenArt.LEHR],
+                    organisationId: schule.id,
+                } satisfies FindRollenForImportQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toEqual(
+                expect.arrayContaining([expect.objectContaining({ id: role1.id, name: role1.name })]),
+            );
+            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
+            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
+                true,
+                false,
+            );
+        });
+    });
+
+    describe('/GET rolle/available-for-mpt-zuordnung', () => {
+        const url: string = '/rolle/available-for-mpt-zuordnung';
+
+        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.SCHB,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                }),
+            );
+            const nonMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (mptRolle instanceof DomainError || nonMptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toEqual(
+                expect.arrayContaining([expect.objectContaining({ id: mptRolle.id, rollenart: RollenArt.SCHB })]),
+            );
+        });
+
+        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht and orgaId', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const otherOrga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.SCHB,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                }),
+            );
+            const otherOrgaMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: otherOrga.id,
+                    rollenart: RollenArt.SORGBER,
+                }),
+            );
+            if (mptRolle instanceof DomainError || otherOrgaMptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(url)
+                .query({ organisationIds: [orga.id] } satisfies FindRollenForMptZuordnungQueryParams)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
+                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
+            expect(pagedResponse.items).toHaveLength(1);
+            expect(pagedResponse.items).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining<Partial<RolleWithServiceProvidersResponse>>({
+                        id: mptRolle.id,
+                        administeredBySchulstrukturknoten: orga.id,
+                        rollenart: RollenArt.SCHB,
+                    }),
+                ]),
+            );
+        });
+    });
+
     describe('/GET rolle/for-person-administration', () => {
-        const url: string = '/rolle/for-person-administration';
+        const url: string = '/rolle/available-for-person-administration';
         const createQueryWithPaginationDefaults: (
-            overrides?: Partial<FindRolleForPersonAdministrationQueryParams>,
-        ) => FindRolleForPersonAdministrationQueryParams = (
-            overrides: Partial<FindRolleForPersonAdministrationQueryParams> = {},
-        ): FindRolleForPersonAdministrationQueryParams => ({
+            overrides?: Partial<FindRollenForPersonAdministrationQueryParams>,
+        ) => FindRollenForPersonAdministrationQueryParams = (
+            overrides: Partial<FindRollenForPersonAdministrationQueryParams> = {},
+        ): FindRollenForPersonAdministrationQueryParams => ({
             limit: 25,
             offset: 0,
             ...overrides,
@@ -451,7 +1268,104 @@ describe('Rolle API', () => {
         });
     });
 
+    describe('GET systemrechte', () => {
+        const url: string = '/rolle/systemrechte';
+
+        it('should return all systemrechte', async () => {
+            const response: Response = await request(app.getHttpServer() as App).get(url);
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(
+                RollenSystemRecht.ALL.map((sr: RollenSystemRecht) => new SystemRechtResponse(sr)),
+            );
+        });
+    });
+
+    describe('/GET rolle/:rolleId', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+
+        it('should return rolle', async () => {
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [rolle.administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(buildUrl(rolle.id))
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+        });
+
+        it('should return rolle with serviceproviders', async () => {
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [rolle.administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(buildUrl(rolle.id))
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Object);
+            const responseBody: RolleWithServiceProvidersResponse = response.body as RolleWithServiceProvidersResponse;
+
+            expect(responseBody?.serviceProviders).toContainEqual(
+                expect.objectContaining({ id: serviceProvider.id, name: serviceProvider.name }),
+            );
+        });
+
+        it('should return 404 when rolle could not be found', async () => {
+            await rolleRepo.save(DoFactory.createRolle(false));
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(buildUrl(faker.string.uuid()))
+                .send();
+
+            expect(response.status).toBe(404);
+            expect(response.body).toBeInstanceOf(Object);
+        });
+
+        it('should return 404 when rolle is technical', async () => {
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, { istTechnisch: true }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [rolle.administeredBySchulstrukturknoten],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(buildUrl(rolle.id))
+                .send();
+
+            expect(response.status).toBe(404);
+            expect(response.body).toBeInstanceOf(Object);
+        });
+    });
+
     describe('/POST rolle', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+
         it('should persist multiple pilot attributes and system rights when creating a rolle', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
             const merkmale: RollenMerkmal[] = [
@@ -480,12 +1394,12 @@ describe('Rolle API', () => {
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(201);
             const created: RolleResponse = response.body as RolleResponse;
-            const reloaded: Response = await request(app.getHttpServer() as App).get(`/rolle/${created.id}`);
+            const reloaded: Response = await request(app.getHttpServer() as App).get(buildUrl(created.id));
             expect(reloaded.status).toBe(200);
             const rolle: RolleResponse = reloaded.body as RolleResponse;
             expect(rolle.merkmale).toEqual(expect.arrayContaining(merkmale));
@@ -529,7 +1443,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(201);
@@ -570,7 +1484,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
             const rolle: RolleResponse = response.body as RolleResponse;
 
@@ -591,7 +1505,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(404);
@@ -622,7 +1536,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(400);
@@ -653,7 +1567,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(400);
@@ -684,7 +1598,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
 
             expect(response.status).toBe(400);
@@ -714,7 +1628,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post('/rolle')
+                .post(url)
                 .send(params);
             const responseBody: DbiamRolleError = response.body as DbiamRolleError;
 
@@ -724,1008 +1638,10 @@ describe('Rolle API', () => {
         });
     });
 
-    describe('/GET rollen', () => {
-        it('should return all rollen', async () => {
-            const orgaIds: string[] = (
-                await Promise.all([
-                    rolleRepo.save(DoFactory.createRolle(false)),
-                    rolleRepo.save(DoFactory.createRolle(false)),
-                    rolleRepo.save(DoFactory.createRolle(false)),
-                ])
-            ).map((r: Rolle<true> | DomainError) => {
-                if (r instanceof DomainError) {
-                    throw Error();
-                }
-                return r.administeredBySchulstrukturknoten;
-            });
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(3);
-        });
-
-        it('should return no rollen', async () => {
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(0);
-        });
-
-        it('should return rollen with the given queried name', async () => {
-            const testRolle: { name: string; administeredBySchulstrukturknoten: string } | DomainError =
-                await rolleRepo.save(DoFactory.createRolle(false));
-            if (testRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [testRolle.administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .query({ searchStr: testRolle.name })
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items).toContainEqual(expect.objectContaining({ name: testRolle.name }));
-        });
-
-        it('should return rollen assigned on the specified organisation', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const testRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orga.id }),
-            );
-            await rolleRepo.save(DoFactory.createRolle(false));
-            if (testRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [orga.id],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .query({ organisationId: orga.id })
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items).toContainEqual(
-                expect.objectContaining({
-                    administeredBySchulstrukturknoten: orga.id,
-                }),
-            );
-        });
-
-        it('should return rollen with serviceproviders', async () => {
-            const [sp1, sp2, sp3]: [ServiceProvider<true>, ServiceProvider<true>, ServiceProvider<true>] =
-                await Promise.all([
-                    createAndPersistServiceProvider(em),
-                    createAndPersistServiceProvider(em),
-                    createAndPersistServiceProvider(em),
-                ]);
-
-            const orgaIds: string[] = (
-                await Promise.all([
-                    rolleRepo.save(DoFactory.createRolle(false, { serviceProviderIds: [sp1.id] })),
-                    rolleRepo.save(DoFactory.createRolle(false, { serviceProviderIds: [sp2.id, sp3.id] })),
-                    rolleRepo.save(DoFactory.createRolle(false)),
-                ])
-            ).map((r: Rolle<true> | DomainError) => {
-                if (r instanceof DomainError) {
-                    throw new Error();
-                }
-                return r.administeredBySchulstrukturknoten;
-            });
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(3);
-
-            pagedResponse.items.forEach((item: RolleWithServiceProvidersResponse) => {
-                item.serviceProviders.sort((a: ServiceProviderIdNameResponse, b: ServiceProviderIdNameResponse) =>
-                    a.id.localeCompare(b.id),
-                );
-            });
-
-            expect(pagedResponse.items).toContainEqual(
-                expect.objectContaining({ serviceProviders: [{ id: sp1.id, name: sp1.name }] }),
-            );
-            expect(pagedResponse.items).toContainEqual(
-                expect.objectContaining({
-                    serviceProviders: [
-                        { id: sp2.id, name: sp2.name },
-                        { id: sp3.id, name: sp3.name },
-                    ].sort(
-                        (
-                            a: {
-                                id: string;
-                                name: string;
-                            },
-                            b: {
-                                id: string;
-                                name: string;
-                            },
-                        ) => a.id.localeCompare(b.id),
-                    ),
-                }),
-            );
-            expect(pagedResponse.items).toContainEqual(expect.objectContaining({ serviceProviders: [] }));
-        });
-
-        it('should not return technische rollen', async () => {
-            const orgaIds: string[] = (
-                await Promise.all([
-                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: true })),
-                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
-                    rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
-                ])
-            ).map((r: Rolle<true> | DomainError) => {
-                if (r instanceof DomainError) {
-                    throw Error();
-                }
-                return r.administeredBySchulstrukturknoten;
-            });
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-        });
-
-        it('should return rollen available for erweiterung if systemrecht is set', async () => {
-            const [orgaA, orgaB, orgaC]: [Organisation<true>, Organisation<true>, Organisation<true>] =
-                await Promise.all([
-                    organisationRepo.save(DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE })),
-                    organisationRepo.save(DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE })),
-                    organisationRepo.save(DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE })),
-                ]);
-
-            (
-                await Promise.all([
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            rollenart: RollenArt.LEHR,
-                            administeredBySchulstrukturknoten: orgaA.id,
-                        }),
-                    ),
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            rollenart: RollenArt.LERN,
-                            administeredBySchulstrukturknoten: orgaB.id,
-                        }),
-                    ),
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            rollenart: RollenArt.LEIT,
-                            administeredBySchulstrukturknoten: orgaC.id,
-                        }),
-                    ),
-                ])
-            ).map((r: Rolle<true> | DomainError) => {
-                if (r instanceof DomainError) {
-                    throw Error();
-                }
-                return r.administeredBySchulstrukturknoten;
-            });
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [orgaA.id, orgaB.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle?systemrechte=ROLLEN_ERWEITERN')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-        });
-
-        it('should return rollen available for erweiterung if systemrecht and orgaIds are set', async () => {
-            const traeger: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
-            );
-            const schule: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE, administriertVon: traeger.id }),
-            );
-            await Promise.all([
-                rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false })),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: traeger.id,
-                        rollenart: RollenArt.LEHR,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: traeger.id,
-                        rollenart: RollenArt.ORGADMIN,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: schule.id,
-                        rollenart: RollenArt.LERN,
-                    }),
-                ),
-                rolleRepo.save(DoFactory.createRolle(false, { istTechnisch: false, rollenart: RollenArt.LERN })),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle?systemrechte=ROLLEN_ERWEITERN&organisationId=${schule.id}`)
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-        });
-
-        it('should return rollen available for erweiterung if systemrecht and rollenarten are set', async () => {
-            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const administeredBySchulstrukturknoten: string = org.id;
-            const rollenart: RollenArt = RollenArt.LERN;
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, { istTechnisch: false, rollenart, administeredBySchulstrukturknoten }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, { istTechnisch: false, rollenart, administeredBySchulstrukturknoten }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        rollenart: RollenArt.SYSADMIN,
-                        administeredBySchulstrukturknoten,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(
-                    `/rolle?systemrechte=ROLLEN_ERWEITERN&rollenarten=${rollenart}&organisationId=${administeredBySchulstrukturknoten}`,
-                )
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-        });
-
-        it('should return rollen available for erweiterung including MPT rollen if both systemrechte are set', async () => {
-            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        rollenart: RollenArt.LEHR,
-                        administeredBySchulstrukturknoten: org.id,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        rollenart: RollenArt.LERN,
-                        administeredBySchulstrukturknoten: org.id,
-                        merkmale: [RollenMerkmal.MPT_ROLLE],
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [org.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .query({
-                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN, RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN],
-                    organisationContextForOperation: org.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            // Both the regular rolle AND the MPT rolle should be returned
-            expect(pagedResponse.items).toHaveLength(2);
-        });
-
-        it('should exclude MPT rollen if only ROLLEN_ERWEITERN systemrecht is set', async () => {
-            const org: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        rollenart: RollenArt.LEHR,
-                        administeredBySchulstrukturknoten: org.id,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        rollenart: RollenArt.LERN,
-                        administeredBySchulstrukturknoten: org.id,
-                        merkmale: [RollenMerkmal.MPT_ROLLE],
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [org.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle')
-                .query({
-                    systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
-                    organisationContextForOperation: org.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            // Only the non-MPT rolle should be returned
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
-        });
-
-        it('should return rollen available for import personenkontext if systemrecht is IMPORT_DURCHFUEHREN with given orga ID', async () => {
-            const schule: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: schule.id,
-                        rollenart: RollenArt.LEHR,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: schule.id,
-                        rollenart: RollenArt.SYSADMIN,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    systemrechte: 'IMPORT_DURCHFUEHREN',
-                    organisationContextForOperation: schule.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
-            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
-                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
-                true,
-                false,
-            );
-        });
-
-        it('should return no rollen for import personenkontext if systemrecht is IMPORT_DURCHFUEHREN without orga ID', async () => {
-            const schule: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: schule.id,
-                        rollenart: RollenArt.LEHR,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        istTechnisch: false,
-                        administeredBySchulstrukturknoten: schule.id,
-                        rollenart: RollenArt.SYSADMIN,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle?systemrechte=IMPORT_DURCHFUEHREN`)
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-
-            expect(pagedResponse.items).toHaveLength(0);
-            expect(permissionsMock.getOrgIdsWithSystemrecht).not.toHaveBeenCalledWith(
-                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
-                true,
-                false,
-            );
-        });
-
-        it('should return rollen filtered by multiple systemrechte', async () => {
-            const rolleA: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
-            const rolleB: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
-            if (rolleA instanceof DomainError || rolleB instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [rolleA.administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle?rolleIds=${rolleA.id}&systemrechte=ROLLEN_ERWEITERN&systemrechte=ROLLEN_VERWALTEN`)
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(1);
-        });
-
-        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: orga.id,
-                    rollenart: RollenArt.SCHB,
-                    merkmale: [RollenMerkmal.MPT_ROLLE],
-                }),
-            );
-            const nonMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: orga.id,
-                    rollenart: RollenArt.LEHR,
-                }),
-            );
-            if (mptRolle instanceof DomainError || nonMptRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle?systemrechte=MPT_ROLLEN_ZUORDNEN')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items).toEqual(
-                expect.arrayContaining([expect.objectContaining({ id: mptRolle.id, rollenart: RollenArt.SCHB })]),
-            );
-        });
-
-        it('should return only MPT rollen for single MPT_ROLLEN_ZUORDNEN systemrecht and orgaId', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const otherOrga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: orga.id,
-                    rollenart: RollenArt.SCHB,
-                    merkmale: [RollenMerkmal.MPT_ROLLE],
-                }),
-            );
-            const otherOrgaMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: otherOrga.id,
-                    rollenart: RollenArt.SORGBER,
-                }),
-            );
-            if (mptRolle instanceof DomainError || otherOrgaMptRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle?systemrechte=MPT_ROLLEN_ZUORDNEN&organisationenForFilter=${orga.id}`)
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining<Partial<RolleWithServiceProvidersResponse>>({
-                        id: mptRolle.id,
-                        administeredBySchulstrukturknoten: orga.id,
-                        rollenart: RollenArt.SCHB,
-                    }),
-                ]),
-            );
-        });
-
-        it('should keep standard path for multiple systemrechte including MPT_ROLLEN_ZUORDNEN', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: orga.id,
-                    rollenart: RollenArt.SCHB,
-                }),
-            );
-            const nonMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    administeredBySchulstrukturknoten: orga.id,
-                    rollenart: RollenArt.LEHR,
-                }),
-            );
-            if (mptRolle instanceof DomainError || nonMptRolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get('/rolle?systemrechte=MPT_ROLLEN_ZUORDNEN&systemrechte=ROLLEN_VERWALTEN')
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-            expect(pagedResponse.items).toEqual(
-                expect.arrayContaining([
-                    expect.objectContaining({ id: mptRolle.id }),
-                    expect.objectContaining({ id: nonMptRolle.id }),
-                ]),
-            );
-        });
-
-        it('should return rollen filtered by organisationenForFilter', async () => {
-            const orgaA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const orgaB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaA.id, istTechnisch: false }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, { administeredBySchulstrukturknoten: orgaB.id, istTechnisch: false }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    organisationenForFilter: orgaA.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-            expect(
-                pagedResponse.items.every(
-                    (r: RolleWithServiceProvidersResponse) => r.administeredBySchulstrukturknoten === orgaA.id,
-                ),
-            ).toBe(true);
-        });
-
-        it('should return rollen filtered by merkmale', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        merkmale: [],
-                        istTechnisch: false,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    merkmale: RollenMerkmal.BEFRISTUNG_PFLICHT,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-            expect(
-                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
-                    r.merkmale.includes(RollenMerkmal.BEFRISTUNG_PFLICHT),
-                ),
-            ).toBe(true);
-        });
-
-        it('should return rollen filtered by serviceProviderIds', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const sp1: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-            const sp2: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        serviceProviderIds: [sp1.id],
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        serviceProviderIds: [sp1.id],
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        serviceProviderIds: [sp2.id],
-                        istTechnisch: false,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    serviceProviderIds: sp1.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-            expect(
-                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) =>
-                    r.serviceProviders.some((sp: { id: string; name: string }) => sp.id === sp1.id),
-                ),
-            ).toBe(true);
-        });
-
-        it('should return rollen filtered by rollenarten without operation right', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            await Promise.all([
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        rollenart: RollenArt.LEHR,
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        rollenart: RollenArt.LEHR,
-                        istTechnisch: false,
-                    }),
-                ),
-                rolleRepo.save(
-                    DoFactory.createRolle(false, {
-                        administeredBySchulstrukturknoten: orga.id,
-                        rollenart: RollenArt.LERN,
-                        istTechnisch: false,
-                    }),
-                ),
-            ]);
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    rollenarten: RollenArt.LEHR,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(2);
-            expect(
-                pagedResponse.items.every((r: RolleWithServiceProvidersResponse) => r.rollenart === RollenArt.LEHR),
-            ).toBe(true);
-        });
-
-        it('should return 400 when organisationenForFilter is combined with an operation right', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    systemrechte: RollenSystemRecht.ROLLEN_ERWEITERN.name,
-                    organisationenForFilter: orga.id,
-                })
-                .send();
-
-            expect(response.status).toBe(400);
-        });
-
-        it('should return 400 when organisationContextForOperation is used without an operation right', async () => {
-            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    organisationContextForOperation: orga.id,
-                })
-                .send();
-
-            expect(response.status).toBe(400);
-        });
-    });
-
-    describe(`when systemrecht is ${RollenSystemRechtEnum.IMPORT_DURCHFUEHREN}`, () => {
-        const systemrechte: Array<RollenSystemRechtEnum> = [RollenSystemRechtEnum.IMPORT_DURCHFUEHREN];
-
-        it('should return rollen available for import personenkontext', async () => {
-            const schule: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-            const schule2: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-
-            const [role1, , role3]: [Rolle<true> | DomainError, Rolle<true> | DomainError, Rolle<true> | DomainError] =
-                await Promise.all([
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            administeredBySchulstrukturknoten: schule.id,
-                            rollenart: RollenArt.LEHR,
-                        }),
-                    ),
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            administeredBySchulstrukturknoten: schule.id,
-                            rollenart: RollenArt.SYSADMIN,
-                        }),
-                    ),
-                    rolleRepo.save(
-                        DoFactory.createRolle(false, {
-                            istTechnisch: false,
-                            administeredBySchulstrukturknoten: schule2.id,
-                            rollenart: RollenArt.LEHR,
-                        }),
-                    ),
-                ]);
-            if (role1 instanceof DomainError || role3 instanceof DomainError) {
-                expect.fail('error during test setup. role was not persisted');
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    systemrechte,
-                    rollenarten: [RollenArt.LEHR],
-                    organisationContextForOperation: schule.id,
-                })
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-
-            expect(pagedResponse.items).toHaveLength(1);
-            expect(pagedResponse.items).toEqual(
-                expect.arrayContaining([expect.objectContaining({ id: role1.id, name: role1.name })]),
-            );
-            expect(pagedResponse.items[0]?.rollenart).toBe(RollenArt.LEHR);
-            expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
-                [RollenSystemRecht.IMPORT_DURCHFUEHREN],
-                true,
-                false,
-            );
-        });
-
-        it('should return nothing if no organisationID is provided', async () => {
-            const schule: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
-            );
-
-            await rolleRepo.save(
-                DoFactory.createRolle(false, {
-                    istTechnisch: false,
-                    administeredBySchulstrukturknoten: schule.id,
-                    rollenart: RollenArt.LEHR,
-                }),
-            );
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle`)
-                .query({
-                    systemrechte,
-                    rollenarten: [RollenArt.LEHR],
-                } as FindRollenQueryParams)
-                .send();
-
-            expect(response.status).toBe(200);
-            const pagedResponse: PagedResponse<RolleWithServiceProvidersResponse> =
-                response.body as PagedResponse<RolleWithServiceProvidersResponse>;
-            expect(pagedResponse.items).toHaveLength(0);
-        });
-    });
-
-    describe('/GET rolle by id', () => {
-        it('should return rolle', async () => {
-            const rolle: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
-            if (rolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [rolle.administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}`)
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-        });
-
-        it('should return rolle with serviceproviders', async () => {
-            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] }),
-            );
-            if (rolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [rolle.administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}`)
-                .send();
-
-            expect(response.status).toBe(200);
-            expect(response.body).toBeInstanceOf(Object);
-            const responseBody: RolleWithServiceProvidersResponse = response.body as RolleWithServiceProvidersResponse;
-
-            expect(responseBody?.serviceProviders).toContainEqual(
-                expect.objectContaining({ id: serviceProvider.id, name: serviceProvider.name }),
-            );
-        });
-
-        it('should return 404 when rolle could not be found', async () => {
-            await rolleRepo.save(DoFactory.createRolle(false));
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${faker.string.uuid()}`)
-                .send();
-
-            expect(response.status).toBe(404);
-            expect(response.body).toBeInstanceOf(Object);
-        });
-
-        it('should return 404 when rolle is technical', async () => {
-            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
-                DoFactory.createRolle(false, { istTechnisch: true }),
-            );
-            if (rolle instanceof DomainError) {
-                throw Error();
-            }
-
-            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
-                all: false,
-                orgaIds: [rolle.administeredBySchulstrukturknoten],
-            });
-
-            const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}`)
-                .send();
-
-            expect(response.status).toBe(404);
-            expect(response.body).toBeInstanceOf(Object);
-        });
-    });
-
     describe('/GET rolleId/serviceProviders', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}/serviceProviders`;
+
         describe('when rolle exists', () => {
             it('should return 200 and a list of serviceProviders', async () => {
                 const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
@@ -1737,7 +1653,7 @@ describe('Rolle API', () => {
                 }
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .get(`/rolle/${rolle.id}/serviceProviders`)
+                    .get(buildUrl(rolle.id))
                     .send();
 
                 expect(response.status).toBe(200);
@@ -1748,7 +1664,7 @@ describe('Rolle API', () => {
             it('should return 404', async () => {
                 const validButNonExistingUUID: string = faker.string.uuid();
                 const response: Response = await request(app.getHttpServer() as App)
-                    .get(`/rolle/${validButNonExistingUUID}/serviceProviders`)
+                    .get(buildUrl(validButNonExistingUUID))
                     .send();
 
                 expect(response.status).toBe(404);
@@ -1756,17 +1672,10 @@ describe('Rolle API', () => {
         });
     });
 
-    describe('GET systemrechte', () => {
-        it('should return all systemrechte', async () => {
-            const response: Response = await request(app.getHttpServer() as App).get('/rolle/systemrechte');
-            expect(response.status).toBe(200);
-            expect(response.body).toEqual(
-                RollenSystemRecht.ALL.map((sr: RollenSystemRecht) => new SystemRechtResponse(sr)),
-            );
-        });
-    });
-
     describe('/PUT rolle', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+
         it.each([
             [RollenMerkmal.PILOT_1_ROLLE, RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
             [RollenMerkmal.PILOT_2_ROLLE, RollenSystemRecht.PILOT_2_ROLLEN_ZUORDNEN],
@@ -1798,10 +1707,10 @@ describe('Rolle API', () => {
                 };
 
                 const added: Response = await request(app.getHttpServer() as App)
-                    .put(`/rolle/${existing.id}`)
+                    .put(buildUrl(existing.id))
                     .send(params);
                 expect(added.status).toBe(200);
-                const reloaded: Response = await request(app.getHttpServer() as App).get(`/rolle/${existing.id}`);
+                const reloaded: Response = await request(app.getHttpServer() as App).get(buildUrl(existing.id));
                 const rolle: RolleResponse = reloaded.body as RolleResponse;
                 expect(reloaded.status).toBe(200);
                 expect(rolle.merkmale).toEqual(expect.arrayContaining(params.merkmale));
@@ -1810,7 +1719,7 @@ describe('Rolle API', () => {
                 );
 
                 const removed: Response = await request(app.getHttpServer() as App)
-                    .put(`/rolle/${existing.id}`)
+                    .put(buildUrl(existing.id))
                     .send({
                         ...params,
                         merkmale: [RollenMerkmal.KOPERS_PFLICHT],
@@ -1818,7 +1727,7 @@ describe('Rolle API', () => {
                         version: rolle.version,
                     } satisfies UpdateRolleBodyParams);
                 expect(removed.status).toBe(200);
-                const afterRemoval: Response = await request(app.getHttpServer() as App).get(`/rolle/${existing.id}`);
+                const afterRemoval: Response = await request(app.getHttpServer() as App).get(buildUrl(existing.id));
                 expect(afterRemoval.status).toBe(200);
                 expect(afterRemoval.body).toEqual(
                     expect.objectContaining({
@@ -1871,7 +1780,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .put(`/rolle/${rolle.id}`)
+                .put(buildUrl(rolle.id))
                 .send(params);
 
             expect(response.status).toBe(200);
@@ -1907,7 +1816,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .put(`/rolle/${faker.string.uuid()}`)
+                .put(buildUrl(faker.string.uuid()))
                 .send(params);
 
             expect(response.status).toBe(404);
@@ -1950,7 +1859,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .put(`/rolle/${rolle.id}`)
+                .put(buildUrl(rolle.id))
                 .send(params);
 
             expect(response.status).toBe(404);
@@ -1998,7 +1907,7 @@ describe('Rolle API', () => {
             };
 
             const response: Response = await request(app.getHttpServer() as App)
-                .put(`/rolle/${rolle.id}`)
+                .put(buildUrl(rolle.id))
                 .send(params);
 
             expect(response.status).toBe(404);
@@ -2072,7 +1981,7 @@ describe('Rolle API', () => {
                 };
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .put(`/rolle/${rolle.id}`)
+                    .put(buildUrl(rolle.id))
                     .send(params);
 
                 expect(response.status).toBe(400);
@@ -2122,7 +2031,7 @@ describe('Rolle API', () => {
             permissionsMock.getPersonenkontexteWithRolesAndOrgs.mockResolvedValue(personenkontextewithRolesMock);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .put(`/rolle/${rolle.id}`)
+                .put(buildUrl(rolle.id))
                 .send(params);
 
             expect(response.status).toBe(400);
@@ -2134,6 +2043,9 @@ describe('Rolle API', () => {
     });
 
     describe('/DELETE rolleId', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string => `${url}/${rolleId}`;
+
         let organisation: Organisation<true>;
 
         beforeEach(async () => {
@@ -2145,7 +2057,7 @@ describe('Rolle API', () => {
         describe('should return error', () => {
             it('if rolle does NOT exist', async () => {
                 const response: Response = await request(app.getHttpServer() as App)
-                    .delete(`/rolle/${faker.string.uuid()}`)
+                    .delete(buildUrl(faker.string.uuid()))
                     .send();
 
                 expect(response.status).toBe(404);
@@ -2181,7 +2093,7 @@ describe('Rolle API', () => {
                 });
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .delete(`/rolle/${rolle.id}`)
+                    .delete(buildUrl(rolle.id))
                     .send();
 
                 expect(response.status).toBe(400);
@@ -2203,7 +2115,7 @@ describe('Rolle API', () => {
                 }
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .delete(`/rolle/${rolle.id}`)
+                    .delete(buildUrl(rolle.id))
                     .send();
 
                 expect(response.status).toBe(404);
@@ -2231,7 +2143,7 @@ describe('Rolle API', () => {
                 });
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .delete(`/rolle/${rolle.id}`)
+                    .delete(buildUrl(rolle.id))
                     .send();
 
                 expect(response.status).toBe(404);
@@ -2272,7 +2184,7 @@ describe('Rolle API', () => {
                 });
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .delete(`/rolle/${rolle.id}`)
+                    .delete(buildUrl(rolle.id))
                     .send();
 
                 expect(response.status).toBe(204);
@@ -2289,6 +2201,10 @@ describe('Rolle API', () => {
     });
 
     describe('GET :rolleId/angeboteViaRollenerweiterungen', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string) => string = (rolleId: string): string =>
+            `${url}/${rolleId}/angebote-via-rollenerweiterungen`;
+
         it('should return all rollenerweiterungen for a rolle', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(
                 DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
@@ -2325,8 +2241,8 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
-                .query({ organisationId: organisation.id })
+                .get(buildUrl(rolle.id))
+                .query({ organisationId: organisation.id } satisfies FindRollenerweiterungQueryParams)
                 .send();
 
             expect(response.status).toBe(200);
@@ -2355,8 +2271,8 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
-                .query({ organisationId: organisation.id })
+                .get(buildUrl(rolle.id))
+                .query({ organisationId: organisation.id } satisfies FindRollenerweiterungQueryParams)
                 .send();
 
             expect(response.status).toBe(200);
@@ -2368,7 +2284,7 @@ describe('Rolle API', () => {
             const rolleId: string = faker.string.uuid();
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolleId}/angebote-via-rollenerweiterungen`)
+                .get(buildUrl(rolleId))
                 .send();
 
             expect(response.status).toBe(400);
@@ -2383,8 +2299,8 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${faker.string.uuid()}/angebote-via-rollenerweiterungen`)
-                .query({ organisationId: organisation.id })
+                .get(buildUrl(faker.string.uuid()))
+                .query({ organisationId: organisation.id } satisfies FindRollenerweiterungQueryParams)
                 .send();
 
             expect(response.status).toBe(404);
@@ -2406,8 +2322,8 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
-                .query({ organisationId: organisation.id })
+                .get(buildUrl(rolle.id))
+                .query({ organisationId: organisation.id } satisfies FindRollenerweiterungQueryParams)
                 .send();
 
             expect(response.status).toBe(404);
@@ -2434,8 +2350,8 @@ describe('Rolle API', () => {
             );
 
             const response: Response = await request(app.getHttpServer() as App)
-                .get(`/rolle/${rolle.id}/angebote-via-rollenerweiterungen`)
-                .query({ organisationId: organisation2.id })
+                .get(buildUrl(rolle.id))
+                .query({ organisationId: organisation2.id } satisfies FindRollenerweiterungQueryParams)
                 .send();
 
             expect(response.status).toBe(404);
@@ -2443,6 +2359,12 @@ describe('Rolle API', () => {
     });
 
     describe('POST rolle/:rolleId/organisation/:organisationId/apply', () => {
+        const url: string = '/rolle';
+        const buildUrl: (rolleId: string, organisationId: string) => string = (
+            rolleId: string,
+            organisationId: string,
+        ): string => `${url}/${rolleId}/organisation/${organisationId}/apply`;
+
         it('should apply rollenerweiterung changes', async () => {
             const organisation: Organisation<true> = await organisationRepo.save(
                 DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
@@ -2470,7 +2392,7 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post(`/rolle/${rolle.id}/organisation/${organisation.id}/apply`)
+                .post(buildUrl(rolle.id, organisation.id))
                 .send({
                     addErweiterungenForServiceProviderIds: [serviceProvider.id],
                     removeErweiterungenForServiceProviderIds: [],
@@ -2496,7 +2418,7 @@ describe('Rolle API', () => {
             );
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post(`/rolle/${faker.string.uuid()}/organisation/${organisation.id}/apply`)
+                .post(buildUrl(faker.string.uuid(), organisation.id))
                 .send({
                     addErweiterungenForServiceProviderIds: [],
                     removeErweiterungenForServiceProviderIds: [],
@@ -2521,7 +2443,7 @@ describe('Rolle API', () => {
             }
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post(`/rolle/${rolle.id}/organisation/${faker.string.uuid()}/apply`)
+                .post(buildUrl(rolle.id, faker.string.uuid()))
                 .send({
                     addErweiterungenForServiceProviderIds: [],
                     removeErweiterungenForServiceProviderIds: [],
@@ -2548,7 +2470,7 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post(`/rolle/${rolle.id}/organisation/${organisation.id}/apply`)
+                .post(buildUrl(rolle.id, organisation.id))
                 .send({
                     addErweiterungenForServiceProviderIds: [],
                     removeErweiterungenForServiceProviderIds: [],
@@ -2580,7 +2502,7 @@ describe('Rolle API', () => {
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             const response: Response = await request(app.getHttpServer() as App)
-                .post(`/rolle/${rolle.id}/organisation/${organisation.id}/apply`)
+                .post(buildUrl(rolle.id, organisation.id))
                 .send({
                     addErweiterungenForServiceProviderIds: [serviceProviderId],
                     removeErweiterungenForServiceProviderIds: [],
