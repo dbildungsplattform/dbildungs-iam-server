@@ -30,6 +30,7 @@ import {
 import { Person } from '../../person/domain/person.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
 import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
 import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
@@ -151,6 +152,8 @@ describe('PersonenkontexteUpdate', () => {
             .useValue(createMock(EmailRepo))
             .overrideProvider(EmailResolverService)
             .useValue(createMock(EmailResolverService))
+            .overrideProvider(EventRoutingLegacyKafkaService)
+            .useValue(createMock(EventRoutingLegacyKafkaService))
             .compile();
         dBiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         dBiamPersonenkontextRepoInternalMock = module.get(DBiamPersonenkontextRepoInternal);
@@ -207,6 +210,135 @@ describe('PersonenkontexteUpdate', () => {
     });
 
     describe('update', () => {
+        describe('MPT permissions', () => {
+            let mptPK: Personenkontext<true>;
+            let regularPK: Personenkontext<true>;
+            let permissions: DeepMocked<PersonPermissions>;
+
+            beforeEach(() => {
+                mptPK = DoFactory.createPersonenkontext(true, {
+                    personId,
+                    updatedAt: lastModified,
+                    befristung: new Date('2099-07-31'),
+                });
+                regularPK = DoFactory.createPersonenkontext(true, {
+                    personId,
+                    updatedAt: lastModified,
+                    befristung: undefined,
+                });
+                const mptRolle: Rolle<true> = DoFactory.createRolle(true, {
+                    id: mptPK.rolleId,
+                    rollenart: RollenArt.LEHR,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                });
+                const regularRolle: Rolle<true> = DoFactory.createRolle(true, {
+                    id: regularPK.rolleId,
+                    rollenart: RollenArt.LEHR,
+                    merkmale: [],
+                });
+                rolleRepoMock.findByIds.mockResolvedValue(
+                    new Map([
+                        [mptRolle.id, mptRolle],
+                        [regularRolle.id, regularRolle],
+                    ]),
+                );
+                organisationRepoMock.findByIds.mockResolvedValue(new Map());
+                personRepoMock.findById.mockResolvedValue(DoFactory.createPerson(true, { id: personId }));
+                permissions = createPersonPermissionsMock();
+                permissions.hasSystemrechtAtOrganisation.mockImplementation(
+                    (organisationId: string, systemrecht: RollenSystemRecht): Promise<boolean> =>
+                        Promise.resolve(
+                            systemrecht !== RollenSystemRecht.MPT_ROLLEN_ZUORDNEN ||
+                                organisationId === regularPK.organisationId,
+                        ),
+                );
+            });
+
+            it.each(['add', 'remove', 'change Befristung'])(
+                'should reject an unauthorized MPT %s before any writes',
+                async (operation: string) => {
+                    const existing: Personenkontext<true>[] = operation === 'add' ? [regularPK] : [regularPK, mptPK];
+                    const sent: DbiamPersonenkontextBodyParams[] =
+                        operation === 'remove'
+                            ? [regularPK]
+                            : [
+                                  regularPK,
+                                  {
+                                      personId,
+                                      organisationId: mptPK.organisationId,
+                                      rolleId: mptPK.rolleId,
+                                      befristung:
+                                          operation === 'change Befristung' ? new Date('2099-08-01') : mptPK.befristung,
+                                  },
+                              ];
+                    dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue(existing);
+                    dBiamPersonenkontextRepoMock.find.mockImplementation(
+                        (_personId: string, organisationId: string, rolleId: string) =>
+                            Promise.resolve(
+                                existing.find(
+                                    (pk: Personenkontext<true>) =>
+                                        pk.organisationId === organisationId && pk.rolleId === rolleId,
+                                ),
+                            ),
+                    );
+                    const update: PersonenkontexteUpdate = dbiamPersonenkontextFactory.createNewPersonenkontexteUpdate(
+                        personId,
+                        lastModified,
+                        existing.length,
+                        sent,
+                        permissions,
+                        '1234567',
+                    );
+
+                    const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
+
+                    expect(result).toBeInstanceOf(MissingPermissionsError);
+                    expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                        mptPK.organisationId,
+                        RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                    );
+                    expect(dBiamPersonenkontextRepoInternalMock.save).not.toHaveBeenCalled();
+                    expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
+                    expect(personRepoMock.updatePersonMetadata).not.toHaveBeenCalled();
+                    expect(module.get(EventRoutingLegacyKafkaService).publish).not.toHaveBeenCalled();
+                },
+            );
+
+            it('should allow a regular addition while retaining an unchanged MPT context', async () => {
+                const fetchedMptPK: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                    personId,
+                    organisationId: mptPK.organisationId,
+                    rolleId: mptPK.rolleId,
+                    befristung: new Date(mptPK.befristung!),
+                    updatedAt: lastModified,
+                });
+                dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(fetchedMptPK).mockResolvedValueOnce(undefined);
+                dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([mptPK]);
+                dBiamPersonenkontextRepoInternalMock.save.mockResolvedValue(regularPK);
+                personRepoMock.findById.mockResolvedValueOnce(DoFactory.createPerson(true, { id: personId }));
+                personRepoMock.findById.mockResolvedValue(undefined);
+                const update: PersonenkontexteUpdate = dbiamPersonenkontextFactory.createNewPersonenkontexteUpdate(
+                    personId,
+                    lastModified,
+                    1,
+                    [fetchedMptPK, regularPK],
+                    permissions,
+                );
+
+                const result: Personenkontext<true>[] | PersonenkontexteUpdateError = await update.update();
+
+                expect(result).toBeInstanceOf(Array);
+                expect(permissions.hasSystemrechtAtOrganisation).not.toHaveBeenCalledWith(
+                    mptPK.organisationId,
+                    RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                );
+                expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
+                expect(dBiamPersonenkontextRepoInternalMock.save).toHaveBeenCalledWith(
+                    expect.objectContaining({ rolleId: regularPK.rolleId }),
+                );
+            });
+        });
+
         describe('when sent personenkontexte contain new personenkontext', () => {
             beforeAll(() => {
                 const count: number = 1;
@@ -362,11 +494,7 @@ describe('PersonenkontexteUpdate', () => {
                 dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(null); //mock pk1 is not found => therefore handled as new
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]); //person has no existing PKs
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]); //CheckRollenartLernSpecification: person has no existing PKs
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map()); //CheckRollenartLernSpecification
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map()); //CheckRollenartLernSpecification
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+                rolleRepoMock.findByIds.mockResolvedValue(new Map());
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([pk1, pk2]); // mock while checking the existing PKs
                 dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([pk1, pk2]);
                 const newPerson: Person<true> = DoFactory.createPerson(true);

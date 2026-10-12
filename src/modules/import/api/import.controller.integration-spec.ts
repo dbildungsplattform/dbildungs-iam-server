@@ -317,7 +317,9 @@ describe('Import API', () => {
             }
 
             const schule: OrganisationEntity = new OrganisationEntity();
+            schule.name = 'Import Schule';
             schule.typ = OrganisationsTyp.SCHULE;
+
             await em.persist(schule).flush();
             await em.findOneOrFail(OrganisationEntity, { id: schule.id });
 
@@ -354,7 +356,9 @@ describe('Import API', () => {
             }
 
             const schule: OrganisationEntity = new OrganisationEntity();
+            schule.name = 'Import Schule';
             schule.typ = OrganisationsTyp.SCHULE;
+
             await em.persist(schule).flush();
             await em.findOneOrFail(OrganisationEntity, { id: schule.id });
 
@@ -409,7 +413,9 @@ describe('Import API', () => {
             }
 
             const schule: OrganisationEntity = new OrganisationEntity();
+            schule.name = 'Import Schule';
             schule.typ = OrganisationsTyp.SCHULE;
+
             await em.persist(schule).flush();
             await em.findOneOrFail(OrganisationEntity, { id: schule.id });
 
@@ -777,6 +783,7 @@ describe('Import API', () => {
 
             const schule2: OrganisationEntity = new OrganisationEntity();
             schule2.typ = OrganisationsTyp.SCHULE;
+            schule2.name = 'Import Schule 2';
             await em.persist(schule2).flush();
             await em.findOneOrFail(OrganisationEntity, { id: schule2.id });
             orgaId2 = schule2.id;
