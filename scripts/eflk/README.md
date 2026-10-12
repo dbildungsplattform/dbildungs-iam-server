@@ -105,9 +105,12 @@ Werte bei `gesperrt`/`deaktiviert` (erwartet `TRUE`/`FALSE`), E-Mail-Domain
 vs. `ou=oeffentlich|ersatz`-Inkonsistenzen, verwaiste Gruppenmitgliedschaften
 (`member`-DN ohne zugehörige Person) sowie fehlerhafte/unnötige
 base64-Kodierung (RFC 2849). Ergebnisse werden als `ERROR` (eindeutig
-invalide) oder `WARN` (auffällig, z.B. Person ohne Schul-Gruppe) klassifiziert.
+invalide), `WARN` (auffällig) oder `INFO` (erwartbarer Hinweis) klassifiziert.
 
-Personen ohne Schul-Gruppe werden mit `deaktiviert=FALSE` unter einer eigenen
-Warnmeldung gruppiert, um mögliche Inkonsistenzen wie in SPSH-4473 sichtbar zu
-machen. Pro Person wird dabei weiterhin nur ein Befund zur fehlenden Gruppe
-gezählt.
+Personen ohne Schul-Gruppe werden mit `deaktiviert=TRUE` als `INFO` statt `WARN`
+gemeldet. Mit `deaktiviert=FALSE` bleibt eine eigene Warnmeldung bestehen, um
+mögliche Inkonsistenzen wie in SPSH-4473 sichtbar zu machen. Bei fehlendem oder
+ungültigem Flag bleibt der Befund zur fehlenden Gruppe ebenfalls eine Warnung.
+Pro Person wird weiterhin nur ein Befund zur fehlenden Gruppe gezählt. Gleiche
+Meldungen werden je Schweregrad gruppiert; `INFO` wird im Report und in der
+Konsolenausgabe separat gezählt. Nur `ERROR` führt zum Exit-Code 1.

@@ -56,8 +56,9 @@ function printHelp() {
 
 Der Report enthaelt ERROR (eindeutig invalide, z.B. doppelte uid/DN, fehlende
 Pflichtfelder, verwaiste Gruppenmitglieder) und WARN (auffaellig, aber nicht
-zwingend falsch, z.B. Person ohne Schulzuordnung). Exit-Code ist 1, sobald
-mindestens ein ERROR gefunden wurde, sonst 0 (fuer CI-Nutzung).
+zwingend falsch, z.B. Person ohne Schulzuordnung trotz deaktiviert=FALSE).
+INFO kennzeichnet erwartbare Faelle, z.B. deaktivierte Personen ohne Schulzuordnung.
+Exit-Code ist 1, sobald mindestens ein ERROR gefunden wurde, sonst 0 (fuer CI-Nutzung).
 `);
 }
 
@@ -439,10 +440,12 @@ function reportPersonsWithoutGroup(personEntries, groupEntries, addIssue) {
     const membersOfAnyGroup = new Set(groupEntries.flatMap((g) => getValues(g, 'member')));
     for (const person of personEntries) {
         if (!membersOfAnyGroup.has(person.dn)) {
-            const message = getFirstValue(person, 'deaktiviert') === 'FALSE'
+            const deaktiviert = getFirstValue(person, 'deaktiviert');
+            const severity = deaktiviert === 'TRUE' ? 'INFO' : 'WARN';
+            const message = deaktiviert === 'FALSE'
                 ? 'Person ist in keiner Schul-Gruppe (member) enthalten, aber deaktiviert=FALSE'
                 : 'Person ist in keiner Schul-Gruppe (member) enthalten';
-            addIssue('WARN', person.dn, person.startLine, message);
+            addIssue(severity, person.dn, person.startLine, message);
         }
     }
 }
@@ -501,6 +504,7 @@ function partitionBySeverity(issues) {
     return {
         errors: issues.filter((i) => i.severity === 'ERROR'),
         warnings: issues.filter((i) => i.severity === 'WARN'),
+        infos: issues.filter((i) => i.severity === 'INFO'),
     };
 }
 
@@ -528,7 +532,7 @@ function formatIssueGroups(issues) {
 }
 
 function formatReport({ issues, stats }, inFile) {
-    const { errors, warnings } = partitionBySeverity(issues);
+    const { errors, warnings, infos } = partitionBySeverity(issues);
 
     const lines = [
         'EFLK LDIF Validation Report',
@@ -545,6 +549,7 @@ function formatReport({ issues, stats }, inFile) {
     lines.push(
         `  Fehler (ERROR): ${errors.length}`,
         `  Warnungen (WARN): ${warnings.length}`,
+        `  Hinweise (INFO): ${infos.length}`,
         '',
     );
 
@@ -554,6 +559,9 @@ function formatReport({ issues, stats }, inFile) {
         '',
         '=== WARN ===',
         ...formatIssueGroups(warnings),
+        '',
+        '=== INFO ===',
+        ...formatIssueGroups(infos),
         '',
     );
 
@@ -573,8 +581,10 @@ async function main() {
 
     await writeFile(outPath, formatReport(result, args.file));
 
-    const { errors, warnings } = partitionBySeverity(result.issues);
-    console.log(`${records.length} Eintraege geprueft: ${errors.length} Fehler, ${warnings.length} Warnungen. Report: ${outPath}`);
+    const { errors, warnings, infos } = partitionBySeverity(result.issues);
+    console.log(
+        `${records.length} Eintraege geprueft: ${errors.length} Fehler, ${warnings.length} Warnungen, ${infos.length} Hinweise. Report: ${outPath}`,
+    );
 
     process.exitCode = errors.length > 0 ? 1 : 0;
 }
