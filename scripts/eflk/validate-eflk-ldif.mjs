@@ -439,7 +439,10 @@ function reportPersonsWithoutGroup(personEntries, groupEntries, addIssue) {
     const membersOfAnyGroup = new Set(groupEntries.flatMap((g) => getValues(g, 'member')));
     for (const person of personEntries) {
         if (!membersOfAnyGroup.has(person.dn)) {
-            addIssue('WARN', person.dn, person.startLine, 'Person ist in keiner Schul-Gruppe (member) enthalten');
+            const message = getFirstValue(person, 'deaktiviert') === 'FALSE'
+                ? 'Person ist in keiner Schul-Gruppe (member) enthalten, aber deaktiviert=FALSE'
+                : 'Person ist in keiner Schul-Gruppe (member) enthalten';
+            addIssue('WARN', person.dn, person.startLine, message);
         }
     }
 }

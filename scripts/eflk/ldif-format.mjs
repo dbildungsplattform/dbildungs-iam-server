@@ -21,9 +21,9 @@ export function boolStr(value) {
     return value ? 'TRUE' : 'FALSE';
 }
 
-// EFLK rule (see README.md): deaktiviert = person no longer has a school assignment.
-function isDeaktiviert(row) {
-    return row.org_unassignment_date !== null;
+// EFLK rule (see README.md): deaktiviert = unassignment date set or no EMAIL assignment.
+function isDeaktiviert(row, organisationIds) {
+    return row.org_unassignment_date !== null || organisationIds.length === 0;
 }
 
 // EFLK rule (see README.md): gesperrt = active user_lock entry for the person.
@@ -42,15 +42,17 @@ function getOrganisationIds(row, organisationIdsByPerson) {
 // Maps a raw person DB row plus pre-computed lookups to the target LDIF person record
 // (deaktiviert/gesperrt derivation follows the EFLK rules documented in README.md).
 export function toPersonRecord(row, { gesperrtePersonenIds, emailsByPerson, organisationIdsByPerson }) {
+    const organisationIds = getOrganisationIds(row, organisationIdsByPerson);
+
     return {
         id: row.id,
         username: row.username,
         vorname: row.vorname,
         familienname: row.familienname,
-        deaktiviert: isDeaktiviert(row),
+        deaktiviert: isDeaktiviert(row, organisationIds),
         gesperrt: isGesperrt(row, gesperrtePersonenIds),
         emails: getEmails(row, emailsByPerson),
-        organisationIds: getOrganisationIds(row, organisationIdsByPerson),
+        organisationIds,
     };
 }
 

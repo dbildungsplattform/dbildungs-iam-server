@@ -53,6 +53,11 @@ Container ebenfalls zu exportieren.
   exportiert; ohne Prio 1 entfällt das Attribut. Höhere Prioritäten werden ignoriert.
 * **`uid`** = `person.id` (UUID), **`cn`** = `person.username`.
 * **`deaktiviert`**: `TRUE`, wenn `person.org_unassignment_date` gesetzt ist
+  **oder** keine Zuordnung über einen Personenkontext mit EMAIL-Service-Provider
+  vorhanden ist. Die zweite Bedingung sichert fehlende Abmeldedaten wie in
+  SPSH-4473 ab. Sie bedeutet nicht zwingend, dass überhaupt keine Personenkontexte
+  existieren. Der Export ändert weder das Abmeldedatum noch andere Datenbankwerte;
+  E-Mail-Status wie `SUSPENDED` werden für diese Ableitung nicht verwendet.
 * **`gesperrt`**: `TRUE`, wenn ein `user_lock`-Eintrag existiert, dessen `locked_until` `NULL` ist oder in der Zukunft liegt.
 * **Schulzugehörigkeit**: nur Personenkontexte, deren Rolle einen `service_provider` mit `external_system = 'EMAIL'` hat.
 * **Öffentlich vs. Ersatzschule**: repliziert
@@ -101,3 +106,8 @@ vs. `ou=oeffentlich|ersatz`-Inkonsistenzen, verwaiste Gruppenmitgliedschaften
 (`member`-DN ohne zugehörige Person) sowie fehlerhafte/unnötige
 base64-Kodierung (RFC 2849). Ergebnisse werden als `ERROR` (eindeutig
 invalide) oder `WARN` (auffällig, z.B. Person ohne Schul-Gruppe) klassifiziert.
+
+Personen ohne Schul-Gruppe werden mit `deaktiviert=FALSE` unter einer eigenen
+Warnmeldung gruppiert, um mögliche Inkonsistenzen wie in SPSH-4473 sichtbar zu
+machen. Pro Person wird dabei weiterhin nur ein Befund zur fehlenden Gruppe
+gezählt.
