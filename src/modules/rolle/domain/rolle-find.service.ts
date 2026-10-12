@@ -87,9 +87,14 @@ export type FindRollenAvailableForErweiterungParams = FindRollenWithPermissionsP
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
-export type FindRollenAvailableForPersonAdministrationParams = FindRollenWithPermissionsParams & {
+export interface FindRollenAvailableForPersonAdministrationParams {
+    permissions: IPersonPermissions;
+    searchStr?: string;
+    organisationIds?: Array<OrganisationID>;
+    limit?: number;
+    offset?: number;
     requestedSystemrechte?: RollenSystemRecht[];
-};
+}
 
 @Injectable()
 export class RolleFindService {
