@@ -44,7 +44,14 @@ export async function queryPersonsWithEmail(client) {
 
 export async function queryEmailsForPersons(client, personIds) {
     const { rows } = await client.query(
-        `SELECT a.spsh_person_id AS person_id, a.address, a.priority
+        `SELECT a.spsh_person_id AS person_id, a.address, a.priority,
+                CASE WHEN a.priority = 0 THEN (
+                    SELECT s.status
+                    FROM email.address_status s
+                    WHERE s.email_address_id = a.id
+                    ORDER BY s.created_at DESC
+                    LIMIT 1
+                ) END AS status
          FROM email.address a
          WHERE a.spsh_person_id = ANY($1::text[])
            AND a.priority IN (0, 1)

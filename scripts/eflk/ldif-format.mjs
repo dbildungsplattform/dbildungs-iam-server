@@ -21,9 +21,19 @@ export function boolStr(value) {
     return value ? 'TRUE' : 'FALSE';
 }
 
-// EFLK rule (see README.md): deaktiviert = unassignment date set or no EMAIL assignment.
-function isDeaktiviert(row, organisationIds) {
-    return row.org_unassignment_date !== null || organisationIds.length === 0;
+// |----------------------------------------|---------|
+// | Prio 0: ACTIVE                         | false   |
+// | Prio 0: PENDING                        | false   |
+// | Prio 0: SUSPENDED                      | true    |
+// | Prio 0: DEACTIVE                       | false   |
+// | Prio 0: FAILED                         | false   |
+// | Prio 0: TO_BE_DELETED                  | false   |
+// | Prio 0: EXISTS_ONLY_IN_OX              | false   |
+// | Kein Status vorhanden                  | false   |
+// | Keine Prioritaet-0-Adresse             | false   |
+// | Nur Prio 1: beliebiger Status          | false   |
+function isDeaktiviertForThisScriptCase(primaryEmail) {
+    return primaryEmail?.status === 'SUSPENDED';
 }
 
 // EFLK rule (see README.md): gesperrt = active user_lock entry for the person.
@@ -43,15 +53,17 @@ function getOrganisationIds(row, organisationIdsByPerson) {
 // (deaktiviert/gesperrt derivation follows the EFLK rules documented in README.md).
 export function toPersonRecord(row, { gesperrtePersonenIds, emailsByPerson, organisationIdsByPerson }) {
     const organisationIds = getOrganisationIds(row, organisationIdsByPerson);
+    const emails = getEmails(row, emailsByPerson);
+    const primaryEmail = emails.find((email) => email.priority === 0);
 
     return {
         id: row.id,
         username: row.username,
         vorname: row.vorname,
         familienname: row.familienname,
-        deaktiviert: isDeaktiviert(row, organisationIds),
+        deaktiviert: isDeaktiviertForThisScriptCase(primaryEmail),
         gesperrt: isGesperrt(row, gesperrtePersonenIds),
-        emails: getEmails(row, emailsByPerson),
+        emails,
         organisationIds,
     };
 }

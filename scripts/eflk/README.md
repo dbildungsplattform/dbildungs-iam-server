@@ -43,38 +43,6 @@ Container ebenfalls zu exportieren.
   Passphrase, z.B. wenn der Key bereits im ssh-agent geladen ist).
 * Alle Optionen siehe `--help`.
 
-// TODO: PR Review
-## Getroffene Annahmen (bitte vor Prod-Nutzung gegenprüfen)
-
-* **"Hat E-Mail"**: mindestens eine `email.address` mit `priority IN (0,1)`,
-  unabhängig vom Status (Prio 0/1 wird immer ins LDAP/OX geschrieben).
-* **E-Mail-Auswahl**: Prio 0 wird als `mailPrimaryAddress` exportiert.
-  Als `mailAlternativeAddress` wird höchstens eine Adresse mit exakt Prio 1
-  exportiert; ohne Prio 1 entfällt das Attribut. Höhere Prioritäten werden ignoriert.
-* **`uid`** = `person.id` (UUID), **`cn`** = `person.username`.
-* **`deaktiviert`**: `TRUE`, wenn `person.org_unassignment_date` gesetzt ist
-  **oder** keine Zuordnung über einen Personenkontext mit EMAIL-Service-Provider
-  vorhanden ist. Die zweite Bedingung sichert fehlende Abmeldedaten wie in
-  SPSH-4473 ab. Sie bedeutet nicht zwingend, dass überhaupt keine Personenkontexte
-  existieren. Der Export ändert weder das Abmeldedatum noch andere Datenbankwerte;
-  E-Mail-Status wie `SUSPENDED` werden für diese Ableitung nicht verwendet.
-* **`gesperrt`**: `TRUE`, wenn ein `user_lock`-Eintrag existiert, dessen `locked_until` `NULL` ist oder in der Zukunft liegt.
-* **Schulzugehörigkeit**: nur Personenkontexte, deren Rolle einen `service_provider` mit `external_system = 'EMAIL'` hat.
-* **Öffentlich vs. Ersatzschule**: repliziert
-  `OrganisationRepository.findOrganisationZuordnungErsatzOderOeffentlich()`
-  (Namenserkennung "Öffentliche"/"Ersatz" unter den direkten Kindern der
-  Root-Organisation, danach Elternketten-Suche).
-* **`ou`-Zuordnung der Person** (oeffentlich/ersatz im DN): Bucket der ersten
-  gefundenen Schule der Person – analog zum Fallback-Verhalten von
-  `mainSchool` im Zielschema. Bei Personen mit Schulen aus beiden Kategorien
-  müsste das Verhalten fachlich noch bestätigt werden.
-* **`objectClass` Namen**: Personen verwenden `inetOrgPerson` und `spshUser`
-  gemäß dem finalen Schema und dem gemergten LDAP-Adapter.
-  `cn=users/groups/lists`-Container verwenden weiterhin `organizationalRole`.
-* Attribute wie `mailBoxType`, `hideFromAddressLists`, `dovecotQuota`,
-  `groupwareQuota`, `mainSchool` werden **nicht** befüllt (nicht im
-  Ticket-Scope der 5 geforderten Datenpunkte).
-
 ## Export validieren
 
 `validate-eflk-ldif.mjs` prüft eine bereits erzeugte LDIF-Datei auf invalide Datenkonstellationen. 
