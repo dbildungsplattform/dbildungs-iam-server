@@ -597,6 +597,96 @@ describe('OrganisationService', () => {
             });
         });
 
+        describe('when a Behoerde is administered by a Land', () => {
+            it('should update with its own unchanged name', async () => {
+                const parent: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
+                const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.BEHOERDE,
+                    administriertVon: parent.id,
+                });
+                organisationRepositoryMock.findById.mockResolvedValueOnce(behoerde).mockResolvedValueOnce(parent);
+                organisationRepositoryMock.findBy.mockResolvedValueOnce([[behoerde], 1]);
+                organisationRepositoryMock.save.mockResolvedValueOnce(behoerde);
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    behoerde,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual<Result<Organisation<true>>>({ ok: true, value: behoerde });
+                expect(organisationRepositoryMock.save).toHaveBeenCalledWith(behoerde);
+            });
+        });
+
+        describe('when a Behoerde is administered by another Behoerde', () => {
+            it('should update with its own unchanged name', async () => {
+                const parent: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.BEHOERDE,
+                });
+                const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.BEHOERDE,
+                    administriertVon: parent.id,
+                });
+                organisationRepositoryMock.findById.mockResolvedValueOnce(behoerde).mockResolvedValueOnce(parent);
+                organisationRepositoryMock.findBy.mockResolvedValueOnce([[behoerde], 1]);
+                organisationRepositoryMock.save.mockResolvedValueOnce(behoerde);
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    behoerde,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual<Result<Organisation<true>>>({ ok: true, value: behoerde });
+                expect(organisationRepositoryMock.save).toHaveBeenCalledWith(behoerde);
+            });
+        });
+
+        it('should reject updating a Behoerde administered by a Schule', async () => {
+            const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+                administriertVon: schule.id,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(behoerde).mockResolvedValueOnce(schule);
+
+            const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                behoerde,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new BehoerdeAdministriertVonError(behoerde.id),
+            });
+            expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
+        });
+
+        it('should reject changing an organisation to a Behoerde with a duplicate name', async () => {
+            const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.TRAEGER,
+                administriertVon: land.id,
+            });
+            const existingBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+                name: organisation.name,
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(organisation).mockResolvedValueOnce(land);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce([[existingBehoerde], 1]);
+            organisation.typ = OrganisationsTyp.BEHOERDE;
+
+            const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                organisation,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new BehoerdeNameEindeutigError(organisation.id),
+            });
+            expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
+        });
+
         it('should update a Schule and log the update', async () => {
             const schule: Organisation<true> = DoFactory.createOrganisation(true);
             schule.typ = OrganisationsTyp.SCHULE;

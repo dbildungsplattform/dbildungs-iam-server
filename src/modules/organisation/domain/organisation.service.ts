@@ -211,6 +211,12 @@ export class OrganisationService {
             return { ok: false, error: schulSpecificationsError };
         }
 
+        const behoerdenResult: Result<void, DomainError> = await this.validateBehoerdenSpecifications(organisationDo);
+        if (!behoerdenResult.ok) {
+            await this.logUpdate(permissions, organisationDo, behoerdenResult.error);
+            return { ok: false, error: behoerdenResult.error };
+        }
+
         const organisation: Organisation<true> | OrganisationSpecificationError =
             await this.organisationRepo.save(organisationDo);
         if (organisation instanceof Organisation) {
@@ -464,7 +470,7 @@ export class OrganisationService {
     }
 
     private async validateBehoerdenSpecifications(
-        organisationDo: Organisation<false>,
+        organisationDo: Organisation<boolean>,
     ): Promise<Result<void, DomainError>> {
         if (!organisationDo.isBehoerde()) {
             return { ok: true, value: undefined };
