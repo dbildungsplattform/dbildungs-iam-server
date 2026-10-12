@@ -64,8 +64,7 @@ export function buildPersonEntry(person, ou, baseDn) {
         'changetype: add',
         'objectClass: top',
         'objectClass: inetOrgPerson',
-        // TODO: exact name of the schulportalsh.schema objectClass not final yet (Epic SPSH-4216)
-        'objectClass: schulportalSHPerson',
+        'objectClass: spshUser',
         ldifLine('uid', person.id),
         ldifLine('cn', person.username ?? person.id),
         ldifLine('sn', person.familienname),

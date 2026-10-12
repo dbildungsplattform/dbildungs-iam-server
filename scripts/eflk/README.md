@@ -55,9 +55,9 @@ node scripts/eflk/export-eflk-ldif.mjs \
   gefundenen Schule der Person – analog zum Fallback-Verhalten von
   `mainSchool` im Zielschema. Bei Personen mit Schulen aus beiden Kategorien
   müsste das Verhalten fachlich noch bestätigt werden.
-* **`objectClass` Namen** (`schulportalSHPerson` für Personen,
-  `organizationalRole` für `cn=users/groups/lists`-Container): Platzhalter, da
-  das eigene `schulportalsh.schema` laut Ticket noch nicht final vorliegt.
+* **`objectClass` Namen**: Personen verwenden `inetOrgPerson` und `spshUser`
+  gemäß dem finalen Schema und dem gemergten LDAP-Adapter.
+  `cn=users/groups/lists`-Container verwenden weiterhin `organizationalRole`.
 * Attribute wie `mailBoxType`, `hideFromAddressLists`, `dovecotQuota`,
   `groupwareQuota`, `mainSchool` werden **nicht** befüllt (nicht im
   Ticket-Scope der 5 geforderten Datenpunkte).
