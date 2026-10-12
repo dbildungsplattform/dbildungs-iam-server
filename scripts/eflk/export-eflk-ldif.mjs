@@ -44,6 +44,7 @@ function parseArgs(argv) {
         dbHost: undefined,
         dbPort: DEFAULT_DB_PORT,
         localPort: DEFAULT_LOCAL_PORT,
+        includeContainers: false,
     };
 
     for (let i = 0; i < argv.length; i += 1) {
@@ -87,6 +88,9 @@ function parseArgs(argv) {
             case '--local-port':
                 args.localPort = Number.parseInt(next(), 10);
                 break;
+            case '--include-containers':
+                args.includeContainers = true;
+                break;
             case '--help':
                 printHelp();
                 process.exit(0);
@@ -106,10 +110,11 @@ function parseArgs(argv) {
 function printHelp() {
     console.log(`Export aller Personen mit E-Mail nach EFLK-Ziel-LDIF
 
-Alle Optionen sind Pflicht (kein Fallback/Default), ausser --local-port, --base-dn und --db-port:
+Alle Optionen sind Pflicht (kein Fallback/Default), ausser --local-port, --base-dn, --db-port und --include-containers:
   --out <datei>                   Ausgabedatei
   --base-dn <dn>                  Basis-DN (Default: ${DEFAULT_BASE_DN})
   --root-organisation-id <uuid>   ROOT_ORGANISATION_ID (siehe config/config.json)
+    --include-containers           OU-/users-/groups-/lists-Container mit exportieren (Default: ohne Container)
 
   Postgres-Zugangsdaten:
   --pg-user <user>                 Postgres-Benutzer
@@ -318,7 +323,8 @@ async function main() {
         const membersByOrganisation = groupMembersByOrganisation(persons, personDnById);
         const groupLines = buildAllGroupEntries(allOrganisationIds, ouByOrganisation, organisationen, membersByOrganisation, args.baseDn);
 
-        const outputLines = [...buildContainerEntries(args.baseDn), ...personLines, ...groupLines];
+        const containerLines = args.includeContainers ? buildContainerEntries(args.baseDn) : [];
+        const outputLines = [...containerLines, ...personLines, ...groupLines];
 
         await writeFile(args.out, outputLines.join('\n'));
         console.log(`${persons.length} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);

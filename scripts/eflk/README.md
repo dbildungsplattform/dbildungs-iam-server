@@ -20,6 +20,11 @@ node scripts/eflk/export-eflk-ldif.mjs \
   --out export.ldif
 ```
 
+Standardmäßig werden nur Personen und Schul-Gruppen exportiert. Die OU- und
+`cn=users/groups/lists`-Container werden bereits vom Betriebsteam zusammen mit
+dem Schema angelegt. Nur bei Bedarf `--include-containers` ergänzen, um diese
+Container ebenfalls zu exportieren.
+
 * `--db-host`/`--db-port` entsprechen dem, was in pgAdmin im "Connection"-Tab
   (nicht im "SSH Tunnel"-Tab) als Host/Port hinterlegt ist. `--db-port` hat
   Default `5432` (Standard-Postgres-Port), optional überschreibbar.
@@ -75,6 +80,16 @@ Läuft rein auf der LDIF-Datei, ohne DB-/SSH-Zugriff:
 node scripts/eflk/validate-eflk-ldif.mjs --file export.ldif
 # schreibt den Report nach export-report.txt (neben export.ldif)
 ```
+
+Container-Einträge werden standardmäßig als `ERROR` gemeldet. Wurde bewusst mit
+Containern exportiert, erlaubt derselbe Schalter sie auch bei der Validierung:
+
+```bash
+node scripts/eflk/validate-eflk-ldif.mjs --file export.ldif --include-containers
+```
+
+Der Schalter erlaubt Container, verlangt aber nicht, dass sie vorhanden sind.
+Die übrigen Prüfungen bleiben aktiv.
 
 Geprüft werden u.a.: fehlende Pflichtfelder (`uid`/`cn`/`sn`/`mailPrimaryAddress`),
 doppelte `dn`/`uid`/Gruppen-`cn`, doppelte E-Mailadressen (auch über

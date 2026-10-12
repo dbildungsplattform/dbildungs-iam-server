@@ -10,7 +10,7 @@ import { dirname, basename, extname, join } from 'node:path';
 import { needsBase64 } from './ldif-format.mjs';
 
 function parseArgs(argv) {
-    const args = { file: undefined };
+    const args = { file: undefined, includeContainers: false };
 
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
@@ -18,6 +18,9 @@ function parseArgs(argv) {
         switch (arg) {
             case '--file':
                 args.file = next();
+                break;
+            case '--include-containers':
+                args.includeContainers = true;
                 break;
             case '--help':
                 printHelp();
@@ -46,9 +49,10 @@ function reportPathFor(inPath) {
 function printHelp() {
     console.log(`Validiert ein EFLK-Ziel-LDIF auf invalide Datenkonstellationen
 
-  --file <datei>  Zu pruefende LDIF-Datei (z.B. Ausgabe von export-eflk-ldif.mjs)
-                  Report wird automatisch nach '<datei ohne Endung>-report.txt' geschrieben
-  --help          Diese Hilfe anzeigen
+    --file <datei>         Zu pruefende LDIF-Datei (z.B. Ausgabe von export-eflk-ldif.mjs)
+                                                 Report wird automatisch nach '<datei ohne Endung>-report.txt' geschrieben
+    --include-containers  OU-/users-/groups-/lists-Container erlauben (Default: ERROR bei Containern)
+    --help                 Diese Hilfe anzeigen
 
 Der Report enthaelt ERROR (eindeutig invalide, z.B. doppelte uid/DN, fehlende
 Pflichtfelder, verwaiste Gruppenmitglieder) und WARN (auffaellig, aber nicht
@@ -440,7 +444,7 @@ function reportPersonsWithoutGroup(personEntries, groupEntries, addIssue) {
     }
 }
 
-function validate(records) {
+function validate(records, { includeContainers = false } = {}) {
     const stats = { total: records.length, person: 0, group: 0, container: 0, unknown: 0 };
     const { issues, add: addIssue } = createIssueCollector();
 
@@ -470,6 +474,13 @@ function validate(records) {
             validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries }, addIssue);
         } else if (kind === 'group') {
             validateGroup(record, { groupCnSeen, groupEntries }, addIssue);
+        } else if (kind === 'container' && !includeContainers) {
+            addIssue(
+                'ERROR',
+                record.dn,
+                record.startLine,
+                'Container-Eintrag ist nicht erlaubt (Betriebsteam legt Container vorab an; bei Bedarf --include-containers verwenden)',
+            );
         }
     }
 
@@ -536,7 +547,9 @@ async function main() {
     const raw = await readFile(args.file, 'utf8');
     const logicalLines = foldLogicalLines(raw);
     const records = buildRecords(logicalLines);
-    const result = validate(records);
+    const result = validate(records, {
+        includeContainers: args.includeContainers,
+    });
 
     await writeFile(outPath, formatReport(result, args.file));
 
