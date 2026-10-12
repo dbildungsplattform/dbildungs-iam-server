@@ -307,6 +307,15 @@ function validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries 
         }
     }
 
+    if (getValues(record, 'mailAlternativeAddress').length > 1) {
+        addIssue(
+            'ERROR',
+            record.dn,
+            record.startLine,
+            "Attribut 'mailAlternativeAddress' darf hoechstens einen Wert enthalten",
+        );
+    }
+
     const uid = getFirstValue(record, 'uid');
     if (uid) {
         addToMultimap(uidSeen, uid, record.dn);

@@ -43,6 +43,9 @@ node scripts/eflk/export-eflk-ldif.mjs \
 
 * **"Hat E-Mail"**: mindestens eine `email.address` mit `priority IN (0,1)`,
   unabhängig vom Status (Prio 0/1 wird immer ins LDAP/OX geschrieben).
+* **E-Mail-Auswahl**: Prio 0 wird als `mailPrimaryAddress` exportiert.
+  Als `mailAlternativeAddress` wird höchstens eine Adresse mit exakt Prio 1
+  exportiert; ohne Prio 1 entfällt das Attribut. Höhere Prioritäten werden ignoriert.
 * **`uid`** = `person.id` (UUID), **`cn`** = `person.username`.
 * **`deaktiviert`**: `TRUE`, wenn `person.org_unassignment_date` gesetzt ist
 * **`gesperrt`**: `TRUE`, wenn ein `user_lock`-Eintrag existiert, dessen `locked_until` `NULL` ist oder in der Zukunft liegt.
@@ -75,7 +78,8 @@ node scripts/eflk/validate-eflk-ldif.mjs --file export.ldif
 
 Geprüft werden u.a.: fehlende Pflichtfelder (`uid`/`cn`/`sn`/`mailPrimaryAddress`),
 doppelte `dn`/`uid`/Gruppen-`cn`, doppelte E-Mailadressen (auch über
-Primär-/Alternativadressen hinweg), `dn`, die nicht dem erwarteten Muster
+Primär-/Alternativadressen hinweg), mehr als eine `mailAlternativeAddress` pro
+Person, `dn`, die nicht dem erwarteten Muster
 entsprechen bzw. deren `uid`-Teil vom `uid`-Attribut abweicht, ungültige
 Werte bei `gesperrt`/`deaktiviert` (erwartet `TRUE`/`FALSE`), E-Mail-Domain
 vs. `ou=oeffentlich|ersatz`-Inkonsistenzen, verwaiste Gruppenmitgliedschaften

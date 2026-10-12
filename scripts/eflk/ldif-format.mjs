@@ -57,7 +57,7 @@ export function toPersonRecord(row, { gesperrtePersonenIds, emailsByPerson, orga
 export function buildPersonEntry(person, ou, baseDn) {
     const dn = `uid=${person.id},cn=users,ou=${ou},${baseDn}`;
     const primary = person.emails.find((e) => e.priority === 0);
-    const alternatives = person.emails.filter((e) => e.priority > 0);
+    const alternative = person.emails.find((e) => e.priority === 1);
 
     const lines = [
         ldifLine('dn', dn),
@@ -78,8 +78,8 @@ export function buildPersonEntry(person, ou, baseDn) {
         lines.push(ldifLine('mailPrimaryAddress', primary.address));
     }
 
-    for (const alt of alternatives) {
-        lines.push(ldifLine('mailAlternativeAddress', alt.address));
+    if (alternative) {
+        lines.push(ldifLine('mailAlternativeAddress', alternative.address));
     }
 
     lines.push(
