@@ -501,6 +501,29 @@ function partitionBySeverity(issues) {
     };
 }
 
+function formatIssueGroups(issues) {
+    if (issues.length === 0) return ['(keine)'];
+
+    const groups = new Map();
+    for (const issue of issues) {
+        addToMultimap(groups, issue.message, issue);
+    }
+
+    const lines = [];
+    for (const [message, groupIssues] of groups) {
+        if (lines.length > 0) lines.push('');
+        const countLabel = groupIssues.length === 1 ? 'Befund' : 'Befunde';
+        lines.push(`${message} (${groupIssues.length} ${countLabel})`);
+        for (const issue of groupIssues) {
+            const location = issue.line ? `Zeile ${issue.line}` : 'Zeile unbekannt';
+            const dn = issue.dn ?? '(kein dn)';
+            lines.push(`  [${location}] dn=${dn}`);
+        }
+    }
+
+    return lines;
+}
+
 function formatReport({ issues, stats }, inFile) {
     const { errors, warnings } = partitionBySeverity(issues);
 
@@ -522,18 +545,12 @@ function formatReport({ issues, stats }, inFile) {
         '',
     );
 
-    const renderIssue = (issue) => {
-        const location = issue.line ? `Zeile ${issue.line}` : 'Zeile unbekannt';
-        const dn = issue.dn ?? '(kein dn)';
-        return `[${location}] dn=${dn}\n  ${issue.message}`;
-    };
-
     lines.push(
         '=== ERROR ===',
-        ...(errors.length > 0 ? errors.map(renderIssue) : ['(keine)']),
+        ...formatIssueGroups(errors),
         '',
         '=== WARN ===',
-        ...(warnings.length > 0 ? warnings.map(renderIssue) : ['(keine)']),
+        ...formatIssueGroups(warnings),
         '',
     );
 
