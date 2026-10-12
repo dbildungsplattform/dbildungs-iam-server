@@ -228,11 +228,25 @@ async function classifyAllOrganisations(client, organisationIds, roots) {
     return new Map(entries);
 }
 
+function resolveOuFromEmailAddress(emailAddress) {
+    const addressParts = emailAddress?.split('@') ?? [];
+    const domainPart = addressParts[1];
+    const domain = domainPart?.toLowerCase();
+    let ou;
+    if (domain === 'schule-sh.de') {
+        ou = 'oeffentlich';
+    } else if (domain === 'ersatzschule-sh.de') {
+        ou = 'ersatz';
+    }
+
+    return ou;
+}
+
 function resolvePersonBucketFromEmail(person) {
     const email = person.emails.find((entry) => entry.priority === 0)
         ?? person.emails.find((entry) => entry.priority === 1);
-    const domain = email?.address?.split('@')[1]?.toLowerCase();
-    const ou = domain === 'schule-sh.de' ? 'oeffentlich' : domain === 'ersatzschule-sh.de' ? 'ersatz' : undefined;
+    const ou = resolveOuFromEmailAddress(email?.address);
+
     if (!ou) {
         console.error(
             `Person ${person.id} ohne Schulzuordnung: Keine gueltige OU aus E-Mail '${email?.address ?? 'nicht vorhanden'}' ableitbar. Person wird nicht exportiert.`,

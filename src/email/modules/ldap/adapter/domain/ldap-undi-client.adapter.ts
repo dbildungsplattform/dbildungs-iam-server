@@ -529,7 +529,7 @@ export class LdapUndiClientAdapter {
         return Ok();
     }
 
-    private async updateGroupInternal(id: string, name: string): Promise<Result<void>> {
+    private updateGroupInternal(id: string, name: string): Promise<Result<void>> {
         return this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();
@@ -563,7 +563,7 @@ export class LdapUndiClientAdapter {
         });
     }
 
-    private async deleteGroupInternal(id: string): Promise<Result<void>> {
+    private deleteGroupInternal(id: string): Promise<Result<void>> {
         return this.mutex.runExclusive(async () => {
             const client: Client = this.ldapClient.getClient();
             const bindResult: Result<boolean> = await this.bind();

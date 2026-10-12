@@ -248,7 +248,7 @@ export class EmailResolverService {
 
     // ==== Helper functions ====
 
-    private async sendRequest<ResponseData = unknown>(params: {
+    private sendRequest<ResponseData = unknown>(params: {
         method: Method;
         path: string;
         data?: unknown;

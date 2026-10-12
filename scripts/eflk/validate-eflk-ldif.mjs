@@ -551,9 +551,6 @@ function formatReport({ issues, stats }, inFile) {
         `  Warnungen (WARN): ${warnings.length}`,
         `  Hinweise (INFO): ${infos.length}`,
         '',
-    );
-
-    lines.push(
         '=== ERROR ===',
         ...formatIssueGroups(errors),
         '',
