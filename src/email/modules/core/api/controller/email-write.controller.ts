@@ -99,6 +99,11 @@ export class EmailWriteController {
     ): void {
         void this.modifyOrganisationInLdapService
             .modifyOrganisationNameInLdap(pathParams.organisationId, bodyParams.name)
+            .then((result: Result<void>) => {
+                if (!result.ok) {
+                    this.logger.logUnknownAsError('Error in background LDAP organisation update', result.error);
+                }
+            })
             .catch((err: Error) => {
                 this.logger.error(`Error in background LDAP organisation update: ${err.message}`);
             });

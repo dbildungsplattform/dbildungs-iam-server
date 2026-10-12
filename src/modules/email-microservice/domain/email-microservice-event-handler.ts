@@ -39,6 +39,11 @@ import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.j
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 
+type PersonEmailContext = {
+    emailServiceProviderId: string;
+    organisationen: Organisation<true>[];
+};
+
 @Injectable()
 export class EmailMicroserviceEventHandler {
     public constructor(
@@ -146,43 +151,23 @@ export class EmailMicroserviceEventHandler {
         const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(event.personId);
         const gesperrt: boolean = userLocks.length > 0;
 
-        const allKontexteForPerson: KontextWithOrgaAndRolle[] =
-            await this.personenkontextRepo.findByPersonWithOrgaAndRolle(event.personId);
+        const emailContext: PersonEmailContext | undefined = await this.getEmailContextForPerson(event.personId);
 
-        const kontextData: { orgaId: OrganisationID; rolleId: RolleID }[] = allKontexteForPerson.map(
-            (k: KontextWithOrgaAndRolle) => ({ orgaId: k.organisation.id, rolleId: k.rolle.id }),
-        );
-
-        const allRolleIds: string[] = allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.rolle.id);
-        const rollenMap: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(allRolleIds);
-        const orgaMap: Map<OrganisationID, Organisation<true>> = await this.orgaRepo.findByIds(
-            allKontexteForPerson.map((k: KontextWithOrgaAndRolle) => k.organisation.id),
-        );
-
-        const emailServiceProviderId: string | undefined = this.getEmailServiceProviderId(
-            Array.from(rollenMap.values()),
-        );
-
-        if (!emailServiceProviderId) {
+        if (!emailContext) {
             this.logger.info(
                 `No email service provider found for personId:${event.personId}, skipping email resolution.`,
             );
             return;
         }
 
-        const uniqOrganisationen: Organisation<true>[] = uniqBy(
-            this.getOrganisationenWithEmailServiceProvider(kontextData, orgaMap, rollenMap),
-            (o: Organisation<true>) => o.id,
-        );
-
         await this.emailResolverService.setEmailForSpshPerson({
             spshPersonId: event.personId,
             spshUsername: event.username,
-            organisationen: uniqOrganisationen,
+            organisationen: emailContext.organisationen,
             firstName: event.vorname,
             lastName: event.familienname,
             gesperrt,
-            spshServiceProviderId: emailServiceProviderId,
+            spshServiceProviderId: emailContext.emailServiceProviderId,
         });
     }
 
@@ -267,6 +252,7 @@ export class EmailMicroserviceEventHandler {
             this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
             return;
         }
+
         await this.syncPerson(event.personId);
     }
 
@@ -281,30 +267,22 @@ export class EmailMicroserviceEventHandler {
             this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
             return;
         }
+
         await this.syncPerson(event.personId);
     }
 
     private getEmailServiceProviderId(rollen: Rolle<true>[]): string | undefined {
-        const spshServiceProviderId: string | undefined = rollen
-            .flatMap((rolle: Rolle<true>) => rolle.serviceProviderData)
-            .find(
-                (serviceProvider: ServiceProvider<true>) =>
-                    serviceProvider.externalSystem === ServiceProviderSystem.EMAIL,
-            )?.id;
+        const serviceProviders: ServiceProvider<true>[] = rollen.flatMap(
+            (rolle: Rolle<true>) => rolle.serviceProviderData,
+        );
+        const emailServiceProvider: ServiceProvider<true> | undefined = serviceProviders.find(
+            (serviceProvider: ServiceProvider<true>) => serviceProvider.externalSystem === ServiceProviderSystem.EMAIL,
+        );
 
-        return spshServiceProviderId;
+        return emailServiceProvider?.id;
     }
 
-    private async syncPerson(personId: string): Promise<void> {
-        this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);
-            return;
-        }
-
-        const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(personId);
-        const gesperrt: boolean = userLocks.length > 0;
-
+    private async getEmailContextForPerson(personId: string): Promise<PersonEmailContext | undefined> {
         const allKontexteForPerson: KontextWithOrgaAndRolle[] =
             await this.personenkontextRepo.findByPersonWithOrgaAndRolle(personId);
 
@@ -322,7 +300,31 @@ export class EmailMicroserviceEventHandler {
             Array.from(rollenMap.values()),
         );
 
-        if (emailServiceProviderId) {
+        if (!emailServiceProviderId) {
+            return undefined;
+        }
+
+        const uniqOrganisationen: Organisation<true>[] = uniqBy(
+            this.getOrganisationenWithEmailServiceProvider(kontextData, orgaMap, rollenMap),
+            (o: Organisation<true>) => o.id,
+        );
+
+        return { emailServiceProviderId, organisationen: uniqOrganisationen };
+    }
+
+    private async syncPerson(personId: string): Promise<void> {
+        this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
+        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
+            this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);
+            return;
+        }
+
+        const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(personId);
+        const gesperrt: boolean = userLocks.length > 0;
+
+        const emailContext: PersonEmailContext | undefined = await this.getEmailContextForPerson(personId);
+
+        if (emailContext) {
             this.logger.info(
                 `Found email service provider for personId:${personId}, setting emails accordingly in email microservice.`,
             );
@@ -338,19 +340,14 @@ export class EmailMicroserviceEventHandler {
                 return;
             }
 
-            const uniqOrganisationen: Organisation<true>[] = uniqBy(
-                this.getOrganisationenWithEmailServiceProvider(kontextData, orgaMap, rollenMap),
-                (o: Organisation<true>) => o.id,
-            );
-
             await this.emailResolverService.setEmailForSpshPerson({
                 spshPersonId: personId,
                 spshUsername: person.username,
-                organisationen: uniqOrganisationen,
+                organisationen: emailContext.organisationen,
                 firstName: person.vorname,
                 lastName: person.familienname,
                 gesperrt,
-                spshServiceProviderId: emailServiceProviderId,
+                spshServiceProviderId: emailContext.emailServiceProviderId,
             });
         } else {
             this.logger.info(
@@ -365,20 +362,27 @@ export class EmailMicroserviceEventHandler {
         orgaMap: Map<OrganisationID, Organisation<true>>,
         rollenMap: Map<RolleID, Rolle<true>>,
     ): Organisation<true>[] {
-        return kontexte
-            .filter((k: { orgaId: OrganisationID; rolleId: RolleID }) => {
-                const rolle: Option<Rolle<true>> = rollenMap.get(k.rolleId);
-                const orga: Option<Organisation<true>> = orgaMap.get(k.orgaId);
+        const organisationen: Organisation<true>[] = [];
 
-                if (!rolle || !orga) {
-                    return false;
-                }
+        for (const kontext of kontexte) {
+            const rolle: Option<Rolle<true>> = rollenMap.get(kontext.rolleId);
+            const organisation: Option<Organisation<true>> = orgaMap.get(kontext.orgaId);
 
-                return rolle.serviceProviderData.some(
-                    (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.EMAIL,
-                );
-            })
-            .map((k: { orgaId: OrganisationID; rolleId: RolleID }) => orgaMap.get(k.orgaId)!); // TODO: This is forced to be valid?
+            if (!rolle || !organisation) {
+                continue;
+            }
+
+            const hasEmailServiceProvider: boolean = rolle.serviceProviderData.some(
+                (serviceProvider: ServiceProvider<true>) =>
+                    serviceProvider.externalSystem === ServiceProviderSystem.EMAIL,
+            );
+
+            if (hasEmailServiceProvider) {
+                organisationen.push(organisation);
+            }
+        }
+
+        return organisationen;
     }
 
     private async existsEmailServiceProviderIdInRemovedKontexte(
@@ -389,6 +393,7 @@ export class EmailMicroserviceEventHandler {
         const emailServiceProviderId: string | undefined = this.getEmailServiceProviderId(
             Array.from(rollenMap.values()),
         );
+
         return Boolean(emailServiceProviderId);
     }
 }

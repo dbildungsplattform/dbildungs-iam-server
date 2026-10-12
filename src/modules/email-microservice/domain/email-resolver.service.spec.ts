@@ -62,7 +62,7 @@ describe('EmailResolverService', () => {
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {
-        vi.clearAllMocks();
+        vi.resetAllMocks();
     });
 
     afterAll(async () => {
@@ -94,7 +94,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
             expect(result).toEqual(new PersonEmailResponse(EmailAddressStatus.ENABLED, mockEmail));
@@ -103,7 +103,7 @@ describe('EmailResolverService', () => {
         it('should return undefined when get call returns empty data', async () => {
             const mockPersonId: string = faker.string.uuid();
 
-            mockHttpService.get.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
 
             const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
             expect(result).toBeUndefined();
@@ -112,7 +112,7 @@ describe('EmailResolverService', () => {
         it('should log error and return undefined when get call fails', async () => {
             const mockPersonId: string = faker.string.uuid();
             const error: Error = new Error('Network error');
-            mockHttpService.get.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw error;
             });
 
@@ -143,7 +143,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
             expect(result).toEqual(new PersonEmailResponse(EmailAddressStatus.ENABLED, mockEmail));
@@ -152,7 +152,7 @@ describe('EmailResolverService', () => {
         it('should return undefined when get call returns empty data', async () => {
             const mockPersonId: string = faker.string.uuid();
 
-            mockHttpService.get.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
 
             const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
             expect(result).toBeUndefined();
@@ -161,7 +161,7 @@ describe('EmailResolverService', () => {
         it('should log error and return undefined when get call fails', async () => {
             const mockPersonId: string = faker.string.uuid();
             const error: Error = new Error('Network error');
-            mockHttpService.get.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw error;
             });
 
@@ -204,7 +204,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.post.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Result<
                 Map<PersonID, PersonEmailResponse | undefined>,
@@ -222,7 +222,7 @@ describe('EmailResolverService', () => {
                 'Communication error',
             );
 
-            mockHttpService.post.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw error;
             });
 
@@ -257,7 +257,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonIdWithEmailResponse> = await sut.findByPrimaryAddress(address);
             expect(result?.personId).toEqual(spshPersonId);
@@ -277,7 +277,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonIdWithEmailResponse> = await sut.findByPrimaryAddress(address);
             expect(result).toEqual(undefined);
@@ -303,7 +303,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonIdWithEmailResponse> = await sut.findByPrimaryAddress(address);
             expect(result).toEqual(undefined);
@@ -328,7 +328,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Option<PersonIdWithEmailResponse> = await sut.findByPrimaryAddress(address);
             expect(result).toEqual(undefined);
@@ -337,7 +337,7 @@ describe('EmailResolverService', () => {
         it('should log error when microservice  call throws error', async () => {
             const address: string = faker.internet.email();
             const error: Error = new Error('Network error');
-            mockHttpService.get.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw new Error('Network error');
             });
 
@@ -373,7 +373,7 @@ describe('EmailResolverService', () => {
                 },
             };
 
-            mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
             const result: Result<Option<EmailAddressResponse>> =
                 await sut.findEmailBySpshPersonAsEmailAddressResponse(mockPersonId);
@@ -384,7 +384,7 @@ describe('EmailResolverService', () => {
         it('should return undefined when get call returns empty data', async () => {
             const mockPersonId: string = faker.string.uuid();
 
-            mockHttpService.get.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ data: [] } as AxiosResponse));
 
             const result: Result<Option<EmailAddressResponse>> =
                 await sut.findEmailBySpshPersonAsEmailAddressResponse(mockPersonId);
@@ -395,7 +395,7 @@ describe('EmailResolverService', () => {
         it('should log error and return undefined when get call fails', async () => {
             const mockPersonId: string = faker.string.uuid();
             const error: Error = new Error('Network error');
-            mockHttpService.get.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw error;
             });
 
@@ -440,21 +440,20 @@ describe('EmailResolverService', () => {
                     headers: new AxiosHeaders(),
                 },
             };
-            mockHttpService.post.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
             await sut.setEmailForSpshPerson({ spshPersonId: spshPersonId, ...params });
 
-            expect(mockHttpService.post).toHaveBeenCalledWith(
-                `http://localhost:9091/api/write/${spshPersonId}/set-email`,
-                {
+            expect(mockHttpService.request).toHaveBeenCalledWith({
+                method: 'POST',
+                url: `http://localhost:9091/api/write/${spshPersonId}/set-email`,
+                data: {
                     ...params,
                     organisationen: [{ id: mockOrganisation.id, kennung: '0706054', name: 'Testschule' }],
                 } satisfies SetEmailAddressForSpshPersonBodyParams,
-                {
-                    headers: {
-                        'api-key': 'api-key',
-                    },
+                headers: {
+                    'api-key': 'api-key',
                 },
-            );
+            });
 
             expect(loggerMock.info).toHaveBeenCalledWith(
                 `Setting email for person ${spshPersonId} via email microservice with spId ${params.spshServiceProviderId}`,
@@ -473,7 +472,7 @@ describe('EmailResolverService', () => {
             };
             const error: Error = new Error('Microservice failure');
 
-            mockHttpService.post.mockImplementationOnce(() => {
+            mockHttpService.request.mockImplementationOnce(() => {
                 throw error;
             });
 
@@ -497,18 +496,17 @@ describe('EmailResolverService', () => {
                     headers: new AxiosHeaders(),
                 },
             };
-            mockHttpService.post.mockReturnValueOnce(of(mockAxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
             await sut.setEmailsSuspendedForSpshPerson({ spshPersonId: spshPersonId, gesperrt: false });
 
-            expect(mockHttpService.post).toHaveBeenCalledWith(
-                `http://localhost:9091/api/write/${spshPersonId}/set-suspended`,
-                { gesperrt: false },
-                {
-                    headers: {
-                        'api-key': 'api-key',
-                    },
+            expect(mockHttpService.request).toHaveBeenCalledWith({
+                method: 'POST',
+                url: `http://localhost:9091/api/write/${spshPersonId}/set-suspended`,
+                data: { gesperrt: false },
+                headers: {
+                    'api-key': 'api-key',
                 },
-            );
+            });
             expect(loggerMock.info).toHaveBeenCalledWith(`Setting emails for person ${spshPersonId} to suspended`);
         });
 
@@ -516,7 +514,7 @@ describe('EmailResolverService', () => {
             const spshPersonId: string = faker.string.uuid();
             const error: Error = new Error('Microservice failure');
 
-            mockHttpService.post.mockImplementationOnce(() => {
+            mockHttpService.request.mockImplementationOnce(() => {
                 throw error;
             });
 
@@ -672,22 +670,21 @@ describe('EmailResolverService', () => {
             gesperrt: false,
         };
 
-        mockHttpService.post.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+        mockHttpService.request.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
 
         await sut.setEmailForSpshPerson({ spshPersonId: spshPersonId, ...params });
 
-        expect(mockHttpService.post).toHaveBeenCalledWith(
-            expect.stringMatching(/\/api\/write\/[a-f0-9-]+\/set-email$/),
-            {
+        expect(mockHttpService.request).toHaveBeenCalledWith({
+            method: 'POST',
+            url: `http://localhost:9091/api/write/${spshPersonId}/set-email`,
+            data: {
                 ...params,
                 organisationen: [{ id: mockOrganisation.id, kennung: '0706054', name: 'Testschule' }],
             } satisfies SetEmailAddressForSpshPersonBodyParams,
-            {
-                headers: {
-                    'api-key': 'api-key',
-                },
+            headers: {
+                'api-key': 'api-key',
             },
-        );
+        });
     });
 
     it.each([
@@ -722,7 +719,7 @@ describe('EmailResolverService', () => {
             },
         };
 
-        mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+        mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
         const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
         expect(result).toEqual(new PersonEmailResponse(expectedStatus, mockEmail));
@@ -753,35 +750,35 @@ describe('EmailResolverService', () => {
             },
         };
 
-        mockHttpService.get.mockReturnValueOnce(of(mockAxiosResponse));
+        mockHttpService.request.mockReturnValueOnce(of(mockAxiosResponse));
 
         const result: Option<PersonEmailResponse> = await sut.findEmailBySpshPerson(mockPersonId);
         expect(result).toEqual(new PersonEmailResponse(EmailAddressStatus.DISABLED, mockEmail));
     });
 
     describe('deleteSchool', () => {
-        it('should call httpService.delete with correct URL and log info', async () => {
+        it('should call httpService.request with DELETE and correct school URL and log info', async () => {
             const organisationId: string = faker.string.uuid();
 
-            mockHttpService.delete.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
 
             await sut.deleteSchool({ organisationId });
 
             expect(loggerMock.info).toHaveBeenCalledWith(`Deleting school ${organisationId} via email microservice`);
-            expect(mockHttpService.delete).toHaveBeenCalledWith(
-                `http://localhost:9091/api/write/organisation/${organisationId}`,
-                {
-                    headers: {
-                        'api-key': 'api-key',
-                    },
+            expect(mockHttpService.request).toHaveBeenCalledWith({
+                method: 'DELETE',
+                url: `http://localhost:9091/api/write/organisation/${organisationId}`,
+                data: undefined,
+                headers: {
+                    'api-key': 'api-key',
                 },
-            );
+            });
         });
 
-        it('should log error when httpService.delete throws', async () => {
+        it('should log error when httpService.request throws during school deletion', async () => {
             const organisationId: string = faker.string.uuid();
             const error: Error = new Error('Microservice failure');
-            mockHttpService.delete.mockImplementationOnce(() => {
+            mockHttpService.request.mockImplementationOnce(() => {
                 throw error;
             });
 
@@ -795,31 +792,30 @@ describe('EmailResolverService', () => {
     });
 
     describe('updateSchoolName', () => {
-        it('should call httpService.patch with correct URL and log info', async () => {
+        it('should call httpService.request with PATCH and correct URL and log info', async () => {
             const organisationId: string = faker.string.uuid();
             const newName: string = faker.company.name();
 
-            mockHttpService.patch.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
 
             await sut.updateSchoolName({ organisationId, newName });
 
             expect(loggerMock.info).toHaveBeenCalledWith(`Updating school ${organisationId} via email microservice`);
-            expect(mockHttpService.patch).toHaveBeenCalledWith(
-                `http://localhost:9091/api/write/organisation/${organisationId}`,
-                { name: newName },
-                {
-                    headers: {
-                        'api-key': 'api-key',
-                    },
+            expect(mockHttpService.request).toHaveBeenCalledWith({
+                method: 'PATCH',
+                url: `http://localhost:9091/api/write/organisation/${organisationId}`,
+                data: { name: newName },
+                headers: {
+                    'api-key': 'api-key',
                 },
-            );
+            });
         });
 
-        it('should log error when httpService.patch throws', async () => {
+        it('should log error when httpService.request throws during school update', async () => {
             const organisationId: string = faker.string.uuid();
             const newName: string = faker.company.name();
             const error: Error = new Error('Microservice failure');
-            mockHttpService.patch.mockImplementationOnce(() => {
+            mockHttpService.request.mockImplementationOnce(() => {
                 throw error;
             });
 
@@ -833,30 +829,30 @@ describe('EmailResolverService', () => {
     });
 
     describe('deleteEmailsForSpshPerson', () => {
-        it('should call httpService.delete with correct URL and log info', async () => {
+        it('should call httpService.request with DELETE and correct person URL and log info', async () => {
             const spshPersonId: string = faker.string.uuid();
 
-            mockHttpService.delete.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
+            mockHttpService.request.mockReturnValueOnce(of({ status: 200 } as AxiosResponse));
 
             await sut.deleteEmailsForSpshPerson({ spshPersonId });
 
             expect(loggerMock.info).toHaveBeenCalledWith(
                 `Deleting email for person ${spshPersonId} via email microservice`,
             );
-            expect(mockHttpService.delete).toHaveBeenCalledWith(
-                `http://localhost:9091/api/write/${spshPersonId}/delete-emails`,
-                {
-                    headers: {
-                        'api-key': 'api-key',
-                    },
+            expect(mockHttpService.request).toHaveBeenCalledWith({
+                method: 'DELETE',
+                url: `http://localhost:9091/api/write/${spshPersonId}/delete-emails`,
+                data: undefined,
+                headers: {
+                    'api-key': 'api-key',
                 },
-            );
+            });
         });
 
-        it('should log error when httpService.delete throws', async () => {
+        it('should log error when httpService.request throws during email deletion', async () => {
             const spshPersonId: string = faker.string.uuid();
             const error: Error = new Error('Microservice failure');
-            mockHttpService.delete.mockImplementation(() => {
+            mockHttpService.request.mockImplementation(() => {
                 throw error;
             });
 

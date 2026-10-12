@@ -36,6 +36,16 @@ type SchoolwithKennungAndName = {
     name: string;
 };
 
+type SetEmailAddressForSpshPersonParams = {
+    spshPersonId: string;
+    spshUsername: string;
+    organisationen: SchoolwithKennungAndName[];
+    firstName: string;
+    lastName: string;
+    gesperrt: boolean;
+    spshServiceProviderId: string;
+};
+
 @Injectable()
 export class SetEmailAddressForSpshPersonService {
     public RETRY_ATTEMPTS: number = 5;
@@ -78,15 +88,7 @@ export class SetEmailAddressForSpshPersonService {
      *
      * The whole process will be retried 5 times on errors
      */
-    public async setEmailAddressForSpshPerson(params: {
-        spshPersonId: string;
-        spshUsername: string;
-        organisationen: SchoolwithKennungAndName[];
-        firstName: string;
-        lastName: string;
-        gesperrt: boolean;
-        spshServiceProviderId: string;
-    }): Promise<void> {
+    public async setEmailAddressForSpshPerson(params: SetEmailAddressForSpshPersonParams): Promise<void> {
         this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Request Received`);
 
         const emailDomain: Option<EmailDomain<true>> = await this.emailDomainRepo.findBySpshServiceProviderId(
@@ -109,21 +111,7 @@ export class SetEmailAddressForSpshPersonService {
             throw new EmailUpdateInProgressError('e-mail generation already in progress');
         }
 
-        const uniqueOrganisations: SchoolwithKennungAndName[] = uniqBy(
-            params.organisationen,
-            (o: SchoolwithKennungAndName) => o.id,
-        );
-
-        const result: Result<void> = await this.createOrUpdateEmailWithRetries(
-            this.RETRY_ATTEMPTS,
-            params.firstName,
-            params.lastName,
-            params.spshPersonId,
-            params.spshUsername,
-            uniqueOrganisations,
-            emailDomain,
-            params.gesperrt,
-        );
+        const result: Result<void> = await this.createOrUpdateEmailWithRetries(params, emailDomain);
 
         if (!result.ok) {
             throw result.error;
@@ -131,46 +119,49 @@ export class SetEmailAddressForSpshPersonService {
     }
 
     private async createOrUpdateEmailWithRetries(
-        attempts: number,
-        firstName: string,
-        lastName: string,
-        spshPersonId: string,
-        spshUsername: string,
-        organisations: SchoolwithKennungAndName[],
+        params: SetEmailAddressForSpshPersonParams,
         emailDomain: EmailDomain<true>,
-        gesperrt: boolean,
     ): Promise<Result<void>> {
+        const uniqueOrganisations: SchoolwithKennungAndName[] = uniqBy(
+            params.organisationen,
+            (organisation: SchoolwithKennungAndName) => organisation.id,
+        );
+        const attempts: number = this.RETRY_ATTEMPTS;
+
         for (let i: number = 0; i < attempts; i++) {
-            this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - Attempt ${i + 1}`);
+            this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Attempt ${i + 1}`);
 
             try {
                 // eslint-disable-next-line no-await-in-loop
                 const result: Result<void> = await this.createOrUpdateEmail(
-                    firstName,
-                    lastName,
-                    spshPersonId,
-                    spshUsername,
-                    organisations,
+                    params.firstName,
+                    params.lastName,
+                    params.spshPersonId,
+                    params.spshUsername,
+                    uniqueOrganisations,
                     emailDomain,
-                    gesperrt,
+                    params.gesperrt,
                 );
 
                 if (result.ok) {
                     // Success, abort the retry loop
-                    this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - Success`);
+                    this.logger.info(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Success`);
                     return Ok(undefined);
                 }
 
                 this.logger.logUnknownAsError(
-                    `SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - Error while creating or updating the email`,
+                    `SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Error while creating or updating the email`,
                     result.error,
                 );
             } catch (err) {
-                this.logger.logUnknownAsError(`SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - Unknown error`, err);
+                this.logger.logUnknownAsError(
+                    `SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - Unknown error`,
+                    err,
+                );
             }
         }
 
-        this.logger.error(`SET EMAIL FOR SPSHPERSONID: ${spshPersonId} - All attempts failed, aborting`);
+        this.logger.error(`SET EMAIL FOR SPSHPERSONID: ${params.spshPersonId} - All attempts failed, aborting`);
         return Err(new EmailAddressGenerationAttemptsExceededError());
     }
 
@@ -380,7 +371,7 @@ export class SetEmailAddressForSpshPersonService {
 
             // Persist the e-mail as failed
             newPrimaryEmail.setStatus(EmailAddressStatusEnum.FAILED);
-            newPrimaryEmail = await this.updateEmailIgnoreMissing(newPrimaryEmail);
+            await this.updateEmailIgnoreMissing(newPrimaryEmail);
 
             return ldapUndiResult;
         }

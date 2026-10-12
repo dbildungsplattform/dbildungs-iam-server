@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AxiosResponse } from 'axios';
+import { AxiosResponse, Method } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
@@ -41,13 +41,10 @@ export class EmailResolverService {
 
     public async findEmailBySpshPerson(personId: string): Promise<Option<PersonEmailResponse>> {
         try {
-            const response: AxiosResponse<EmailAddressResponse[]> = await lastValueFrom(
-                this.httpService.get(this.getEndpoint() + `${EmailResolverService.readPath}/spshperson/${personId}`, {
-                    headers: {
-                        'api-key': this.getApiKey(),
-                    },
-                }),
-            );
+            const response: AxiosResponse<EmailAddressResponse[]> = await this.sendRequest<EmailAddressResponse[]>({
+                method: 'GET',
+                path: `${EmailResolverService.readPath}/spshperson/${personId}`,
+            });
             if (response.data[0] !== undefined) {
                 const status: EmailAddressStatus = this.mapStatus(response.data[0]?.status);
                 return new PersonEmailResponse(status, response.data[0].address);
@@ -55,6 +52,7 @@ export class EmailResolverService {
             return undefined;
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to fetch email for person ${personId}`, error);
+
             return undefined;
         }
     }
@@ -63,19 +61,13 @@ export class EmailResolverService {
         personIds: string[],
     ): Promise<Result<Map<PersonID, PersonEmailResponse | undefined>, DomainError>> {
         try {
-            const response: AxiosResponse<EmailAddressResponse[]> = await lastValueFrom(
-                this.httpService.post(
-                    this.getEndpoint() + `${EmailResolverService.readPath}/spshpersons`,
-                    {
-                        spshPersonIds: personIds,
-                    },
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            const response: AxiosResponse<EmailAddressResponse[]> = await this.sendRequest<EmailAddressResponse[]>({
+                method: 'POST',
+                path: `${EmailResolverService.readPath}/spshpersons`,
+                data: {
+                    spshPersonIds: personIds,
+                },
+            });
 
             const result: Map<PersonID, PersonEmailResponse> = new Map<PersonID, PersonEmailResponse>(
                 response.data.map((email: EmailAddressResponse) => [
@@ -87,6 +79,7 @@ export class EmailResolverService {
             return Ok(result);
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to fetch emails for persons`, error);
+
             return Err(new EmailMicroserviceCommunicationError('Failed to fetch emails for persons'));
         }
     }
@@ -95,29 +88,27 @@ export class EmailResolverService {
         personId: string,
     ): Promise<Result<EmailAddressResponse | undefined, DomainError>> {
         try {
-            const response: AxiosResponse<EmailAddressResponse[]> = await lastValueFrom(
-                this.httpService.get(this.getEndpoint() + `${EmailResolverService.readPath}/spshperson/${personId}`, {
-                    headers: {
-                        'api-key': this.getApiKey(),
-                    },
-                }),
-            );
+            const response: AxiosResponse<EmailAddressResponse[]> = await this.sendRequest<EmailAddressResponse[]>({
+                method: 'GET',
+                path: `${EmailResolverService.readPath}/spshperson/${personId}`,
+            });
+
             return Ok(response.data[0]);
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to fetch email for person ${personId}`, error);
+
             return Err(new EntityNotFoundError('email-address', personId));
         }
     }
 
     public async findByPrimaryAddress(emailAddress: string): Promise<Option<PersonIdWithEmailResponse>> {
         try {
-            const response: AxiosResponse<Option<EmailAddressResponse>> = await lastValueFrom(
-                this.httpService.get(this.getEndpoint() + `${EmailResolverService.readPath}/email/${emailAddress}`, {
-                    headers: {
-                        'api-key': this.getApiKey(),
-                    },
-                }),
-            );
+            const response: AxiosResponse<Option<EmailAddressResponse>> = await this.sendRequest<
+                Option<EmailAddressResponse>
+            >({
+                method: 'GET',
+                path: `${EmailResolverService.readPath}/email/${emailAddress}`,
+            });
             if (
                 response.status === 200 &&
                 response.data !== undefined &&
@@ -130,9 +121,11 @@ export class EmailResolverService {
                     personEmailResponse: new PersonEmailResponse(status, response.data.address),
                 };
             }
+
             return undefined;
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to fetch email for address ${emailAddress}`, error);
+
             return undefined;
         }
     }
@@ -153,39 +146,32 @@ export class EmailResolverService {
             );
             this.logger.info(`Params: ${JSON.stringify(params)}`);
 
-            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = params.organisationen
-                .map((o: Organisation<true>) => ({
-                    id: o.id,
-                    kennung: o.kennung,
-                    name: o.name,
-                }))
-                .filter(
-                    (o: {
-                        id: string;
-                        kennung: string | undefined;
-                        name: string | undefined;
-                    }): o is SetEmailAddressForSpshPersonBodyParams['organisationen'][number] =>
-                        !!o.kennung && !!o.name, // Ignore organisations without a kennung or name
-                );
+            const organisationen: SetEmailAddressForSpshPersonBodyParams['organisationen'] = [];
 
-            await lastValueFrom(
-                this.httpService.post(
-                    this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-email`,
-                    {
-                        spshUsername: params.spshUsername,
-                        organisationen,
-                        firstName: params.firstName,
-                        lastName: params.lastName,
-                        spshServiceProviderId: params.spshServiceProviderId,
-                        gesperrt: params.gesperrt,
-                    } satisfies SetEmailAddressForSpshPersonBodyParams,
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            for (const organisation of params.organisationen) {
+                if (!organisation.kennung || !organisation.name) {
+                    continue;
+                }
+
+                organisationen.push({
+                    id: organisation.id,
+                    kennung: organisation.kennung,
+                    name: organisation.name,
+                });
+            }
+
+            await this.sendRequest({
+                method: 'POST',
+                path: `${EmailResolverService.writePath}/${params.spshPersonId}/set-email`,
+                data: {
+                    spshUsername: params.spshUsername,
+                    organisationen,
+                    firstName: params.firstName,
+                    lastName: params.lastName,
+                    spshServiceProviderId: params.spshServiceProviderId,
+                    gesperrt: params.gesperrt,
+                } satisfies SetEmailAddressForSpshPersonBodyParams,
+            });
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to set email for person ${params.spshPersonId}`, error);
         }
@@ -194,16 +180,10 @@ export class EmailResolverService {
     public async deleteEmailsForSpshPerson(params: { spshPersonId: string }): Promise<void> {
         try {
             this.logger.info(`Deleting email for person ${params.spshPersonId} via email microservice`);
-            await lastValueFrom(
-                this.httpService.delete(
-                    this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/delete-emails`,
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            await this.sendRequest({
+                method: 'DELETE',
+                path: `${EmailResolverService.writePath}/${params.spshPersonId}/delete-emails`,
+            });
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to delete emails for person ${params.spshPersonId}`, error);
         }
@@ -212,16 +192,10 @@ export class EmailResolverService {
     public async deleteSchool(params: { organisationId: string }): Promise<void> {
         try {
             this.logger.info(`Deleting school ${params.organisationId} via email microservice`);
-            await lastValueFrom(
-                this.httpService.delete(
-                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            await this.sendRequest({
+                method: 'DELETE',
+                path: `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+            });
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to delete school ${params.organisationId}`, error);
         }
@@ -230,19 +204,13 @@ export class EmailResolverService {
     public async updateSchoolName(params: { organisationId: string; newName: string }): Promise<void> {
         try {
             this.logger.info(`Updating school ${params.organisationId} via email microservice`);
-            await lastValueFrom(
-                this.httpService.patch(
-                    this.getEndpoint() + `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
-                    {
-                        name: params.newName,
-                    } satisfies UpdateOrganisationBodyParams,
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            await this.sendRequest({
+                method: 'PATCH',
+                path: `${EmailResolverService.writePath}/organisation/${params.organisationId}`,
+                data: {
+                    name: params.newName,
+                } satisfies UpdateOrganisationBodyParams,
+            });
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to update school ${params.organisationId}`, error);
         }
@@ -251,19 +219,13 @@ export class EmailResolverService {
     public async setEmailsSuspendedForSpshPerson(params: { spshPersonId: string; gesperrt: boolean }): Promise<void> {
         try {
             this.logger.info(`Setting emails for person ${params.spshPersonId} to suspended`);
-            await lastValueFrom(
-                this.httpService.post(
-                    this.getEndpoint() + `${EmailResolverService.writePath}/${params.spshPersonId}/set-suspended`,
-                    {
-                        gesperrt: params.gesperrt,
-                    } satisfies SetEmailAddressesSuspendedBodyParams,
-                    {
-                        headers: {
-                            'api-key': this.getApiKey(),
-                        },
-                    },
-                ),
-            );
+            await this.sendRequest({
+                method: 'POST',
+                path: `${EmailResolverService.writePath}/${params.spshPersonId}/set-suspended`,
+                data: {
+                    gesperrt: params.gesperrt,
+                } satisfies SetEmailAddressesSuspendedBodyParams,
+            });
         } catch (error) {
             this.logger.logUnknownAsError(`Failed to set emails for person ${params.spshPersonId} to suspended`, error);
         }
@@ -272,6 +234,7 @@ export class EmailResolverService {
     public shouldUseEmailMicroservice(): boolean {
         const emailMicroserviceConfig: EmailMicroserviceConfig =
             this.configService.getOrThrow<EmailMicroserviceConfig>('EMAIL_MICROSERVICE');
+
         return emailMicroserviceConfig.USE_EMAIL_MICROSERVICE;
     }
 
@@ -279,20 +242,40 @@ export class EmailResolverService {
         const email: Option<PersonEmailResponse> = this.shouldUseEmailMicroservice()
             ? await this.findEmailBySpshPerson(person.id)
             : await this.emailRepo.getEmailAddressAndStatusForPerson(person);
+
         return email?.status === EmailAddressStatus.ENABLED ? email.address : undefined;
     }
 
     // ==== Helper functions ====
 
+    private async sendRequest<ResponseData = unknown>(params: {
+        method: Method;
+        path: string;
+        data?: unknown;
+    }): Promise<AxiosResponse<ResponseData>> {
+        return lastValueFrom(
+            this.httpService.request<ResponseData>({
+                method: params.method,
+                url: this.getEndpoint() + params.path,
+                data: params.data,
+                headers: {
+                    'api-key': this.getApiKey(),
+                },
+            }),
+        );
+    }
+
     private getEndpoint(): string {
         const emailMicroserviceConfig: EmailMicroserviceConfig =
             this.configService.getOrThrow<EmailMicroserviceConfig>('EMAIL_MICROSERVICE');
+
         return emailMicroserviceConfig.ENDPOINT;
     }
 
     private getApiKey(): string {
         const headerApiKeyConfig: HeaderApiKeyConfig =
             this.configService.getOrThrow<HeaderApiKeyConfig>('HEADER_API_KEY');
+
         return headerApiKeyConfig.INTERNAL_COMMUNICATION_API_KEY;
     }
 

@@ -45,8 +45,10 @@ describe('Modify Organisation In Ldap Service', () => {
             const organisationId: string = faker.string.uuid();
             const expectedResult: Result<void> = { ok: true, value: undefined };
             ldapUndiClientAdapterMock.deleteGroup.mockResolvedValue(expectedResult);
+
             const result: Result<void> =
                 await modifyOrganisationInLdapService.deleteOrganisationFromLdap(organisationId);
+
             expect(result).toBe(expectedResult);
             expect(ldapUndiClientAdapterMock.deleteGroup).toHaveBeenCalledWith(organisationId);
         });
@@ -72,10 +74,12 @@ describe('Modify Organisation In Ldap Service', () => {
             const name: string = faker.company.name();
             const expectedResult: Result<void> = { ok: true, value: undefined };
             ldapUndiClientAdapterMock.updateGroup.mockResolvedValue(expectedResult);
+
             const result: Result<void> = await modifyOrganisationInLdapService.modifyOrganisationNameInLdap(
                 organisationId,
                 name,
             );
+
             expect(result).toBe(expectedResult);
             expect(ldapUndiClientAdapterMock.updateGroup).toHaveBeenCalledWith(organisationId, name);
         });
