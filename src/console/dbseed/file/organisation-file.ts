@@ -21,7 +21,7 @@ export class OrganisationFile {
 
     public traegerschaft?: Traegerschaft;
 
-    public emailDomain?: string;
+    public uemLdapOu?: string;
 
     public emailAdress?: string;
 }

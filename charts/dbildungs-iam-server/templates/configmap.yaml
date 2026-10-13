@@ -1,47 +1,44 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "common.names.name" . }}
-  namespace: {{ template "common.names.namespace" . }}
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
+  name: { { template "common.names.name" . } }
+  namespace: { { template "common.names.namespace" . } }
+  labels: { { - include "common.labels" . | nindent 4 } }
 data:
   config-json: |-
     {{ .Files.Get "config/config.json" | nindent 4 }}
-  NODE_ENV: "prod"
-  DEPLOY_STAGE: {{ .Values.environment | quote }}
-  DB_NAME: {{ .Values.database.name | quote }}
-  KC_BASE_URL: "http://{{ .Values.keycloakHostname }}"
+  NODE_ENV: 'prod'
+  DEPLOY_STAGE: { { .Values.environment | quote } }
+  DB_NAME: { { .Values.database.name | quote } }
+  KC_BASE_URL: 'http://{{ .Values.keycloakHostname }}'
   KC_EXTERNAL_BASE_URL: 'https://{{ .Values.keycloakExternalHostname | replace "spsh-xxx" .Release.Namespace }}'
-  FRONTEND_OIDC_CALLBACK_URL: "https://{{ .Values.backendHostname }}/api/auth/login"
-  FRONTEND_DEFAULT_LOGIN_REDIRECT: "https://{{ .Values.backendHostname }}/"
-  FRONTEND_LOGOUT_REDIRECT: "https://{{ .Values.backendHostname }}/"
-  BACKEND_HOSTNAME: "{{ .Values.backendHostname }}"
-  ERROR_PAGE_REDIRECT: "https://{{ .Values.backendHostname }}/login-error"
+  FRONTEND_OIDC_CALLBACK_URL: 'https://{{ .Values.backendHostname }}/api/auth/login'
+  FRONTEND_DEFAULT_LOGIN_REDIRECT: 'https://{{ .Values.backendHostname }}/'
+  FRONTEND_LOGOUT_REDIRECT: 'https://{{ .Values.backendHostname }}/'
+  BACKEND_HOSTNAME: '{{ .Values.backendHostname }}'
+  ERROR_PAGE_REDIRECT: 'https://{{ .Values.backendHostname }}/login-error'
   LDAP_URL: '{{ .Values.ldap.url | replace "spsh-xxx" .Release.Namespace }}'
-  LDAP_BASE_DN: "{{ .Values.ldap.base_dn }}"
-  LDAP_OEFFENTLICHE_SCHULEN_DOMAIN: "{{ .Values.ldap.oeffentlicheSchulenDomain }}"
-  LDAP_ERSATZSCHULEN_DOMAIN: "{{ .Values.ldap.ersatzschulenDomain }}"
-  RETRY_WRAPPER_DEFAULT_RETRIES: "{{ .Values.ldap.retryWrapperDefaultRetries }}"
-  STATUS_REDIRECT_URL: "{{ .Values.status.url }}"
-  PI_BASE_URL:  "{{ .Values.privacyidea.url }}"
-  PI_RENAME_WAITING_TIME:  "{{ .Values.privacyidea.renameWaitingTime }}"
-  PI_REALM: "{{ .Values.privacyidea.realm }}"
-  PI_USER_RESOLVER: "{{ .Values.privacyidea.userResolver }}"
-  OX_ENABLED: "{{ .Values.ox.enabled }}"
-  OX_USERNAME: "{{ .Values.ox.username }}"
-  OX_ENDPOINT: "{{ .Values.ox.endpoint }}"
-  OX_CONTEXT_ID: "{{ .Values.ox.contextId }}"
-  OX_CONTEXT_NAME: "{{ .Values.ox.contextName }}"
-  OX_NUMBER_OF_RETRIES: "{{ .Values.ox.numberOfRetries }}"
-  OX_USER_PASSWORD_DEFAULT: "{{ .Values.ox.userPasswordDefault }}"
-  OX_EMAIL_ADDRESS_DELETED_EVENT_DELAY: "{{ .Values.ox.emailAddressDeletedEventDelay }}"
-  NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: "{{ .Values.email.nonEnabledEmailAddressesDeadlineInDays }}"
-  SYSTEM_RENAME_WAITING_TIME_IN_SECONDS: "{{ .Values.backend.env.renameWaitingTimeInSeconds }}"
-  SYSTEM_STEP_UP_TIMEOUT_ENABLED: "{{ .Values.backend.env.stepUpTimeoutEnabled }}"
-  SYSTEM_STEP_UP_TIMEOUT_IN_SECONDS: "{{ .Values.backend.env.stepUpTimeoutInSeconds }}"
-  ITSLEARNING_ENABLED: "{{ .Values.itslearning.enabled }}"
-  ITSLEARNING_ENDPOINT: "{{ .Values.itslearning.endpoint }}"
+  LDAP_BASE_DN: '{{ .Values.ldap.base_dn }}'
+  RETRY_WRAPPER_DEFAULT_RETRIES: '{{ .Values.ldap.retryWrapperDefaultRetries }}'
+  STATUS_REDIRECT_URL: '{{ .Values.status.url }}'
+  PI_BASE_URL: '{{ .Values.privacyidea.url }}'
+  PI_RENAME_WAITING_TIME: '{{ .Values.privacyidea.renameWaitingTime }}'
+  PI_REALM: '{{ .Values.privacyidea.realm }}'
+  PI_USER_RESOLVER: '{{ .Values.privacyidea.userResolver }}'
+  OX_ENABLED: '{{ .Values.ox.enabled }}'
+  OX_USERNAME: '{{ .Values.ox.username }}'
+  OX_ENDPOINT: '{{ .Values.ox.endpoint }}'
+  OX_CONTEXT_ID: '{{ .Values.ox.contextId }}'
+  OX_CONTEXT_NAME: '{{ .Values.ox.contextName }}'
+  OX_NUMBER_OF_RETRIES: '{{ .Values.ox.numberOfRetries }}'
+  OX_USER_PASSWORD_DEFAULT: '{{ .Values.ox.userPasswordDefault }}'
+  OX_EMAIL_ADDRESS_DELETED_EVENT_DELAY: '{{ .Values.ox.emailAddressDeletedEventDelay }}'
+  NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: '{{ .Values.email.nonEnabledEmailAddressesDeadlineInDays }}'
+  SYSTEM_RENAME_WAITING_TIME_IN_SECONDS: '{{ .Values.backend.env.renameWaitingTimeInSeconds }}'
+  SYSTEM_STEP_UP_TIMEOUT_ENABLED: '{{ .Values.backend.env.stepUpTimeoutEnabled }}'
+  SYSTEM_STEP_UP_TIMEOUT_IN_SECONDS: '{{ .Values.backend.env.stepUpTimeoutInSeconds }}'
+  ITSLEARNING_ENABLED: '{{ .Values.itslearning.enabled }}'
+  ITSLEARNING_ENDPOINT: '{{ .Values.itslearning.endpoint }}'
   ITSLEARNING_ROOT: '{{ .Values.itslearning.root }}'
   ITSLEARNING_ROOT_OEFFENTLICH: '{{ .Values.itslearning.rootOeffentlich }}'
   ITSLEARNING_ROOT_ERSATZ: '{{ .Values.itslearning.rootErsatz }}'
@@ -49,7 +46,7 @@ data:
   VIDIS_API_REGION: '{{ .Values.vidis.region }}'
   VIDIS_SYNC_SCHOOLS_PAGE_SIZE: '{{ .Values.vidis.syncSchoolsPageSize }}'
   VIDIS_KEYCLOAK_CLIENT_ID: '{{ .Values.vidis.keycloakClientId }}'
-  NODE_OPTIONS: "--max-old-space-size={{ .Values.backend.env.maxOldSpaceSize }}"
+  NODE_OPTIONS: '--max-old-space-size={{ .Values.backend.env.maxOldSpaceSize }}'
   IMPORT_CSV_FILE_MAX_SIZE_IN_MB: '{{ .Values.import.csvFileMaxSizeInMB }}'
   IMPORT_CSV_MAX_NUMBER_OF_USERS: '{{ .Values.import.csvMaxNumberOfUsers }}'
   FEATURE_FLAG_BEFRISTUNG_BEARBEITEN: '{{ .Values.featureFlags.befristungBearbeiten }}'

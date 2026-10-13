@@ -102,8 +102,8 @@ export class OrganisationController {
             params.namensergaenzung,
             params.kuerzel,
             params.traegerschaft,
-            undefined,
             params.emailAdress,
+            undefined,
         );
         if (organisation instanceof DomainError) {
             throw organisation;

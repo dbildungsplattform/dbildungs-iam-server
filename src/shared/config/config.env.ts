@@ -60,8 +60,6 @@ export default (): Config => ({
         URL: process.env['LDAP_URL'],
         BIND_DN: process.env['LDAP_BIND_DN'],
         ADMIN_PASSWORD: process.env['LDAP_ADMIN_PASSWORD'],
-        OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_OEFFENTLICHE_SCHULEN_DOMAIN'],
-        ERSATZSCHULEN_DOMAIN: process.env['LDAP_ERSATZSCHULEN_DOMAIN'],
         BASE_DN: process.env['LDAP_BASE_DN'],
         RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('RETRY_WRAPPER_DEFAULT_RETRIES'),
     },
