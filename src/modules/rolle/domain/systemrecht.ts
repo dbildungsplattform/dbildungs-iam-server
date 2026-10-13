@@ -194,6 +194,7 @@ export class RollenSystemRecht {
         RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN,
         RollenSystemRecht.SCHULEN_VERWALTEN,
         RollenSystemRecht.KLASSEN_VERWALTEN,
+        RollenSystemRecht.BEHOERDEN_VERWALTEN,
         RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
         RollenSystemRecht.PERSON_SYNCHRONISIEREN,
         RollenSystemRecht.CRON_DURCHFUEHREN,

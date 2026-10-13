@@ -7,6 +7,7 @@ describe('RollenSystemRecht', () => {
         RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
         RollenSystemRechtEnum.PILOT_4_ROLLEN_ZUORDNEN,
         RollenSystemRechtEnum.PILOT_5_ROLLEN_ZUORDNEN,
+        RollenSystemRechtEnum.BEHOERDEN_VERWALTEN,
     ])('should expose %s as an administrable system right', (name: RollenSystemRechtEnum) => {
         const result: RollenSystemRecht = RollenSystemRecht.getByName(name);
 
