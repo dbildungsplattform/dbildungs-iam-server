@@ -1,12 +1,12 @@
-import fs from 'fs';
 import { plainToInstance } from 'class-transformer';
 import { validateSync, ValidationError } from 'class-validator';
-import { JsonConfig } from './json.config.js';
+import fs from 'fs';
 import { merge } from 'lodash-es';
 import EnvConfig from './config.env.js';
-import { getEmailConfig } from './email-config.env.js';
 import { EmailAppConfig } from './email-app.config.js';
+import { getEmailConfig } from './email-config.env.js';
 import { ConfigLoaderValidationError } from './errors/config-loader-validation.error.js';
+import { JsonConfig } from './json.config.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseFileToJSON(path: string): any {
@@ -36,7 +36,10 @@ export function loadConfigFiles(): JsonConfig {
         merged = merge(json, env);
     }
 
-    const mergedConfig: JsonConfig = plainToInstance(JsonConfig, merged, { enableImplicitConversion: false });
+    const mergedConfig: JsonConfig = plainToInstance(JsonConfig, merged, {
+        enableImplicitConversion: false,
+        exposeDefaultValues: true,
+    });
     const errors: ValidationError[] = validateSync(mergedConfig, {
         skipMissingProperties: false,
         whitelist: true,
@@ -69,7 +72,10 @@ export function loadEmailAppConfigFiles(): EmailAppConfig {
         merged = merge(json, env);
     }
 
-    const mergedConfig: EmailAppConfig = plainToInstance(EmailAppConfig, merged, { enableImplicitConversion: false });
+    const mergedConfig: EmailAppConfig = plainToInstance(EmailAppConfig, merged, {
+        enableImplicitConversion: false,
+        exposeDefaultValues: true,
+    });
 
     const errors: ValidationError[] = validateSync(mergedConfig, {
         skipMissingProperties: false,
