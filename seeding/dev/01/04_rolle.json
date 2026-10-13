@@ -147,7 +147,7 @@
             "rollenart": "LEHR",
             "merkmale": [],
             "systemrechte": [],
-            "serviceProviderIds": [0, 1, 2, 8, 10, 43]
+            "serviceProviderIds": [45, 1, 2, 8, 10, 43]
         },
         {
             "id": 14,

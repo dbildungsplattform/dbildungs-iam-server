@@ -1,0 +1,40 @@
+import { Injectable, Provider } from '@nestjs/common';
+import { LdapEmailMicroserviceConfig } from '../../../../../shared/config/ldap-email-microservice.config.js';
+import { EmailAppConfig } from '../../../../../shared/config/index.js';
+
+@Injectable()
+export class LdapUndiEmailMicroserviceInstanceConfig implements LdapEmailMicroserviceConfig {
+    public constructor(
+        public ENABLED: boolean,
+        public URL: string,
+        public BIND_DN: string,
+        public ADMIN_PASSWORD: string,
+        public BASE_DN: string,
+        public RETRY_WRAPPER_NUMBER_OF_RETRIES: number,
+        public RETRY_WRAPPER_DELAY_IN_MS: number,
+        public OEFFENTLICHE_SCHULEN_DOMAIN?: string,
+        public ERSATZSCHULEN_DOMAIN?: string,
+    ) {}
+
+    public static fromConfigService(): Provider {
+        return {
+            provide: LdapUndiEmailMicroserviceInstanceConfig,
+            useFactory: (config: EmailAppConfig): LdapUndiEmailMicroserviceInstanceConfig => {
+                const ldapConfig: LdapEmailMicroserviceConfig = config.LDAP_UNDI;
+
+                return new LdapUndiEmailMicroserviceInstanceConfig(
+                    ldapConfig.ENABLED,
+                    ldapConfig.URL,
+                    ldapConfig.BIND_DN,
+                    ldapConfig.ADMIN_PASSWORD,
+                    ldapConfig.BASE_DN,
+                    ldapConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES,
+                    ldapConfig.RETRY_WRAPPER_DELAY_IN_MS,
+                    ldapConfig.OEFFENTLICHE_SCHULEN_DOMAIN,
+                    ldapConfig.ERSATZSCHULEN_DOMAIN,
+                );
+            },
+            inject: [EmailAppConfig],
+        };
+    }
+}
