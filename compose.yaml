@@ -68,6 +68,26 @@ services:
         target: '/app/config'
         type: bind
 
+  email-microservice:
+    image: ghcr.io/dbildungsplattform/dbildungs-iam-server
+    profiles:
+      - backend
+    build:
+      context: .
+    environment:
+      NODE_ENV: dev
+      DEPLOY_STAGE: dev
+    command: ['node', 'dist/src/email/main.js']
+    ports:
+      - 9091:9091
+    volumes:
+      - source: 'config'
+        target: '/app/config'
+        type: bind
+      - source: 'config/docker-email-config.json'
+        target: '/app/config/email-config.json'
+        type: bind
+
   redis:
     image: redis:7.2.2
     container_name: redis
