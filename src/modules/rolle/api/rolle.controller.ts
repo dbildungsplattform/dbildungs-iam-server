@@ -116,7 +116,6 @@ export class RolleController {
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         const [rollen, total]: [Rolle<true>[], number] = await this.rolleRepo.findRollenAuthorized(
             permissions,
-            queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
             false,
             queryParams.searchStr,
             queryParams.limit,
@@ -201,14 +200,16 @@ export class RolleController {
         @Query() queryParams: FindRollenForMptZuordnungQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
-        const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findMptRollenAuthorized({
-            permissions,
-            searchStr: queryParams.searchStr,
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-            organisationIds: queryParams.organisationIds,
-            rolleIds: queryParams.rolleIds,
-        });
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                permissions,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                searchStr: queryParams.searchStr,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+                organisationIds: queryParams.organisationIds,
+                rolleIds: queryParams.rolleIds,
+            });
 
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
     }
@@ -257,13 +258,12 @@ export class RolleController {
         });
 
         return new PagedResponse<RolleWithServiceProvidersResponse>({
-            total: total,
+            total,
             offset: offset ?? 0,
             limit: limit ?? items.length,
-            items: items,
+            items,
         });
     }
-
     @Get('available-for-person-administration')
     @ApiOperation({ description: 'List rollen available for person administration.' })
     @ApiOkResponsePaginated(RolleResponse, {

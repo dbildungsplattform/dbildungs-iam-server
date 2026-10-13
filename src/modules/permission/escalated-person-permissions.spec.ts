@@ -8,6 +8,7 @@ import { OrganisationRepository } from '../organisation/persistence/organisation
 import { Personenkontext } from '../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { Rolle } from '../rolle/domain/rolle.js';
+import { RollenMerkmal } from '../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 import {
     EscalatedPermissionAtOrga,
@@ -499,6 +500,71 @@ describe('EscalatedPersonPermission', () => {
                     RollenSystemRecht.PERSONEN_VERWALTEN,
                 ),
             ).resolves.toBe(false);
+        });
+    });
+
+    describe('getPermittedMerkmaleForOrga', () => {
+        it('should map escalated gated rights to permitted Merkmale', async () => {
+            const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                { name: 'testInstance' },
+                [
+                    {
+                        orgaId: rootOrga.id,
+                        systemrechte: [
+                            RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
+                            RollenSystemRechtEnum.PILOT_3_ROLLEN_ZUORDNEN,
+                        ],
+                    },
+                ],
+                organisationRepo,
+                personenkontextRepo,
+                logger,
+            );
+
+            const merkmale: RollenMerkmal[] = await escalatedPersonPermission.getPermittedMerkmaleForOrga(rootOrga.id);
+
+            expect(merkmale).toEqual([RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_3_ROLLE]);
+        });
+    });
+
+    describe('hasPermissionForRolleMerkmale', () => {
+        it('should allow roles without gated Merkmale without checking rights', async () => {
+            const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                { name: 'testInstance' },
+                [],
+                organisationRepo,
+                personenkontextRepo,
+                logger,
+            );
+            const getPermittedMerkmaleForOrgaSpy: Mock = vi.spyOn(
+                escalatedPersonPermission,
+                'getPermittedMerkmaleForOrga',
+            );
+
+            const result: boolean = await escalatedPersonPermission.hasPermissionForRolleMerkmale(
+                [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                rootOrga.id,
+            );
+
+            expect(result).toBe(true);
+            expect(getPermittedMerkmaleForOrgaSpy).not.toHaveBeenCalled();
+        });
+
+        it('should require every matching right from escalated permissions', async () => {
+            const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                { name: 'testInstance' },
+                [{ orgaId: rootOrga.id, systemrechte: [RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN] }],
+                organisationRepo,
+                personenkontextRepo,
+                logger,
+            );
+
+            const result: boolean = await escalatedPersonPermission.hasPermissionForRolleMerkmale(
+                [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                rootOrga.id,
+            );
+
+            expect(result).toBe(false);
         });
     });
 

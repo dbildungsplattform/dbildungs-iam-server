@@ -10,6 +10,11 @@
             "systemrechte": [
                 "ROLLEN_VERWALTEN",
                 "MPT_ROLLEN_ZUORDNEN",
+                "PILOT_1_ROLLEN_ZUORDNEN",
+                "PILOT_2_ROLLEN_ZUORDNEN",
+                "PILOT_3_ROLLEN_ZUORDNEN",
+                "PILOT_4_ROLLEN_ZUORDNEN",
+                "PILOT_5_ROLLEN_ZUORDNEN",
                 "PERSONEN_VERWALTEN",
                 "SCHULEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
