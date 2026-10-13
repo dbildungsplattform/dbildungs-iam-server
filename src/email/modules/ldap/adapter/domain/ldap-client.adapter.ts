@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { Attribute, Change, Client, SearchResult } from 'ldapts';
-import { LdapPersonEntry } from './ldap.types.js';
-import { LdapClient } from '../technical/ldap-client.js';
 import { Mutex } from 'async-mutex';
-import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
-import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
+import { Attribute, Change, Client, SearchResult } from 'ldapts';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { PersonExternalID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
-import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapClient } from '../technical/ldap-client.js';
 import { LdapEmailMicroserviceInstanceConfig } from '../technical/ldap-email-microservice-instance-config.js';
 import { LdapBindError } from './error/ldap-bind.error.js';
+import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapDeletePersonError } from './error/ldap-delete-person.error.js';
+import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-retry-fallback.error.js';
+import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
+import { LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
@@ -32,8 +32,6 @@ export type PersonData = {
 
 @Injectable()
 export class LdapClientAdapter {
-    public static readonly FALLBACK_RETRIES: number = 3; // e.g. FALLBACK_RETRIES = 3 will produce retry sequence: 1sek, 8sek, 27sek (1000ms * retrycounter^3)
-
     public static readonly OEFFENTLICHE_SCHULEN_DOMAIN_DEFAULT: string = 'schule-sh.de';
 
     public static readonly ERSATZ_SCHULEN_DOMAIN_DEFAULT: string = 'ersatzschule-sh.de';
@@ -90,10 +88,7 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.createPersonInternal(person, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.createPersonInternal(person, domain, primaryMail, alternativeEmail));
     }
 
     public async updatePerson(
@@ -102,10 +97,7 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<PersonData>> {
-        return this.executeWithRetry(
-            () => this.updatePersonInternal(person, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.updatePersonInternal(person, domain, primaryMail, alternativeEmail));
     }
 
     public async updatePersonEmails(
@@ -114,21 +106,13 @@ export class LdapClientAdapter {
         primaryMail: string,
         alternativeEmail: string | undefined,
     ): Promise<Result<string>> {
-        return this.executeWithRetry(
-            () => this.updatePersonEmailsInternal(personUid, domain, primaryMail, alternativeEmail),
-            this.getNrOfRetries(),
+        return this.executeWithRetry(() =>
+            this.updatePersonEmailsInternal(personUid, domain, primaryMail, alternativeEmail),
         );
     }
 
     public async isPersonExisting(uid: string, domain: string): Promise<Result<boolean>> {
-        return this.executeWithRetry(() => this.isPersonExistingInternal(uid, domain), this.getNrOfRetries());
-    }
-    //** BELOW ONLY PRIVATE HELPER FUNCTIONS THAT NOT OPERATE ON LDAP - MUST NOT USE THE 'executeWithRetry'/
-
-    private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES != null
-            ? this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES
-            : LdapClientAdapter.FALLBACK_RETRIES;
+        return this.executeWithRetry(() => this.isPersonExistingInternal(uid, domain));
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -189,8 +173,23 @@ export class LdapClientAdapter {
         return rootName;
     }
 
+    private withBoundClient<T>(
+        logMessage: string,
+        operation: (client: Client) => Promise<Result<T>>,
+    ): Promise<Result<T>> {
+        return this.mutex.runExclusive(async () => {
+            this.logger.info(logMessage);
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+            return operation(client);
+        });
+    }
+
     public async deletePerson(externalId: string, domain: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deletePersonInternal(externalId, domain), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.deletePersonInternal(externalId, domain));
     }
 
     public useLdap(): boolean {
@@ -203,35 +202,36 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
-            this.logger.info(`LDAP: deletePerson by externalId ${externalId}`);
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-            const personUid: string = this.getPersonUid(externalId, rootName.value);
-            try {
-                const ouBaseDn: string = `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`;
-                this.logger.debug(`LDAP: Trying to find person, uid:${personUid}, ouBaseDn:${ouBaseDn} for deletion`);
-                const searchResultLehrer: SearchResult = await client.search(ouBaseDn, {
-                    filter: `(uid=${externalId})`,
-                });
-                if (!searchResultLehrer.searchEntries[0]) {
-                    this.logger.info(`LDAP: Person ${personUid} does not exist, nothing to delete`);
+        const result: Result<void> = await this.withBoundClient(
+            `LDAP: deletePerson by externalId ${externalId}`,
+            async (client: Client) => {
+                const personUid: string = this.getPersonUid(externalId, rootName.value);
+                try {
+                    const ouBaseDn: string = `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`;
+                    this.logger.debug(
+                        `LDAP: Trying to find person, uid:${personUid}, ouBaseDn:${ouBaseDn} for deletion`,
+                    );
+                    const searchResultLehrer: SearchResult = await client.search(ouBaseDn, {
+                        filter: `(uid=${externalId})`,
+                    });
+                    if (!searchResultLehrer.searchEntries[0]) {
+                        this.logger.info(`LDAP: Person ${personUid} does not exist, nothing to delete`);
+
+                        return { ok: true, value: undefined };
+                    }
+                    await client.del(personUid);
+                    this.logger.info(`LDAP: Successfully deleted person ${personUid}`);
 
                     return { ok: true, value: undefined };
+                } catch (err) {
+                    this.logger.logUnknownAsError(`LDAP: Deleting person FAILED, uid:${personUid}`, err);
+
+                    return { ok: false, error: new LdapDeletePersonError() };
                 }
-                await client.del(personUid);
-                this.logger.info(`LDAP: Successfully deleted person ${personUid}`);
+            },
+        );
 
-                return { ok: true, value: undefined };
-            } catch (err) {
-                this.logger.logUnknownAsError(`LDAP: Deleting person FAILED, uid:${personUid}`, err);
-
-                return { ok: false, error: new LdapDeletePersonError() };
-            }
-        });
+        return result;
     }
 
     private async createPersonInternal(
@@ -246,14 +246,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: createPerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        const result: Result<PersonData> = await this.withBoundClient('LDAP: createPerson', async (client: Client) => {
             const searchResultPerson: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {
@@ -288,6 +281,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapCreatePersonError() };
             }
         });
+
+        return result;
     }
 
     private async updatePersonInternal(
@@ -302,14 +297,7 @@ export class LdapClientAdapter {
         }
 
         const personUid: string = this.getPersonUid(person.uid, rootName.value);
-        return this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: updatePerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        const result: Result<PersonData> = await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const changes: Change[] = [
                 new Change({
                     operation: 'replace',
@@ -356,6 +344,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapModifyPersonError() };
             }
         });
+
+        return result;
     }
 
     private async updatePersonEmailsInternal(
@@ -369,14 +359,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: updatePerson');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        const result: Result<string> = await this.withBoundClient('LDAP: updatePerson', async (client: Client) => {
             const personDn: string = this.getPersonUid(personUid, rootName.value);
 
             const changes: Change[] = [
@@ -410,6 +393,8 @@ export class LdapClientAdapter {
                 return { ok: false, error: new LdapModifyPersonError() };
             }
         });
+
+        return result;
     }
 
     private async isPersonExistingInternal(uid: string, domain: string): Promise<Result<boolean>> {
@@ -418,14 +403,7 @@ export class LdapClientAdapter {
             return rootName;
         }
 
-        return this.mutex.runExclusive(async () => {
-            this.logger.info('LDAP: isPersonExisting');
-            const client: Client = this.ldapClient.getClient();
-            const bindResult: Result<boolean> = await this.bind();
-            if (!bindResult.ok) {
-                return bindResult;
-            }
-
+        const result: Result<boolean> = await this.withBoundClient('LDAP: isPersonExisting', async (client: Client) => {
             const searchResultLehrer: SearchResult = await client.search(
                 `ou=${rootName.value},${this.ldapInstanceConfig.BASE_DN}`,
                 {
@@ -437,13 +415,13 @@ export class LdapClientAdapter {
             }
             return { ok: true, value: false };
         });
+
+        return result;
     }
 
-    private async executeWithRetry<T>(
-        func: () => Promise<Result<T>>,
-        retries: number,
-        delay: number = 15000,
-    ): Promise<Result<T>> {
+    private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
+        const retries: number = this.ldapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES;
+        const delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_DELAY_IN_MS;
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,

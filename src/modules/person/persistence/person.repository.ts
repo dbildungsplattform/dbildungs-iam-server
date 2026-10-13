@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { SystemConfig } from '../../../shared/config/system.config.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
@@ -24,6 +23,7 @@ import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
 import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { OXUserID } from '../../../shared/types/ox-ids.types.js';
@@ -31,6 +31,7 @@ import { toDIN91379SearchForm } from '../../../shared/util/din-91379-validation.
 import { mapDefinedObjectProperties } from '../../../shared/util/object-utils.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
 import { compareEmailAddressesByUpdatedAtDesc } from '../../email/persistence/email.repo.js';
@@ -38,6 +39,7 @@ import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { KeycloakUserService, PersonHasNoKeycloakId, User } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { FamiliennameForPersonWithTrailingSpaceError } from '../domain/familienname-with-trailing-space.error.js';
 import { DownstreamKeycloakError } from '../domain/person-keycloak.error.js';
@@ -52,9 +54,6 @@ import { VornameForPersonWithTrailingSpaceError } from '../domain/vorname-with-t
 import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
 import { PersonEntity } from './person.entity.js';
 import { PersonScope } from './person.scope.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 
 /**
  * Trys to find a valid OXUserID in EmailAddresses for a PersonEntity while using the status of EmailAddresses for ordering.
@@ -199,10 +198,6 @@ export type PersonWithoutOrgDeleteListResult = {
 
 @Injectable()
 export class PersonRepository {
-    public readonly ROOT_ORGANISATION_ID: string;
-
-    public readonly RENAME_WAITING_TIME_IN_SECONDS: number;
-
     public constructor(
         private readonly kcUserService: KeycloakUserService,
         private readonly userLockRepository: UserLockRepository,
@@ -211,11 +206,8 @@ export class PersonRepository {
         private readonly emailResolverService: EmailResolverService,
         private usernameGenerator: UsernameGeneratorService,
         private logger: ClassLogger,
-        config: ConfigService<ServerConfig>,
-    ) {
-        this.ROOT_ORGANISATION_ID = config.getOrThrow<DataConfig>('DATA').ROOT_ORGANISATION_ID;
-        this.RENAME_WAITING_TIME_IN_SECONDS = config.getOrThrow<SystemConfig>('SYSTEM').RENAME_WAITING_TIME_IN_SECONDS;
-    }
+        private readonly config: ConfigService<ServerConfig>,
+    ) {}
 
     private async getPersonScopeWithPermissions(
         permissions: IPersonPermissions,
@@ -722,6 +714,8 @@ export class PersonRepository {
         let oldUsername: PersonUsername | undefined = '';
         const personEntity: Loaded<PersonEntity> = await this.em.findOneOrFail(PersonEntity, person.id);
         const isPersonRenamedEventNecessary: boolean = this.hasChangedNames(personEntity, person);
+        const RENAME_WAITING_TIME_IN_SECONDS: number =
+            this.config.getOrThrow<SystemConfig>('SYSTEM').RENAME_WAITING_TIME_IN_SECONDS;
 
         // Check for duplicate personalnummer if it's being updated
         if (person.personalnummer && person.personalnummer !== personEntity.personalnummer) {
@@ -775,7 +769,7 @@ export class PersonRepository {
             // wait for privacyIDEA to update the username
             await new Promise<void>((resolve: () => void) =>
                 // eslint-disable-next-line no-promise-executor-return
-                setTimeout(resolve, this.RENAME_WAITING_TIME_IN_SECONDS * 1000),
+                setTimeout(resolve, RENAME_WAITING_TIME_IN_SECONDS * 1000),
             );
         }
 
