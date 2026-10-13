@@ -9,7 +9,8 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -244,15 +245,15 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-        const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
-        if (includesMPTRollen) {
-            const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
-                organisationId,
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
-            if (!hasSystemrecht) {
-                return Err(new MissingPermissionsError('Unauthorized to assign MPT-Rollen at the organisation'));
-            }
+        const hasUnauthorizedGatedRolle: boolean = (
+            await Promise.all(
+                Array.from(rollen.values()).map((rolle: Rolle<true>) =>
+                    permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
+                ),
+            )
+        ).some((hasPermission: boolean) => !hasPermission);
+        if (hasUnauthorizedGatedRolle) {
+            return Err(new MissingPermissionsError('Unauthorized to assign MPT/Pilot-Rollen at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {
@@ -279,16 +280,8 @@ export class PersonenkontextWorkflowAggregate {
     private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
-                allowedRollenArten.includes(rolle.rollenart) || rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+                allowedRollenArten.includes(rolle.rollenart) ||
+                RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale).length > 0,
         );
-    }
-
-    private includesMPTRollen(rollen: Iterable<Rolle<true>>): boolean {
-        for (const rolle of rollen) {
-            if (rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

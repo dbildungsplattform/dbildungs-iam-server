@@ -29,6 +29,7 @@ import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkonte
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
@@ -141,8 +142,10 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     organisationId: OrganisationID;
     allowedOrganisationIds: Array<OrganisationID>;
     allowedRollenarten: Array<RollenArt>;
-    mpt?: {
+    /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
+    gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
+        authorizedMerkmale: Array<RollenMerkmal>;
     };
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
@@ -343,7 +346,25 @@ export class RolleRepo {
 
         // TODO: this can fail if there are more rollen than limit
         const finalQuery: FilterQuery<NoInfer<RolleEntity>> = params.rolleIds?.length
-            ? { $or: [baseQuery, { id: { $in: params.rolleIds } }] }
+            ? {
+                  $or: [
+                      baseQuery,
+                      {
+                          $and: [
+                              { id: { $in: params.rolleIds } },
+                              ...(params.allowedOrganisationIds
+                                  ? [{ administeredBySchulstrukturknoten: params.allowedOrganisationIds }]
+                                  : []),
+                              ...(params.requireMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
+                                  merkmale: { $some: { merkmal } },
+                              })),
+                              ...(params.excludeMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
+                                  merkmale: { $none: { merkmal } },
+                              })),
+                          ],
+                      },
+                  ],
+              }
             : baseQuery;
 
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
@@ -378,7 +399,6 @@ export class RolleRepo {
 
     public async findRollenAuthorized(
         permissions: IPersonPermissions,
-        systemrechte: RollenSystemRecht[] | undefined,
         includeTechnische: boolean,
         searchStr?: string,
         limit?: number,
@@ -389,10 +409,10 @@ export class RolleRepo {
         rollenArten?: RollenArt[],
         serviceProviderIds?: ServiceProviderID[],
     ): Promise<[Rolle<true>[], number]> {
-        // Fallback to ROLLEN_VERWALTEN if no systemrechte are provided (this is the default behavior expected from the frontend)
         const orgIdsWithRecht: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
-            systemrechte ?? [RollenSystemRecht.ROLLEN_VERWALTEN],
+            [RollenSystemRecht.ROLLEN_VERWALTEN],
             false,
+            true,
         );
         if (!orgIdsWithRecht.all && orgIdsWithRecht.orgaIds.length === 0) {
             return [[], 0];
@@ -405,20 +425,12 @@ export class RolleRepo {
             allowedOrganisationIds = orgIdsWithRecht.orgaIds;
         }
 
-        // we can assume that MPT_ROLLEN_ZUORDNEN is not exclusive to a single orga here, since matchAll on permissions.getOrgIdsWithSystemrecht is true by default
-        const hasMptRollenZuordnenPermission: boolean =
-            systemrechte?.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) ?? false;
-        const excludeMerkmale: RollenMerkmal[] | undefined = hasMptRollenZuordnenPermission
-            ? undefined
-            : [RollenMerkmal.MPT_ROLLE];
-
         return this.findBy({
             includeTechnische,
             searchStr,
             limit,
             offset,
             allowedOrganisationIds,
-            excludeMerkmale,
             rolleIds,
             orderBy: 'artAndName',
             merkmale,
@@ -498,23 +510,41 @@ export class RolleRepo {
     public async findRollenAvailableForPersonenkontextCreation(
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<Rolle<true>>> {
-        const allowedRollenWhere: ObjectQuery<NoInfer<RolleEntity>> = params.mpt
-            ? {
-                  $or: [
-                      {
-                          rollenart: { $in: params.allowedRollenarten },
-                          merkmale: { $none: { merkmal: RollenMerkmal.MPT_ROLLE } },
+        const allowedRollenWhere: ObjectQuery<NoInfer<RolleEntity>> =
+            params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0
+                ? {
+                      $or: [
+                          {
+                              rollenart: { $in: params.allowedRollenarten },
+                              merkmale: {
+                                  $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
+                              },
+                          },
+                          {
+                              rollenart: { $in: params.gatedBucket.allowedRollenarten },
+                              $and: [
+                                  { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
+                                  {
+                                      merkmale: {
+                                          $none: {
+                                              merkmal: {
+                                                  $in: RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(
+                                                      params.gatedBucket.authorizedMerkmale,
+                                                  ),
+                                              },
+                                          },
+                                      },
+                                  },
+                              ],
+                          },
+                      ],
+                  }
+                : {
+                      rollenart: { $in: params.allowedRollenarten },
+                      merkmale: {
+                          $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
                       },
-                      {
-                          rollenart: { $in: params.mpt.allowedRollenarten },
-                          merkmale: { $some: { merkmal: RollenMerkmal.MPT_ROLLE } },
-                      },
-                  ],
-              }
-            : {
-                  rollenart: { $in: params.allowedRollenarten },
-                  merkmale: { $none: { merkmal: RollenMerkmal.MPT_ROLLE } },
-              };
+                  };
         const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = {
             istTechnisch: false,
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
