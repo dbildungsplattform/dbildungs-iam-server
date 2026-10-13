@@ -144,8 +144,8 @@ export class OrganisationController {
         }
 
         const hasOrgVerwaltenRechtAtOrg: boolean = await permissions.hasOrgVerwaltenRechtAtOrga(
-            body.typ,
-            body.administriertVon,
+            existingOrganisation.typ,
+            existingOrganisation.administriertVon,
         );
 
         if (!hasOrgVerwaltenRechtAtOrg) {

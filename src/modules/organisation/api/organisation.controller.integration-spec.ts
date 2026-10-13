@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
@@ -17,7 +17,9 @@ import {
     KeycloakConfigTestModule,
 } from '../../../../test/utils/index.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
+import { SharedErrorI18nTypes } from '../../../shared/error/dbiam-shared.error.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
@@ -78,6 +80,10 @@ describe('Organisation API', () => {
             ],
             providers: [
                 {
+                    provide: APP_FILTER,
+                    useClass: SharedExceptionFilter,
+                },
+                {
                     provide: APP_PIPE,
                     useClass: GlobalValidationPipe,
                 },
@@ -127,6 +133,97 @@ describe('Organisation API', () => {
 
     beforeEach(async () => {
         await DatabaseTestModule.clearDatabase(orm);
+    });
+
+    describe('/PUT organisation authorization', () => {
+        const setup = async (
+            type: OrganisationsTyp,
+        ): Promise<{
+            originalSchool: Organisation<true>;
+            authorizedSchool: Organisation<true>;
+            organisation: Organisation<true>;
+        }> => {
+            const originalSchool: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            const authorizedSchool: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, {
+                    typ: type,
+                    administriertVon: originalSchool.id,
+                    zugehoerigZu: originalSchool.id,
+                }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockImplementation(
+                (requestedTyp: OrganisationsTyp, administriertVon?: string): Promise<boolean> =>
+                    Promise.resolve(
+                        requestedTyp === OrganisationsTyp.KLASSE && administriertVon === authorizedSchool.id,
+                    ),
+            );
+            return { originalSchool, authorizedSchool, organisation };
+        };
+
+        const assertUnauthorizedUpdate = async (type: OrganisationsTyp): Promise<void> => {
+            const {
+                originalSchool,
+                authorizedSchool,
+                organisation,
+            }: {
+                originalSchool: Organisation<true>;
+                authorizedSchool: Organisation<true>;
+                organisation: Organisation<true>;
+            } = await setup(type);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(`/organisationen/${organisation.id}`)
+                .send({
+                    typ: OrganisationsTyp.KLASSE,
+                    administriertVon: authorizedSchool.id,
+                    zugehoerigZu: authorizedSchool.id,
+                    name: '7a',
+                });
+
+            expect(response.status).toBe(404);
+            expect(response.body).toEqual(
+                expect.objectContaining({
+                    code: 404,
+                    i18nKey: SharedErrorI18nTypes.MISSING_PERMISSIONS,
+                }),
+            );
+            expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledWith(
+                organisation.typ,
+                originalSchool.id,
+            );
+            const storedOrganisation: OrganisationEntity = await em
+                .fork()
+                .findOneOrFail(OrganisationEntity, organisation.id);
+            expect(storedOrganisation).toEqual(
+                expect.objectContaining({
+                    typ: organisation.typ,
+                    name: organisation.name,
+                    administriertVon: originalSchool.id,
+                    zugehoerigZu: originalSchool.id,
+                }),
+            );
+        };
+
+        describe('when a school is submitted as a class to use class-management permissions', () => {
+            it('should check the stored school type and reject the update without changing the organisation', async () => {
+                await assertUnauthorizedUpdate(OrganisationsTyp.SCHULE);
+
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockReset();
+            });
+        });
+
+        describe('when a class from another school is submitted with an authorized parent', () => {
+            it('should check the stored parent and reject the update without changing the organisation', async () => {
+                await assertUnauthorizedUpdate(OrganisationsTyp.KLASSE);
+
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockReset();
+            });
+        });
     });
 
     describe('/DELETE organisation', () => {
