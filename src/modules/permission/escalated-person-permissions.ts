@@ -1,20 +1,20 @@
+import { ClassLogger } from '../../core/logging/class-logger.js';
 import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, PersonID } from '../../shared/types/index.js';
-import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 import {
     PermittedOrgas,
     PersonenkontextRolleWithOrganisation,
     PersonFields,
     PersonPermissions,
 } from '../authentication/domain/person-permissions.js';
-import { OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
+import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 import { Organisation } from '../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
 import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { ClassLogger } from '../../core/logging/class-logger.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 
 export type EscalatedPermissionAtOrga = {
     orgaId: OrganisationID | 'ROOT';
@@ -317,6 +317,8 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
             );
         } else if (typ === OrganisationsTyp.SCHULE) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULEN_VERWALTEN]);
+        } else if (typ === OrganisationsTyp.BEHOERDE) {
+            return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.BEHOERDEN_VERWALTEN]);
         } else if (typ === OrganisationsTyp.TRAEGER) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULTRAEGER_VERWALTEN]);
         }
