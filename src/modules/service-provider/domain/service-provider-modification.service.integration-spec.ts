@@ -22,7 +22,6 @@ import { OrganisationEntity } from '../../organisation/persistence/organisation.
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
@@ -33,6 +32,7 @@ import { VidisServiceProviderImmutableError } from './errors/vidis-service-provi
 import { ServiceProviderModificationService } from './service-provider-modification.service.js';
 import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
 import { ServiceProvider } from './service-provider.js';
+import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
 
 describe('ServiceProviderModificationService', () => {
     let module: TestingModule;
@@ -42,7 +42,7 @@ describe('ServiceProviderModificationService', () => {
     let em: EntityManager;
 
     let rolleRepo: RolleRepo;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -59,7 +59,7 @@ describe('ServiceProviderModificationService', () => {
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         rolleRepo = module.get(RolleRepo);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
 
         await DatabaseTestModule.setupDatabase(orm);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);

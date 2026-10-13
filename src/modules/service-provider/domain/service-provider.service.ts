@@ -74,8 +74,10 @@ export class ServiceProviderService {
 
         const personenkontexte: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
             await this.dBiamPersonenkontextRepo.findByPerson(personId);
-        const serviceProviders: ServiceProvider<true>[] =
-            await this.getServiceProvidersByOrganisationenAndRollen(personenkontexte);
+        const serviceProviders: ServiceProvider<true>[] = await this.getServiceProvidersByOrganisationenAndRollen(
+            personenkontexte,
+            permissions,
+        );
 
         return Ok(serviceProviders);
     }
@@ -134,7 +136,7 @@ export class ServiceProviderService {
         }
 
         const enrichedServiceProvider: ManageableServiceProviderWithReferencedObjects = (
-            await this.getOrganisationRollenAndRollenerweiterungenForServiceProviders([serviceProvider])
+            await this.getOrganisationRollenAndRollenerweiterungenForServiceProviders([serviceProvider], permissions)
         )[0]!;
 
         const result: ManageableServiceProviderDetailsWithReferencedObjects = {
@@ -234,6 +236,7 @@ export class ServiceProviderService {
         const enrichedServiceProviders: ManageableServiceProviderWithReferencedObjects[] =
             await this.getOrganisationRollenAndRollenerweiterungenForServiceProviders(
                 serviceProviders,
+                permissions,
                 20,
                 organisationId,
                 permittedOrgas,
@@ -320,67 +323,82 @@ export class ServiceProviderService {
 
     private async getOrganisationRollenAndRollenerweiterungenForServiceProviders(
         serviceProviders: ServiceProvider<true>[],
+        permissions: IPersonPermissions,
         limitRoles?: number,
         organisationId?: OrganisationID,
         permittedOrgas?: PermittedOrgas,
     ): Promise<ManageableServiceProviderWithReferencedObjects[]> {
-        const serviceProvidersIds: ServiceProviderID[] = serviceProviders.map((sp: ServiceProvider<true>) => sp.id);
+        const serviceProviderIds: ServiceProviderID[] = serviceProviders.map(
+            (serviceProvider: ServiceProvider<true>): ServiceProviderID => serviceProvider.id,
+        );
 
-        const [rollen, rollenerweiterungen, organisationen]: [
-            Map<ServiceProviderID, Rolle<true>[]>,
+        const rollenerweiterungenResult: Result<
             Map<ServiceProviderID, Rollenerweiterung<true>[]>,
+            MissingPermissionsError
+        > = await this.rollenerweiterungRepo.findByServiceProviderIds(serviceProviderIds, permissions, organisationId);
+
+        if (!rollenerweiterungenResult.ok) {
+            throw rollenerweiterungenResult.error;
+        }
+
+        const [rollen, organisationen]: [
+            Map<ServiceProviderID, Rolle<true>[]>,
             Map<OrganisationID, Organisation<true>>,
         ] = await Promise.all([
-            this.rolleRepo.findByServiceProviderIds(serviceProvidersIds, limitRoles),
-            this.rollenerweiterungRepo.findByServiceProviderIds(serviceProvidersIds, organisationId),
+            this.rolleRepo.findByServiceProviderIds(serviceProviderIds, limitRoles),
             this.organisationRepo.findByIds(
-                serviceProviders.map((sp: ServiceProvider<true>) => sp.providedOnSchulstrukturknoten),
+                serviceProviders.map(
+                    (serviceProvider: ServiceProvider<true>): OrganisationID =>
+                        serviceProvider.providedOnSchulstrukturknoten,
+                ),
             ),
         ]);
 
-        let permittedOrgaSet: Set<string> = new Set();
-        if (permittedOrgas) {
-            if (!permittedOrgas.all) {
-                permittedOrgaSet = new Set(permittedOrgas.orgaIds);
-            }
+        const rollenerweiterungen: Map<ServiceProviderID, Rollenerweiterung<true>[]> = rollenerweiterungenResult.value;
+
+        let permittedOrgaSet: Set<string> = new Set<string>();
+
+        if (permittedOrgas && !permittedOrgas.all) {
+            permittedOrgaSet = new Set(permittedOrgas.orgaIds);
         }
 
         const serviceProvidersWithData: ManageableServiceProviderWithReferencedObjects[] = serviceProviders.map(
-            (serviceProvider: ServiceProvider<true>) => {
-                return {
-                    serviceProvider,
-                    organisation: organisationen.get(serviceProvider.providedOnSchulstrukturknoten)!,
-                    rollen: rollen.get(serviceProvider.id) ?? [],
-                    rollenerweiterungen: rollenerweiterungen.get(serviceProvider.id) ?? [],
-                    hasSomeVerwaltenPermission:
-                        permittedOrgas?.all || permittedOrgaSet.has(serviceProvider.providedOnSchulstrukturknoten),
-                };
-            },
+            (serviceProvider: ServiceProvider<true>): ManageableServiceProviderWithReferencedObjects => ({
+                serviceProvider,
+                organisation: organisationen.get(serviceProvider.providedOnSchulstrukturknoten)!,
+                rollen: rollen.get(serviceProvider.id) ?? [],
+                rollenerweiterungen: rollenerweiterungen.get(serviceProvider.id) ?? [],
+                hasSomeVerwaltenPermission:
+                    permittedOrgas?.all === true || permittedOrgaSet.has(serviceProvider.providedOnSchulstrukturknoten),
+            }),
         );
 
-        // Call the third method internally to enrich rollenerweiterungen with names
-        const allRollenerweiterungen: Rollenerweiterung<true>[] = serviceProvidersWithData
-            .map((spWithData: ManageableServiceProviderWithReferencedObjects) => spWithData.rollenerweiterungen)
-            .flat();
+        const allRollenerweiterungen: Rollenerweiterung<true>[] = serviceProvidersWithData.flatMap(
+            (serviceProviderWithData: ManageableServiceProviderWithReferencedObjects): Rollenerweiterung<true>[] =>
+                serviceProviderWithData.rollenerweiterungen,
+        );
 
         const rollenerweiterungenWithNames: RollenerweiterungForManageableServiceProvider[] =
             await this.getRollenerweiterungenForManageableServiceProvider(allRollenerweiterungen);
 
-        // Attach enriched rollenerweiterungen to each service provider
-        return serviceProvidersWithData.map((spWithData: ManageableServiceProviderWithReferencedObjects) => ({
-            ...spWithData,
-            rollenerweiterungenWithName: rollenerweiterungenWithNames
-                .filter(
-                    (re: RollenerweiterungForManageableServiceProvider) =>
-                        re.serviceProviderId === spWithData.serviceProvider.id,
-                )
-                .sort(
-                    (
-                        a: RollenerweiterungForManageableServiceProvider,
-                        b: RollenerweiterungForManageableServiceProvider,
-                    ) => a.rolle.name.localeCompare(b.rolle.name),
-                ),
-        }));
+        return serviceProvidersWithData.map(
+            (
+                serviceProviderWithData: ManageableServiceProviderWithReferencedObjects,
+            ): ManageableServiceProviderWithReferencedObjects => ({
+                ...serviceProviderWithData,
+                rollenerweiterungenWithName: rollenerweiterungenWithNames
+                    .filter(
+                        (rollenerweiterung: RollenerweiterungForManageableServiceProvider): boolean =>
+                            rollenerweiterung.serviceProviderId === serviceProviderWithData.serviceProvider.id,
+                    )
+                    .sort(
+                        (
+                            first: RollenerweiterungForManageableServiceProvider,
+                            second: RollenerweiterungForManageableServiceProvider,
+                        ): number => first.rolle.name.localeCompare(second.rolle.name),
+                    ),
+            }),
+        );
     }
 
     private async getRollenerweiterungenForManageableServiceProvider(
@@ -410,23 +428,34 @@ export class ServiceProviderService {
     }
 
     private async getServiceProvidersByOrganisationenAndRollen(
-        ids: Array<{ organisationId: string; rolleId: string }>,
+        ids: Array<{
+            organisationId: OrganisationID;
+            rolleId: RolleID;
+        }>,
+        permissions: IPersonPermissions,
     ): Promise<ServiceProvider<true>[]> {
         const uniqueRollenIds: RolleID[] = uniq(
-            ids.map((idTuple: { organisationId: string; rolleId: string }) => idTuple.rolleId),
+            ids.map(({ rolleId }: { organisationId: OrganisationID; rolleId: RolleID }): RolleID => rolleId),
         );
         const rollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(uniqueRollenIds);
-        const serviceProviderIds: Set<ServiceProviderID> = new Set();
+
+        const serviceProviderIds: Set<ServiceProviderID> = new Set<ServiceProviderID>();
+
         for (const rolle of rollen.values()) {
-            for (const id of rolle.serviceProviderIds) {
-                serviceProviderIds.add(id);
+            for (const serviceProviderId of rolle.serviceProviderIds) {
+                serviceProviderIds.add(serviceProviderId);
             }
         }
 
         if (this.isFeatureRolleErweiternEnabled) {
-            const rollenerweiterungen: Array<Rollenerweiterung<true>> =
-                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids);
-            for (const rollenerweiterung of rollenerweiterungen) {
+            const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
+                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids, permissions);
+
+            if (!rollenerweiterungenResult.ok) {
+                throw rollenerweiterungenResult.error;
+            }
+
+            for (const rollenerweiterung of rollenerweiterungenResult.value) {
                 serviceProviderIds.add(rollenerweiterung.serviceProviderId);
             }
         }

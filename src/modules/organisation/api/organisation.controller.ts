@@ -493,6 +493,7 @@ export class OrganisationController {
 
         const result: DomainError | void = await this.organisationDeleteService.deleteOrganisation(
             params.organisationId,
+            permissions,
         );
         if (result instanceof DomainError) {
             throw result;

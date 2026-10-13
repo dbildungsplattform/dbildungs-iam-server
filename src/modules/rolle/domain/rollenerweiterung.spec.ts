@@ -1,188 +1,267 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, expect, it } from 'vitest';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungFactory } from './rollenerweiterung.factory.js';
-import { Rollenerweiterung } from './rollenerweiterung.js';
-import { Rolle } from './rolle.js';
+import {
+    OrganisationID,
+    RolleID,
+    RollenerweiterungID,
+    ServiceProviderID,
+} from '../../../shared/types/aggregate-ids.types.js';
+import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
+import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { RollenArt } from './rolle.enums.js';
+import { Rolle } from './rolle.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
+import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
 
 describe('Rollenerweiterung Aggregate', () => {
-    let module: TestingModule;
-    let rollenerweiterungFactory: RollenerweiterungFactory;
-    let organisationRepo: DeepMocked<OrganisationRepository>;
-    let rolleRepo: DeepMocked<RolleRepo>;
-    let serviceProviderRepoMock: DeepMocked<ServiceProviderRepo>;
+    describe('construct', () => {
+        it('should construct a persisted Rollenerweiterung', () => {
+            const id: RollenerweiterungID = faker.string.uuid();
+            const createdAt: Date = faker.date.past();
+            const updatedAt: Date = faker.date.recent();
+            const organisationId: OrganisationID = faker.string.uuid();
+            const rolleId: RolleID = faker.string.uuid();
+            const serviceProviderId: ServiceProviderID = faker.string.uuid();
 
-    beforeAll(async () => {
-        module = await Test.createTestingModule({
-            providers: [
-                RollenerweiterungFactory,
-                OrganisationRepository,
-                {
-                    provide: ServiceProviderRepo,
-                    useValue: createMock<ServiceProviderRepo>(ServiceProviderRepo),
-                },
-                {
-                    provide: RolleRepo,
-                    useValue: createMock(RolleRepo),
-                },
-            ],
-        })
-            .overrideProvider(OrganisationRepository)
-            .useValue(createMock<OrganisationRepository>(OrganisationRepository))
-            .compile();
-
-        rollenerweiterungFactory = module.get(RollenerweiterungFactory);
-        organisationRepo = module.get(OrganisationRepository);
-        rolleRepo = module.get(RolleRepo);
-        serviceProviderRepoMock = module.get(ServiceProviderRepo);
-    });
-
-    afterAll(async () => {
-        await module.close();
-    });
-
-    afterEach(() => {
-        vi.resetAllMocks();
-    });
-
-    describe('checkReferences', () => {
-        it('should return undefined, if references are valid', async () => {
-            const rollenerweiterung: Rollenerweiterung<true> = rollenerweiterungFactory.construct(
-                faker.string.uuid(),
-                faker.date.anytime(),
-                faker.date.anytime(),
-                faker.string.uuid(),
-                faker.string.uuid(),
-                faker.string.uuid(),
+            const rollenerweiterung: Rollenerweiterung<true> = Rollenerweiterung.construct(
+                id,
+                createdAt,
+                updatedAt,
+                organisationId,
+                rolleId,
+                serviceProviderId,
             );
-            organisationRepo.isOrgaAParentOfOrgaB.mockResolvedValueOnce(true);
-            organisationRepo.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
 
-            const rolle: Rolle<true> = Rolle.construct(
-                organisationRepo,
-                serviceProviderRepoMock,
-                faker.string.uuid(),
-                faker.date.anytime(),
-                faker.date.anytime(),
-                1,
-                faker.string.alpha(10),
-                faker.string.uuid(),
-                RollenArt.LEHR,
-                [],
-                [],
-                [],
-                false,
-                undefined,
+            expect(rollenerweiterung).toEqual(
+                expect.objectContaining({
+                    id,
+                    createdAt,
+                    updatedAt,
+                    organisationId,
+                    rolleId,
+                    serviceProviderId,
+                }),
             );
-            rolleRepo.findById.mockResolvedValueOnce(rolle);
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(DoFactory.createServiceProvider(true));
+        });
+    });
 
-            await expect(rollenerweiterung.checkReferences()).resolves.toBe(undefined);
+    describe('createNew', () => {
+        it('should create a new Rollenerweiterung if all consistency checks are satisfied', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(true);
+            if (!result.ok) {
+                throw result.error;
+            }
+            expect(result.value).toEqual(
+                expect.objectContaining({
+                    id: undefined,
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                    organisationId,
+                    rolleId: rolle.id,
+                    serviceProviderId: serviceProvider.id,
+                }),
+            );
         });
 
-        it('should return Error, if references are valid but rolle is not on or above orga in tree ', async () => {
-            const rollenerweiterung: Rollenerweiterung<true> = rollenerweiterungFactory.construct(
-                faker.string.uuid(),
-                faker.date.anytime(),
-                faker.date.anytime(),
-                faker.string.uuid(),
-                faker.string.uuid(),
-                faker.string.uuid(),
-            );
-            organisationRepo.isOrgaAParentOfOrgaB.mockResolvedValueOnce(false);
-            organisationRepo.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
+        it('should return NoRedundantRollenerweiterungError if the ServiceProvider is already assigned to the Rolle', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
 
-            const rolle: Rolle<true> = Rolle.construct(
-                organisationRepo,
-                serviceProviderRepoMock,
-                faker.string.uuid(),
-                faker.date.anytime(),
-                faker.date.anytime(),
-                1,
-                faker.string.alpha(10),
-                faker.string.uuid(),
-                RollenArt.LEHR,
-                [],
-                [],
-                [],
-                false,
-                undefined,
-            );
-            rolleRepo.findById.mockResolvedValueOnce(rolle);
-            serviceProviderRepoMock.findById.mockResolvedValueOnce(DoFactory.createServiceProvider(true));
+            const serviceProviderId: ServiceProviderID = faker.string.uuid();
 
-            await expect(rollenerweiterung.checkReferences()).resolves.toBeInstanceOf(EntityNotFoundError);
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [serviceProviderId],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                id: serviceProviderId,
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected Rollenerweiterung.createNew to fail');
+            }
+            expect(result.error).toBeInstanceOf(NoRedundantRollenerweiterungError);
         });
 
-        type RollenerweiterungReference = 'organisation' | 'rolle' | 'serviceProvider';
-        it.each<RollenerweiterungReference[]>([['organisation'], ['rolle'], ['serviceProvider']])(
-            'should return error, if %s reference is invalid',
-            async (reference: RollenerweiterungReference) => {
-                organisationRepo.isOrgaAParentOfOrgaB.mockResolvedValueOnce(true);
-                const rollenerweiterung: Rollenerweiterung<true> = rollenerweiterungFactory.construct(
-                    faker.string.uuid(),
-                    faker.date.anytime(),
-                    faker.date.anytime(),
-                    faker.string.uuid(),
-                    faker.string.uuid(),
-                    faker.string.uuid(),
-                );
-                organisationRepo.findById.mockResolvedValueOnce(
-                    reference === 'organisation' ? undefined : DoFactory.createOrganisation(true),
-                );
-                rolleRepo.findById.mockResolvedValueOnce(
-                    reference === 'rolle'
-                        ? undefined
-                        : Rolle.construct(
-                              organisationRepo,
-                              serviceProviderRepoMock,
-                              faker.string.uuid(),
-                              faker.date.anytime(),
-                              faker.date.anytime(),
-                              1,
-                              faker.string.alpha(10),
-                              faker.string.uuid(),
-                              RollenArt.LEHR,
-                              [],
-                              [],
-                              [],
-                              false,
-                              undefined,
-                          ),
-                );
-                serviceProviderRepoMock.findById.mockResolvedValueOnce(
-                    reference === 'serviceProvider' ? undefined : DoFactory.createServiceProvider(true),
-                );
+        it('should return ServiceProviderNichtVerfuegbarFuerRollenerweiterungError if the ServiceProvider is not available for Rollenerweiterung', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
 
-                await expect(rollenerweiterung.checkReferences()).resolves.toBeInstanceOf(EntityNotFoundError);
-            },
-        );
-    });
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
 
-    describe('getOrganisation', () => {
-        it('should return organisation, if exists', async () => {
-            organisationRepo.isOrgaAParentOfOrgaB.mockResolvedValueOnce(true);
-            const rollenerweiterung: Rollenerweiterung<true> = rollenerweiterungFactory.construct(
-                faker.string.uuid(),
-                faker.date.anytime(),
-                faker.date.anytime(),
-                faker.string.uuid(),
-                faker.string.uuid(),
-                faker.string.uuid(),
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
             );
-            organisationRepo.findById.mockResolvedValueOnce(
-                DoFactory.createOrganisation(true, { id: rollenerweiterung.organisationId }),
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected Rollenerweiterung.createNew to fail');
+            }
+            expect(result.error).toBeInstanceOf(ServiceProviderNichtVerfuegbarFuerRollenerweiterungError);
+        });
+
+        it('should return RollenartNotAllowedForSPError if the Rollenart is not included in the whitelist', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
             );
-            await expect(rollenerweiterung.getOrganisation()).resolves.toEqual(
-                expect.objectContaining({ id: rollenerweiterung.organisationId }),
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected Rollenerweiterung.createNew to fail');
+            }
+            expect(result.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+        });
+
+        it('should allow every Rollenart if the whitelist is empty', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
             );
+
+            expect(result.ok).toBe(true);
+        });
+
+        it('should allow the Rollenart if it is included in the whitelist', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(true);
+        });
+
+        it('should return the redundancy error before checking further consistency rules', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const serviceProviderId: ServiceProviderID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [serviceProviderId],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                id: serviceProviderId,
+                merkmale: [],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected Rollenerweiterung.createNew to fail');
+            }
+            expect(result.error).toBeInstanceOf(NoRedundantRollenerweiterungError);
+        });
+
+        it('should return the availability error before checking the Rollenart whitelist', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [],
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected Rollenerweiterung.createNew to fail');
+            }
+            expect(result.error).toBeInstanceOf(ServiceProviderNichtVerfuegbarFuerRollenerweiterungError);
         });
     });
 });

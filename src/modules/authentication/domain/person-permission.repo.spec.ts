@@ -11,7 +11,6 @@ import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { KeycloakUserNotFoundError } from './keycloak-user-not-found.error.js';
 import { PersonPermissionsRepo } from './person-permission.repo.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
@@ -33,10 +32,6 @@ describe('PersonPermissionRepo', () => {
                 {
                     provide: RolleRepo,
                     useValue: createMock(RolleRepo),
-                },
-                {
-                    provide: RollenerweiterungRepo,
-                    useValue: createMock(RollenerweiterungRepo),
                 },
                 {
                     provide: DBiamPersonenkontextRepo,
