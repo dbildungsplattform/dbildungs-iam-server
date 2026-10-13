@@ -1269,7 +1269,7 @@ describe('RolleRepo', () => {
             expect(count).toBe(1);
         });
 
-        it('should return sticky rollen regardless of filter', async () => {
+        it('should not return sticky rollen outside the allowed rollenarten', async () => {
             await createRolle();
             const stickyRolle: Rolle<true> = await createRolle({ rollenart: RollenArt.LEHR });
             const rolle: Rolle<true> = await createRolle({ rollenart: RollenArt.SORGBER });
@@ -1284,8 +1284,54 @@ describe('RolleRepo', () => {
                 offset: 0,
             });
 
-            expect(rollen).toEqual(expect.arrayContaining([stickyRolle, rolle]));
+            expect(rollen).toEqual([rolle]);
             expect(count).toBe(1);
+        });
+
+        it('should not return sticky rollen outside the allowed organisations', async () => {
+            const allowedOrganisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false),
+            );
+            const otherOrganisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false),
+            );
+            const allowedRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: allowedOrganisation.id,
+            });
+            const stickyRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: otherOrganisation.id,
+                rollenart: allowedRolle.rollenart,
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: allowedOrganisation.id,
+                allowedOrganisationIds: [allowedOrganisation.id],
+                allowedRollenarten: [allowedRolle.rollenart],
+                stickyRollenIds: [stickyRolle.id],
+            });
+
+            expect(rollen).toEqual([allowedRolle]);
+        });
+
+        it('should not return sticky MPT rollen without MPT permission', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const rolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+            });
+            const stickyMptRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: rolle.rollenart,
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [rolle.rollenart],
+                stickyRollenIds: [rolle.id, stickyMptRolle.id],
+            });
+
+            expect(rollen).toEqual([rolle]);
         });
     });
 

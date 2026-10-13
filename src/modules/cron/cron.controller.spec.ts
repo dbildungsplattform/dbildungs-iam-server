@@ -93,7 +93,6 @@ describe('CronController', () => {
                         PersonenkontextWorkflowAggregate.createNew(
                             null as unknown as RolleRepo,
                             null as unknown as OrganisationRepository,
-                            null as unknown as DBiamPersonenkontextRepo,
                             null as unknown as DbiamPersonenkontextFactory,
                             null as unknown as ConfigService,
                             null as unknown as PersonenkontextWorkflowSharedKernel,

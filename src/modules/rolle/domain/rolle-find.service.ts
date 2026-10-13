@@ -33,7 +33,7 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
     permissions: IPersonPermissions;
     systemrecht: RollenSystemRecht;
     organisationId: OrganisationID;
-    rollenartOfUser?: RollenArt;
+    rollenartForPerson?: RollenArt;
     rolleName?: string;
     rollenIds?: Array<RolleID>;
     limit?: number;
@@ -42,7 +42,6 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
 
 export interface FindMptRollenAuthorizedParams {
     permissions: IPersonPermissions;
-    includeTechnische: boolean;
     searchStr?: string;
     limit?: number;
     offset?: number;
@@ -91,9 +90,14 @@ export type FindRollenAvailableForErweiterungParams = FindRollenWithPermissionsP
     requestedSystemrechte?: RollenSystemRecht[];
 };
 
-export type FindRollenAvailableForPersonAdministrationParams = FindRollenWithPermissionsParams & {
+export interface FindRollenAvailableForPersonAdministrationParams {
+    permissions: IPersonPermissions;
+    searchStr?: string;
+    organisationIds?: Array<OrganisationID>;
+    limit?: number;
+    offset?: number;
     requestedSystemrechte?: RollenSystemRecht[];
-};
+}
 
 @Injectable()
 export class RolleFindService {
@@ -319,7 +323,7 @@ export class RolleFindService {
 
         const sharedParams: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'> =
             {
-                includeTechnische: params.includeTechnische,
+                includeTechnische: false,
                 searchStr: params.searchStr,
                 limit: params.limit,
                 offset: params.offset,
@@ -443,7 +447,7 @@ export class RolleFindService {
     ): Promise<[Array<RollenArt>, Array<RollenArt>]> {
         const rollenArtenForOrganisation: Array<RollenArt> = await this.resolveAllowedRollenArten(
             selectedAndPermittedOrgas,
-            params.rollenartOfUser ? [params.rollenartOfUser] : undefined,
+            params.rollenartForPerson ? [params.rollenartForPerson] : undefined,
         );
         if (rollenArtenForOrganisation.length === 0) {
             return [[], []];
@@ -502,9 +506,6 @@ export class RolleFindService {
         }
 
         const selectedOrgasWithParents: OrganisationID[] = await this.getOrganisationIdsWithParents(narrowedSelection);
-        if (selectedOrgasWithParents.length === 0) {
-            return { kind: OrganisationBoundsKind.EMPTY };
-        }
 
         return {
             selectedAndPermittedOrgas: narrowedSelection,
