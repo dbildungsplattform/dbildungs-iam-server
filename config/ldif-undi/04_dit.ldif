@@ -1,0 +1,43 @@
+# Base DIT for dc=schule-sh,dc=de
+# Load after the schulportalsh schema (ldapadd with a writable bind).
+# The base entry is created by osixia/openldap.
+
+dn: ou=oeffentlich,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalUnit
+ou: oeffentlich
+
+dn: cn=users,ou=oeffentlich,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: users
+
+dn: cn=groups,ou=oeffentlich,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: groups
+
+dn: cn=lists,ou=oeffentlich,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: lists
+
+dn: ou=ersatz,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalUnit
+ou: ersatz
+
+dn: cn=users,ou=ersatz,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: users
+
+dn: cn=groups,ou=ersatz,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: groups
+
+dn: cn=lists,ou=ersatz,dc=schule-sh,dc=de
+objectClass: top
+objectClass: organizationalRole
+cn: lists
