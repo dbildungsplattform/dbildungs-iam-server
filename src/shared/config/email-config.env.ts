@@ -49,7 +49,8 @@ export function getEmailConfig(): EmailAppConfig {
             OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_UNDI_OEFFENTLICHE_SCHULEN_DOMAIN'],
             ERSATZSCHULEN_DOMAIN: process.env['LDAP_UNDI_ERSATZSCHULEN_DOMAIN'],
             BASE_DN: process.env['LDAP_UNDI_BASE_DN'],
-            RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('LDAP_UNDI_RETRY_WRAPPER_DEFAULT_RETRIES'),
+            RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
+            RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
         },
         OX: {
             ENABLED: envToOptionalBoolean('OX_ENABLED'),

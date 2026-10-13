@@ -41,8 +41,6 @@ export type GroupDataUndi = {
 
 @Injectable()
 export class LdapUndiClientAdapter {
-    public static readonly FALLBACK_RETRIES: number = 3; // e.g. FALLBACK_RETRIES = 3 will produce retry sequence: 1sek, 8sek, 27sek (1000ms * retrycounter^3)
-
     public static readonly OEFFENTLICHE_SCHULEN_OU: string = 'oeffentlich';
 
     public static readonly ERSATZ_SCHULEN_OU: string = 'ersatz';
@@ -96,29 +94,26 @@ export class LdapUndiClientAdapter {
     //** BELOW ONLY PUBLIC FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
 
     public async upsertPerson(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.upsertPersonInternal(person, groups), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.upsertPersonInternal(person, groups));
     }
 
     public async deletePerson(personID: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deletePersonInternal(personID), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.deletePersonInternal(personID));
     }
 
     public async setPersonSuspendedById(personID: string, gesperrt: boolean): Promise<Result<void>> {
-        return this.executeWithRetry(
-            () => this.setPersonSuspendedByIdInternal(personID, gesperrt),
-            this.getNrOfRetries(),
-        );
+        return this.executeWithRetry(() => this.setPersonSuspendedByIdInternal(personID, gesperrt));
     }
 
     /**
      * Updates the group *IF* it exists
      */
     public async updateGroup(id: string, name: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.updateGroupInternal(id, name), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.updateGroupInternal(id, name));
     }
 
     public async deleteGroup(id: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deleteGroupInternal(id), this.getNrOfRetries());
+        return this.executeWithRetry(() => this.deleteGroupInternal(id));
     }
 
     public useLdap(): boolean {
@@ -131,10 +126,6 @@ export class LdapUndiClientAdapter {
             operation: 'replace',
             modification: new Attribute({ type, values }),
         });
-    }
-
-    private getNrOfRetries(): number {
-        return this.ldapInstanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES ?? LdapUndiClientAdapter.FALLBACK_RETRIES;
     }
 
     //** BELOW ONLY PRIVATE FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
@@ -623,11 +614,9 @@ export class LdapUndiClientAdapter {
         return this.getEntryAttributeAsStringArray(entry, attribute).includes(value);
     }
 
-    private async executeWithRetry<T>(
-        func: () => Promise<Result<T>>,
-        retries: number,
-        delay: number = 15000,
-    ): Promise<Result<T>> {
+    private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
+        const retries: number = this.ldapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES;
+        const delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_DELAY_IN_MS;
         let currentAttempt: number = 1;
         let result: Result<T, Error> = {
             ok: false,

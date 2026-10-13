@@ -61,7 +61,8 @@ describe('LDAP UNDI Client Adapter', () => {
         BASE_DN: 'dc=example,dc=com',
         OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
         ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
-        RETRY_WRAPPER_DEFAULT_RETRIES: 2,
+        RETRY_WRAPPER_NUMBER_OF_RETRIES: 2,
+        RETRY_WRAPPER_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',
@@ -115,6 +116,7 @@ describe('LDAP UNDI Client Adapter', () => {
         await DatabaseTestModule.clearDatabase(orm);
 
         mockLdapInstanceConfig.ENABLED = true;
+        mockLdapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 2;
 
         vi.spyOn(ldapClientAdapter as unknown as PublicExecuteWithRetry, 'executeWithRetry').mockImplementation(
             (...args: unknown[]) => {
@@ -136,7 +138,6 @@ describe('LDAP UNDI Client Adapter', () => {
         afterEach(() => {
             vi.restoreAllMocks();
             vi.useRealTimers();
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 2;
         });
 
         it('when operation succeeds should return value', async () => {
@@ -153,7 +154,7 @@ describe('LDAP UNDI Client Adapter', () => {
         });
 
         it('should handle a Result with ok=false and return its error after the final attempt', async () => {
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 1;
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 1;
             clientMock.bind.mockRejectedValue(new Error('LDAP bind failed'));
 
             const result: Result<void> = await ldapClientAdapter.deletePerson(faker.string.uuid());
@@ -164,36 +165,10 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.search).not.toHaveBeenCalled();
             expect(clientMock.del).not.toHaveBeenCalled();
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
-                'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 0',
+                'Attempt 1 failed. Retrying in 1ms... Remaining retries: 0',
                 result.error,
             );
             expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 1 attempts failed. Exiting with failure.');
-            expect(vi.getTimerCount()).toBe(0);
-        });
-
-        it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
-            clientMock.bind.mockRejectedValue(new Error('LDAP bind failed'));
-            const timeoutSpy: MockInstance<typeof setTimeout> = vi.spyOn(globalThis, 'setTimeout');
-
-            const resultPromise: Promise<Result<void>> = ldapClientAdapter.deletePerson(faker.string.uuid());
-            await vi.runAllTimersAsync();
-            const result: Result<void> = await resultPromise;
-
-            expectErrResult(result);
-            expect(result.error).toBeInstanceOf(LdapBindError);
-            expect(clientMock.bind).toHaveBeenCalledTimes(LdapUndiClientAdapter.FALLBACK_RETRIES);
-            expect(clientMock.search).not.toHaveBeenCalled();
-            expect(clientMock.del).not.toHaveBeenCalled();
-            for (let attempt: number = 1; attempt <= LdapUndiClientAdapter.FALLBACK_RETRIES; attempt++) {
-                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
-                    `Attempt ${attempt} failed. Retrying in 15000ms... Remaining retries: ${LdapUndiClientAdapter.FALLBACK_RETRIES - attempt}`,
-                    expect.any(LdapBindError),
-                );
-            }
-            expect(timeoutSpy).toHaveBeenCalledTimes(LdapUndiClientAdapter.FALLBACK_RETRIES - 1);
-            expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 15000);
-            expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 3 attempts failed. Exiting with failure.');
             expect(vi.getTimerCount()).toBe(0);
         });
 
@@ -211,14 +186,14 @@ describe('LDAP UNDI Client Adapter', () => {
             expect(clientMock.search).not.toHaveBeenCalled();
             expect(clientMock.del).not.toHaveBeenCalled();
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
-                'Attempt 1 failed. Retrying in 15000ms... Remaining retries: 1',
+                'Attempt 1 failed. Retrying in 1ms... Remaining retries: 1',
                 expect.any(LdapBindError),
             );
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
-                'Attempt 2 failed. Retrying in 15000ms... Remaining retries: 0',
+                'Attempt 2 failed. Retrying in 1ms... Remaining retries: 0',
                 expect.any(LdapBindError),
             );
-            expect(timeoutSpy).toHaveBeenCalledExactlyOnceWith(expect.any(Function), 15000);
+            expect(timeoutSpy).toHaveBeenCalledExactlyOnceWith(expect.any(Function), 1);
             expect(loggerMock.error).toHaveBeenCalledExactlyOnceWith('All 2 attempts failed. Exiting with failure.');
             expect(vi.getTimerCount()).toBe(0);
         });
