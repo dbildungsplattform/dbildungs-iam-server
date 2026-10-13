@@ -1,10 +1,10 @@
-import { LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
-import { OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
 import { DbConfig } from './db.config.js';
 import { EmailConfig } from './email.config.js';
 import { HeaderApiKeyConfig } from './headerapikey.config.js';
 import { HostConfig } from './host.config.js';
+import { LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
 import { LoggingConfig } from './logging.config.js';
+import { OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
 import { envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 
 export type EmailAppConfig = {
@@ -35,7 +35,8 @@ export function getEmailConfig(): EmailAppConfig {
             BIND_DN: process.env['LDAP_BIND_DN'],
             ADMIN_PASSWORD: process.env['LDAP_ADMIN_PASSWORD'],
             BASE_DN: process.env['LDAP_BASE_DN'],
-            RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('RETRY_WRAPPER_DEFAULT_RETRIES'),
+            RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
+            RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
         },
         OX: {
             ENABLED: envToOptionalBoolean('OX_ENABLED'),

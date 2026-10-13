@@ -1,25 +1,27 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: { { template "common.names.name" . } }
-  namespace: { { template "common.names.namespace" . } }
-  labels: { { - include "common.labels" . | nindent 4 } }
+  name: {{ template "common.names.name" . }}
+  namespace: {{ template "common.names.namespace" . }}
+  labels: 
+    {{- include "common.labels" . | nindent 4 }}
 data:
   config-json: |-
     {{ .Files.Get "config/config.json" | nindent 4 }}
-  NODE_ENV: 'prod'
-  DEPLOY_STAGE: { { .Values.environment | quote } }
-  DB_NAME: { { .Values.database.name | quote } }
-  KC_BASE_URL: 'http://{{ .Values.keycloakHostname }}'
+  NODE_ENV: "prod"
+  DEPLOY_STAGE: {{ .Values.environment | quote }}
+  DB_NAME: {{ .Values.database.name | quote }}
+  KC_BASE_URL: "http://{{ .Values.keycloakHostname }}"
   KC_EXTERNAL_BASE_URL: 'https://{{ .Values.keycloakExternalHostname | replace "spsh-xxx" .Release.Namespace }}'
-  FRONTEND_OIDC_CALLBACK_URL: 'https://{{ .Values.backendHostname }}/api/auth/login'
-  FRONTEND_DEFAULT_LOGIN_REDIRECT: 'https://{{ .Values.backendHostname }}/'
-  FRONTEND_LOGOUT_REDIRECT: 'https://{{ .Values.backendHostname }}/'
-  BACKEND_HOSTNAME: '{{ .Values.backendHostname }}'
-  ERROR_PAGE_REDIRECT: 'https://{{ .Values.backendHostname }}/login-error'
+  FRONTEND_OIDC_CALLBACK_URL: "https://{{ .Values.backendHostname }}/api/auth/login"
+  FRONTEND_DEFAULT_LOGIN_REDIRECT: "https://{{ .Values.backendHostname }}/"
+  FRONTEND_LOGOUT_REDIRECT: "https://{{ .Values.backendHostname }}/"
+  BACKEND_HOSTNAME: "{{ .Values.backendHostname }}"
+  ERROR_PAGE_REDIRECT: "https://{{ .Values.backendHostname }}/login-error"
   LDAP_URL: '{{ .Values.ldap.url | replace "spsh-xxx" .Release.Namespace }}'
   LDAP_BASE_DN: '{{ .Values.ldap.base_dn }}'
-  RETRY_WRAPPER_DEFAULT_RETRIES: '{{ .Values.ldap.retryWrapperDefaultRetries }}'
+  RETRY_WRAPPER_NUMBER_OF_RETRIES: '{{ .Values.ldap.retryWrapperNumberOfRetries }}'
+  RETRY_WRAPPER_DELAY_IN_MS: '{{ .Values.ldap.retryWrapperDelayInMs }}'
   STATUS_REDIRECT_URL: '{{ .Values.status.url }}'
   PI_BASE_URL: '{{ .Values.privacyidea.url }}'
   PI_RENAME_WAITING_TIME: '{{ .Values.privacyidea.renameWaitingTime }}'

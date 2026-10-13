@@ -90,7 +90,8 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
         personenkontextRepo = module.get(DBiamPersonenkontextRepoInternal);
         logger = module.get(ClassLogger);
         ldapConfig = module.get(LdapInstanceConfig);
-        ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 1;
+        ldapConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 1;
+        ldapConfig.RETRY_WRAPPER_DELAY_IN_MS = 10;
         await DatabaseTestModule.setupDatabase(orm);
         app = module.createNestApplication();
         await app.init();

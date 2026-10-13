@@ -61,7 +61,8 @@ export default (): Config => ({
         BIND_DN: process.env['LDAP_BIND_DN'],
         ADMIN_PASSWORD: process.env['LDAP_ADMIN_PASSWORD'],
         BASE_DN: process.env['LDAP_BASE_DN'],
-        RETRY_WRAPPER_DEFAULT_RETRIES: envToOptionalInteger('RETRY_WRAPPER_DEFAULT_RETRIES'),
+        RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
+        RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
     },
     FRONTEND: {
         SESSION_SECRET: process.env['FRONTEND_SESSION_SECRET'],

@@ -14,6 +14,8 @@ data:
   LDAP_ENABLED: "{{ .Values.eflkLdap.enabled }}"
   LDAP_URL: '{{ .Values.eflkLdap.url | replace "spsh-xxx" .Release.Namespace }}'
   LDAP_BASE_DN: "{{ .Values.eflkLdap.base_dn }}"
+  RETRY_WRAPPER_NUMBER_OF_RETRIES: "{{ .Values.eflkLdap.retryWrapperNumberOfRetries }}"
+  RETRY_WRAPPER_DELAY_IN_MS: "{{ .Values.eflkLdap.retryWrapperDelayInMs }}"
   OX_ENABLED: "{{ .Values.eflkOx.enabled }}"
   OX_USERNAME: "{{ .Values.eflkOx.username }}"
   OX_ENDPOINT: "{{ .Values.eflkOx.endpoint }}"

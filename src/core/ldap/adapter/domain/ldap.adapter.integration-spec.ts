@@ -59,7 +59,8 @@ describe('LDAP Adapter', () => {
     let person: Person<true>;
     const mockLdapInstanceConfig: LdapInstanceConfig = {
         BASE_DN: 'dc=example,dc=com',
-        RETRY_WRAPPER_DEFAULT_RETRIES: 2,
+        RETRY_WRAPPER_NUMBER_OF_RETRIES: 2,
+        RETRY_WRAPPER_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',
@@ -913,6 +914,11 @@ describe('LDAP Adapter', () => {
     describe('executeWithRetry', () => {
         beforeEach(() => {
             vi.restoreAllMocks(); //Needed To Reset the global executeWithRetry Mock
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 2;
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
         });
 
         it('when operation succeeds should return value', async () => {
@@ -932,18 +938,23 @@ describe('LDAP Adapter', () => {
             expect(loggerMock.logUnknownAsError).not.toHaveBeenCalledWith(expect.stringContaining('Attempt 1 failed'));
         });
 
-        it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
+        it('when operation fails it should use the configured retry count and log each error', async () => {
+            vi.useFakeTimers();
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 3;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isLehrerExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(
+                instanceConfig.RETRY_WRAPPER_DELAY_IN_MS * (instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES - 1),
+            );
+            const result: Result<boolean> = await resultPromise;
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(3);
@@ -959,20 +970,22 @@ describe('LDAP Adapter', () => {
                 expect.stringContaining('Attempt 3 failed'),
                 expect.objectContaining({ message: 'testerror' }),
             );
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 2;
         });
 
         it('when operation fails and throws Error it should automatically retry the operation with nr of retries set via env', async () => {
+            vi.useFakeTimers();
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error());
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isLehrerExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isLehrerExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(instanceConfig.RETRY_WRAPPER_DELAY_IN_MS);
+            const result: Result<boolean> = await resultPromise;
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);
@@ -987,16 +1000,19 @@ describe('LDAP Adapter', () => {
         });
 
         it('when operation fails and returns Error it should automatically retry the operation  with nr of retries set via env', async () => {
+            vi.useFakeTimers();
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockResolvedValue({ searchEntries: [], searchReferences: [] });
                 return clientMock;
             });
-            const result: Result<PersonID> = await ldapClientAdapter.changeEmailAddressByPersonId(
+            const resultPromise: Promise<Result<PersonID>> = ldapClientAdapter.changeEmailAddressByPersonId(
                 faker.string.uuid(),
                 faker.internet.username(),
                 faker.internet.email(),
             );
+            await vi.advanceTimersByTimeAsync(instanceConfig.RETRY_WRAPPER_DELAY_IN_MS);
+            const result: Result<PersonID> = await resultPromise;
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);

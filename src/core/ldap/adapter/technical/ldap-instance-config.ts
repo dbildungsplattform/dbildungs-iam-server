@@ -1,7 +1,7 @@
 import { Injectable, Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LdapServerConfig } from '../../../../shared/config/ldap-server.config.js';
 import { ServerConfig } from '../../../../shared/config/index.js';
+import { LdapServerConfig } from '../../../../shared/config/ldap-server.config.js';
 
 @Injectable()
 export class LdapInstanceConfig implements LdapServerConfig {
@@ -10,7 +10,8 @@ export class LdapInstanceConfig implements LdapServerConfig {
         public BIND_DN: string,
         public ADMIN_PASSWORD: string,
         public BASE_DN: string,
-        public RETRY_WRAPPER_DEFAULT_RETRIES?: number,
+        public RETRY_WRAPPER_NUMBER_OF_RETRIES: number,
+        public RETRY_WRAPPER_DELAY_IN_MS: number,
     ) {}
 
     public static fromConfigService(): Provider {
@@ -24,7 +25,8 @@ export class LdapInstanceConfig implements LdapServerConfig {
                     ldapConfig.BIND_DN,
                     ldapConfig.ADMIN_PASSWORD,
                     ldapConfig.BASE_DN,
-                    ldapConfig.RETRY_WRAPPER_DEFAULT_RETRIES,
+                    ldapConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES,
+                    ldapConfig.RETRY_WRAPPER_DELAY_IN_MS,
                 );
             },
             inject: [ConfigService],
