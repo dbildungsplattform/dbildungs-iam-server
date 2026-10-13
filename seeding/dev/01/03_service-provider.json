@@ -10,7 +10,7 @@
             "kategorie": "EMAIL",
             "logoMimeType": "image/svg+xml",
             "logoBase64": "PHN2ZyBpZD0nRWJlbmVfMScgZGF0YS1uYW1lPSdFYmVuZSAxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMDAuMyAyMjUuMic+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDMwNjQ7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5lbWFpbC1ibGF1PC90aXRsZT48ZyBpZD0nRWJlbmVfMicgZGF0YS1uYW1lPSdFYmVuZSAyJz48ZyBpZD0nXzE2MDdfSWNvbnMnIGRhdGEtbmFtZT0nIDE2MDcgSWNvbnMnPjxwYXRoIGNsYXNzPSdjbHMtMScgZD0nTTI4MS4zLDU2LjJoMFYyNDMuOEgxOC43VjU2LjJabTAtMTguOEgxOC43QTE4Ljc4LDE4Ljc4LDAsMCwwLS4xLDU2LjJWMjQzLjhhMTguNzgsMTguNzgsMCwwLDAsMTguOCwxOC44SDI4MS40YTE4Ljc4LDE4Ljc4LDAsMCwwLDE4LjgtMTguOFY1Ni4yQTE4LjkzLDE4LjkzLDAsMCwwLDI4MS4zLDM3LjRaJyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgwLjEgLTM3LjQpJy8+PHBhdGggY2xhc3M9J2Nscy0xJyBkPSdNMTA5LjMsMTgzLjIsNTMsMjI1LjFhMTEuMzIsMTEuMzIsMCwwLDEtNi4yLDEuOSwxMC43NSwxMC43NSwwLDAsMS05LjktMTEuNSwxMC40LDEwLjQsMCwwLDEsMy43LTcuM2w1Ni4zLTQwLjlhMTAuNzMsMTAuNzMsMCwwLDEsMTUuMS45Yy4yLjIuMy40LjUuNmExMC40MiwxMC40MiwwLDAsMS0yLjQsMTQuNlonIHRyYW5zZm9ybT0ndHJhbnNsYXRlKDAuMSAtMzcuNCknLz48cGF0aCBjbGFzcz0nY2xzLTEnIGQ9J00yNjIuNiwyMjEuOWExMC42MiwxMC42MiwwLDAsMS0xNC42LDIuNGwtNTYuMy00MS4xYTEwLjUyLDEwLjUyLDAsMCwxLDEyLjQtMTdsNTYuMyw0MC45YTEwLjY2LDEwLjY2LDAsMCwxLDIuNCwxNC44WicgdHJhbnNmb3JtPSd0cmFuc2xhdGUoMC4xIC0zNy40KScvPjxwYXRoIGNsYXNzPSdjbHMtMScgZD0nTTE1Ni4yLDE2OC44YTExLjE5LDExLjE5LDAsMCwxLTEyLjQsMEw0MC42LDkzLjdBMTEuMjYsMTEuMjYsMCwxLDEsNTMsNzQuOWgwbDk3LDcxLjMsOTctNzEuM2ExMC41OCwxMC41OCwwLDAsMSwxNC41LDQuMiwxMC43LDEwLjcsMCwwLDEtMi4yLDEzLjFaJyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgwLjEgLTM3LjQpJy8+PC9nPjwvZz48L3N2Zz4=",
-            "providedOnSchulstrukturknoten": 0,
+            "providedOnSchulstrukturknoten": 1,
             "keycloakGroup": "E-Mail-service",
             "keycloakRole": "E-Mail-user",
             "externalSystem": "EMAIL",
@@ -535,6 +535,22 @@
             "providedOnSchulstrukturknoten": 0,
             "requires2fa": false,
             "keycloakClientId": "vidis-test",
+            "merkmale": []
+        },
+        {
+            "id": 45,
+            "overrideId": "eafef654-499a-4ac9-a03f-25cbccb09ce4",
+            "name": "E-Mail",
+            "target": "URL",
+            "url": "https://de.wikipedia.org/wiki/E-Mail",
+            "kategorie": "EMAIL",
+            "logoMimeType": "image/svg+xml",
+            "logoBase64": "PHN2ZyBpZD0nRWJlbmVfMScgZGF0YS1uYW1lPSdFYmVuZSAxJyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMDAuMyAyMjUuMic+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMDMwNjQ7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5lbWFpbC1ibGF1PC90aXRsZT48ZyBpZD0nRWJlbmVfMicgZGF0YS1uYW1lPSdFYmVuZSAyJz48ZyBpZD0nXzE2MDdfSWNvbnMnIGRhdGEtbmFtZT0nIDE2MDcgSWNvbnMnPjxwYXRoIGNsYXNzPSdjbHMtMScgZD0nTTI4MS4zLDU2LjJoMFYyNDMuOEgxOC43VjU2LjJabTAtMTguOEgxOC43QTE4Ljc4LDE4Ljc4LDAsMCwwLS4xLDU2LjJWMjQzLjhhMTguNzgsMTguNzgsMCwwLDAsMTguOCwxOC44SDI4MS40YTE4Ljc4LDE4Ljc4LDAsMCwwLDE4LjgtMTguOFY1Ni4yQTE4LjkzLDE4LjkzLDAsMCwwLDI4MS4zLDM3LjRaJyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgwLjEgLTM3LjQpJy8+PHBhdGggY2xhc3M9J2Nscy0xJyBkPSdNMTA5LjMsMTgzLjIsNTMsMjI1LjFhMTEuMzIsMTEuMzIsMCwwLDEtNi4yLDEuOSwxMC43NSwxMC43NSwwLDAsMS05LjktMTEuNSwxMC40LDEwLjQsMCwwLDEsMy43LTcuM2w1Ni4zLTQwLjlhMTAuNzMsMTAuNzMsMCwwLDEsMTUuMS45Yy4yLjIuMy40LjUuNmExMC40MiwxMC40MiwwLDAsMS0yLjQsMTQuNlonIHRyYW5zZm9ybT0ndHJhbnNsYXRlKDAuMSAtMzcuNCknLz48cGF0aCBjbGFzcz0nY2xzLTEnIGQ9J00yNjIuNiwyMjEuOWExMC42MiwxMC42MiwwLDAsMS0xNC42LDIuNGwtNTYuMy00MS4xYTEwLjUyLDEwLjUyLDAsMCwxLDEyLjQtMTdsNTYuMyw0MC45YTEwLjY2LDEwLjY2LDAsMCwxLDIuNCwxNC44WicgdHJhbnNmb3JtPSd0cmFuc2xhdGUoMC4xIC0zNy40KScvPjxwYXRoIGNsYXNzPSdjbHMtMScgZD0nTTE1Ni4yLDE2OC44YTExLjE5LDExLjE5LDAsMCwxLTEyLjQsMEw0MC42LDkzLjdBMTEuMjYsMTEuMjYsMCwxLDEsNTMsNzQuOWgwbDk3LDcxLjMsOTctNzEuM2ExMC41OCwxMC41OCwwLDAsMSwxNC41LDQuMiwxMC43LDEwLjcsMCwwLDEtMi4yLDEzLjFaJyB0cmFuc2Zvcm09J3RyYW5zbGF0ZSgwLjEgLTM3LjQpJy8+PC9nPjwvZz48L3N2Zz4=",
+            "providedOnSchulstrukturknoten": 2,
+            "keycloakGroup": "E-Mail-service",
+            "keycloakRole": "E-Mail-user",
+            "externalSystem": "EMAIL",
+            "requires2fa": true,
             "merkmale": []
         }
     ]

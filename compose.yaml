@@ -276,6 +276,42 @@ services:
       - 9007:80
       - 4443:443
 
+  openldapundi:
+    image: osixia/openldap:1.5.0
+    container_name: openldapundi
+    profiles:
+      - third-party
+    command: --copy-service --loglevel debug
+    ports:
+      - 390:389
+      - 637:636
+    volumes:
+      - ./config/ldif-undi/01_schulportalsh.schema:/container/service/slapd/assets/config/bootstrap/schema/custom/01_schulportalsh.schema
+      - ./config/ldif-undi:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    environment:
+      - LDAP_ORGANISATION=schule-sh-de
+      - LDAP_DOMAIN=schule-sh.de
+      - LDAP_BASE_DN=dc=schule-sh,dc=de
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_CONFIG_PASSWORD=config
+      - LDAP_RFC2307BIS_SCHEMA=true
+      - LDAP_REMOVE_CONFIG_AFTER_SETUP=true
+      - LDAP_TLS_VERIFY_CLIENT=never
+
+  openldapundi-admin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: ldapundi-admin
+    profiles:
+      - third-party
+    restart: "no"
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldapundi
+      PHPLDAPADMIN_HTTPS: "false"
+    depends_on:
+      - openldapundi
+    ports:
+      - 9008:80
+
   privacy-idea:
     image: khalibre/privacyidea:latest
     container_name: privacy-idea
