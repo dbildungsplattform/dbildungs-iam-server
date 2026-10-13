@@ -1256,6 +1256,40 @@ describe('OrganisationService', () => {
     });
 
     describe('findOrganisationByIdAndMatchingPermissions', () => {
+        it('should include BEHOERDEN_VERWALTEN in the authorized lookup and return a permitted Behoerde', async () => {
+            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            organisationRepositoryMock.findAuthorized.mockResolvedValue([[organisation], 1, 1]);
+            permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
+                (organisationId: string, systemrecht: RollenSystemRecht): Promise<boolean> =>
+                    Promise.resolve(
+                        organisationId === organisation.id && systemrecht === RollenSystemRecht.BEHOERDEN_VERWALTEN,
+                    ),
+            );
+
+            const result: Result<
+                Organisation<true>,
+                DomainError
+            > = await organisationService.findOrganisationByIdAndAnyMatchingPermissions(
+                permissionsMock,
+                organisation.id,
+            );
+
+            expect(organisationRepositoryMock.findAuthorized).toHaveBeenCalledWith(
+                permissionsMock,
+                [
+                    RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
+                    RollenSystemRecht.SCHULEN_VERWALTEN,
+                    RollenSystemRecht.KLASSEN_VERWALTEN,
+                    RollenSystemRecht.BEHOERDEN_VERWALTEN,
+                ],
+                { organisationIds: [organisation.id], limit: 1, matchAllSystemrechte: false },
+            );
+            expect(result).toEqual({ ok: true, value: organisation });
+        });
+
         it('should return an error, if orga can not be found', async () => {
             const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             organisationRepositoryMock.findAuthorized.mockResolvedValue([[], 0, 0]);
@@ -1329,6 +1363,10 @@ describe('OrganisationService', () => {
             {
                 organisation: DoFactory.createOrganisation(true, { typ: OrganisationsTyp.KLASSE }),
                 expectedSystemrecht: RollenSystemRecht.KLASSEN_VERWALTEN,
+            },
+            {
+                organisation: DoFactory.createOrganisation(true, { typ: OrganisationsTyp.BEHOERDE }),
+                expectedSystemrecht: RollenSystemRecht.BEHOERDEN_VERWALTEN,
             },
         ])(
             'with organisation of type $organisation.typ',

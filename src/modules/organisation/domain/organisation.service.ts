@@ -580,6 +580,7 @@ export class OrganisationService {
                     RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
                     RollenSystemRecht.SCHULEN_VERWALTEN,
                     RollenSystemRecht.KLASSEN_VERWALTEN,
+                    RollenSystemRecht.BEHOERDEN_VERWALTEN,
                 ],
                 { organisationIds: [organisationId], limit: 1, matchAllSystemrechte: false },
             );
