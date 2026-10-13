@@ -14,6 +14,7 @@ import {
     expectErrResult,
     expectOkResult,
 } from '../../../../../../test/utils/index.js';
+import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { GlobalValidationPipe } from '../../../../../shared/validation/index.js';
 import { EmailLdapModule } from '../../email-ldap.module.js';
@@ -23,7 +24,6 @@ import { LdapCreatePersonError } from './error/ldap-create-person.error.js';
 import { LdapEmailDomainError } from './error/ldap-email-domain.error.js';
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapClientAdapter, PersonData } from './ldap-client.adapter.js';
-import { LdapBindError } from '../../../../../core/ldap/adapter/domain/error/ldap-bind.error.js';
 
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(
@@ -51,7 +51,8 @@ describe('LDAP Client Adapter', () => {
         BASE_DN: 'dc=example,dc=com',
         OEFFENTLICHE_SCHULEN_DOMAIN: 'schule-sh.de',
         ERSATZSCHULEN_DOMAIN: 'ersatzschule-sh.de',
-        RETRY_WRAPPER_DEFAULT_RETRIES: 2,
+        RETRY_WRAPPER_NUMBER_OF_RETRIES: 2,
+        RETRY_WRAPPER_DELAY_IN_MS: 1,
         URL: '',
         BIND_DN: '',
         ADMIN_PASSWORD: '',
@@ -257,6 +258,10 @@ describe('LDAP Client Adapter', () => {
             vi.restoreAllMocks(); //Needed To Reset the global executeWithRetry Mock
         });
 
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
         it('when operation succeeds should return value', async () => {
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
@@ -291,17 +296,21 @@ describe('LDAP Client Adapter', () => {
         });
 
         it('when operation fails it should automatically retry the operation with nr of fallback retries and log error', async () => {
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = undefined;
+            vi.useFakeTimers();
+            // Retries fall back to the LdapRetryConfig default; only the delay is overridden for speed.
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 3;
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error('testerror'));
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(30000);
+            const result: Result<boolean> = await resultPromise;
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(3);
@@ -317,20 +326,23 @@ describe('LDAP Client Adapter', () => {
                 expect.stringContaining('Attempt 3 failed'),
                 expect.objectContaining({ message: 'testerror' }),
             );
-            instanceConfig.RETRY_WRAPPER_DEFAULT_RETRIES = 2;
+            instanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES = 2;
         });
 
         it('when operation fails and throws Error it should automatically retry the operation with nr of retries set via env', async () => {
+            vi.useFakeTimers();
             ldapClientMock.getClient.mockImplementation(() => {
                 clientMock.bind.mockResolvedValue();
                 clientMock.search.mockRejectedValue(new Error());
 
                 return clientMock;
             });
-            const result: Result<boolean> = await ldapClientAdapter.isPersonExisting(
+            const resultPromise: Promise<Result<boolean>> = ldapClientAdapter.isPersonExisting(
                 faker.lorem.word(),
                 'schule-sh.de',
             );
+            await vi.advanceTimersByTimeAsync(15000);
+            const result: Result<boolean> = await resultPromise;
 
             expect(result.ok).toBeFalsy();
             expect(clientMock.bind).toHaveBeenCalledTimes(2);
