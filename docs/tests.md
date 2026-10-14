@@ -193,7 +193,7 @@ The basic structure of the repo integration test:
 ```TypeScript
  import { EntityManager, MikroORM } from '@mikro-orm/core';
  import { Test, TestingModule } from '@nestjs/testing';
- import { ConfigTestModule, DatabaseTestModule } from '../../../shared/testing/index.js';
+ import { ConfigTestModule, DatabaseTestModule } from '../../../../test/utils/index.js';
  import { PersonRepo } from './person.repo.js';
 
  let sut: PersonRepo;
@@ -203,7 +203,7 @@ The basic structure of the repo integration test:
 
     beforeAll(async () => {
      module = await Test.createTestingModule({                                                            (1)
-             imports: [ConfigTestModule, DatabaseTestModule.register({ isDatabaseRequired: true })],      (1.1)
+             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true })],       (1.1)
              providers: [PersonRepo],                                                                     (1.2)
       }).compile();
       sut = module.get(PersonRepo);                                                                       (2)
@@ -225,13 +225,31 @@ After all tests are executed close the app and orm to release the resources by c
 
 > When Jest reports open handles that not have been closed, ensure all Promises are awaited and all application parts started are correctly closed.
 
+#### Shared Testcontainers (Reuse)
+
+To keep the integration suite fast, the whole run shares **one** PostgreSQL and **one** Keycloak container instead of starting a fresh container per test file. Sharing is implemented with Testcontainers' [reuse](https://node.testcontainers.org/features/containers/#reusing-a-container) feature (`.withReuse()`) and a fixed container name (`testcontainer-db`, `testcontainer-kc`) in `test/utils/database-test.module.ts` and `test/utils/keycloak-config-test.module.ts`.
+
+Key points:
+
+- **One container, many workers.** The Vitest `integration` project runs parallel workers (separate processes). Because the container definition is kept constant across workers, they all compute the same reuse hash and therefore share a single Docker container instead of colliding on the fixed name.
+- **Per-test isolation is preserved.** Each test still gets its own PostgreSQL database, created inside the shared container. MikroORM's `dbName` overrides the database in the connection URL, so parallel test files never see each other's data.
+- **Startup races are handled.** When several workers come up at once, one wins the Docker `create`/`start` and the others get a transient `HTTP 409` (name already in use) or `HTTP 304` (already started). The helper `startReusableContainer` (`test/utils/testcontainer-reuse.ts`) retries these until reuse returns the shared container.
+- **Containers are kept warm.** `onModuleDestroy` deliberately does **not** stop the shared container, and reuse containers are not reaped by Testcontainers' Ryuk reaper. After a run, `testcontainer-db` and `testcontainer-kc` (and the Postgres data volume) stay running, so the next `npm run test:integration` skips container startup entirely for an even faster repeated execution.
+
+Because the containers and their volumes are intentionally kept warm, they are not cleaned up automatically. To force a clean slate (e.g. to reset all test databases or reclaim disk space), remove them manually:
+
+```bash
+docker rm -fv testcontainer-db testcontainer-kc
+docker volume prune -f
+```
+
 #### Entity Factories
 
-To fill the database we use factories. They are located in `\src\shared\testing`. If you create a new one, please add it to the index.ts in that folder.
+To fill the database we use factories. They are located in `test/utils`. If you create a new one, please add it to the index.ts in that folder.
 
 #### Test Modules
 
-Test modules are located in `\src\shared\testing`. If you create a new one, please add it to the index.ts in that folder and refer to `database-test.module.ts`.
+Test modules are located in `test/utils`. If you create a new one, please add it to the index.ts in that folder and refer to `database-test.module.ts`.
 
 #### Identity Map (`em.clear()`)
 
