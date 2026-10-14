@@ -104,11 +104,7 @@ describe('EmailFactory', () => {
                     },
                 );
 
-                organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, {
-                        emailDomain: undefined,
-                    }),
-                );
+                organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation<true>(true, {}));
 
                 organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('@schule-sh.de');
 

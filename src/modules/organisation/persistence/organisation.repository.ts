@@ -223,15 +223,15 @@ export class OrganisationRepository {
     }
 
     /**
-     * Uses findParentOrgasForIdSortedByDepthAsc method to search for the first occurrence of an email-domain in the tree of organisations starting from passed organisationId.
+     * Uses findParentOrgasForIdSortedByDepthAsc method to search for the first occurrence of an OU for UEM's LDAP in the tree of organisations starting from passed organisationId.
      * @param id start of search (leaf)
-     * @return first found email-domain or undefined if no email-domain could be found while walking the tree upwards
+     * @return first found OU for UEM's LDAP or undefined if no OU could be found while walking the tree upwards
      */
     public async findUemLdapOuForOrganisation(id: OrganisationID): Promise<string | undefined> {
         const organisations: Organisation<true>[] = await this.findParentOrgasForIdSortedByDepthAsc(id);
-        const emailDomain: Option<string> = this.getUemLdapOuRecursive(organisations);
+        const uemLdapOu: Option<string> = this.getUemLdapOuRecursive(organisations);
 
-        return emailDomain ?? undefined;
+        return uemLdapOu ?? undefined;
     }
 
     private getUemLdapOuRecursive(organisationsSortedByDepthAsc: Organisation<true>[]): Option<string> {
