@@ -198,6 +198,18 @@ export class OrganisationService {
             return { ok: false, error: error };
         }
 
+        const cycleError: DomainError | undefined = await this.validateOrganisationCycles(organisationDo);
+        if (cycleError) {
+            await this.logUpdate(permissions, organisationDo, cycleError);
+            return { ok: false, error: cycleError };
+        }
+
+        const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
+        if (referenceError) {
+            await this.logUpdate(permissions, organisationDo, referenceError);
+            return { ok: false, error: referenceError };
+        }
+
         const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
         if (validationError) {
             await this.logUpdate(permissions, organisationDo, validationError);
@@ -232,9 +244,20 @@ export class OrganisationService {
         };
     }
 
-    // Checks referenced parent organisations exist (create-only, since update reuses the stored parent references).
+    private async validateOrganisationCycles(organisationDo: Organisation<true>): Promise<DomainError | undefined> {
+        if (
+            organisationDo.administriertVon === organisationDo.id ||
+            organisationDo.zugehoerigZu === organisationDo.id ||
+            (await new ZyklusInOrganisationen(this.organisationRepo).isSatisfiedBy(organisationDo))
+        ) {
+            return new ZyklusInOrganisationenError(organisationDo.id);
+        }
+
+        return undefined;
+    }
+
     private async validateOrganisationReferences(
-        organisationDo: Organisation<false>,
+        organisationDo: Organisation<boolean>,
     ): Promise<DomainError | undefined> {
         if (organisationDo.administriertVon && !(await this.organisationRepo.exists(organisationDo.administriertVon))) {
             return new EntityNotFoundError('Organisation', organisationDo.administriertVon);
