@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required:
+    - id
+    - kennung
+    - name
+properties:
+    id:
+        type: string
+    kennung:
+        type: string
+    name:
+        type: string

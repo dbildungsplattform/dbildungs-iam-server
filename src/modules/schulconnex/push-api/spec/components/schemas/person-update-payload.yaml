@@ -1,0 +1,15 @@
+type: object
+additionalProperties: false
+required:
+    - revision
+    - referrer
+    - name
+properties:
+    revision:
+        type: integer
+        minimum: 0
+    referrer:
+        type: string
+        description: Benutzername, der das Push-Ereignis ausgelöst hat.
+    name:
+        $ref: ./person-name.yaml

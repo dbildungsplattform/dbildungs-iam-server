@@ -1,0 +1,19 @@
+type: object
+additionalProperties: false
+required:
+    - id
+    - revision
+    - referrer
+    - name
+properties:
+    id:
+        type: string
+        description: Kennung der Person in dBildungs IAM.
+    revision:
+        type: integer
+        minimum: 0
+    referrer:
+        type: string
+        description: Benutzername, der das Push-Ereignis ausgelöst hat.
+    name:
+        $ref: ./person-name.yaml

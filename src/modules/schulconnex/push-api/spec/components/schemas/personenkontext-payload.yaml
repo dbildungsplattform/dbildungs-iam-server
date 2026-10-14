@@ -1,0 +1,35 @@
+type: object
+additionalProperties: false
+required:
+    - revision
+    - referrer
+    - rolle
+    - spshRolleId
+    - erreichbarkeiten
+    - organisation
+properties:
+    revision:
+        type: integer
+        minimum: 0
+    referrer:
+        type: string
+        description: Kennung des Personenkontexts, der das Push-Ereignis ausgelöst hat.
+    rolle:
+        type: string
+        description: Technische Rollenart, die im Zielsystem zugeordnet wird.
+    spshRolleId:
+        type: string
+        description: Kennung der Rolle in dBildungs IAM.
+    erreichbarkeiten:
+        type: array
+        items:
+            $ref: ./erreichbarkeit.yaml
+    personenstatus:
+        type:
+            - string
+            - 'null'
+        enum:
+            - Aktiv
+            - null
+    organisation:
+        $ref: ./organisation.yaml
