@@ -49,6 +49,19 @@ import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-
 import { OrganisationsTyp } from './organisation.enums.js';
 import { Organisation } from './organisation.js';
 
+export type UpdateOrganisationData = Pick<
+    Organisation<true>,
+    | 'id'
+    | 'administriertVon'
+    | 'zugehoerigZu'
+    | 'name'
+    | 'namensergaenzung'
+    | 'kuerzel'
+    | 'typ'
+    | 'traegerschaft'
+    | 'emailAdress'
+>;
+
 @Injectable()
 export class OrganisationService {
     public constructor(
@@ -188,15 +201,35 @@ export class OrganisationService {
     }
 
     public async updateOrganisation(
-        organisationDo: Organisation<true>,
+        updateData: UpdateOrganisationData,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
-        const storedOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(organisationDo.id);
-        if (!storedOrganisation) {
-            const error: DomainError = new EntityNotFoundError('Organisation', organisationDo.id);
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
+        const organisationDo: Option<Organisation<true>> = await this.organisationRepo.findById(updateData.id);
+        if (!organisationDo) {
+            return { ok: false, error: new EntityNotFoundError('Organisation', updateData.id) };
         }
+
+        const hasOrgVerwaltenRechtAtOrg: boolean = await permissions.hasOrgVerwaltenRechtAtOrga(
+            organisationDo.typ,
+            organisationDo.administriertVon,
+        );
+        if (!hasOrgVerwaltenRechtAtOrg) {
+            return { ok: false, error: new MissingPermissionsError('Not authorized to manage this organisation') };
+        }
+
+        const canUpdateParentReferences: boolean =
+            organisationDo.typ !== OrganisationsTyp.SCHULE || updateData.typ !== OrganisationsTyp.SCHULE;
+        if (canUpdateParentReferences) {
+            organisationDo.administriertVon = updateData.administriertVon;
+            organisationDo.zugehoerigZu = updateData.zugehoerigZu;
+        }
+        organisationDo.name = updateData.name;
+        organisationDo.namensergaenzung = updateData.namensergaenzung;
+        organisationDo.kuerzel = updateData.kuerzel;
+        organisationDo.typ = updateData.typ;
+        organisationDo.traegerschaft = updateData.traegerschaft;
+        organisationDo.emailAdress = updateData.emailAdress;
+        organisationDo.updatedAt = new Date();
 
         const cycleError: DomainError | undefined = await this.validateOrganisationCycles(organisationDo);
         if (cycleError) {
