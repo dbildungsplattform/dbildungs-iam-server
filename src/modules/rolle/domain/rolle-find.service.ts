@@ -106,12 +106,8 @@ export class RolleFindService {
     public async findRollenAvailableForErweiterung(
         params: FindRollenAvailableForErweiterungParams,
     ): Promise<Counted<Rolle<true>>> {
-        const systemrechte: RollenSystemRecht[] = this.resolveSystemrechte(
-            [RollenSystemRecht.ROLLEN_ERWEITERN],
-            params.requestedSystemrechte,
-        );
         const permittedOrgas: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
-            systemrechte,
+            [RollenSystemRecht.ROLLEN_ERWEITERN],
             true,
             true,
         );
@@ -261,12 +257,8 @@ export class RolleFindService {
     public async findRollenAvailableForPersonAdministration(
         params: FindRollenAvailableForPersonAdministrationParams,
     ): Promise<Counted<Rolle<true>>> {
-        const systemrechte: RollenSystemRecht[] = this.resolveSystemrechte(
-            [RollenSystemRecht.PERSONEN_VERWALTEN],
-            params.requestedSystemrechte,
-        );
         const permittedOrgas: PermittedOrgas = await params.permissions.getOrgIdsWithSystemrecht(
-            systemrechte,
+            [RollenSystemRecht.PERSONEN_VERWALTEN],
             true,
             true,
         );
@@ -370,17 +362,6 @@ export class RolleFindService {
         }
 
         return this.rolleRepo.findBy(rolleFindByParams);
-    }
-
-    private resolveSystemrechte(
-        requiredSystemrechte: Iterable<RollenSystemRecht>,
-        requestedSystemrechte: Iterable<RollenSystemRecht> = [],
-    ): RollenSystemRecht[] {
-        const systemrechte: Set<RollenSystemRecht> = new Set(requiredSystemrechte);
-        for (const systemrecht of requestedSystemrechte) {
-            systemrechte.add(systemrecht);
-        }
-        return Array.from(systemrechte);
     }
 
     private createRolleFindByParams(

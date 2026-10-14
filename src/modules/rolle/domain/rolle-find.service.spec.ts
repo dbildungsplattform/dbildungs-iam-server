@@ -373,13 +373,8 @@ describe('RolleFindService', () => {
             );
         });
 
-        it('should not return rollen when caller does not actually hold requested systemrecht', async () => {
-            permissionsMock.getOrgIdsWithSystemrecht.mockImplementation((systemrechte: RollenSystemRecht[]) => {
-                if (systemrechte.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN)) {
-                    return Promise.resolve({ all: false, orgaIds: [] });
-                }
-                return Promise.resolve({ all: true });
-            });
+        it('should not return rollen without extension permission even when gated rights are granted', async () => {
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
             const params: FindRollenAvailableForErweiterungParams = {
                 permissions: permissionsMock,
                 requestedSystemrechte: [RollenSystemRecht.ROLLEN_ERWEITERN, RollenSystemRecht.MPT_ROLLEN_ZUORDNEN],
@@ -1226,6 +1221,92 @@ describe('RolleFindService', () => {
             });
         });
     });
+
+    describe.each([
+        {
+            method: 'findRollenAvailableForPersonAdministration' as const,
+            requiredSystemrecht: RollenSystemRecht.PERSONEN_VERWALTEN,
+        },
+        {
+            method: 'findRollenAvailableForErweiterung' as const,
+            requiredSystemrecht: RollenSystemRecht.ROLLEN_ERWEITERN,
+        },
+    ])(
+        '$method organisation scope',
+        ({
+            method,
+            requiredSystemrecht,
+        }: {
+            method: 'findRollenAvailableForPersonAdministration' | 'findRollenAvailableForErweiterung';
+            requiredSystemrecht: RollenSystemRecht;
+        }) => {
+            it.each([
+                { hasPilotPermission: true, selected: true },
+                { hasPilotPermission: true, selected: false },
+                { hasPilotPermission: false, selected: true },
+                { hasPilotPermission: false, selected: false },
+            ])(
+                'should preserve normal roles with separately evaluated Pilot rights (granted=$hasPilotPermission, selected=$selected)',
+                async ({ hasPilotPermission, selected }: { hasPilotPermission: boolean; selected: boolean }) => {
+                    const permissions: DeepMocked<PersonPermissions> = createMock(PersonPermissions);
+                    const schule: Organisation<true> = DoFactory.createOrganisation(true, {
+                        typ: OrganisationsTyp.SCHULE,
+                    });
+                    const rolle: Rolle<true> = DoFactory.createRolle(true, { merkmale: [] });
+                    permissions.getOrgIdsWithSystemrecht.mockImplementation((systemrechte: RollenSystemRecht[]) =>
+                        Promise.resolve({
+                            all: false,
+                            orgaIds:
+                                systemrechte.length === 1 && systemrechte[0] === requiredSystemrecht ? [schule.id] : [],
+                        }),
+                    );
+                    permissions.getPermittedMerkmaleForOrga.mockResolvedValue(
+                        hasPilotPermission ? [RollenMerkmal.PILOT_1_ROLLE] : [],
+                    );
+                    organisationRepoMock.findParentOrgasForIds.mockResolvedValue([]);
+                    organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
+                    rolleRepoMock.findBy.mockResolvedValue([[rolle], 1]);
+
+                    const result: Counted<Rolle<true>> = await rolleFindService[method]({
+                        permissions,
+                        organisationIds: selected ? [schule.id] : undefined,
+                        requestedSystemrechte: [requiredSystemrecht, RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                    });
+
+                    expect(result).toEqual([[rolle], 1]);
+                    expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                        [requiredSystemrecht],
+                        true,
+                        true,
+                    );
+                    expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith(schule.id);
+                    expect(rolleRepoMock.findBy).toHaveBeenCalledWith(
+                        expect.objectContaining({
+                            allowedOrganisationIds: [schule.id],
+                            excludeMerkmale: RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
+                                (merkmal: RollenMerkmal) =>
+                                    !hasPilotPermission || merkmal !== RollenMerkmal.PILOT_1_ROLLE,
+                            ),
+                        }),
+                    );
+                },
+            );
+
+            it('should return no roles without the workflow right even when Pilot rights are granted', async () => {
+                const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMockWithAllGatedMerkmale();
+                permissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+
+                const result: Counted<Rolle<true>> = await rolleFindService[method]({
+                    permissions,
+                    requestedSystemrechte: [requiredSystemrecht, RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                });
+
+                expect(result).toEqual([[], 0]);
+                expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith([requiredSystemrecht], true, true);
+                expect(rolleRepoMock.findBy).not.toHaveBeenCalled();
+            });
+        },
+    );
 
     describe('getOrganisationIdsWithParents', () => {
         it('should return organisationIds with parents', async () => {
