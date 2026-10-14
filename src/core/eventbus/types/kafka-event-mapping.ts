@@ -7,6 +7,7 @@ import { KafkaImportExecutedEvent } from '../../../shared/events/kafka-import-ex
 import { KafkaGroupAndRoleCreatedEvent } from '../../../shared/events/kafka-kc-group-and-role-event.js';
 import { KafkaKlasseCreatedEvent } from '../../../shared/events/kafka-klasse-created.event.js';
 import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-updated.event.js';
+import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
@@ -46,6 +47,7 @@ export type KafkaEventKey =
     | 'user.deleted_deadline'
     | 'user.modified.name'
     | 'user.modified.email'
+    | 'user.modified.locks'
     | 'user.modified.personenkontexte'
     | 'user.synced'
     | 'user.email.disabled_generated'
@@ -116,6 +118,11 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
     },
     'user.modified.email': {
         eventClass: KafkaEmailAddressChangedEvent,
+        topic: 'user-topic',
+        topicDlq: 'user-dlq-topic',
+    },
+    'user.modified.locks': {
+        eventClass: KafkaLocksForPersonChangedEvent,
         topic: 'user-topic',
         topicDlq: 'user-dlq-topic',
     },

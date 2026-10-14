@@ -40,6 +40,7 @@ import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
@@ -157,6 +158,12 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     });
 
     describe('processStep', () => {
+        beforeEach(() => {
+            personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+            );
+        });
+
         describe(`when context is ${OperationContext.PERSON_ANLEGEN}`, () => {
             it('should return organisations', async () => {
                 const traeger: Organisation<true> = await organisationRepo.save(
@@ -325,6 +332,10 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             describe(`when user does NOT have ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
+                beforeEach(() => {
+                    personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
+                });
+
                 it('should return organisation and rollen matching the selected organisation', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
@@ -861,6 +872,9 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         describe('MPT permissions', () => {
             afterEach(() => {
                 personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+                personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                    Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                );
             });
 
             it.each([
@@ -920,6 +934,12 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         })),
                     };
                     personPermissionsMock.canModifyPerson.mockResolvedValue(true);
+                    personPermissionsMock.getPermittedMerkmaleForOrga.mockImplementation(
+                        (organisationId: OrganisationID) =>
+                            Promise.resolve(
+                                allowed && organisationId === organisation.id ? [RollenMerkmal.MPT_ROLLE] : [],
+                            ),
+                    );
                     personPermissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
                         (organisationId: string, systemrecht: RollenSystemRecht): Promise<boolean> =>
                             Promise.resolve(
@@ -1120,7 +1140,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
 
                 const mockWorkflow: DeepMocked<PersonenkontextWorkflowAggregate> = vi.mockObject(
                     PersonenkontextWorkflowAggregate.createNew(
-                        null as unknown as RolleRepo,
+                        null,
                         null as unknown as OrganisationRepository,
                         null as unknown as DbiamPersonenkontextFactory,
                         null as unknown as ConfigService,

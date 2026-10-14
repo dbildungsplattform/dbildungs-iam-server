@@ -114,10 +114,16 @@ describe('ApplyRollenerweiterungForRolleService', () => {
                     [serviceProviderIdRemove, serviceProviderRemove],
                 ]),
             );
-
             rollenerweiterungRepo.createAuthorized.mockResolvedValue(
-                Ok(createMock<Rollenerweiterung<true>>(Rollenerweiterung)),
+                Ok(
+                    DoFactory.createRollenerweiterung(true, {
+                        organisationId: orgaId,
+                        rolleId,
+                        serviceProviderId: serviceProviderIdAdd,
+                    }),
+                ),
             );
+
             rollenerweiterungRepo.deleteByComposedId.mockResolvedValue(Ok(null));
 
             const body: ApplyRollenerweiterungChangesBodyParams = {
@@ -399,7 +405,7 @@ describe('ApplyRollenerweiterungForRolleService', () => {
             };
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
+            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([]);
 
             const result: TresultType = await service.applyRollenerweiterungChangesForRolle(
                 orgaId,
