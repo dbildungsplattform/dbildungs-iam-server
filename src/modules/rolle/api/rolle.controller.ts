@@ -65,6 +65,7 @@ import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js'
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
+import { FindAvailableRollenForPKCreationQueryParams } from './find-available-rollen-for-pk-creation.query.params.js';
 import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
 import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
@@ -115,7 +116,6 @@ export class RolleController {
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
         const [rollen, total]: [Rolle<true>[], number] = await this.rolleRepo.findRollenAuthorized(
             permissions,
-            queryParams.systemrechte?.map((value: RollenSystemRechtEnum) => RollenSystemRecht.getByName(value)),
             false,
             queryParams.searchStr,
             queryParams.limit,
@@ -200,14 +200,16 @@ export class RolleController {
         @Query() queryParams: FindRollenForMptZuordnungQueryParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PagedResponse<RolleWithServiceProvidersResponse>> {
-        const [rollen, total]: [Rolle<true>[], number] = await this.rolleFindService.findMptRollenAuthorized({
-            permissions,
-            searchStr: queryParams.searchStr,
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-            organisationIds: queryParams.organisationIds,
-            rolleIds: queryParams.rolleIds,
-        });
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+                permissions,
+                systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+                searchStr: queryParams.searchStr,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+                organisationIds: queryParams.organisationIds,
+                rolleIds: queryParams.rolleIds,
+            });
 
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
     }
@@ -256,13 +258,12 @@ export class RolleController {
         });
 
         return new PagedResponse<RolleWithServiceProvidersResponse>({
-            total: total,
+            total,
             offset: offset ?? 0,
             limit: limit ?? items.length,
-            items: items,
+            items,
         });
     }
-
     @Get('available-for-person-administration')
     @ApiOperation({ description: 'List rollen available for person administration.' })
     @ApiOkResponsePaginated(RolleResponse, {
@@ -314,6 +315,45 @@ export class RolleController {
     })
     public getAllSystemrechte(): SystemRechtResponse[] {
         return RollenSystemRecht.ALL.map((systemRecht: RollenSystemRecht) => new SystemRechtResponse(systemRecht));
+    }
+
+    @Get('for-personenkontext-creation')
+    @UseGuards(StepUpGuard)
+    @ApiOperation({ description: 'Find available rollen for personenkontext creation.' })
+    @ApiOkResponsePaginated(RolleResponse, {
+        description: 'The rollen were successfully returned',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get available rollen for personenkontext creation.' })
+    @ApiForbiddenResponse({
+        description: 'Insufficient permissions to get available rollen for personenkontext creation.',
+    })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting available rollen for personenkontext creation.',
+    })
+    public async findAvailableRollenForPersonenkontextCreation(
+        @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<RawPagedResponse<RolleResponse>> {
+        const [rollen, total]: [Rolle<true>[], number] =
+            await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
+                permissions,
+                systemrecht: queryParams.systemrecht
+                    ? RollenSystemRecht.getByName(queryParams.systemrecht)
+                    : RollenSystemRecht.getByName(RollenSystemRechtEnum.PERSONEN_VERWALTEN),
+                organisationId: queryParams.organisationId,
+                rollenartForPerson: queryParams.rollenartForPerson,
+                rolleName: queryParams.rolleName,
+                rollenIds: queryParams.rollenIds,
+                limit: queryParams.limit,
+                offset: queryParams.offset,
+            });
+        return RawPagedResponse.fromItemsAndQuery(
+            {
+                items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
+                total,
+            },
+            queryParams,
+        );
     }
 
     @Get(':rolleId')

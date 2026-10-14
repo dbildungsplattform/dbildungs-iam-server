@@ -1,5 +1,6 @@
 import { IsIn, ValidationOptions } from 'class-validator';
-import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 
 export function IsSystemrechtForRollenAdministration(validationOptions?: ValidationOptions): PropertyDecorator {
     return IsIn(
@@ -7,7 +8,9 @@ export function IsSystemrechtForRollenAdministration(validationOptions?: Validat
             RollenSystemRechtEnum.ROLLEN_VERWALTEN,
             RollenSystemRechtEnum.ROLLEN_ERWEITERN,
             RollenSystemRechtEnum.IMPORT_DURCHFUEHREN,
-            RollenSystemRechtEnum.MPT_ROLLEN_ZUORDNEN,
+            ...RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE.map(
+                (systemrecht: RollenSystemRecht) => systemrecht.name,
+            ),
         ],
         {
             each: true,

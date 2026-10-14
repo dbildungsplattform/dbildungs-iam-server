@@ -9,6 +9,7 @@ import { EmailAddressGenerator } from './domain/email-address-generator.js';
 import { EmailOxModule } from '../ox/email-ox.module.js';
 import { EmailLdapModule } from '../ldap/email-ldap.module.js';
 import { DeleteEmailsAddressesForSpshPersonService } from './domain/delete-email-adresses-for-spsh-person.service.js';
+import { ModifyOrganisationInLdapService } from './domain/modify-organisation-in-ldap.service.js';
 import { SetEmailSuspendedService } from './domain/set-email-suspended.service.js';
 import { EmailCronController } from './api/controller/email-cron.controller.js';
 import { CronDeleteEmailsAddressesService } from './domain/cron-delete-email-addresses.service.js';
@@ -19,6 +20,7 @@ import { EmailWebhookModule } from '../webhook/webhook.module.js';
     providers: [
         SetEmailAddressForSpshPersonService,
         DeleteEmailsAddressesForSpshPersonService,
+        ModifyOrganisationInLdapService,
         SetEmailSuspendedService,
         EmailAddressRepo,
         EmailDomainRepo,

@@ -6,19 +6,32 @@ import { SetEmailAddressForSpshPersonBodyParams } from './set-email-address-for-
 describe('SetEmailAddressForSpshPersonBodyParams', () => {
     const referenceParams: SetEmailAddressForSpshPersonBodyParams = {
         spshUsername: faker.internet.username(),
-        kennungen: [faker.string.alphanumeric(5), faker.string.alphanumeric(7)],
+        organisationen: [
+            {
+                id: faker.string.uuid(),
+                name: faker.string.alphanumeric(10),
+                kennung: faker.string.alphanumeric(5),
+            },
+            {
+                id: faker.string.uuid(),
+                name: faker.string.alphanumeric(10),
+                kennung: faker.string.alphanumeric(7),
+            },
+        ],
         firstName: faker.string.uuid(),
         lastName: faker.string.uuid(),
         spshServiceProviderId: faker.string.uuid(),
+        gesperrt: true,
     };
 
     it('should convert a plain object to a class of SetEmailAddressForSpshPersonBodyParams', () => {
         const incomingParams: object = {
             spshUsername: referenceParams.spshUsername,
-            kennungen: referenceParams.kennungen,
+            organisationen: referenceParams.organisationen,
             firstName: referenceParams.firstName,
             lastName: referenceParams.lastName,
             spshServiceProviderId: referenceParams.spshServiceProviderId,
+            gesperrt: referenceParams.gesperrt,
         };
         const mappedParams: SetEmailAddressForSpshPersonBodyParams = plainToInstance(
             SetEmailAddressForSpshPersonBodyParams,

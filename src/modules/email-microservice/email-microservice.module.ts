@@ -8,10 +8,14 @@ import { RolleModule } from '../rolle/rolle.module.js';
 import { EmailWebhookController } from './api/email-microservice-webhook.controller.js';
 import { EmailMicroserviceEventHandler } from './domain/email-microservice-event-handler.js';
 import { EmailResolverService } from './domain/email-resolver.service.js';
+import { OrganisationModule } from '../organisation/organisation.module.js';
+import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
 
 @Module({
     imports: [
         HttpModule,
+        OrganisationModule,
+        KeycloakAdministrationModule,
         forwardRef(() => RolleModule),
         EmailPersistenceModule,
         forwardRef(() => PersonenKontextModule),

@@ -1,28 +1,26 @@
 import { ConfigService } from '@nestjs/config';
-import { intersection } from 'lodash-es';
 import { PortalConfig } from '../../../shared/config/portal.config.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID, RolleID } from '../../../shared/types/index.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
 import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { OperationContext } from './personenkontext.enums.js';
 import { Personenkontext } from './personenkontext.js';
 import { PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { findAllowedRollen } from '../../../shared/util/rollen.helper.js';
-import { Err, Ok } from '../../../shared/util/result.js';
 
 export class PersonenkontextWorkflowAggregate {
     public personId?: PersonID;
@@ -34,7 +32,6 @@ export class PersonenkontextWorkflowAggregate {
     private constructor(
         private readonly rolleRepo: RolleRepo,
         private readonly organisationRepository: OrganisationRepository,
-        private readonly personenkontextRepository: DBiamPersonenkontextRepo,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly configService: ConfigService,
         private readonly personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
@@ -43,7 +40,6 @@ export class PersonenkontextWorkflowAggregate {
     public static createNew(
         rolleRepo: RolleRepo,
         organisationRepository: OrganisationRepository,
-        personenkontextRepository: DBiamPersonenkontextRepo,
         dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         configService: ConfigService,
         personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
@@ -51,7 +47,6 @@ export class PersonenkontextWorkflowAggregate {
         return new PersonenkontextWorkflowAggregate(
             rolleRepo,
             organisationRepository,
-            personenkontextRepository,
             dbiamPersonenkontextFactory,
             configService,
             personenkontextWorkflowSharedKernel,
@@ -128,55 +123,6 @@ export class PersonenkontextWorkflowAggregate {
 
         // Return the organizations that the admin has rights to
         return organisationsExceptKlassen;
-    }
-
-    public async findRollenForOrganisation(
-        permissions: IPersonPermissions,
-        rolleName?: string,
-        rollenIds?: string[],
-        limit?: number,
-        rollenarten?: RollenArt[],
-    ): Promise<Rolle<true>[]> {
-        if (this.personId && !(await permissions.canModifyPerson(this.personId))) {
-            return [];
-        }
-
-        let allowedRollenArten: RollenArt[] | undefined = rollenarten;
-
-        if (this.personId) {
-            const existingPKs: Personenkontext<true>[] = await this.personenkontextRepository.findByPerson(
-                this.personId,
-            );
-            const existingRollen: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(
-                existingPKs.map((pk: Personenkontext<true>) => pk.rolleId),
-            );
-
-            if (existingRollen.size > 0) {
-                const existingRollenarten: RollenArt[] = Array.from(existingRollen.values()).map(
-                    (r: Rolle<true>) => r.rollenart,
-                );
-                allowedRollenArten = allowedRollenArten
-                    ? intersection(allowedRollenArten, existingRollenarten)
-                    : existingRollenarten;
-            }
-        }
-
-        return findAllowedRollen({
-            organisationId: this.selectedOrganisationId,
-            permissionsCheck: () =>
-                permissions.hasSystemrechteAtOrganisation(
-                    this.selectedOrganisationId!,
-                    [RollenSystemRecht.PERSONEN_VERWALTEN, RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN],
-                    false,
-                ),
-            organisationRepository: this.organisationRepository,
-            rolleRepo: this.rolleRepo,
-            checkReferences: this.checkReferences.bind(this),
-            rolleName,
-            rollenIds,
-            limit,
-            allowedRollenArten,
-        });
     }
 
     // Verifies if the selected rolle and organisation can together be assigned to a kontext
@@ -299,15 +245,15 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-        const includesMPTRollen: boolean = this.includesMPTRollen(rollen.values());
-        if (includesMPTRollen) {
-            const hasSystemrecht: boolean = await permissions.hasSystemrechtAtOrganisation(
-                organisationId,
-                RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-            );
-            if (!hasSystemrecht) {
-                return Err(new MissingPermissionsError('Unauthorized to assign MPT-Rollen at the organisation'));
-            }
+        const hasUnauthorizedGatedRolle: boolean = (
+            await Promise.all(
+                Array.from(rollen.values()).map((rolle: Rolle<true>) =>
+                    permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
+                ),
+            )
+        ).some((hasPermission: boolean) => !hasPermission);
+        if (hasUnauthorizedGatedRolle) {
+            return Err(new MissingPermissionsError('Unauthorized to assign MPT/Pilot-Rollen at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {
@@ -334,16 +280,8 @@ export class PersonenkontextWorkflowAggregate {
     private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
-                allowedRollenArten.includes(rolle.rollenart) || rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE),
+                allowedRollenArten.includes(rolle.rollenart) ||
+                RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale).length > 0,
         );
-    }
-
-    private includesMPTRollen(rollen: Iterable<Rolle<true>>): boolean {
-        for (const rolle of rollen) {
-            if (rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
