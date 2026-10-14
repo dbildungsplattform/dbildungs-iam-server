@@ -151,13 +151,13 @@ describe('EmailFactory', () => {
             it('should return EmailDomainNotFoundError', async () => {
                 personRepositoryMock.findById.mockResolvedValueOnce(getPerson());
                 organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 );
                 organisationRepositoryMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 ]);
                 organisationRepositoryMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 ]);
                 organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
@@ -175,7 +175,7 @@ describe('EmailFactory', () => {
             it('should return error', async () => {
                 personRepositoryMock.findById.mockResolvedValueOnce(getPerson());
                 organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 );
                 organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(faker.internet.email());
 

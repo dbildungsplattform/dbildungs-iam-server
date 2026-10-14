@@ -1,6 +1,6 @@
 import { Migration } from '@mikro-orm/migrations';
 
-export class Migration20260903120000 extends Migration {
+export class Migration20261006073942 extends Migration {
     override up(): void | Promise<void> {
         this.addSql(
             `update "organisation" set "uem_ldap_ou" = 'oeffentlicheSchulen' where "uem_ldap_ou"='qs.schule-sh.de';`,
