@@ -12,6 +12,7 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import {
     FindRollenAvailableForPersonenkontextCreationParams,
+    GatedRollenFindScope,
     RolleFindByParameters,
     RolleRepo,
 } from '../repo/rolle.repo.js';
@@ -125,7 +126,7 @@ export class RolleFindService {
                         organisationBounds.selectedAndPermittedOrgas,
                         params.rollenArten,
                     );
-                    const excludeMerkmale: RollenMerkmal[] = await this.resolveExcludedGatedMerkmale(
+                    const gatedRollenFindScopes: GatedRollenFindScope[] = await this.resolveGatedRollenFindScopes(
                         params.permissions,
                         params.requestedSystemrechte,
                         organisationBounds.selectedAndPermittedOrgas,
@@ -136,13 +137,14 @@ export class RolleFindService {
                             allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
                             rollenArten,
                         },
-                        excludeMerkmale,
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                        gatedRollenFindScopes,
                     );
                 }
                 break;
             case OrganisationBoundsKind.UNBOUNDED:
                 {
-                    const excludeMerkmale: RollenMerkmal[] = await this.resolveExcludedGatedMerkmale(
+                    const gatedRollenFindScopes: GatedRollenFindScope[] = await this.resolveGatedRollenFindScopes(
                         params.permissions,
                         params.requestedSystemrechte,
                     );
@@ -152,7 +154,8 @@ export class RolleFindService {
                             allowedOrganisationIds: undefined,
                             rollenArten: params.rollenArten,
                         },
-                        excludeMerkmale,
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                        gatedRollenFindScopes,
                     );
                 }
                 break;
@@ -270,12 +273,12 @@ export class RolleFindService {
 
         let rollenArten: RollenArt[] | undefined;
         let allowedOrganisationIds: OrganisationID[] | undefined;
-        let excludeMerkmale: RollenMerkmal[];
+        let gatedRollenFindScopes: GatedRollenFindScope[];
         switch (organisationBounds.kind) {
             case OrganisationBoundsKind.BOUNDED:
                 rollenArten = await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas);
                 allowedOrganisationIds = organisationBounds.selectedAndPermittedOrgasWithParents;
-                excludeMerkmale = await this.resolveExcludedGatedMerkmale(
+                gatedRollenFindScopes = await this.resolveGatedRollenFindScopes(
                     params.permissions,
                     params.requestedSystemrechte,
                     organisationBounds.selectedAndPermittedOrgas,
@@ -284,7 +287,7 @@ export class RolleFindService {
             case OrganisationBoundsKind.UNBOUNDED:
                 rollenArten = undefined;
                 allowedOrganisationIds = undefined;
-                excludeMerkmale = await this.resolveExcludedGatedMerkmale(
+                gatedRollenFindScopes = await this.resolveGatedRollenFindScopes(
                     params.permissions,
                     params.requestedSystemrechte,
                 );
@@ -296,7 +299,8 @@ export class RolleFindService {
         const rolleFindByParams: RolleFindByParameters = this.createRolleFindByParams(
             params,
             { allowedOrganisationIds, rollenArten },
-            excludeMerkmale,
+            Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+            gatedRollenFindScopes,
         );
 
         return this.rolleRepo.findBy(rolleFindByParams);
@@ -322,43 +326,61 @@ export class RolleFindService {
             params.organisationIds,
         );
 
-        const sharedParams: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'> =
-            {
-                includeTechnische: false,
-                searchStr: params.searchStr,
-                limit: params.limit,
-                offset: params.offset,
-                rolleIds: params.rolleIds,
-                requireMerkmale: [paar.merkmal],
-                orderBy: 'artAndName',
-            };
+        const sharedParams: Omit<
+            RolleFindByParameters,
+            'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale' | 'gatedRollenFindScopes'
+        > = {
+            includeTechnische: false,
+            searchStr: params.searchStr,
+            limit: params.limit,
+            offset: params.offset,
+            rolleIds: params.rolleIds,
+            requireMerkmale: [paar.merkmal],
+            orderBy: 'artAndName',
+        };
         let rolleFindByParams: RolleFindByParameters;
         switch (organisationBounds.kind) {
             case OrganisationBoundsKind.EMPTY:
                 return [[], 0];
             case OrganisationBoundsKind.BOUNDED:
-                rolleFindByParams = this.createRolleFindByParams(
-                    sharedParams,
-                    {
-                        allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
-                        rollenArten: await this.resolveAllowedRollenArten(organisationBounds.selectedAndPermittedOrgas),
-                    },
-                    await this.resolveExcludedGatedMerkmaleForRequiredMerkmal(
+                {
+                    const gatedRollenFindScopes: GatedRollenFindScope[] = await this.resolveGatedRollenFindScopes(
                         params.permissions,
-                        paar.merkmal,
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
                         organisationBounds.selectedAndPermittedOrgas,
-                    ),
-                );
+                    );
+                    rolleFindByParams = this.createRolleFindByParams(
+                        sharedParams,
+                        {
+                            allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
+                            rollenArten: await this.resolveAllowedRollenArten(
+                                organisationBounds.selectedAndPermittedOrgas,
+                            ),
+                        },
+                        Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE).filter(
+                            (merkmal: RollenMerkmal) => merkmal !== paar.merkmal,
+                        ),
+                        gatedRollenFindScopes,
+                    );
+                }
                 break;
-            case OrganisationBoundsKind.UNBOUNDED:
+            case OrganisationBoundsKind.UNBOUNDED: {
+                const gatedRollenFindScopes: GatedRollenFindScope[] = await this.resolveGatedRollenFindScopes(
+                    params.permissions,
+                    Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
+                );
                 rolleFindByParams = this.createRolleFindByParams(
                     sharedParams,
                     {
                         allowedOrganisationIds: undefined,
                         rollenArten: undefined,
                     },
-                    await this.resolveExcludedGatedMerkmaleForRequiredMerkmal(params.permissions, paar.merkmal),
+                    Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE).filter(
+                        (merkmal: RollenMerkmal) => merkmal !== paar.merkmal,
+                    ),
+                    gatedRollenFindScopes,
                 );
+            }
         }
 
         return this.rolleRepo.findBy(rolleFindByParams);
@@ -377,8 +399,9 @@ export class RolleFindService {
         }: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'>,
         { allowedOrganisationIds, rollenArten }: Pick<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten'>,
         excludeMerkmale: RollenMerkmal[] = [],
+        gatedRollenFindScopes?: GatedRollenFindScope[],
     ): RolleFindByParameters {
-        return {
+        const params: RolleFindByParameters = {
             includeTechnische,
             searchStr,
             requireMerkmale,
@@ -391,52 +414,116 @@ export class RolleFindService {
             rollenArten,
             excludeMerkmale: excludeMerkmale.length > 0 ? excludeMerkmale : undefined,
         };
+        if (gatedRollenFindScopes && gatedRollenFindScopes.length > 0) {
+            params.gatedRollenFindScopes = gatedRollenFindScopes;
+        }
+        return params;
     }
 
-    private async resolveExcludedGatedMerkmaleForRequiredMerkmal(
-        permissions: IPersonPermissions,
-        requiredMerkmal: RollenMerkmal,
-        selectedAndPermittedOrgas?: Array<OrganisationID>,
-    ): Promise<RollenMerkmal[]> {
-        const excludedMerkmale: RollenMerkmal[] = await this.resolveExcludedGatedMerkmale(
-            permissions,
-            Array.from(RollenmerkmalSystemrechtPaar.GATED_SYSTEMRECHTE),
-            selectedAndPermittedOrgas,
-        );
-        return excludedMerkmale.filter((merkmal: RollenMerkmal) => merkmal !== requiredMerkmal);
-    }
-
-    /**
-     * Resolves the gated Merkmale (MPT_ROLLE, PILOT_1_ROLLE, ...) that must be excluded from the result, i.e. those
-     * that either were not requested via `requestedSystemrechte` or for which the caller lacks the paired
-     * RollenSystemRecht at (one of) the given organisations.
-     */
-    private async resolveExcludedGatedMerkmale(
+    private async resolveGatedRollenFindScopes(
         permissions: IPersonPermissions,
         requestedSystemrechte: RollenSystemRecht[] = [],
         selectedAndPermittedOrgas?: Array<OrganisationID>,
-    ): Promise<RollenMerkmal[]> {
-        const organisationIds: OrganisationID[] = selectedAndPermittedOrgas ?? [
-            this.organisationRepository.ROOT_ORGANISATION_ID,
-        ];
-        const merkmalePerOrganisation: RollenMerkmal[][] = await Promise.all(
-            organisationIds.map((organisationId: OrganisationID) =>
-                permissions.getPermittedMerkmaleForOrga(organisationId),
-            ),
+    ): Promise<GatedRollenFindScope[]> {
+        const requestedPairs: RollenmerkmalSystemrechtPaar[] = RollenmerkmalSystemrechtPaar.ALL.filter(
+            (paar: RollenmerkmalSystemrechtPaar) => requestedSystemrechte.includes(paar.systemrecht),
         );
-        const requestedMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
-            (merkmal: RollenMerkmal) => {
-                const pairedSystemrecht: RollenSystemRecht | undefined =
-                    RollenmerkmalSystemrechtPaar.byMerkmal(merkmal)?.systemrecht;
-                return pairedSystemrecht !== undefined && requestedSystemrechte.includes(pairedSystemrecht);
-            },
+        if (requestedPairs.length === 0) {
+            return [];
+        }
+
+        const permittedOrgasBySystemrecht: PermittedOrgas[] | undefined = selectedAndPermittedOrgas
+            ? undefined
+            : (
+                  await Promise.all(
+                      requestedPairs.map((paar: RollenmerkmalSystemrechtPaar) =>
+                          permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
+                      ),
+                  )
+              ).map((permittedOrgas: PermittedOrgas | undefined) => permittedOrgas ?? { all: false, orgaIds: [] });
+        const globallyPermittedMerkmale: RollenMerkmal[] =
+            permittedOrgasBySystemrecht?.flatMap((permittedOrgas: PermittedOrgas, index: number) =>
+                permittedOrgas.all ? [requestedPairs[index]!.merkmal] : [],
+            ) ?? [];
+        const organisationIds: OrganisationID[] = selectedAndPermittedOrgas
+            ? selectedAndPermittedOrgas
+            : Array.from(
+                  new Set(
+                      (permittedOrgasBySystemrecht ?? []).flatMap((permittedOrgas: PermittedOrgas) =>
+                          permittedOrgas.all ? [] : permittedOrgas.orgaIds,
+                      ),
+                  ),
+              );
+        const organisationMerkmale: Map<OrganisationID, RollenMerkmal[]> = new Map();
+        if (selectedAndPermittedOrgas) {
+            const merkmalePerOrganisation: RollenMerkmal[][] = await Promise.all(
+                organisationIds.map((organisationId: OrganisationID) =>
+                    permissions.getPermittedMerkmaleForOrga(organisationId),
+                ),
+            );
+            organisationIds.forEach((organisationId: OrganisationID, index: number) =>
+                organisationMerkmale.set(organisationId, merkmalePerOrganisation[index] ?? []),
+            );
+        }
+
+        const organisationIdsWithParents: Map<OrganisationID, OrganisationID[]> =
+            await this.getOrganisationIdsWithParentsById(organisationIds);
+        const scopes: GatedRollenFindScope[] = [];
+        if (!selectedAndPermittedOrgas && globallyPermittedMerkmale.length > 0) {
+            scopes.push({ authorizedMerkmale: globallyPermittedMerkmale });
+        }
+
+        for (const organisationId of organisationIds) {
+            const authorizedMerkmale: RollenMerkmal[] = requestedPairs
+                .filter((_paar: RollenmerkmalSystemrechtPaar, index: number) => {
+                    if (selectedAndPermittedOrgas) {
+                        return organisationMerkmale.get(organisationId)?.includes(_paar.merkmal) ?? false;
+                    }
+                    const permittedOrgas: PermittedOrgas | undefined = permittedOrgasBySystemrecht?.[index];
+                    return (
+                        permittedOrgas?.all === true ||
+                        (permittedOrgas?.all === false && permittedOrgas.orgaIds.includes(organisationId))
+                    );
+                })
+                .map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
+            if (authorizedMerkmale.length === 0) {
+                continue;
+            }
+            scopes.push({
+                allowedOrganisationIds: organisationIdsWithParents.get(organisationId) ?? [organisationId],
+                authorizedMerkmale,
+            });
+        }
+
+        return scopes;
+    }
+
+    private async getOrganisationIdsWithParentsById(
+        organisationIds: OrganisationID[],
+    ): Promise<Map<OrganisationID, OrganisationID[]>> {
+        if (organisationIds.length === 0) {
+            return new Map();
+        }
+        const organisationsAndParents: Organisation<true>[] =
+            (await this.organisationRepository.findParentOrgasForIds(organisationIds)) ?? [];
+        const organisationsById: Map<OrganisationID, Organisation<true>> = new Map(
+            organisationsAndParents.map((organisation: Organisation<true>) => [organisation.id, organisation]),
         );
-        const permittedMerkmale: RollenMerkmal[] = requestedMerkmale.filter((merkmal: RollenMerkmal) =>
-            merkmalePerOrganisation.every((organisationMerkmale: RollenMerkmal[]) =>
-                organisationMerkmale.includes(merkmal),
-            ),
-        );
-        return RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(permittedMerkmale);
+        const idsByOrganisation: Map<OrganisationID, OrganisationID[]> = new Map();
+        for (const organisationId of organisationIds) {
+            const allowedOrganisationIds: Set<OrganisationID> = new Set([organisationId]);
+            let currentOrganisation: Organisation<true> | undefined = organisationsById.get(organisationId);
+            while (currentOrganisation?.administriertVon) {
+                const parentId: OrganisationID = currentOrganisation.administriertVon;
+                if (allowedOrganisationIds.has(parentId)) {
+                    break;
+                }
+                allowedOrganisationIds.add(parentId);
+                currentOrganisation = organisationsById.get(parentId);
+            }
+            idsByOrganisation.set(organisationId, Array.from(allowedOrganisationIds));
+        }
+        return idsByOrganisation;
     }
 
     /**
