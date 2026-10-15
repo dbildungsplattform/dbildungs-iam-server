@@ -8,11 +8,12 @@ info:
         name: EUPL-1.2
         identifier: EUPL-1.2
 security: []
+servers: []
 tags:
     - name: Personen
-      description: Endpunkte für Lebenszyklusereignisse von Personen.
+      description: Endpunkte für die Aktualisierung von Personendaten.
     - name: Personenkontexte
-      description: Endpunkte für Lebenszyklusereignisse von Personenkontexten.
+      description: Endpunkte für die Aktualisierung von Personenkontextdaten.
 paths:
     /v1/personen/{personId}:
         $ref: ./paths/personen.item.yaml
