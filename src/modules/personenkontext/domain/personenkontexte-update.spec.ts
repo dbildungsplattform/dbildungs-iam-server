@@ -186,7 +186,7 @@ describe('PersonenkontexteUpdate', () => {
         );
         pk2 = vi.mockObject<Personenkontext<true>>(
             DoFactory.createPersonenkontext<true>(true, {
-                updatedAt: faker.date.past(),
+                updatedAt: faker.date.past({ refDate: lastModified }),
                 personId: bodyParam2.personId,
                 organisationId: bodyParam2.organisationId,
                 rolleId: bodyParam2.rolleId,
