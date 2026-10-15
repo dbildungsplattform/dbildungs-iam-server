@@ -25,8 +25,8 @@ components:
         PersonenkontextId:
             $ref: ./components/parameters/personenkontext-id.yaml
     schemas:
-        PersonUpdatePayload:
-            $ref: ./components/schemas/person-update-payload.yaml
+        PersonPayload:
+            $ref: ./components/schemas/person-payload.yaml
         PersonDeletePayload:
             $ref: ./components/schemas/person-delete-payload.yaml
         PersonName:

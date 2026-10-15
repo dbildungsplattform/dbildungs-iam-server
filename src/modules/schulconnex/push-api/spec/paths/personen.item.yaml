@@ -11,7 +11,7 @@ put:
         content:
             application/json:
                 schema:
-                    $ref: ../components/schemas/person-update-payload.yaml
+                    $ref: ../components/schemas/person-payload.yaml
     responses:
         '202':
             description: Anfrage zum Anlegen oder Aktualisieren einer Person wurde akzeptiert.
