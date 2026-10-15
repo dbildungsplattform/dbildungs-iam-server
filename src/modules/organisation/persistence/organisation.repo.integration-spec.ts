@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
+import { EntityManager, MikroORM, type RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -13,17 +13,17 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { DataConfig } from '../../../shared/config/index.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
+import { type DataConfig } from '../../../shared/config/index.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityCouldNotBeUpdated } from '../../../shared/error/entity-could-not-be-updated.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
-import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
+import { type SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOperator, ScopeOrder } from '../../../shared/persistence/index.js';
-import { OrganisationID } from '../../../shared/types/index.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type OrganisationID } from '../../../shared/types/index.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';

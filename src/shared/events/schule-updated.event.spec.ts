@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { cloneDeep } from 'lodash-es';
 import { DoFactory } from '../../../test/utils/do-factory.js';
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
 import { SchuleUpdatedEvent } from './schule-updated.event.js';
 
 describe('SchuleUpdatedEvent', () => {

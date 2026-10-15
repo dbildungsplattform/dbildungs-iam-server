@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../../test/utils/index.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { KennungRequiredForSchule } from './kennung-required-for-schule.js';
 
 describe('KennungRequiredForSchule specification', () => {

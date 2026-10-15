@@ -1,5 +1,5 @@
-import { Request as OriginalRequest } from 'express';
-import { PassportUser, User } from './user.js';
+import { type Request as OriginalRequest } from 'express';
+import { type PassportUser, type User } from './user.js';
 
 declare module 'express' {
     interface Request extends OriginalRequest {

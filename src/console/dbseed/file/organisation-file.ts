@@ -1,4 +1,4 @@
-import { OrganisationsTyp, Traegerschaft } from '../../../modules/organisation/domain/organisation.enums.js';
+import { type OrganisationsTyp, type Traegerschaft } from '../../../modules/organisation/domain/organisation.enums.js';
 
 export class OrganisationFile {
     public id!: number;

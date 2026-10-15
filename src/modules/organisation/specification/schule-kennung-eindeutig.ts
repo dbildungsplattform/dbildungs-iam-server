@@ -1,8 +1,8 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
 
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { type Organisation } from '../domain/organisation.js';
+import { type OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
 
 export class SchuleKennungEindeutig extends CompositeSpecification<Organisation<boolean>> {

@@ -1,8 +1,8 @@
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../organisation/domain/organisation.js';
+import { type Organisation } from '../../../organisation/domain/organisation.js';
 import { RollenArt } from '../rolle.enums.js';
-import { Rolle } from '../rolle.js';
+import { type Rolle } from '../rolle.js';
 import { OrganisationMatchesRollenart } from './organisation-matches-rollenart.js';
 
 describe('OrganisationMatchesRollenart specification', () => {

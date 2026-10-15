@@ -1,10 +1,10 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('OrganisationExceptionFilter', () => {
     let filter: OrganisationExceptionFilter;

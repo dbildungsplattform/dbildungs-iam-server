@@ -1,7 +1,7 @@
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 
 import { IMS_COMMON_SCHEMA, IMS_MEMBER_MAN_MESS_SCHEMA, IMS_MESS_BIND_SCHEMA } from '../../../schemas.js';
-import { IMSESRoleType } from '../../domain/role.enum.js';
+import { type IMSESRoleType } from '../../domain/role.enum.js';
 import { IMSESMassAction } from './base-mass-action.js';
 
 export type ReadAllPersonsParams = {

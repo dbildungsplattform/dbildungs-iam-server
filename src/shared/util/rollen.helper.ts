@@ -1,9 +1,9 @@
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
-import { Rolle } from '../../modules/rolle/domain/rolle.js';
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
-import { DomainError } from '../error/domain.error.js';
-import { OrganisationRepository } from '../../modules/organisation/persistence/organisation.repository.js';
-import { RolleRepo } from '../../modules/rolle/repo/rolle.repo.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type Rolle } from '../../modules/rolle/domain/rolle.js';
+import { type RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
+import { type DomainError } from '../error/domain.error.js';
+import { type OrganisationRepository } from '../../modules/organisation/persistence/organisation.repository.js';
+import { type RolleRepo } from '../../modules/rolle/repo/rolle.repo.js';
 
 export interface FindAllowedRollenOptions {
     organisationId: string | undefined;

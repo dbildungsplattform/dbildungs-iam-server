@@ -1,8 +1,8 @@
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { Ok } from '../../../shared/util/result.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
@@ -10,7 +10,7 @@ import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.r
 import { ServiceProviderPropertyPermissions, ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import { ServiceProviderModificationService } from './service-provider-modification.service.js';
-import { ServiceProvider } from './service-provider.js';
+import { type ServiceProvider } from './service-provider.js';
 
 describe('ServiceProviderModificationService', () => {
     let sut: ServiceProviderModificationService;

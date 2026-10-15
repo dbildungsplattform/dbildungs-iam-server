@@ -1,4 +1,4 @@
-import { EntityManager, Reference, RequiredEntityData } from '@mikro-orm/postgresql';
+import { type EntityManager, type Reference, type RequiredEntityData } from '@mikro-orm/postgresql';
 import { PersonenkontextEntity } from '../../src/modules/personenkontext/persistence/personenkontext.entity.js';
 import { faker } from '@faker-js/faker';
 import {
@@ -6,9 +6,9 @@ import {
     Personenstatus,
     SichtfreigabeType,
 } from '../../src/modules/personenkontext/domain/personenkontext.enums.js';
-import { PersonEntity } from '../../src/modules/person/persistence/person.entity.js';
-import { RolleEntity } from '../../src/modules/rolle/entity/rolle.entity.js';
-import { OrganisationEntity } from '../../src/modules/organisation/persistence/organisation.entity.js';
+import { type PersonEntity } from '../../src/modules/person/persistence/person.entity.js';
+import { type RolleEntity } from '../../src/modules/rolle/entity/rolle.entity.js';
+import { type OrganisationEntity } from '../../src/modules/organisation/persistence/organisation.entity.js';
 
 export function createPersonenkontext(
     personId: { id: string } & Reference<PersonEntity & object>,

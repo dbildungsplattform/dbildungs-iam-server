@@ -1,5 +1,5 @@
-import { ServiceProvider } from '../domain/service-provider.js';
-import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
 import { CompositeSpecification } from '../../specification/specifications.js';
 
 export class NameUniqueAtOrgaSpecification extends CompositeSpecification<ServiceProvider<boolean>> {

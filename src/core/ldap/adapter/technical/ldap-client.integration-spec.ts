@@ -1,8 +1,8 @@
 import { MikroORM } from '@mikro-orm/core';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Client } from 'ldapts';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Client } from 'ldapts';
 import { vi } from 'vitest';
 import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
 import {

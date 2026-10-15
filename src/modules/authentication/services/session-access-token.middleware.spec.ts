@@ -1,20 +1,20 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Request } from 'express';
-import { PassportUser } from '../types/user.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type Request } from 'express';
+import { type PassportUser } from '../types/user.js';
 import { SessionAccessTokenMiddleware } from './session-access-token.middleware.js';
-import { Client, TokenSet } from 'openid-client';
+import { type Client, TokenSet } from 'openid-client';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { LogOutOptions } from 'passport';
-import { PersonPermissions } from '../domain/person-permissions.js';
+import { type LogOutOptions } from 'passport';
+import { type PersonPermissions } from '../domain/person-permissions.js';
 import { ConfigService } from '@nestjs/config';
-import { SystemConfig } from '../../../shared/config/system.config.js';
+import { type SystemConfig } from '../../../shared/config/system.config.js';
 import {
     createOidcClientMock,
     createPassportUserMock,
     createPersonPermissionsMock,
     createUserinfoResponseMock,
 } from '../../../../test/utils/auth.mock.js';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 import { faker } from '@faker-js/faker';
 import { createResponseMock } from '../../../../test/utils/http.mocks.js';
 

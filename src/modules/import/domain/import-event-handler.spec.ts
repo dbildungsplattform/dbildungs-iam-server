@@ -1,22 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ImportDataRepository } from '../persistence/import-data.repository.js';
 import {
     PersonenkontextCreationService,
-    PersonPersonenkontext,
+    type PersonPersonenkontext,
 } from '../../personenkontext/domain/personenkontext-creation.service.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { Person } from '../../person/domain/person.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
-import { ImportDataItem } from './import-data-item.js';
+import { type ImportDataItem } from './import-data-item.js';
 import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
-import { ImportVorgang } from './import-vorgang.js';
+import { type ImportVorgang } from './import-vorgang.js';
 import { ImportEventHandler } from './import-event-handler.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ImportExecutedEvent } from '../../../shared/events/import-executed.event.js';

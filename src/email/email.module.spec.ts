@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
-import { RedisClientType } from 'redis';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type RedisClientType } from 'redis';
 import { DatabaseTestModule, EmailConfigTestModule, LoggingTestModule } from '../../test/utils/index.js';
 import { EmailModule } from './email.module.js';
 

@@ -1,5 +1,5 @@
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
-import { OrganisationID } from '../types/index.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type OrganisationID } from '../types/index.js';
 import { BaseEvent } from './base-event.js';
 
 export class SchuleUpdatedEvent extends BaseEvent {

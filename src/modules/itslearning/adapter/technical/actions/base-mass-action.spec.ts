@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../../shared/error/its-learning.error.js';
-import { IMSESMassAction, MassResult, StatusInfo } from './base-mass-action.js';
+import { IMSESMassAction, type MassResult, type StatusInfo } from './base-mass-action.js';
 import { Err, Ok } from '../../../../../shared/util/result.js';
 
 function buildXMLResponse(codeMajor: 'success' | 'failure', severity: 'status' | 'error', body: string): string {

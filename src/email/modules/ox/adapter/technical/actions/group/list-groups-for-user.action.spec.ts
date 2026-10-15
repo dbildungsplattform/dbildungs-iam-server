@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import {
     ListGroupsForUserAction,
-    ListGroupsForUserResponse,
-    ListGroupsForUserResponseBody,
+    type ListGroupsForUserResponse,
+    type ListGroupsForUserResponseBody,
 } from './list-groups-for-user.action.js';
 import { expectOkResult } from '../../../../../../../../test/utils/test-types.js';
 

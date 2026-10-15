@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM, NotFoundError, RequiredEntityData } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { EntityManager, MikroORM, NotFoundError, type RequiredEntityData } from '@mikro-orm/core';
+import { Test, type TestingModule } from '@nestjs/testing';
 import assert from 'node:assert';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     CommonTestModule,
     DatabaseTestModule,
@@ -14,15 +14,15 @@ import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/index.js';
 import { SortOrder } from '../../../shared/persistence/repository.enums.js';
-import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import { OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { type OrganisationID, type PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
+import { type PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
 import { EmailFactory } from '../domain/email.factory.js';

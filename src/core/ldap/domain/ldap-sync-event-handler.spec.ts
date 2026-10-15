@@ -1,6 +1,6 @@
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
 import { DatabaseTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
@@ -8,31 +8,36 @@ import { GlobalValidationPipe } from '../../../shared/validation/global-validati
 import { faker } from '@faker-js/faker';
 import assert from 'node:assert';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
-import { EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
+import { type EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { EmailRepo } from '../../../modules/email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
-import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { type Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import {
+    type OrganisationID,
+    type PersonID,
+    type PersonUsername,
+    type RolleID,
+} from '../../../shared/types/aggregate-ids.types.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 import { LdapFetchAttributeError } from '../adapter/domain/error/ldap-fetch-attribute.error.js';
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
-import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
+import { LdapAdapter, type LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
 import { LdapConfigModule } from '../adapter/technical/ldap-config.module.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';

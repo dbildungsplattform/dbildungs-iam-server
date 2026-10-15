@@ -1,13 +1,13 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { Attribute, Change, Client, type Entry, type SearchResult } from 'ldapts';
 import assert from 'node:assert';
 import { vi } from 'vitest';
 import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
@@ -15,7 +15,7 @@ import {
 } from '../../../../../test/utils/index.js';
 import { LdapBindError } from '../../../../email/modules/ldap/adapter/domain/error/ldap-bind.error.js';
 import { Person } from '../../../../modules/person/domain/person.js';
-import { PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
+import { type PersonID, type PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
 import { EventRoutingLegacyKafkaService } from '../../../eventbus/services/event-routing-legacy-kafka.service.js';
@@ -32,7 +32,7 @@ import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
 import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
 import { LdapRemovePersonFromGroupError } from './error/ldap-remove-person-from-group.error.js';
 import { LdapSearchError } from './error/ldap-search.error.js';
-import { LdapAdapter, LdapPersonAttributes, PersonData } from './ldap.adapter.js';
+import { LdapAdapter, type LdapPersonAttributes, type PersonData } from './ldap.adapter.js';
 import { LdapEntityType } from './ldap.types.js';
 class PublicExecuteWithRetry {
     public async executeWithRetry<T>(

@@ -1,10 +1,10 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { RollenerweiterungExceptionFilter } from './rollenerweiterung-exception-filter.js';
 import { DbiamRollenerweiterungError, RollenerweiterungErrorI18nTypes } from './dbiam-rollenerweiterung.error.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('RollenerweiterungExceptionFilter', () => {
     let filter: RollenerweiterungExceptionFilter;

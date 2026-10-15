@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConsoleLoggerService } from './console-logger.service.js';
-import { Mock } from 'vitest';
-import { LoggerService } from './index.js';
+import { type Mock } from 'vitest';
+import { type LoggerService } from './index.js';
 
 describe('ConsoleLoggerService', () => {
     let module: TestingModule;

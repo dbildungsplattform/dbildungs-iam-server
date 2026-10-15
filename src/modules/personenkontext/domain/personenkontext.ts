@@ -1,16 +1,16 @@
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/index.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { OrganisationMatchesRollenartError } from '../../rolle/domain/specification/error/organisation-matches-rollenart.error.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type PersonID, type PersonUsername, type RolleID } from '../../../shared/types/index.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type PersonRepository } from '../../person/persistence/person.repository.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type OrganisationMatchesRollenartError } from '../../rolle/domain/specification/error/organisation-matches-rollenart.error.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Jahrgangsstufe, Personenstatus, SichtfreigabeType } from './personenkontext.enums.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type Jahrgangsstufe, type Personenstatus, type SichtfreigabeType } from './personenkontext.enums.js';
 
 export type PersonenkontextPartial = Pick<
     Personenkontext<boolean>,

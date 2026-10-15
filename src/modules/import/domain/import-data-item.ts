@@ -1,4 +1,4 @@
-import { ImportDataItemStatus } from './importDataItem.enum.js';
+import { type ImportDataItemStatus } from './importDataItem.enum.js';
 
 export class ImportDataItem<WasPersisted extends boolean> {
     private constructor(

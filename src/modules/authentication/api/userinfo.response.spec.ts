@@ -9,10 +9,10 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonPermissions } from '../domain/person-permissions.js';
 import { StepUpLevel } from '../passport/oidc.strategy.js';
-import { PersonTimeLimitInfoResponse } from './person-time-limit-info.reponse.js';
-import { PersonenkontextRolleFieldsResponse } from './personen-kontext-rolle-fields.response.js';
-import { UserinfoExtension, UserinfoResponse } from './userinfo.response.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type PersonTimeLimitInfoResponse } from './person-time-limit-info.reponse.js';
+import { type PersonenkontextRolleFieldsResponse } from './personen-kontext-rolle-fields.response.js';
+import { type UserinfoExtension, UserinfoResponse } from './userinfo.response.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 describe('UserinfoResponse', () => {
     const permissions: IPersonPermissions = new PersonPermissions(

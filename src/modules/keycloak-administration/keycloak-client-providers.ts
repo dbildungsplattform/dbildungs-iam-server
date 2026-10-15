@@ -1,7 +1,7 @@
-import { Provider } from '@nestjs/common';
+import { type Provider } from '@nestjs/common';
 import { KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
 
-import { BaseClient, Client, Issuer, TokenSet } from 'openid-client';
+import { type BaseClient, type Client, Issuer, type TokenSet } from 'openid-client';
 import { KeycloakInstanceConfig } from './keycloak-instance-config.js';
 
 // Treat tokens as expired if they would expire in the next 10 seconds

@@ -3,7 +3,7 @@ import { DoFactory } from '../../../../test/utils/index.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
-import { ServiceProvider, ServiceProviderUpdateParams } from './service-provider.js';
+import { ServiceProvider, type ServiceProviderUpdateParams } from './service-provider.js';
 
 type ValidLogoCombinationTestCase =
     | { logoId: number; logo: undefined; logoMimeType: undefined }

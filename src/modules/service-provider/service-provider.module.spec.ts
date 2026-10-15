@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule, DatabaseTestModule } from '../../../test/utils/index.js';
 import { ServiceProviderModule } from './service-provider.module.js';
 import { EventModule } from '../../core/eventbus/index.js';

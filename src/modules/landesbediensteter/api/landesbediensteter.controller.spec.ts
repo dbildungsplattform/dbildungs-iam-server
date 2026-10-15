@@ -1,21 +1,21 @@
-import { MockedObject } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type MockedObject } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
 
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { createPersonPermissionsMock, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { LandesbediensteterWorkflowFactory } from '../domain/landesbediensteter-workflow.factory.js';
-import { LandesbediensteterWorkflowAggregate } from '../domain/landesbediensteter-workflow.js';
+import { type LandesbediensteterWorkflowAggregate } from '../domain/landesbediensteter-workflow.js';
 import { LandesbediensteterController } from './landesbediensteter.controller.js';
 import { LandesbediensteterWorkflowStepBodyParams } from './param/landesbediensteter-workflow-step.body.params.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { LandesbediensteterWorkflowStepResponse } from './response/landesbediensteter-workflow-step.response.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type LandesbediensteterWorkflowStepResponse } from './response/landesbediensteter-workflow-step.response.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { faker } from '@faker-js/faker';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { LandesbediensteterPersonIdParams } from './param/landesbediensteter-person-id.params.js';
-import { LandesbediensteterWorkflowCommitBodyParams } from './param/landesbediensteter-workflow-commit.body.params.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { PersonenkontexteUpdateResponse } from '../../personenkontext/api/response/personenkontexte-update.response.js';
+import { type LandesbediensteterWorkflowCommitBodyParams } from './param/landesbediensteter-workflow-commit.body.params.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type PersonenkontexteUpdateResponse } from '../../personenkontext/api/response/personenkontexte-update.response.js';
 import { PersonenkontexteUpdateError } from '../../personenkontext/domain/error/personenkontexte-update.error.js';
 import { createLandesbediensteterWorkflowAggregateMock } from '../../../../test/utils/workflow.mocks.js';
 

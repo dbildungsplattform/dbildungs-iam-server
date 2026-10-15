@@ -28,7 +28,7 @@ import {
     ServiceProviderTarget,
 } from '../../src/modules/service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../src/modules/service-provider/domain/service-provider.js';
-import { DoBase } from '../../src/shared/types/do-base.js';
+import { type DoBase } from '../../src/shared/types/do-base.js';
 
 // <-- Not part of the domain, need to be fixed! -->
 import { EmailAddress as MicroserviceEmailAddress } from '../../src/email/modules/core/domain/email-address.js';

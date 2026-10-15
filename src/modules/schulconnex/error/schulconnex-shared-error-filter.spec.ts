@@ -1,5 +1,5 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { SchulConnexError } from '../../../shared/error/schul-connex.error.js';
 import { SchulConnexSharedErrorFilter } from './schulconnex-shared-error-filter.js';
 import {

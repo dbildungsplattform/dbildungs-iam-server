@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AxiosError, AxiosResponse } from 'axios';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { concat, of, throwError } from 'rxjs';
 
 import { EmailConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { WebhookService } from './webhook.service.js';
 

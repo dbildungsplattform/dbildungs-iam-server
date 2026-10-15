@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { CreateGroupParams } from './create-group.params.js';
+import { type CreateGroupParams } from './create-group.params.js';
 import { CreateGroupsAction } from './create-groups.action.js';
 
 describe('CreateGroupsAction', () => {

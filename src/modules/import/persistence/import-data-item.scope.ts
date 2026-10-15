@@ -1,4 +1,4 @@
-import { EntityName } from '@mikro-orm/core';
+import { type EntityName } from '@mikro-orm/core';
 import { ScopeBase, ScopeOperator } from '../../../shared/persistence/index.js';
 import { ImportDataItemEntity } from './import-data-item.entity.js';
 

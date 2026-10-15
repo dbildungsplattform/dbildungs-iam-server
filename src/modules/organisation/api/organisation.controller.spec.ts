@@ -1,22 +1,22 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { NotFoundException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { DoFactory, ConfigTestModule, createPersonPermissionsMock } from '../../../../test/utils/index.js';
-import { Paged } from '../../../shared/paging/paged.js';
+import { type Paged } from '../../../shared/paging/paged.js';
 import { OrganisationsTyp, Traegerschaft } from '../domain/organisation.enums.js';
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
-import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { type FindOrganisationQueryParams } from './find-organisation-query.param.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationController } from './organisation.controller.js';
-import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
+import { type OrganisationResponseLegacy } from './organisation.response.legacy.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { Organisation } from '../domain/organisation.js';
 import { OrganisationResponse } from './organisation.response.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';

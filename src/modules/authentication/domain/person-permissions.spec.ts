@@ -1,19 +1,19 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, RolleID } from '../../../shared/types/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type RolleID } from '../../../shared/types/index.js';
 import { OrganisationResponse } from '../../organisation/api/organisation.response.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -21,9 +21,9 @@ import { PersonenkontextRolleFieldsResponse } from '../api/personen-kontext-roll
 import { RollenSystemRechtServiceProviderIDResponse } from '../api/rolle-systemrechte-serviceproviderid.response.js';
 import { PersonPermissionsRepo } from './person-permission.repo.js';
 import {
-    PermittedOrgas,
-    PersonenkontextRolleWithOrganisation,
-    PersonFields,
+    type PermittedOrgas,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonFields,
     PersonPermissions,
 } from './person-permissions.js';
 

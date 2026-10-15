@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ListGroupsForUserAction, ListGroupsForUserResponseBody } from './list-groups-for-user.action.js';
+import { ListGroupsForUserAction, type ListGroupsForUserResponseBody } from './list-groups-for-user.action.js';
 
 describe('ListGroupsForUserAction', () => {
     describe('buildRequest', () => {

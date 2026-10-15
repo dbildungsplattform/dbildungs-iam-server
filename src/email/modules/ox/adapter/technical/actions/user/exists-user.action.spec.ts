@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ExistsUserAction, ExistsUserResponseBody } from './exists-user.action.js';
+import { ExistsUserAction, type ExistsUserResponseBody } from './exists-user.action.js';
 
 describe('ExistsUserAction', () => {
     describe('buildRequest', () => {

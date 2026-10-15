@@ -1,17 +1,17 @@
-import { Mock, vi } from 'vitest';
-import { TestingModule, Test } from '@nestjs/testing';
+import { type Mock, vi } from 'vitest';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { LoggingTestModule } from '../../../../test/utils/index.js';
 import { BaseEvent } from '../../../shared/events/index.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import { KafkaEventService } from './kafka-event.service.js';
-import { KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
 import { ConfigService } from '@nestjs/config';
-import { KafkaConfig } from '../../../shared/config/kafka.config.js';
-import { KafkaJS } from '@confluentinc/kafka-javascript';
+import { type KafkaConfig } from '../../../shared/config/kafka.config.js';
+import { type KafkaJS } from '@confluentinc/kafka-javascript';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
 import { inspect } from 'util';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;

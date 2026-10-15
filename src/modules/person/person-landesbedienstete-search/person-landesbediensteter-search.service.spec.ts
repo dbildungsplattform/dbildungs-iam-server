@@ -1,30 +1,30 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { faker } from '@faker-js/faker';
 
 import { PersonLandesbediensteterSearchService } from './person-landesbediensteter-search.service.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
-    KontextWithOrgaAndRolle,
+    type KontextWithOrgaAndRolle,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { PersonLockOccasion } from '../domain/person.enums.js';
 import { LandesbediensteterSearchNoPersonFoundError } from '../domain/landesbediensteter-search-no-person-found.error.js';
 import { LandesbediensteterSearchMultiplePersonsFoundError } from '../domain/landesbediensteter-search-multiple-persons-found.error.js';
-import { Person } from '../domain/person.js';
+import { type Person } from '../domain/person.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { PersonEmailResponse } from '../api/person-email-response.js';
-import { PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type PersonEmailResponse } from '../api/person-email-response.js';
+import { type PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import {
     EmailResolverService,
-    PersonIdWithEmailResponse,
+    type PersonIdWithEmailResponse,
 } from '../../email-microservice/domain/email-resolver.service.js';
 
 describe('PersonLandesbediensteterSearchService', () => {

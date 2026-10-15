@@ -1,8 +1,8 @@
 import fs from 'fs';
-import { PathLike } from 'node:fs';
+import { type PathLike } from 'node:fs';
 import 'reflect-metadata'; // some decorators use reflect-metadata in the background
-import { Mock } from 'vitest';
-import { DeepPartial } from '../../../test/utils/index.js';
+import { type Mock } from 'vitest';
+import { type DeepPartial } from '../../../test/utils/index.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { JsonConfig, loadConfigFiles, loadEmailAppConfigFiles } from './index.js';
 
