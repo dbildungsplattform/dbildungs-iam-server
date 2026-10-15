@@ -1,7 +1,7 @@
 import { Entity, Enum, ManyToOne } from '@mikro-orm/decorators/legacy';
 import { TimestampedEntity } from '../../../persistence/timestamped.entity.js';
-import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehung.js';
 import { OrganisationEntity } from './organisation.entity.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehung-typ.enum.js';
 
 @Entity({ tableName: 'organisationsbeziehung' })
 export class OrganisationsbeziehungEntity extends TimestampedEntity {
