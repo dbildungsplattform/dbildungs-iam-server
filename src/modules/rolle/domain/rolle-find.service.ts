@@ -432,53 +432,43 @@ export class RolleFindService {
             return [];
         }
 
-        const permittedOrgasBySystemrecht: PermittedOrgas[] = selectedAndPermittedOrgas
-            ? []
-            : await Promise.all(
-                  requestedPairs.map((paar: RollenmerkmalSystemrechtPaar) =>
-                      permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
-                  ),
-              );
-        const globallyPermittedMerkmale: RollenMerkmal[] = selectedAndPermittedOrgas
-            ? []
-            : permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas, index: number) =>
-                  permittedOrgas.all ? [requestedPairs[index]!.merkmal] : [],
-              );
-        const organisationIds: OrganisationID[] = selectedAndPermittedOrgas
-            ? selectedAndPermittedOrgas
-            : Array.from(
-                  new Set(
-                      permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas) =>
-                          permittedOrgas.all ? [] : permittedOrgas.orgaIds,
-                      ),
-                  ),
-              );
-        const organisationMerkmale: Map<OrganisationID, RollenMerkmal[]> = new Map();
-        if (selectedAndPermittedOrgas) {
-            const merkmalePerOrganisation: RollenMerkmal[][] = await Promise.all(
-                organisationIds.map((organisationId: OrganisationID) =>
-                    permissions.getPermittedMerkmaleForOrga(organisationId),
+        const permittedOrgasBySystemrecht: Map<RollenSystemRecht, PermittedOrgas> = new Map(
+            await Promise.all(
+                requestedPairs.map(
+                    async (paar: RollenmerkmalSystemrechtPaar): Promise<[RollenSystemRecht, PermittedOrgas]> => [
+                        paar.systemrecht,
+                        await permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
+                    ],
                 ),
-            );
-            organisationIds.forEach((organisationId: OrganisationID, index: number) =>
-                organisationMerkmale.set(organisationId, merkmalePerOrganisation[index]!),
+            ),
+        );
+        const scopes: GatedRollenFindScope[] = [];
+        let organisationIds: OrganisationID[];
+        if (selectedAndPermittedOrgas !== undefined) {
+            organisationIds = selectedAndPermittedOrgas;
+        } else {
+            const globallyPermittedMerkmale: RollenMerkmal[] = requestedPairs
+                .filter((paar: RollenmerkmalSystemrechtPaar) => permittedOrgasBySystemrecht.get(paar.systemrecht)!.all)
+                .map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
+            if (globallyPermittedMerkmale.length > 0) {
+                scopes.push({ authorizedMerkmale: globallyPermittedMerkmale });
+            }
+            organisationIds = Array.from(
+                new Set(
+                    Array.from(permittedOrgasBySystemrecht.values()).flatMap((permittedOrgas: PermittedOrgas) =>
+                        permittedOrgas.all ? [] : permittedOrgas.orgaIds,
+                    ),
+                ),
             );
         }
 
         const organisationIdsWithParents: Map<OrganisationID, OrganisationID[]> =
             await this.getOrganisationIdsWithParentsById(organisationIds);
-        const scopes: GatedRollenFindScope[] = [];
-        if (!selectedAndPermittedOrgas && globallyPermittedMerkmale.length > 0) {
-            scopes.push({ authorizedMerkmale: globallyPermittedMerkmale });
-        }
 
         for (const organisationId of organisationIds) {
             const authorizedMerkmale: RollenMerkmal[] = requestedPairs
-                .filter((_paar: RollenmerkmalSystemrechtPaar, index: number) => {
-                    if (selectedAndPermittedOrgas) {
-                        return organisationMerkmale.get(organisationId)!.includes(_paar.merkmal);
-                    }
-                    const permittedOrgas: PermittedOrgas = permittedOrgasBySystemrecht[index]!;
+                .filter((paar: RollenmerkmalSystemrechtPaar) => {
+                    const permittedOrgas: PermittedOrgas = permittedOrgasBySystemrecht.get(paar.systemrecht)!;
                     return permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId);
                 })
                 .map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
