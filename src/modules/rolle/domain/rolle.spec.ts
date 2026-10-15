@@ -287,6 +287,22 @@ describe('Rolle Aggregate', () => {
         });
     });
 
+    describe('hasMerkmal', () => {
+        it('should return true when the merkmal is present', () => {
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+            });
+
+            expect(rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)).toBe(true);
+        });
+
+        it('should return false when the merkmal is absent', () => {
+            const rolle: Rolle<true> = DoFactory.createRolle(true, { merkmale: [] });
+
+            expect(rolle.hasMerkmal(RollenMerkmal.MPT_ROLLE)).toBe(false);
+        });
+    });
+
     describe('removeMerkmal', () => {
         it('should remove merkmal if it exists', () => {
             const savedRolle: Rolle<true> = DoFactory.createRolle(true, {

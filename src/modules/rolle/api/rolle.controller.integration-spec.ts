@@ -21,7 +21,7 @@ import { createAndPersistServiceProvider } from '../../../../test/utils/service-
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../shared/paging/index.js';
+import { PagedResponse, RawPagedResponse } from '../../../shared/paging/index.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
@@ -56,17 +56,18 @@ import { RolleApiModule } from '../rolle-api.module.js';
 import { CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { DbiamRolleError } from './dbiam-rolle.error.js';
 import { ErrorIdType } from './ErrorIdType.enum.js';
+import { FindAvailableRollenForPKCreationQueryParams } from './find-available-rollen-for-pk-creation.query.params.js';
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
-import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
-import { RolleResponse } from './rolle.response.js';
-import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
-import { SystemRechtResponse } from './systemrecht.response.js';
-import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
 import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
 import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
 import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
 import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
+import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
+import { RolleResponse } from './rolle.response.js';
+import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
+import { SystemRechtResponse } from './systemrecht.response.js';
+import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
@@ -2520,6 +2521,120 @@ describe('Rolle API', () => {
                     },
                 ],
             });
+        });
+    });
+
+    describe('GET rolle/for-personenkontext-creation', () => {
+        it('should return available rollen for personenkontext creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({
+                    organisationId: organisation.id,
+                    limit: 5,
+                    offset: 1,
+                } as FindAvailableRollenForPKCreationQueryParams)
+                .send();
+
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
+            expect(response.status).toBe(200);
+            expect(body.total).toBe(2);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
+            expect(body.offset).toBe(1);
+            expect(body.limit).toBe(5);
+        });
+
+        it('should return empty result if user is missing permissions', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
+                all: false,
+                orgaIds: [],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({ organisationId: organisation.id })
+                .send();
+
+            expect(response.body).toStrictEqual({
+                items: [],
+                limit: 0,
+                offset: 0,
+                total: 0,
+            });
+        });
+
+        it('should return 400 if organisationId is missing', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should use provided systemrecht for personenkontext creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({
+                    organisationId: organisation.id,
+                    systemrecht: RollenSystemRechtEnum.PERSONEN_VERWALTEN,
+                } as FindAvailableRollenForPKCreationQueryParams)
+                .send();
+
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
+            expect(response.status).toBe(200);
+            expect(body.total).toBe(1);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
         });
     });
 });

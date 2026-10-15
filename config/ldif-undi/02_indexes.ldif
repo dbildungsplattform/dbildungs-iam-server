@@ -1,0 +1,13 @@
+# Extra MDB indexes for Schulportal SH. Only full matches, no substrings.
+# osixia/openldap already indexes memberOf and entryUUID.
+
+# BEFORE APPLYING: check and update database DN ({1}mdb), if necessary
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+add: olcDbIndex
+olcDbIndex: sn,givenName,displayName,description eq
+olcDbIndex: mailPrimaryAddress,mailAlternativeAddress,allowedEmailUsers eq
+olcDbIndex: members eq
+olcDbIndex: mailBoxType,hideFromAddressLists,deaktiviert,gesperrt eq
+olcDbIndex: mainSchool,allowedEmailGroups eq
+olcDbIndex: o,ou eq
