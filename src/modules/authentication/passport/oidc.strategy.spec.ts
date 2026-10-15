@@ -2,7 +2,14 @@ import { faker } from '@faker-js/faker';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { type AuthorizationParameters, type Client, Issuer, Strategy, TokenSet, type UserinfoResponse } from 'openid-client';
+import {
+    type AuthorizationParameters,
+    type Client,
+    Issuer,
+    Strategy,
+    TokenSet,
+    type UserinfoResponse,
+} from 'openid-client';
 
 import {
     ConfigTestModule,

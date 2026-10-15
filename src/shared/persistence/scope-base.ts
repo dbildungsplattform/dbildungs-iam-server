@@ -1,5 +1,16 @@
-import { type AnyEntity, type EntityName, type QueryOrderMap, type EntityKey, type FilterObject } from '@mikro-orm/core';
-import { type EntityManager, type QBFilterQuery, type QueryBuilder, type SelectQueryBuilder } from '@mikro-orm/postgresql';
+import {
+    type AnyEntity,
+    type EntityName,
+    type QueryOrderMap,
+    type EntityKey,
+    type FilterObject,
+} from '@mikro-orm/core';
+import {
+    type EntityManager,
+    type QBFilterQuery,
+    type QueryBuilder,
+    type SelectQueryBuilder,
+} from '@mikro-orm/postgresql';
 import { type ScopeOrder, ScopeOperator } from './scope.enums.js';
 import { ScopeBaseNestedError } from './error/scope-base-nested.error.js';
 

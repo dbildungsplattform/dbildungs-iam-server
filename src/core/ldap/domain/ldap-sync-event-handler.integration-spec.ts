@@ -28,7 +28,12 @@ import { type ServiceProvider } from '../../../modules/service-provider/domain/s
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { type OrganisationID, type PersonID, type PersonUsername, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import {
+    type OrganisationID,
+    type PersonID,
+    type PersonUsername,
+    type RolleID,
+} from '../../../shared/types/aggregate-ids.types.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import { type PersonIdentifier } from '../../logging/person-identifier.js';

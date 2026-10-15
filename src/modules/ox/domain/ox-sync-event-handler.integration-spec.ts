@@ -10,7 +10,12 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { type PersonIdentifier } from '../../../core/logging/person-identifier.js';
 import { OxError } from '../../../shared/error/ox.error.js';
 import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
-import { type OrganisationID, type PersonID, type PersonUsername, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import {
+    type OrganisationID,
+    type PersonID,
+    type PersonUsername,
+    type RolleID,
+} from '../../../shared/types/aggregate-ids.types.js';
 import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';

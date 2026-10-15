@@ -15,8 +15,18 @@ import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-pe
 import { DisabledOxUserChangedEvent } from '../../../shared/events/ox/disabled-ox-user-changed.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { type PersonenkontextID, type PersonID, type PersonUsername, type RolleID } from '../../../shared/types/index.js';
-import { type OXContextID, type OXContextName, type OXUserID, type OXUserName } from '../../../shared/types/ox-ids.types.js';
+import {
+    type PersonenkontextID,
+    type PersonID,
+    type PersonUsername,
+    type RolleID,
+} from '../../../shared/types/index.js';
+import {
+    type OXContextID,
+    type OXContextName,
+    type OXUserID,
+    type OXUserName,
+} from '../../../shared/types/ox-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';

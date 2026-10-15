@@ -21,8 +21,18 @@ import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { type PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { type EmailAddressID, type OrganisationKennung, type PersonID, type PersonUsername } from '../../../shared/types/index.js';
-import { type OXContextID, type OXContextName, type OXGroupID, type OXUserID } from '../../../shared/types/ox-ids.types.js';
+import {
+    type EmailAddressID,
+    type OrganisationKennung,
+    type PersonID,
+    type PersonUsername,
+} from '../../../shared/types/index.js';
+import {
+    type OXContextID,
+    type OXContextName,
+    type OXGroupID,
+    type OXUserID,
+} from '../../../shared/types/ox-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';

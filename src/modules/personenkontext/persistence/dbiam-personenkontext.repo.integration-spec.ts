@@ -20,7 +20,11 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { type OrganisationID, type PersonenkontextID, type PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import {
+    type OrganisationID,
+    type PersonenkontextID,
+    type PersonID,
+} from '../../../shared/types/aggregate-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';

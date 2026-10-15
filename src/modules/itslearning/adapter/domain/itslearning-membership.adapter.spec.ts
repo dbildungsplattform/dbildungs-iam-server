@@ -5,7 +5,10 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
 import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../shared/error/its-learning.error.js';
-import { type CreateMembershipParams, CreateMembershipsAction } from '../technical/actions/create-memberships.action.js';
+import {
+    type CreateMembershipParams,
+    CreateMembershipsAction,
+} from '../technical/actions/create-memberships.action.js';
 import {
     type MembershipResponse,
     ReadMembershipsForPersonAction,

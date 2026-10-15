@@ -1,6 +1,12 @@
 import { type Response } from 'express';
 import { type Observable, map } from 'rxjs';
-import { type CallHandler, type ExecutionContext, type NestInterceptor, SetMetadata, applyDecorators } from '@nestjs/common';
+import {
+    type CallHandler,
+    type ExecutionContext,
+    type NestInterceptor,
+    SetMetadata,
+    applyDecorators,
+} from '@nestjs/common';
 import { PagedResponse } from './paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
 

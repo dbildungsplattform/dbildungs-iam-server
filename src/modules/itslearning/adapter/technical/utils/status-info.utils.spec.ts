@@ -1,7 +1,12 @@
 import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../../shared/error/its-learning.error.js';
 import { Err, Ok } from '../../../../../shared/util/result.js';
-import { type FailureStatusInfo, type MassResult, type StatusInfo, type SuccessStatusInfo } from '../actions/base-mass-action.js';
+import {
+    type FailureStatusInfo,
+    type MassResult,
+    type StatusInfo,
+    type SuccessStatusInfo,
+} from '../actions/base-mass-action.js';
 import { StatusInfoHelpers } from './status-info.utils.js';
 
 function makeSuccessStatus(): SuccessStatusInfo {

@@ -1,4 +1,10 @@
-import { createParamDecorator, type ExecutionContext, HttpException, type PipeTransform, type Type } from '@nestjs/common';
+import {
+    createParamDecorator,
+    type ExecutionContext,
+    HttpException,
+    type PipeTransform,
+    type Type,
+} from '@nestjs/common';
 import { type Request } from 'express';
 import { type PassportUser } from '../types/user.js';
 import { type PersonPermissions } from '../domain/person-permissions.js';

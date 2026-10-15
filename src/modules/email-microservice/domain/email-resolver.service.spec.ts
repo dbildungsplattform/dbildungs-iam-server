@@ -17,7 +17,11 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { type SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
-import { type DomainError, EmailMicroserviceCommunicationError, EntityNotFoundError } from '../../../shared/error/index.js';
+import {
+    type DomainError,
+    EmailMicroserviceCommunicationError,
+    EntityNotFoundError,
+} from '../../../shared/error/index.js';
 import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
