@@ -1067,11 +1067,26 @@ describe('RolleRepo', () => {
                 rollenart: RollenArt.LEIT,
                 merkmale: [RollenMerkmal.PILOT_1_ROLLE],
             });
+            const excludedNormalRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+            });
+            const excludedPilotRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE, RollenMerkmal.BEFRISTUNG_PFLICHT],
+            });
 
             const [rollen, total]: Counted<Rolle<true>> = await sut.findBy({
                 allowedOrganisationIds: [organisationA.id, organisationB.id],
                 rollenArten: [RollenArt.LEIT],
+                excludeMerkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
                 gatedRollenFindScopes: [
+                    {
+                        allowedOrganisationIds: [organisationB.id],
+                        authorizedMerkmale: [],
+                    },
                     {
                         allowedOrganisationIds: [organisationA.id],
                         authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
@@ -1085,7 +1100,12 @@ describe('RolleRepo', () => {
                 expect.arrayContaining([normalRolleA.id, normalRolleB.id, pilotRolleA.id]),
             );
             expect(rollen.map((rolle: Rolle<true>) => rolle.id)).not.toEqual(
-                expect.arrayContaining([mixedGatedRolleA.id, pilotRolleB.id]),
+                expect.arrayContaining([
+                    mixedGatedRolleA.id,
+                    pilotRolleB.id,
+                    excludedNormalRolleA.id,
+                    excludedPilotRolleA.id,
+                ]),
             );
         });
 

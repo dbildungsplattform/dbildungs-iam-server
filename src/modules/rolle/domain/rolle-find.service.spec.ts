@@ -562,10 +562,11 @@ describe('RolleFindService', () => {
                 Promise.resolve(
                     systemrechte[0] === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN
                         ? { all: true }
-                        : { all: false, orgaIds: [] },
+                        : systemrechte[0] === RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN
+                          ? { all: false, orgaIds: ['schule-a'] }
+                          : { all: false, orgaIds: [] },
                 ),
             );
-
             rolleRepoMock.findBy.mockResolvedValueOnce([[DoFactory.createRolle(true)], 1]);
 
             const result: Counted<Rolle<true>> = await rolleFindService.findRollenAuthorizedForGatedSystemrecht({
@@ -590,7 +591,13 @@ describe('RolleFindService', () => {
                     excludeMerkmale: RollenmerkmalSystemrechtPaar.GATED_MERKMALE.filter(
                         (merkmal: RollenMerkmal) => merkmal !== RollenMerkmal.MPT_ROLLE,
                     ),
-                    gatedRollenFindScopes: [{ authorizedMerkmale: [RollenMerkmal.MPT_ROLLE] }],
+                    gatedRollenFindScopes: [
+                        { authorizedMerkmale: [RollenMerkmal.MPT_ROLLE] },
+                        {
+                            allowedOrganisationIds: ['schule-a'],
+                            authorizedMerkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                        },
+                    ],
                     orderBy: 'artAndName',
                 }),
             );
@@ -1434,6 +1441,24 @@ describe('RolleFindService', () => {
             ]);
             const result: OrganisationID[] = await rolleFindService['getOrganisationIdsWithParents'](orgaIds);
             expect(result).toEqual(expect.arrayContaining(['orga-1', 'orga-2', 'parent-1']));
+        });
+
+        it('should stop traversing a cyclic organisation hierarchy', async () => {
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                id: 'orga-1',
+                administriertVon: 'parent-1',
+            });
+            const parent: Organisation<true> = DoFactory.createOrganisation(true, {
+                id: 'parent-1',
+                administriertVon: 'orga-1',
+            });
+            organisationRepoMock.findParentOrgasForIds.mockResolvedValue([organisation, parent]);
+
+            const result: Map<OrganisationID, OrganisationID[]> = await rolleFindService[
+                'getOrganisationIdsWithParentsById'
+            ](['orga-1']);
+
+            expect(result.get('orga-1')).toEqual(['orga-1', 'parent-1']);
         });
     });
 });

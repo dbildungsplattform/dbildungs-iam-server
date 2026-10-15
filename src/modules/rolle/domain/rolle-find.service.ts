@@ -432,8 +432,8 @@ export class RolleFindService {
             return [];
         }
 
-        const permittedOrgasBySystemrecht: PermittedOrgas[] | undefined = selectedAndPermittedOrgas
-            ? undefined
+        const permittedOrgasBySystemrecht: PermittedOrgas[] = selectedAndPermittedOrgas
+            ? []
             : (
                   await Promise.all(
                       requestedPairs.map((paar: RollenmerkmalSystemrechtPaar) =>
@@ -441,15 +441,16 @@ export class RolleFindService {
                       ),
                   )
               ).map((permittedOrgas: PermittedOrgas | undefined) => permittedOrgas ?? { all: false, orgaIds: [] });
-        const globallyPermittedMerkmale: RollenMerkmal[] =
-            permittedOrgasBySystemrecht?.flatMap((permittedOrgas: PermittedOrgas, index: number) =>
-                permittedOrgas.all ? [requestedPairs[index]!.merkmal] : [],
-            ) ?? [];
+        const globallyPermittedMerkmale: RollenMerkmal[] = selectedAndPermittedOrgas
+            ? []
+            : permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas, index: number) =>
+                  permittedOrgas.all ? [requestedPairs[index]!.merkmal] : [],
+              );
         const organisationIds: OrganisationID[] = selectedAndPermittedOrgas
             ? selectedAndPermittedOrgas
             : Array.from(
-                  new Set(
-                      (permittedOrgasBySystemrecht ?? []).flatMap((permittedOrgas: PermittedOrgas) =>
+                      new Set(
+                          permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas) =>
                           permittedOrgas.all ? [] : permittedOrgas.orgaIds,
                       ),
                   ),
@@ -479,10 +480,9 @@ export class RolleFindService {
                     if (selectedAndPermittedOrgas) {
                         return organisationMerkmale.get(organisationId)?.includes(_paar.merkmal) ?? false;
                     }
-                    const permittedOrgas: PermittedOrgas | undefined = permittedOrgasBySystemrecht?.[index];
+                    const permittedOrgas: PermittedOrgas = permittedOrgasBySystemrecht[index]!;
                     return (
-                        permittedOrgas?.all === true ||
-                        (permittedOrgas?.all === false && permittedOrgas.orgaIds.includes(organisationId))
+                        permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId)
                     );
                 })
                 .map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
