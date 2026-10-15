@@ -70,10 +70,6 @@ export class RollenmerkmalSystemrechtPaar {
         );
     }
 
-    public static byMerkmal(merkmal: RollenMerkmal): RollenmerkmalSystemrechtPaar | undefined {
-        return RollenmerkmalSystemrechtPaar.ALL.find((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal === merkmal);
-    }
-
     public static isGatedMerkmal(merkmal: RollenMerkmal): boolean {
         return RollenmerkmalSystemrechtPaar.GATED_MERKMALE.includes(merkmal);
     }
