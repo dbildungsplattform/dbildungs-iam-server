@@ -1,5 +1,5 @@
-import { EntityManager } from '@mikro-orm/core';
-import { ServiceProvider } from '../../src/modules/service-provider/domain/service-provider.js';
+import { type EntityManager } from '@mikro-orm/core';
+import { type ServiceProvider } from '../../src/modules/service-provider/domain/service-provider.js';
 import { ServiceProviderEntity } from '../../src/modules/service-provider/repo/service-provider.entity.js';
 import {
     mapEntityToAggregate,

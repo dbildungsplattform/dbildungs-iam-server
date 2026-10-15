@@ -1,20 +1,20 @@
 import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import assert from 'assert';
-import { AxiosResponse } from 'axios';
+import { type AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ConfigTestModule } from '../../../../../test/utils/config-test.module.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { OxError } from '../../../../shared/error/ox.error.js';
 import { OxMemberAlreadyInGroupError } from '../domain/error/ox-member-already-in-group.error.js';
 import { OxPrimaryMailNotEqualEmail1Error } from '../domain/error/ox-primary-mail-not-equal-email1.error.js';
 import { OxBaseAction } from './actions/ox-base-action.js';
-import { OxErrorType, OxSendService } from './ox.send-service.js';
+import { type OxErrorType, OxSendService } from './ox.send-service.js';
 
 class OxActionMock extends OxBaseAction<unknown, string> {
     public override action: string = 'MockAction';

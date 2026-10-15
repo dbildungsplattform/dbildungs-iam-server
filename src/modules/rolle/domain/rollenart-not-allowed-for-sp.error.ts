@@ -1,4 +1,4 @@
-import { RollenArt } from './rolle.enums.js';
+import { type RollenArt } from './rolle.enums.js';
 import { RollenerweiterungDomainError } from './rollenerweiterung-domain.error.js';
 
 export class RollenartNotAllowedForSPError extends RollenerweiterungDomainError {

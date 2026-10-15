@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ModuleLogger } from './module-logger.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import { NestLogger } from './nest-logger.js';
-import { Logger } from 'winston';
+import { type Logger } from 'winston';
 
 class LoggerMock {
     public logs: Array<{ level: string; message: unknown }> = [];

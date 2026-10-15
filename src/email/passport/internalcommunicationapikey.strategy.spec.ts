@@ -1,8 +1,8 @@
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 import { InternalCommunicationApiKeyStrategy } from './internalcommunicationapikey.strategy.js';
 import { UnauthorizedException } from '@nestjs/common';
 import { EmailAppConfig } from '../../shared/config/email-app.config.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 
 describe('Internal Communication ApiKey Strategy', () => {
     let configServiceMock: DeepMocked<EmailAppConfig>;

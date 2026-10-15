@@ -1,5 +1,5 @@
 import { BaseEvent } from './base-event.js';
-import { PersonID, PersonUsername } from '../types/index.js';
+import { type PersonID, type PersonUsername } from '../types/index.js';
 
 import type { Person } from '../../modules/person/domain/person.js';
 

@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { UnauthorizedException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthorizationParameters, Client, Issuer, Strategy, TokenSet, UserinfoResponse } from 'openid-client';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type AuthorizationParameters, type Client, Issuer, Strategy, TokenSet, type UserinfoResponse } from 'openid-client';
 
 import {
     ConfigTestModule,
@@ -18,14 +18,14 @@ import {
     StepUpLevel,
     updateAndGetStepUpLevel,
 } from './oidc.strategy.js';
-import { PassportUser } from '../types/user.js';
+import { type PassportUser } from '../types/user.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { KeycloakUserNotFoundError } from '../domain/keycloak-user-not-found.error.js';
-import { Request } from 'express';
+import { type Request } from 'express';
 import { sign } from 'jsonwebtoken';
 import { createRequestMock } from '../../../../test/utils/http.mocks.js';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 
 describe('OpenIdConnectStrategy', () => {
     let module: TestingModule;

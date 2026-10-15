@@ -1,14 +1,14 @@
 import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungFactory } from './rollenerweiterung.factory.js';
-import { Rollenerweiterung } from './rollenerweiterung.js';
+import { type Rollenerweiterung } from './rollenerweiterung.js';
 import { Rolle } from './rolle.js';
 import { RollenArt } from './rolle.enums.js';
 

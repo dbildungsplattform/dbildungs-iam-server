@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../test/utils/do-factory.js';
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
 import { KafkaSchuleUpdatedEvent } from './kafka-schule-updated.event.js';
 
 describe('KafkaSchuleUpdatedEvent', () => {

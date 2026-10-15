@@ -1,4 +1,4 @@
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../../shared/error/its-learning.error.js';
 import { IMSESAction } from './base-action.js';
 import { faker } from '@faker-js/faker';

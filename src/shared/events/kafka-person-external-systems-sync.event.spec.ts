@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { PersonID } from '../types/aggregate-ids.types.js';
+import { type PersonID } from '../types/aggregate-ids.types.js';
 import { KafkaPersonExternalSystemsSyncEvent } from './kafka-person-external-systems-sync.event.js';
 
 describe('KafkaPersonExternalSystemsSyncEvent', () => {

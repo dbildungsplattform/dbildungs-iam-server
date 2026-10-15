@@ -1,4 +1,4 @@
-import { AuthParams } from '../ox-base-action.js';
+import { type AuthParams } from '../ox-base-action.js';
 
 export type GroupMemberParams = AuthParams & {
     contextId: string;

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+import { type NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { NestLogger } from '../core/logging/nest-logger.js';
 import { GlobalValidationPipe } from '../shared/validation/index.js';
 import { GlobalPagingHeadersInterceptor } from '../shared/paging/index.js';

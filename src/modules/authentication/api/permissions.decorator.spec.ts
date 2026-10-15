@@ -1,11 +1,11 @@
 import { Permissions } from './permissions.decorator.js';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants.js';
-import { PersonPermissions } from '../domain/person-permissions.js';
-import { ExecutionContext } from '@nestjs/common';
-import express from 'express';
-import { PassportUser } from '../types/user.js';
+import { type PersonPermissions } from '../domain/person-permissions.js';
+import { type ExecutionContext } from '@nestjs/common';
+import type express from 'express';
+import { type PassportUser } from '../types/user.js';
 import { createExecutionContextMock, createRequestMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 import { createPersonPermissionsMock, createUserinfoResponseMock } from '../../../../test/utils/auth.mock.js';
 
 describe('The Permissions-Decorator', () => {

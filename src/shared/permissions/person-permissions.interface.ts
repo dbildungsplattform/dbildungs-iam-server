@@ -1,10 +1,10 @@
 /* v8 ignore file @preserv */
 // type definitions can not be covered by v8, since the code does not exist at runtime
-import { OrganisationID, PersonID } from '../types/index.js';
-import { RollenSystemRecht } from '../../modules/rolle/domain/systemrecht.js';
-import { RollenMerkmal } from '../../modules/rolle/domain/rolle.enums.js';
-import { PermittedOrgas, PersonFields } from '../../modules/authentication/domain/person-permissions.js';
-import { OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
+import { type OrganisationID, type PersonID } from '../types/index.js';
+import { type RollenSystemRecht } from '../../modules/rolle/domain/systemrecht.js';
+import { type RollenMerkmal } from '../../modules/rolle/domain/rolle.enums.js';
+import { type PermittedOrgas, type PersonFields } from '../../modules/authentication/domain/person-permissions.js';
+import { type OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
 
 export type IPersonPermissions = {
     id: string;

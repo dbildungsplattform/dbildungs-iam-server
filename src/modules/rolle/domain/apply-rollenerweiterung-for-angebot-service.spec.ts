@@ -2,20 +2,20 @@ import { ServiceProviderRepo } from '../../service-provider/repo/service-provide
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung.body.params.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung.body.params.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
 import { Rolle } from './rolle.js';
 import { Ok } from '../../../shared/util/result.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ApplyRollenerweiterungForAngebotService } from './apply-rollenerweiterungen-for-angebot-service.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     createPersonPermissionsMock,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,

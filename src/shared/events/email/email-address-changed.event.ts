@@ -1,5 +1,5 @@
 import { BaseEvent } from '../base-event.js';
-import { EmailAddressID, PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type EmailAddressID, type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
 
 /**
  * This event should be triggered when an existing email-address is deactivated for a user and persisted successfully in the database and

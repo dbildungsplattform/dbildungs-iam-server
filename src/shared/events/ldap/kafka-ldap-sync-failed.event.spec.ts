@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaLdapSyncFailedEvent } from './kafka-ldap-sync-failed.event.js';
 
 describe('KafkaLdapSyncFailedEvent', () => {

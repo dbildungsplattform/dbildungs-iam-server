@@ -1,6 +1,6 @@
 import { MikroORM } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import {
     CommonTestModule,
     DatabaseTestModule,

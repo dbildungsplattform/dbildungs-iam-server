@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
@@ -13,16 +13,16 @@ import { createAndPersistPersonenkontext } from '../../../../test/utils/personen
 import { EventModule } from '../../../core/eventbus/event.module.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonEntity } from '../../person/persistence/person.entity.js';
 import { mapAggregateToData } from '../../person/persistence/person.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { PersonenkontextEntity } from './personenkontext.entity.js';
+import { type PersonenkontextEntity } from './personenkontext.entity.js';
 import { PersonenkontextScope } from './personenkontext.scope.js';
 
 describe('PersonenkontextScope', () => {

@@ -1,7 +1,7 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { Personenkontext } from './personenkontext.js';
+import { type Personenkontext } from './personenkontext.js';
 import { faker } from '@faker-js/faker';
 import { PersonenkontextFactory } from './personenkontext.factory.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -10,7 +10,7 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 
 describe('DBiamPersonenkontextService', () => {
     let module: TestingModule;

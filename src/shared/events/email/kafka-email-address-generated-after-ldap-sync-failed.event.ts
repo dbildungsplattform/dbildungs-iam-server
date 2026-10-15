@@ -1,4 +1,4 @@
-import { KafkaEvent } from '../kafka-event.js';
+import { type KafkaEvent } from '../kafka-event.js';
 import { EmailAddressGeneratedAfterLdapSyncFailedEvent } from './email-address-generated-after-ldap-sync-failed.event.js';
 
 export class KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent

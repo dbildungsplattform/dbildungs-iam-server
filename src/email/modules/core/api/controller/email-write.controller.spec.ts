@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, LoggingTestModule } from '../../../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../../../shared/validation/global-validation.pipe.js';
 import { faker } from '@faker-js/faker';
 import { EmailWriteController } from './email-write.controller.js';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { SetEmailAddressForSpshPersonService } from '../../domain/set-email-address-for-spsh-person.service.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../dtos/params/set-email-address-for-spsh-person.bodyparams.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
@@ -16,8 +16,8 @@ import { DeleteEmailAddressesForSpshPersonPathParams } from '../dtos/params/dele
 import { SetEmailAddressesSuspendedPathParams } from '../dtos/params/set-email-addresses-suspended.pathparams.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
 import { ModifyOrganisationInLdapService } from '../../domain/modify-organisation-in-ldap.service.js';
-import { SetEmailAddressesSuspendedBodyParams } from '../dtos/params/set-email-addresses-suspended.bodyparams.js';
-import { UpdateOrganisationBodyParams } from '../dtos/params/update-organisation.bodyparams.js';
+import { type SetEmailAddressesSuspendedBodyParams } from '../dtos/params/set-email-addresses-suspended.bodyparams.js';
+import { type UpdateOrganisationBodyParams } from '../dtos/params/update-organisation.bodyparams.js';
 import { UpdateOrganisationPathParams } from '../dtos/params/update-organisation.pathparams.js';
 
 function createSetEmailBodyParams(): SetEmailAddressForSpshPersonBodyParams {

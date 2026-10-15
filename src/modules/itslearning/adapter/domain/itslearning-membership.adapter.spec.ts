@@ -1,27 +1,27 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { ConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../shared/error/its-learning.error.js';
-import { CreateMembershipParams, CreateMembershipsAction } from '../technical/actions/create-memberships.action.js';
+import { type CreateMembershipParams, CreateMembershipsAction } from '../technical/actions/create-memberships.action.js';
 import {
-    MembershipResponse,
+    type MembershipResponse,
     ReadMembershipsForPersonAction,
 } from '../technical/actions/read-memberships-for-person.action.js';
 import { ItsLearningIMSESApiService } from '../technical/itslearning.api-service.js';
 import { IMSESRoleType } from './role.enum.js';
 import {
     ItslearningMembershipAdapter,
-    SetMembershipParams,
-    SetMembershipsResult,
+    type SetMembershipParams,
+    type SetMembershipsResult,
 } from './itslearning-membership.adapter.js';
 import { DeleteMembershipsAction } from '../technical/actions/delete-memberships.action.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
 import { Ok } from '../../../../shared/util/result.js';
-import { FailureStatusInfo, MassResult } from '../technical/actions/base-mass-action.js';
+import { type FailureStatusInfo, type MassResult } from '../technical/actions/base-mass-action.js';
 
 function makeFailureStatus(description: string): FailureStatusInfo {
     return {

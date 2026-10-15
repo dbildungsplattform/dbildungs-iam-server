@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Rolle } from '../domain/rolle.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { type Rolle } from '../domain/rolle.js';
+import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { NoRedundantRollenerweiterung } from './no-redundant-rollenerweiterung.specification.js';
 
 describe('NoRedundantRollenerweiterung', () => {

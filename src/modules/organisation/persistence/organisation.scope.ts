@@ -1,7 +1,7 @@
-import { EntityName } from '@mikro-orm/core';
+import { type EntityName } from '@mikro-orm/core';
 import { ScopeBase, ScopeOperator } from '../../../shared/persistence/index.js';
 import { OrganisationEntity } from './organisation.entity.js';
-import { OrganisationsTyp } from '../domain/organisation.enums.js';
+import { type OrganisationsTyp } from '../domain/organisation.enums.js';
 
 export type OrganisationFindByProps = {
     kennung?: string;

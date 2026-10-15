@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { DeleteGroupAction, DeleteGroupParams, DeleteGroupResponseBody } from './delete-group.action.js';
+import { DeleteGroupAction, type DeleteGroupParams, type DeleteGroupResponseBody } from './delete-group.action.js';
 import { Ok } from '../../../../../../shared/util/result.js';
 
 describe('DeleteGroupAction', () => {

@@ -1,18 +1,18 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { DomainError, EntityCouldNotBeUpdated, MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged } from '../../../shared/paging/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type DomainError, EntityCouldNotBeUpdated, MissingPermissionsError } from '../../../shared/error/index.js';
+import { type Paged } from '../../../shared/paging/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import {
-    PersonenkontextRolleWithOrganisation,
-    PersonPermissions,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonPermissions,
 } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
@@ -30,7 +30,7 @@ import { SchultraegerNameEindeutigError } from '../specification/error/Schultrae
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp, RootDirectChildrenType } from './organisation.enums.js';
-import { Organisation } from './organisation.js';
+import { type Organisation } from './organisation.js';
 import { OrganisationService } from './organisation.service.js';
 
 describe('OrganisationService', () => {

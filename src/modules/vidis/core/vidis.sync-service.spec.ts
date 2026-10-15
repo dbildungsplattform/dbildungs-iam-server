@@ -1,23 +1,23 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import {
     EntityNotFoundError,
     MissingAttributeError,
     MissingPermissionsError,
-    SharedDomainError,
+    type SharedDomainError,
 } from '../../../shared/error/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
-import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
+import { type EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProviderModificationService } from '../../service-provider/domain/service-provider-modification.service.js';
 import {

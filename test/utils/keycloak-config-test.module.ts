@@ -1,9 +1,9 @@
-import { DynamicModule, OnModuleDestroy } from '@nestjs/common';
+import { type DynamicModule, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomInt } from 'crypto';
-import { GenericContainer, StartedTestContainer } from 'testcontainers';
+import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { KeycloakInstanceConfig } from '../../src/modules/keycloak-administration/keycloak-instance-config.js';
-import { KeycloakConfig, ServerConfig } from '../../src/shared/config/index.js';
+import { type KeycloakConfig, type ServerConfig } from '../../src/shared/config/index.js';
 
 type KeycloakConfigTestModuleOptions = { isKeycloakRequired: boolean };
 

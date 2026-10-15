@@ -1,12 +1,12 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { EmailExceptionFilter } from './email-exception-filter.js';
 import { EmailDomainNotFoundError } from './email-domain-not-found.error.js';
 import { EmailAddressNotFoundError } from './email-address-not-found.error.js';
 import { EmailAddressGenerationAttemptsExceededError } from './email-address-generation-attempts-exceeds.error.js';
-import { DomainError } from '../../../../shared/error/index.js';
+import { type DomainError } from '../../../../shared/error/index.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('EmailExceptionFilter', () => {
     let filter: EmailExceptionFilter;

@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { CommonTestModule } from '../../../test/utils/common-test.module.js';
 import { createMock } from '../../../test/utils/createMock.js';
 import { DatabaseTestModule, KeycloakConfigTestModule } from '../../../test/utils/index.js';

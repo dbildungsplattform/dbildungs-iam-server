@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { RolleRepo } from './repo/rolle.repo.js';
 import { RolleModule } from './rolle.module.js';
 import { ConfigTestModule } from '../../../test/utils/config-test.module.js';

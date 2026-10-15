@@ -1,5 +1,5 @@
-import { DomainError } from '../../../../../../../shared/error/index.js';
-import { UserNameParams } from './ox-user.types.js';
+import { type DomainError } from '../../../../../../../shared/error/index.js';
+import { type UserNameParams } from './ox-user.types.js';
 import { OxBaseAction } from '../ox-base-action.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
 

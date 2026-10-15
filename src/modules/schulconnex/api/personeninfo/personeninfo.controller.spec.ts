@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { PersonenInfoController } from './personeninfo.controller.js';
 import { PersonenInfoService } from '../../domain/personeninfo/personeninfo.service.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
 import { createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
 import { ExceedsLimitError } from '../../../../shared/error/exceeds-limit.error.js';

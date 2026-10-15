@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { CallHandler, ExecutionContext } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type CallHandler, type ExecutionContext } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
 import { sign } from 'jsonwebtoken';
 
 import { PersonPermissionsRepo } from '../domain/person-permission.repo.js';

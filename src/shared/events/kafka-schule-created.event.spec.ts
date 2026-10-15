@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../test/utils/do-factory.js';
 import { RootDirectChildrenType } from '../../modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
 import { KafkaSchuleCreatedEvent } from './kafka-schule-created.event.js';
 
 describe('KafkaSchuleCreatedEvent', () => {

@@ -1,13 +1,13 @@
 /* eslint-disable max-classes-per-file */
-import { Mock, vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type Mock, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { LoggingTestModule } from '../../../../test/utils/index.js';
 import { BaseEvent } from '../../../shared/events/index.js';
 import { ClassLogger } from '../../logging/class-logger.js';
-import { EventHandlerType } from '../types/util.types.js';
+import { type EventHandlerType } from '../types/util.types.js';
 import { EventService } from './event.service.js';
-import { DeepMocked } from '../../../../test/utils/createMock.js';
+import { type DeepMocked } from '../../../../test/utils/createMock.js';
 
 class TestEvent extends BaseEvent {
     public constructor() {

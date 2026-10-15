@@ -1,5 +1,5 @@
 import { BaseEvent } from './base-event.js';
-import { PersonID } from '../types/index.js';
+import { type PersonID } from '../types/index.js';
 
 /**
  * Used for triggering syncing information about a person from SPSH to LDAP explicitly

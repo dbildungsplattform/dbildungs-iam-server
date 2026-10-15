@@ -1,5 +1,5 @@
-import { Mock } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { type Mock } from 'vitest';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { InternalCommunicationApiKeyStrategy } from './internalcommunicationapikey.strategy.js';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';

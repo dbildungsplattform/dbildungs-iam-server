@@ -1,7 +1,8 @@
 /* eslint-disable max-classes-per-file */
+import type * as PromClient from 'prom-client';
 import { vi } from 'vitest';
 
-type OriginalType = typeof import('prom-client');
+type OriginalType = typeof PromClient;
 vi.mock<OriginalType>(import('prom-client'), async (importOriginal: () => Promise<OriginalType>) => {
     const originalModule: OriginalType = await importOriginal();
 
@@ -16,9 +17,9 @@ vi.mock<OriginalType>(import('prom-client'), async (importOriginal: () => Promis
     };
 });
 
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Counter, type Gauge, Registry } from 'prom-client';
 import { MetricsService } from './metrics.service.js';
-import { Counter, Gauge, Registry } from 'prom-client';
 
 describe('MetricsService', () => {
     let service: MetricsService;
