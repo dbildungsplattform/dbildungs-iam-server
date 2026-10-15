@@ -204,32 +204,33 @@ export class OrganisationService {
         updateData: UpdateOrganisationData,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
+        const permissionErrorResult: Result<never, MissingPermissionsError> = {
+            ok: false,
+            error: new MissingPermissionsError('Not authorized to manage this organisation'),
+        };
         const organisationDo: Option<Organisation<true>> = await this.organisationRepo.findById(updateData.id);
         if (!organisationDo) {
             return { ok: false, error: new EntityNotFoundError('Organisation', updateData.id) };
         }
 
-        const hasOrgVerwaltenRechtAtOrg: boolean = await permissions.hasOrgVerwaltenRechtAtOrga(
-            organisationDo.typ,
-            organisationDo.administriertVon,
-        );
-        if (!hasOrgVerwaltenRechtAtOrg) {
-            return { ok: false, error: new MissingPermissionsError('Not authorized to manage this organisation') };
+        const hasOrgVerwaltenRechtAtSource: boolean = await this.checkSourcePermisson(organisationDo, permissions);
+        if (!hasOrgVerwaltenRechtAtSource) {
+            return permissionErrorResult;
         }
 
         const canUpdateParentReferences: boolean =
             organisationDo.typ !== OrganisationsTyp.SCHULE || updateData.typ !== OrganisationsTyp.SCHULE;
-        if (canUpdateParentReferences) {
-            organisationDo.administriertVon = updateData.administriertVon;
-            organisationDo.zugehoerigZu = updateData.zugehoerigZu;
+        const hasOrgVerwaltenRechtAtDestination: boolean = await this.checkDestinationPermission(
+            organisationDo,
+            updateData,
+            canUpdateParentReferences,
+            permissions,
+        );
+        if (!hasOrgVerwaltenRechtAtDestination) {
+            return permissionErrorResult;
         }
-        organisationDo.name = updateData.name;
-        organisationDo.namensergaenzung = updateData.namensergaenzung;
-        organisationDo.kuerzel = updateData.kuerzel;
-        organisationDo.typ = updateData.typ;
-        organisationDo.traegerschaft = updateData.traegerschaft;
-        organisationDo.emailAdress = updateData.emailAdress;
-        organisationDo.updatedAt = new Date();
+
+        this.applyChangesToOrganisation(organisationDo, updateData, canUpdateParentReferences);
 
         const cycleError: DomainError | undefined = await this.validateOrganisationCycles(organisationDo);
         if (cycleError) {
@@ -275,6 +276,45 @@ export class OrganisationService {
             ok: false,
             error: error,
         };
+    }
+
+    private applyChangesToOrganisation(
+        organisation: Organisation<true>,
+        updateData: UpdateOrganisationData,
+        canUpdateParentReferences: boolean,
+    ): void {
+        if (canUpdateParentReferences) {
+            organisation.administriertVon = updateData.administriertVon;
+            organisation.zugehoerigZu = updateData.zugehoerigZu;
+        }
+        organisation.name = updateData.name;
+        organisation.namensergaenzung = updateData.namensergaenzung;
+        organisation.kuerzel = updateData.kuerzel;
+        organisation.typ = updateData.typ;
+        organisation.traegerschaft = updateData.traegerschaft;
+        organisation.emailAdress = updateData.emailAdress;
+        organisation.updatedAt = new Date();
+    }
+
+    private checkSourcePermisson(organisation: Organisation<true>, permissions: IPersonPermissions): Promise<boolean> {
+        return permissions.hasOrgVerwaltenRechtAtOrga(organisation.typ, organisation.administriertVon);
+    }
+
+    private async checkDestinationPermission(
+        organisation: Organisation<true>,
+        updateData: UpdateOrganisationData,
+        canUpdateParentReferences: boolean,
+        permissions: IPersonPermissions,
+    ): Promise<boolean> {
+        const changesAuthorizationDestination: boolean =
+            organisation.typ !== updateData.typ ||
+            (canUpdateParentReferences && organisation.administriertVon !== updateData.administriertVon);
+
+        if (!changesAuthorizationDestination) {
+            return true;
+        }
+
+        return permissions.hasOrgVerwaltenRechtAtOrga(updateData.typ, updateData.administriertVon);
     }
 
     private async validateOrganisationCycles(organisationDo: Organisation<true>): Promise<DomainError | undefined> {

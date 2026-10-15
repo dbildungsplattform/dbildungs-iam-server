@@ -722,7 +722,9 @@ describe('OrganisationService', () => {
                 }: { organisation: Organisation<true>; updateData: UpdateOrganisationData } = setup();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-                organisationRepositoryMock.exists.mockResolvedValue(true);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+                organisationRepositoryMock.exists.mockResolvedValueOnce(true);
+                organisationRepositoryMock.exists.mockResolvedValueOnce(true);
                 organisationRepositoryMock.save.mockResolvedValueOnce(organisation);
                 const beforeUpdate: number = Date.now();
 
@@ -827,7 +829,7 @@ describe('OrganisationService', () => {
                     updateData: UpdateOrganisationData;
                 } = setup();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
-                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValue(true);
                 organisationRepositoryMock.exists.mockResolvedValue(true);
                 organisationRepositoryMock.save.mockResolvedValueOnce(organisation);
 
@@ -839,9 +841,16 @@ describe('OrganisationService', () => {
                 expect(result).toEqual({ ok: true, value: organisation });
                 expect(organisation.administriertVon).toBe(updateData.administriertVon);
                 expect(organisation.zugehoerigZu).toBe(updateData.zugehoerigZu);
-                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledTimes(2);
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    1,
                     originalOrganisation.typ,
                     originalOrganisation.administriertVon,
+                );
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    2,
+                    updateData.typ,
+                    updateData.administriertVon,
                 );
             });
         });
@@ -880,7 +889,7 @@ describe('OrganisationService', () => {
                     updateData: UpdateOrganisationData;
                 } = setup();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
-                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValue(true);
                 organisationRepositoryMock.exists.mockResolvedValue(true);
                 organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
                 organisationRepositoryMock.save.mockResolvedValueOnce(organisation);
@@ -893,10 +902,157 @@ describe('OrganisationService', () => {
                 expect(result).toEqual({ ok: true, value: organisation });
                 expect(organisation.administriertVon).toBe(updateData.administriertVon);
                 expect(organisation.zugehoerigZu).toBe(updateData.zugehoerigZu);
-                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledTimes(2);
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    1,
                     originalOrganisation.typ,
                     originalOrganisation.administriertVon,
                 );
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    2,
+                    updateData.typ,
+                    updateData.administriertVon,
+                );
+            });
+        });
+
+        describe('when moving a Klasse without destination permission', () => {
+            function setup(): {
+                organisation: Organisation<true>;
+                originalOrganisation: Organisation<true>;
+                updateData: UpdateOrganisationData;
+            } {
+                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.KLASSE,
+                    administriertVon: faker.string.uuid(),
+                });
+                const originalOrganisation: Organisation<true> = DoFactory.createOrganisation(true, organisation);
+                const updateData: UpdateOrganisationData = {
+                    ...organisation,
+                    administriertVon: faker.string.uuid(),
+                };
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+                return { organisation, originalOrganisation, updateData };
+            }
+
+            it('should reject the update before applying changes', async () => {
+                const {
+                    organisation,
+                    originalOrganisation,
+                    updateData,
+                }: {
+                    organisation: Organisation<true>;
+                    originalOrganisation: Organisation<true>;
+                    updateData: UpdateOrganisationData;
+                } = setup();
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({
+                    ok: false,
+                    error: new MissingPermissionsError('Not authorized to manage this organisation'),
+                });
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledTimes(2);
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    2,
+                    updateData.typ,
+                    updateData.administriertVon,
+                );
+                expect(organisation).toEqual(originalOrganisation);
+                expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('when moving a Behoerde without destination permission', () => {
+            function setup(): {
+                organisation: Organisation<true>;
+                originalOrganisation: Organisation<true>;
+                updateData: UpdateOrganisationData;
+            } {
+                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.BEHOERDE,
+                    administriertVon: faker.string.uuid(),
+                });
+                const originalOrganisation: Organisation<true> = DoFactory.createOrganisation(true, organisation);
+                const updateData: UpdateOrganisationData = {
+                    ...organisation,
+                    administriertVon: faker.string.uuid(),
+                };
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+                return { organisation, originalOrganisation, updateData };
+            }
+
+            it('should reject the update before applying changes', async () => {
+                const {
+                    organisation,
+                    originalOrganisation,
+                    updateData,
+                }: {
+                    organisation: Organisation<true>;
+                    originalOrganisation: Organisation<true>;
+                    updateData: UpdateOrganisationData;
+                } = setup();
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({
+                    ok: false,
+                    error: new MissingPermissionsError('Not authorized to manage this organisation'),
+                });
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledTimes(2);
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    2,
+                    updateData.typ,
+                    updateData.administriertVon,
+                );
+                expect(organisation).toEqual(originalOrganisation);
+                expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('when changing only the organisation type without destination permission', () => {
+            function setup(): { organisation: Organisation<true>; updateData: UpdateOrganisationData } {
+                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.SCHULE,
+                    administriertVon: faker.string.uuid(),
+                });
+                const updateData: UpdateOrganisationData = { ...organisation, typ: OrganisationsTyp.SONSTIGE };
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+                return { organisation, updateData };
+            }
+
+            it('should reject the update before applying changes', async () => {
+                const {
+                    organisation,
+                    updateData,
+                }: { organisation: Organisation<true>; updateData: UpdateOrganisationData } = setup();
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({
+                    ok: false,
+                    error: new MissingPermissionsError('Not authorized to manage this organisation'),
+                });
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledTimes(2);
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenNthCalledWith(
+                    2,
+                    updateData.typ,
+                    updateData.administriertVon,
+                );
+                expect(organisation.typ).toBe(OrganisationsTyp.SCHULE);
+                expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
             });
         });
 
@@ -948,6 +1104,7 @@ describe('OrganisationService', () => {
 
         describe('when a descendant would administer the organisation', () => {
             it('should reject the indirect administration cycle', async () => {
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
                 const storedOrganisation: Organisation<true> = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.SONSTIGE,
@@ -1170,6 +1327,7 @@ describe('OrganisationService', () => {
 
         it('should reject a Behoerde administered by itself', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
             const storedBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.BEHOERDE,
@@ -1203,6 +1361,7 @@ describe('OrganisationService', () => {
         });
 
         it('should reject a Behoerde administered by a descendant', async () => {
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
             const storedBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
