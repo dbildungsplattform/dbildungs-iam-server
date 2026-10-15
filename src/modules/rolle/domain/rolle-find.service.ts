@@ -398,7 +398,7 @@ export class RolleFindService {
             merkmale,
         }: Omit<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten' | 'excludeMerkmale'>,
         { allowedOrganisationIds, rollenArten }: Pick<RolleFindByParameters, 'allowedOrganisationIds' | 'rollenArten'>,
-        excludeMerkmale: RollenMerkmal[] = [],
+        excludeMerkmale: RollenMerkmal[],
         gatedRollenFindScopes?: GatedRollenFindScope[],
     ): RolleFindByParameters {
         const params: RolleFindByParameters = {
@@ -412,7 +412,7 @@ export class RolleFindService {
             merkmale,
             allowedOrganisationIds,
             rollenArten,
-            excludeMerkmale: excludeMerkmale.length > 0 ? excludeMerkmale : undefined,
+            excludeMerkmale,
         };
         if (gatedRollenFindScopes && gatedRollenFindScopes.length > 0) {
             params.gatedRollenFindScopes = gatedRollenFindScopes;
@@ -434,13 +434,11 @@ export class RolleFindService {
 
         const permittedOrgasBySystemrecht: PermittedOrgas[] = selectedAndPermittedOrgas
             ? []
-            : (
-                  await Promise.all(
-                      requestedPairs.map((paar: RollenmerkmalSystemrechtPaar) =>
-                          permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
-                      ),
-                  )
-              ).map((permittedOrgas: PermittedOrgas | undefined) => permittedOrgas ?? { all: false, orgaIds: [] });
+            : await Promise.all(
+                  requestedPairs.map((paar: RollenmerkmalSystemrechtPaar) =>
+                      permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
+                  ),
+              );
         const globallyPermittedMerkmale: RollenMerkmal[] = selectedAndPermittedOrgas
             ? []
             : permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas, index: number) =>
@@ -463,7 +461,7 @@ export class RolleFindService {
                 ),
             );
             organisationIds.forEach((organisationId: OrganisationID, index: number) =>
-                organisationMerkmale.set(organisationId, merkmalePerOrganisation[index] ?? []),
+                organisationMerkmale.set(organisationId, merkmalePerOrganisation[index]!),
             );
         }
 
@@ -478,7 +476,7 @@ export class RolleFindService {
             const authorizedMerkmale: RollenMerkmal[] = requestedPairs
                 .filter((_paar: RollenmerkmalSystemrechtPaar, index: number) => {
                     if (selectedAndPermittedOrgas) {
-                        return organisationMerkmale.get(organisationId)?.includes(_paar.merkmal) ?? false;
+                        return organisationMerkmale.get(organisationId)!.includes(_paar.merkmal);
                     }
                     const permittedOrgas: PermittedOrgas = permittedOrgasBySystemrecht[index]!;
                     return permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId);
@@ -488,7 +486,7 @@ export class RolleFindService {
                 continue;
             }
             scopes.push({
-                allowedOrganisationIds: organisationIdsWithParents.get(organisationId) ?? [organisationId],
+                allowedOrganisationIds: organisationIdsWithParents.get(organisationId)!,
                 authorizedMerkmale,
             });
         }
