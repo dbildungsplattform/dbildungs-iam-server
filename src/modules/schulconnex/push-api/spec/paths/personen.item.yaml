@@ -1,11 +1,11 @@
 parameters:
     - $ref: ../components/parameters/person-id.yaml
-patch:
+put:
     tags:
         - Personen
-    operationId: updatePerson
-    summary: Person aktualisieren
-    description: Aktualisiert änderbare Daten einer bestehenden Person.
+    operationId: upsertPerson
+    summary: Person anlegen oder aktualisieren
+    description: Legt eine Person an oder aktualisiert sie anhand der stabilen Kennung in der Route.
     requestBody:
         required: true
         content:
@@ -14,7 +14,7 @@ patch:
                     $ref: ../components/schemas/person-update-payload.yaml
     responses:
         '202':
-            description: Anfrage zur Aktualisierung einer Person wurde akzeptiert.
+            description: Anfrage zum Anlegen oder Aktualisieren einer Person wurde akzeptiert.
         '400':
             description: Übermittelter Request-Body ist ungültig.
             content:

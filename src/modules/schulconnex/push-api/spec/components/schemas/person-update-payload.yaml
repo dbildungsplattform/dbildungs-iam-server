@@ -10,6 +10,6 @@ properties:
         minimum: 0
     referrer:
         type: string
-        description: Benutzername, der das Push-Ereignis ausgelöst hat.
+        description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
     name:
         $ref: ./person-name.yaml

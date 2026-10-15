@@ -14,13 +14,9 @@ tags:
     - name: Personenkontexte
       description: Endpunkte für Lebenszyklusereignisse von Personenkontexten.
 paths:
-    /v1/personen:
-        $ref: ./paths/personen.collection.yaml
     /v1/personen/{personId}:
         $ref: ./paths/personen.item.yaml
-    /v1/personen/{personId}/personenkontexte:
-        $ref: ./paths/personenkontexte.collection.yaml
-    /v1/personenkontexte/{personenkontextId}:
+    /v1/personen/{personId}/personenkontexte/{personenkontextId}:
         $ref: ./paths/personenkontexte.item.yaml
 components:
     parameters:
@@ -29,8 +25,6 @@ components:
         PersonenkontextId:
             $ref: ./components/parameters/personenkontext-id.yaml
     schemas:
-        PersonCreatePayload:
-            $ref: ./components/schemas/person-create-payload.yaml
         PersonUpdatePayload:
             $ref: ./components/schemas/person-update-payload.yaml
         PersonDeletePayload:

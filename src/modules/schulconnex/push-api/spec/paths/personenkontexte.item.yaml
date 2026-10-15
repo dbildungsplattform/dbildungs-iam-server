@@ -1,11 +1,12 @@
 parameters:
+    - $ref: ../components/parameters/person-id.yaml
     - $ref: ../components/parameters/personenkontext-id.yaml
 put:
     tags:
         - Personenkontexte
-    operationId: updatePersonenkontext
-    summary: Personenkontext ersetzen
-    description: Ersetzt die Darstellung eines Personenkontexts im Zielsystem.
+    operationId: upsertPersonenkontext
+    summary: Personenkontext anlegen oder aktualisieren
+    description: Legt einen Personenkontext an oder aktualisiert ihn anhand der stabilen Kennungen in der Route.
     requestBody:
         required: true
         content:
@@ -14,7 +15,7 @@ put:
                     $ref: ../components/schemas/personenkontext-payload.yaml
     responses:
         '202':
-            description: Anfrage zur Aktualisierung eines Personenkontexts wurde akzeptiert.
+            description: Anfrage zum Anlegen oder Aktualisieren eines Personenkontexts wurde akzeptiert.
         '400':
             description: Übermittelter Request-Body ist ungültig.
             content:
