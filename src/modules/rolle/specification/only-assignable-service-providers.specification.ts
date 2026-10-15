@@ -1,9 +1,9 @@
 import { xor } from 'lodash-es';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { CompositeSpecification } from '../../specification/specifications.js';
-import { Rolle } from '../domain/rolle.js';
+import { type Rolle } from '../domain/rolle.js';
 
 export class NurNachtraeglichZuweisbareServiceProvider extends CompositeSpecification<Rolle<boolean>> {
     public constructor(

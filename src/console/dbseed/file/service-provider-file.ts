@@ -1,9 +1,9 @@
-import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
+import { type RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import {
-    ServiceProviderKategorie,
-    ServiceProviderMerkmal,
-    ServiceProviderSystem,
-    ServiceProviderTarget,
+    type ServiceProviderKategorie,
+    type ServiceProviderMerkmal,
+    type ServiceProviderSystem,
+    type ServiceProviderTarget,
 } from '../../../modules/service-provider/domain/service-provider.enum.js';
 
 export class ServiceProviderFile {

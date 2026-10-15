@@ -1,5 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Client, Issuer } from 'openid-client';
+import { Test, type TestingModule } from '@nestjs/testing';
+import type * as OpenIdClient from 'openid-client';
+import { type Client, type Issuer } from 'openid-client';
 
 import { ConfigTestModule, KeycloakConfigTestModule } from '../../../../test/utils/index.js';
 import { OIDCClientProvider, OIDC_CLIENT } from './oidc-client.service.js';
@@ -10,7 +11,7 @@ import { OIDCClientProvider, OIDC_CLIENT } from './oidc-client.service.js';
 //     },
 // }));
 
-type importType = typeof import('openid-client');
+type importType = typeof OpenIdClient;
 vi.mock<importType>(import('openid-client'), async (importOriginal: () => Promise<importType>) => {
     const originalModule: importType = await importOriginal();
     const mockedModule: importType = {

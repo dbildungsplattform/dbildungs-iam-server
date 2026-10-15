@@ -1,6 +1,6 @@
-import { MatcherView, XMLBuilder, XMLParser } from 'fast-xml-parser';
+import { type MatcherView, XMLBuilder, XMLParser } from 'fast-xml-parser';
 
-import { DomainError } from '../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../shared/error/index.js';
 import { OxError } from '../../../../../shared/error/ox.error.js';
 
 export type OXRequestStatus =

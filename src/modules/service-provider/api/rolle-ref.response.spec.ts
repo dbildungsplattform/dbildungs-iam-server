@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRefResponse } from './rolle-ref.response.js';
 
 describe('RolleRefResponse', () => {

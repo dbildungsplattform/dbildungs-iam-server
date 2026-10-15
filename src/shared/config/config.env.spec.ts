@@ -1,5 +1,5 @@
 import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
-import configEnv, { Config } from './config.env.js';
+import configEnv, { type Config } from './config.env.js';
 
 describe('Config Loader', () => {
     beforeEach(() => {

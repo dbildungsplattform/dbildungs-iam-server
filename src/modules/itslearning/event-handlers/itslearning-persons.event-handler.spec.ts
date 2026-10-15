@@ -1,27 +1,27 @@
-import { vi, Mock } from 'vitest';
+import { vi, type Mock } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../shared/error/its-learning.error.js';
 import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.event.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
 import {
-    PersonenkontextUpdatedData,
+    type PersonenkontextUpdatedData,
     PersonenkontextUpdatedEvent,
-    PersonenkontextUpdatedPersonData,
+    type PersonenkontextUpdatedPersonData,
 } from '../../../shared/events/personenkontext-updated.event.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
-import { PersonResponse } from '../adapter/technical/actions/read-person.action.js';
+import { type PersonResponse } from '../adapter/technical/actions/read-person.action.js';
 import {
     ItslearningMembershipAdapter,
-    SetMembershipsResult,
+    type SetMembershipsResult,
 } from '../adapter/domain/itslearning-membership.adapter.js';
 import { ItslearningPersonAdapter } from '../adapter/domain/itslearning-person.adapter.js';
 import { IMSESInstitutionRoleType } from '../adapter/domain/role.enum.js';

@@ -1,6 +1,6 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
-import { MockedObject } from 'vitest';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
+import { type MockedObject } from 'vitest';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
 import { ServiceProviderError } from '../specification/error/service-provider.error.js';
 import { VidisServiceProviderImmutableError } from '../domain/errors/vidis-service-provider-immutable.error.js';

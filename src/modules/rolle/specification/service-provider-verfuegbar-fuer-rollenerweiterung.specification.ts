@@ -1,7 +1,7 @@
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { CompositeSpecification } from '../../specification/specifications.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 
 export class ServiceProviderVerfuegbarFuerRollenerweiterung extends CompositeSpecification<Rollenerweiterung<boolean>> {
     public constructor() {

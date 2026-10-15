@@ -1,7 +1,7 @@
-import { Observable, from, lastValueFrom } from 'rxjs';
-import { ArgumentsHost, CallHandler, ExecutionContext } from '@nestjs/common';
+import { type Observable, from, lastValueFrom } from 'rxjs';
+import { type ArgumentsHost, type CallHandler, type ExecutionContext } from '@nestjs/common';
 import { DISABLE_PAGING_INTERCEPTOR, GlobalPagingHeadersInterceptor } from './global-paging-headers.interceptor.js';
-import { Response } from 'express';
+import { type Response } from 'express';
 import { PagedResponse } from './paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
 

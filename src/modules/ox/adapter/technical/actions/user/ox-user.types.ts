@@ -1,4 +1,4 @@
-import { AuthParams } from '../ox-base-action.js';
+import { type AuthParams } from '../ox-base-action.js';
 
 export type OXUser = {
     id: string;

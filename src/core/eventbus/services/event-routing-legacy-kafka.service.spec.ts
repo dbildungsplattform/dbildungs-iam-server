@@ -1,7 +1,7 @@
 // eslint-disable-next-line max-classes-per-file
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 
 import { EventRoutingLegacyKafkaService } from './event-routing-legacy-kafka.service.js';
@@ -9,7 +9,7 @@ import { EventService } from './event.service.js';
 import { KafkaEventService } from './kafka-event.service.js';
 import { LoggingTestModule } from '../../../../test/utils/index.js';
 import { BaseEvent } from '../../../shared/events/base-event.js';
-import { KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 
 function flushPromises(): Promise<void> {

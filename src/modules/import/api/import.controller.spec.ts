@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -8,24 +8,24 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { ImportController } from './import.controller.js';
 import { ImportWorkflowFactory } from '../domain/import-workflow.factory.js';
 import { ImportWorkflow } from '../domain/import-workflow.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { Response } from 'express';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Response } from 'express';
 import { ImportTextFileCreationError } from '../domain/import-text-file-creation.error.js';
-import { ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
+import { type ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { ImportvorgangByIdParams } from './importvorgang-by-id.params.js';
+import { type ImportvorgangByIdParams } from './importvorgang-by-id.params.js';
 import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
 import { ImportDataRepository } from '../persistence/import-data.repository.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { ImportPasswordEncryptor } from '../domain/import-password-encryptor.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type ImportPasswordEncryptor } from '../domain/import-password-encryptor.js';
+import { type EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { type ClassLogger } from '../../../core/logging/class-logger.js';
 import { ConfigService } from '@nestjs/config';
 
 describe('Import API with mocked ImportWorkflow', () => {

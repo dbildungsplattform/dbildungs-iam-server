@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { UpdateInvalidRollenartForLernError } from '../domain/error/update-invalid-rollenart-for-lern.error.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { GleicheRolleAnKlasseWieSchuleError } from './error/gleiche-rolle-an-klasse-wie-schule.error.js';
@@ -8,7 +8,7 @@ import { GleicheRolleAnKlasseWieSchule } from './gleiche-rolle-an-klasse-wie-sch
 import { NurLehrUndLernAnKlasse } from './nur-lehr-und-lern-an-klasse.js';
 import { CheckRollenartSpecification } from './nur-gleiche-rolle.js';
 import { PersonenkontextKlasseSpecification } from './personenkontext-klasse-specification.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';

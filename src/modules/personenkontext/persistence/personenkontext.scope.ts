@@ -1,10 +1,10 @@
-import { EntityName } from '@mikro-orm/core';
+import { type EntityName } from '@mikro-orm/core';
 import { ScopeBase } from '../../../shared/persistence/scope-base.js';
 import { ScopeOperator } from '../../../shared/persistence/scope.enums.js';
-import { Personenstatus, SichtfreigabeType } from '../domain/personenkontext.enums.js';
+import { type Personenstatus, type SichtfreigabeType } from '../domain/personenkontext.enums.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
-import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
+import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 type FindProps = {
     personId: string;

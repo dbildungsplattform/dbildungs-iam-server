@@ -1,10 +1,10 @@
 import { MikroORM } from '@mikro-orm/core';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { Attribute, Change, Client } from 'ldapts';
-import { MockInstance, vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { type MockInstance, vi } from 'vitest';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../../test/utils/database-test.module.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/email-config-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../../../test/utils/timeouts.js';
@@ -13,7 +13,7 @@ import { GlobalValidationPipe } from '../../../../../shared/validation/global-va
 import { EmailLdapModule } from '../../email-ldap.module.js';
 import { LdapUndiClient } from '../technical/ldap-undi-client.js';
 import { LdapUndiEmailMicroserviceInstanceConfig } from '../technical/ldap-undi-email-microservice-instance-config.js';
-import { GroupDataUndi, LdapUndiClientAdapter, PersonDataUndi } from './ldap-undi-client.adapter.js';
+import { type GroupDataUndi, LdapUndiClientAdapter, type PersonDataUndi } from './ldap-undi-client.adapter.js';
 import { expectErrResult, expectOkResult } from '../../../../../../test/utils/test-types.js';
 import { faker } from '@faker-js/faker';
 import { LdapBindError } from './error/ldap-bind.error.js';

@@ -1,6 +1,6 @@
 import { MikroORM } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { HealthIndicatorResult, HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type HealthIndicatorResult, type HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
 import { DatabaseHealthIndicator } from './database.health-indicator.js';
 
 let error: Error | string | undefined = undefined;

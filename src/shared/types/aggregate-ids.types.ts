@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Flavor } from './flavor.types.js';
+import { type Flavor } from './flavor.types.js';
 
 declare const personSymbol: unique symbol;
 export type PersonID = Flavor<string, typeof personSymbol>;

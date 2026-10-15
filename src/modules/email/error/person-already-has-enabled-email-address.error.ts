@@ -1,5 +1,5 @@
 import { DomainError } from '../../../shared/error/index.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 
 export class PersonAlreadyHasEnabledEmailAddressError extends DomainError {
     public constructor(personId: PersonID, address: string, details?: unknown[] | Record<string, unknown>) {

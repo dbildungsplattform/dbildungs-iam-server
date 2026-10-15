@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/postgresql';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import {
     ConfigTestModule,
@@ -12,7 +12,7 @@ import {
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { mapEntityToAggregate } from './service-provider-entity-mapper.js';
 import { ServiceProviderEntity } from './service-provider.entity.js';
 import { ServiceProviderInternalRepo } from './service-provider.internal.repo.js';

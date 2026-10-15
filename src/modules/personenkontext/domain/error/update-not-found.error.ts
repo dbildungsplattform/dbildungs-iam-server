@@ -1,4 +1,4 @@
-import { OrganisationID, PersonID, RolleID } from '../../../../shared/types/index.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../../shared/types/index.js';
 import { PersonenkontexteUpdateError } from './personenkontexte-update.error.js';
 
 export class UpdateNotFoundError extends PersonenkontexteUpdateError {

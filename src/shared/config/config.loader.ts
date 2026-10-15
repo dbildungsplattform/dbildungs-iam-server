@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { validateSync, ValidationError } from 'class-validator';
+import { validateSync, type ValidationError } from 'class-validator';
 import fs from 'fs';
 import { merge } from 'lodash-es';
 import EnvConfig from './config.env.js';

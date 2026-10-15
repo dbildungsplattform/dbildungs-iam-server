@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 import {
     CompositeSpecification,

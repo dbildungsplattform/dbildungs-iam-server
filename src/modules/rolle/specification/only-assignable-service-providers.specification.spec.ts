@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { xorBy } from 'lodash-es';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { Rolle } from '../domain/rolle.js';
+import { type Rolle } from '../domain/rolle.js';
 import { NurNachtraeglichZuweisbareServiceProvider } from './only-assignable-service-providers.specification.js';
 
 function getUnassignableServiceProviders(n: number): ServiceProvider<true>[] {

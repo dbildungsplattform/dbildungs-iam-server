@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 
-import { PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
-import { OXUserID } from '../../types/ox-ids.types.js';
+import { type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type OXUserID } from '../../types/ox-ids.types.js';
 import { KafkaEmailAddressesPurgedEvent } from './kafka-email-addresses-purged.event.js';
 
 describe('KafkaEmailAddressesPurgedEvent', () => {

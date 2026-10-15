@@ -1,7 +1,7 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { ServiceProviderVerfuegbarFuerRollenerweiterung } from './service-provider-verfuegbar-fuer-rollenerweiterung.specification.js';
 

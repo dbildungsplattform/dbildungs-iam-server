@@ -1,7 +1,7 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { type Organisation } from '../domain/organisation.js';
+import { type OrganisationRepository } from '../persistence/organisation.repository.js';
 
 export class TraegerUnterRootChild<Persisted extends boolean> extends CompositeSpecification<Organisation<Persisted>> {
     public constructor(private readonly organisationRepository: OrganisationRepository) {

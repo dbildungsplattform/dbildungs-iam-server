@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Mock } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Mock } from 'vitest';
 
 import { SessionSerializer } from './session.serializer.js';
 

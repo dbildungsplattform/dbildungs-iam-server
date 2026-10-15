@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ConfigService } from '@nestjs/config';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
-import { EmailAddress } from '../../../email/modules/core/domain/email-address.js';
+import { type EmailAddress } from '../../../email/modules/core/domain/email-address.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import { DomainError, MultipleRollenartenError } from '../../../shared/error/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
@@ -12,17 +12,17 @@ import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressNotFoundError } from '../../email/error/email-address-not-found.error.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
-    ErweiterterServiceProviderForPK,
-    ExternalPkData,
+    type ErweiterterServiceProviderForPK,
+    type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { RequiredExternalPkData } from '../api/keycloakinternal.controller.js';
+import { type RequiredExternalPkData } from '../api/keycloakinternal.controller.js';
 import { POLYTHEA_SERVICE_PROVIDER_ID, UserExternaldataWorkflowAggregate } from './user-extenaldata.workflow.js';
 
 const createRequiredExternalPkData = (props?: Partial<RequiredExternalPkData>): RequiredExternalPkData => {

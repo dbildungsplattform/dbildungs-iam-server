@@ -1,5 +1,5 @@
-import { Rolle } from '../../modules/rolle/domain/rolle.js';
-import { KafkaEvent } from './kafka-event.js';
+import { type Rolle } from '../../modules/rolle/domain/rolle.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { RolleUpdatedEvent } from './rolle-updated.event.js';
 
 export class KafkaRolleUpdatedEvent extends RolleUpdatedEvent implements KafkaEvent {
