@@ -1836,6 +1836,157 @@
       "comment": null
     },
     {
+      "name": "organisationsbeziehung",
+      "schema": "public",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "quell_organisation_id": {
+          "name": "quell_organisation_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "typ": {
+          "name": "typ",
+          "type": "organisationsbeziehungs_typ_enum",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [
+            "SCHULTRAEGER",
+            "SCHULAUFSICHT"
+          ],
+          "mappedType": "enum",
+          "nativeEnumName": "organisationsbeziehungs_typ_enum"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "ziel_organisation_id": {
+          "name": "ziel_organisation_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "organisationsbeziehung_pkey",
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "triggers": [],
+      "foreignKeys": {
+        "organisationsbeziehung_quell_organisation_id_foreign": {
+          "columnNames": [
+            "quell_organisation_id"
+          ],
+          "constraintName": "organisationsbeziehung_quell_organisation_id_foreign",
+          "localTableName": "public.organisationsbeziehung",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.organisation"
+        },
+        "organisationsbeziehung_ziel_organisation_id_foreign": {
+          "columnNames": [
+            "ziel_organisation_id"
+          ],
+          "constraintName": "organisationsbeziehung_ziel_organisation_id_foreign",
+          "localTableName": "public.organisationsbeziehung",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.organisation"
+        }
+      },
+      "comment": null
+    },
+    {
       "name": "ox_user_blacklist",
       "schema": "public",
       "columns": {
@@ -4336,6 +4487,14 @@
         "ANBIETER",
         "SONSTIGE ORGANISATION / EINRICHTUNG",
         "UNBESTAETIGT"
+      ]
+    },
+    "organisationsbeziehungs_typ_enum": {
+      "name": "organisationsbeziehungs_typ_enum",
+      "schema": "public",
+      "items": [
+        "SCHULTRAEGER",
+        "SCHULAUFSICHT"
       ]
     },
     "personenstatus_enum": {
