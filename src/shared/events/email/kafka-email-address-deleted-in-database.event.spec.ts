@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaEmailAddressDeletedInDatabaseEvent } from './kafka-email-address-deleted-in-database.event.js';
 
 describe('KafkaEmailAddressDeletedInDatabaseEvent', () => {

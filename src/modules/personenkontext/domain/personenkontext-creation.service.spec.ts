@@ -1,5 +1,5 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     DomainError,
     EntityNotFoundError,
@@ -14,25 +14,25 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { faker } from '@faker-js/faker';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { PersonenkontextFactory } from './personenkontext.factory.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { PersonenkontextWorkflowFactory } from './personenkontext-workflow.factory.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { RolleNurAnPassendeOrganisationError } from '../specification/error/rolle-nur-an-passende-organisation.js';
-import { PersonenkontextCreationService, PersonPersonenkontext } from './personenkontext-creation.service.js';
+import { PersonenkontextCreationService, type PersonPersonenkontext } from './personenkontext-creation.service.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
-import { PersonenkontexteUpdate } from './personenkontexte-update.js';
+import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
 import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflow.mocks.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
-import { EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
+import { type EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
 import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
 import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 

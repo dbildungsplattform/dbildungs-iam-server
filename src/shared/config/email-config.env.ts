@@ -1,10 +1,10 @@
-import { DbConfig } from './db.config.js';
-import { EmailConfig } from './email.config.js';
-import { HeaderApiKeyConfig } from './headerapikey.config.js';
-import { HostConfig } from './host.config.js';
-import { LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
-import { LoggingConfig } from './logging.config.js';
-import { OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
+import { type DbConfig } from './db.config.js';
+import { type EmailConfig } from './email.config.js';
+import { type HeaderApiKeyConfig } from './headerapikey.config.js';
+import { type HostConfig } from './host.config.js';
+import { type LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
+import { type LoggingConfig } from './logging.config.js';
+import { type OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
 import { envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 
 export type EmailAppConfig = {

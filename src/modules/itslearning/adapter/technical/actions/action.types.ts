@@ -1,4 +1,4 @@
-import { DomainError } from '../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../shared/error/index.js';
 
 export interface ItslearningAction<ResultType> {
     action: string;

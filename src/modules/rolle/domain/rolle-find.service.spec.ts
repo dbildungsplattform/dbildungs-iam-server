@@ -1,24 +1,24 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { uniq } from 'lodash-es';
 import { vi } from 'vitest';
 
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DoFactory } from '../../../../test/utils/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RolleFindByParameters, RolleRepo } from '../repo/rolle.repo.js';
+import { type RolleFindByParameters, RolleRepo } from '../repo/rolle.repo.js';
 import {
-    FindRollenAvailableForErweiterungParams,
-    FindRollenWithPermissionsParams,
+    type FindRollenAvailableForErweiterungParams,
+    type FindRollenWithPermissionsParams,
     RolleFindService,
 } from './rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
-import { Rolle } from './rolle.js';
+import { type Rolle } from './rolle.js';
 import { RollenmerkmalSystemrechtPaar } from './rollenmerkmal-systemrecht-paar.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from './systemrecht.js';

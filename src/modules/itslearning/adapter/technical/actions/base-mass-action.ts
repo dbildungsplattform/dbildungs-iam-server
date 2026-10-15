@@ -1,8 +1,8 @@
-import { MatcherView, XMLBuilder, XMLParser } from 'fast-xml-parser';
+import { type MatcherView, XMLBuilder, XMLParser } from 'fast-xml-parser';
 
-import { DomainError } from '../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../shared/error/index.js';
 import { Ok } from '../../../../../shared/util/result.js';
-import { ItslearningAction } from './action.types.js';
+import { type ItslearningAction } from './action.types.js';
 
 export type CommonStatusInfo = {
     codeMinor: {

@@ -1,4 +1,4 @@
-import { KafkaEvent } from './kafka-event.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from './person-deleted-after-deadline-exceeded.event.js';
 
 export class KafkaPersonDeletedAfterDeadlineExceededEvent

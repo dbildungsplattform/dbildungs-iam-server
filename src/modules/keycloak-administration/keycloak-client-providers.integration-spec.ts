@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
 import { TokenSet } from 'openid-client';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 
 import { ConfigTestModule, KeycloakConfigTestModule } from '../../../test/utils/index.js';
 import { KC_SERVICE_CLIENT, KeycloakServiceApiClient } from './keycloak-client-providers.js';

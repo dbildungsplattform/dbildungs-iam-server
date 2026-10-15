@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaLdapSyncCompletedEvent } from './kafka-ldap-sync-completed.event.js';
 
 describe('KafkaLdapSyncCompletedEvent', () => {

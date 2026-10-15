@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
@@ -9,9 +9,9 @@ import { KlasseUpdatedEvent } from '../../../shared/events/klasse-updated.event.
 import { SchuleItslearningEnabledEvent } from '../../../shared/events/schule-itslearning-enabled.event.js';
 import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 import { OrganisationsTyp, RootDirectChildrenType } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { CreateGroupParams } from '../adapter/technical/actions/create-group.params.js';
+import { type CreateGroupParams } from '../adapter/technical/actions/create-group.params.js';
 import { ItslearningGroupAdapter } from '../adapter/domain/itslearning-group.adapter.js';
 import { ItsLearningOrganisationsEventHandler } from './itslearning-organisations.event-handler.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';

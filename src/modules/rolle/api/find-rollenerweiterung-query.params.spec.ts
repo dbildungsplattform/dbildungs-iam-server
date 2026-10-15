@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { validateSync, ValidationError } from 'class-validator';
+import { validateSync, type ValidationError } from 'class-validator';
 
 import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
 

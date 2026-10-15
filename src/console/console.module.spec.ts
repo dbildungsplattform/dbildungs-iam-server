@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DatabaseTestModule, EmailConfigTestModule } from '../../test/utils/index.js';
 import { ConsoleModule } from './console.module.js';
 import { DbInitConsole } from './db-init.console.js';

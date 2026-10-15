@@ -1,10 +1,10 @@
-import { ArgumentsHost } from '@nestjs/common';
+import { type ArgumentsHost } from '@nestjs/common';
 
-import { DomainError } from '../../../shared/error/index.js';
+import { type DomainError } from '../../../shared/error/index.js';
 import { LandesbediensteterExceptionFilter } from './landesbediensteter-exception-filter.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
-import { Response } from 'express';
+import { type MockedObject } from 'vitest';
+import { type Response } from 'express';
 
 describe('LandesbediensteterExceptionFilter', () => {
     let filter: LandesbediensteterExceptionFilter;

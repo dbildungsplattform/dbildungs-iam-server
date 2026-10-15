@@ -1,5 +1,5 @@
-import { IMigrator, MigrationInfo, MikroORM } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type IMigrator, type MigrationInfo, MikroORM } from '@mikro-orm/core';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,

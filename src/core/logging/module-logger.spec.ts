@@ -1,6 +1,6 @@
 import { localFormatter } from './module-logger.js';
 import { createMock } from '../../../test/utils/createMock.js';
-import winston from 'winston';
+import type winston from 'winston';
 
 class TransformableInfoMock {
     [key: string]: unknown;

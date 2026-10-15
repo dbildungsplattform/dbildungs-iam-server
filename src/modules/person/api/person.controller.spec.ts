@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { NotImplementedException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -18,17 +18,17 @@ import { EntityCouldNotBeDeleted, EntityNotFoundError, MismatchedRevisionError }
 import { KeycloakClientError } from '../../../shared/error/keycloak-client.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { Paged, PagedResponse } from '../../../shared/paging/index.js';
+import { type Paged, type PagedResponse } from '../../../shared/paging/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';
-import { PersonenkontextResponse } from '../../personenkontext/api/response/personenkontext.response.js';
+import { type PersonenkontextResponse } from '../../personenkontext/api/response/personenkontext.response.js';
 import { DBiamPersonenkontextService } from '../../personenkontext/domain/dbiam-personenkontext.service.js';
 import { Personenstatus, SichtfreigabeType } from '../../personenkontext/domain/personenkontext.enums.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { PersonenkontextService } from '../../personenkontext/domain/personenkontext.service.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -53,7 +53,7 @@ import { PersonLandesbediensteterSearchResponse } from './person-landesbedienste
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
 import { PersonController } from './person.controller.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
-import { UpdatePersonBodyParams } from './update-person.body.params.js';
+import { type UpdatePersonBodyParams } from './update-person.body.params.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 
 describe('PersonController', () => {

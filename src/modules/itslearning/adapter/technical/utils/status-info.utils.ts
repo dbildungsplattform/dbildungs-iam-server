@@ -1,6 +1,6 @@
-import { DomainError, ItsLearningError } from '../../../../../shared/error/index.js';
+import { type DomainError, ItsLearningError } from '../../../../../shared/error/index.js';
 import { Err, Ok } from '../../../../../shared/util/result.js';
-import { FailureStatusInfo, MassResult, StatusInfo } from '../actions/base-mass-action.js';
+import { type FailureStatusInfo, type MassResult, type StatusInfo } from '../actions/base-mass-action.js';
 
 export class StatusInfoHelpers {
     public static errorOnFailure(status: StatusInfo[]): ItsLearningError | undefined {

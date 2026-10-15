@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { OrganisationID } from '../types/aggregate-ids.types.js';
+import { type OrganisationID } from '../types/aggregate-ids.types.js';
 import { KafkaKlasseCreatedEvent } from './kafka-klasse-created.event.js';
 
 describe('KafkaKlasseCreatedEvent', () => {

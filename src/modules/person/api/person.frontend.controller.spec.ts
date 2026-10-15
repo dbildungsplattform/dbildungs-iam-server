@@ -1,16 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule, createPersonPermissionsMock } from '../../../../test/utils/index.js';
 import { SichtfreigabeType } from '../../personenkontext/domain/personenkontext.enums.js';
 import { PersonFrontendController } from './person.frontend.controller.js';
-import { PersonenQueryParams } from './personen-query.param.js';
+import { type PersonenQueryParams } from './personen-query.param.js';
 import { Person } from '../domain/person.js';
 import { PersonRepository } from '../persistence/person.repository.js';
-import { PagedResponse } from '../../../shared/paging/index.js';
-import { PersonendatensatzResponse } from './personendatensatz.response.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type PagedResponse } from '../../../shared/paging/index.js';
+import { type PersonendatensatzResponse } from './personendatensatz.response.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('PersonFrontendController', () => {

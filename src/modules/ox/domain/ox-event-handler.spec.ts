@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { PersonIdentifier } from '../../../core/logging/person-identifier.js';
+import { type PersonIdentifier } from '../../../core/logging/person-identifier.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/index.js';
 import { OxError } from '../../../shared/error/ox.error.js';
 import { DisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/disabled-email-address-generated.event.js';
@@ -19,17 +19,27 @@ import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-ad
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
+import { type PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { EmailAddressID, OrganisationKennung, PersonID, PersonUsername } from '../../../shared/types/index.js';
-import { OXContextID, OXContextName, OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
+import {
+    type EmailAddressID,
+    type OrganisationKennung,
+    type PersonID,
+    type PersonUsername,
+} from '../../../shared/types/index.js';
+import {
+    type OXContextID,
+    type OXContextName,
+    type OXGroupID,
+    type OXUserID,
+} from '../../../shared/types/ox-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Person } from '../../person/domain/person.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
@@ -39,11 +49,11 @@ import { OxGroupNotFoundError } from '../adapter/domain/error/ox-group-not-found
 import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
 import { OxNoSuchUserError } from '../adapter/domain/error/ox-no-such-user.error.js';
 import { OxAdapter } from '../adapter/domain/ox.adapter.js';
-import { ListGroupsAction, ListGroupsResponse } from '../adapter/technical/actions/group/list-groups.action.js';
-import { ChangeUserParams } from '../adapter/technical/actions/user/change-user.action.js';
+import { ListGroupsAction, type ListGroupsResponse } from '../adapter/technical/actions/group/list-groups.action.js';
+import { type ChangeUserParams } from '../adapter/technical/actions/user/change-user.action.js';
 import { CreateUserAction } from '../adapter/technical/actions/user/create-user.action.js';
 import { ExistsUserAction } from '../adapter/technical/actions/user/exists-user.action.js';
-import { GetDataForUserResponse } from '../adapter/technical/actions/user/get-data-user.action.js';
+import { type GetDataForUserResponse } from '../adapter/technical/actions/user/get-data-user.action.js';
 import { OxSendService } from '../adapter/technical/ox.send-service.js';
 import { OxEventHandler } from './ox-event-handler.js';
 import { OxSyncEventHandler } from './ox-sync-event-handler.js';

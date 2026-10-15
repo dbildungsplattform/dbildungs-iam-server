@@ -1,4 +1,4 @@
-import { KafkaEvent } from '../kafka-event.js';
+import { type KafkaEvent } from '../kafka-event.js';
 import { DisabledEmailAddressGeneratedEvent } from './disabled-email-address-generated.event.js';
 
 /**

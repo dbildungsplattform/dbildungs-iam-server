@@ -1,6 +1,6 @@
-import { DomainError } from '../../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../../shared/error/domain.error.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
-import { AuthParams, OxBaseAction } from '../ox-base-action.js';
+import { type AuthParams, OxBaseAction } from '../ox-base-action.js';
 
 // Incomplete
 export type CreateUserParams = AuthParams & {

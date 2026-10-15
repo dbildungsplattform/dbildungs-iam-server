@@ -1,15 +1,15 @@
 import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../../test/utils/database-test.module.js';
 import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import { LoggingTestModule } from '../../../../../test/utils/logging-test.module.js';
 import { expectOkResult } from '../../../../../test/utils/test-types.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../../test/utils/timeouts.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { LdapClientAdapter } from '../../ldap/adapter/domain/ldap-client.adapter.js';
 import { OxAdapter } from '../../ox/adapter/domain/ox.adapter.js';

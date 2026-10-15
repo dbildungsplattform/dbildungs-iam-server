@@ -1,4 +1,4 @@
-import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
+import { type ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 
 export class DbSeedReference {
     private constructor(

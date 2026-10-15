@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { GlobalValidationPipe } from './global-validation.pipe.js';
 import { DetailedValidationError } from './detailed-validation.error.js';
 
 import { CreatedOrganisationDto } from '../../modules/organisation/api/created-organisation.dto.js';
-import { CreateOrganisationBodyParams } from '../../modules/organisation/api/create-organisation.body.params.js';
+import { type CreateOrganisationBodyParams } from '../../modules/organisation/api/create-organisation.body.params.js';
 import { OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
 import { faker } from '@faker-js/faker';
 

@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 
-import { CreateGroupAction, CreateGroupResponseBody } from './create-group.action.js';
+import { CreateGroupAction, type CreateGroupResponseBody } from './create-group.action.js';
 
 describe('CreateGroupAction', () => {
     describe('buildRequest', () => {

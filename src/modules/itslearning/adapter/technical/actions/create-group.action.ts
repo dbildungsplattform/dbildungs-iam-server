@@ -1,8 +1,8 @@
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { IMS_COMMON_SCHEMA, IMS_GROUP_MAN_DATA_SCHEMA, IMS_GROUP_MAN_MESS_SCHEMA } from '../../../schemas.js';
 import { ItslearningGroupLengthLimits } from '../../domain/groups.enum.js';
 import { IMSESAction } from './base-action.js';
-import { CreateGroupParams } from './create-group.params.js';
+import { type CreateGroupParams } from './create-group.params.js';
 
 type CreateGroupResponseBody = {
     createGroupResponse: undefined;

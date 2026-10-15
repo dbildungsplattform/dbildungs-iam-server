@@ -1,4 +1,4 @@
-import { OXEmail, OXUserName } from '../../../shared/types/ox-ids.types.js';
+import { type OXEmail, type OXUserName } from '../../../shared/types/ox-ids.types.js';
 
 export class OxUserBlacklistEntry<WasPersisted extends boolean> {
     public constructor(

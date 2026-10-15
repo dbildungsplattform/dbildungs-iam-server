@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 
 import { IMSESRoleType } from '../../domain/role.enum.js';
-import { MembershipResponse, ReadMembershipsForPersonAction } from './read-memberships-for-person.action.js';
+import { type MembershipResponse, ReadMembershipsForPersonAction } from './read-memberships-for-person.action.js';
 
 describe('ReadMembershipsForPersonAction', () => {
     describe('buildRequest', () => {

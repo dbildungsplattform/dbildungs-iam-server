@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, LoggingTestModule } from '../../../test/utils/index.js';
-import { DbSeedDataGeneratorConsole, SeedDataGeneratorOptions } from './db-seed-data-generator.console.js';
+import { DbSeedDataGeneratorConsole, type SeedDataGeneratorOptions } from './db-seed-data-generator.console.js';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';

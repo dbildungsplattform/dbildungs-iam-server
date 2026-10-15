@@ -1,8 +1,8 @@
 import { DetailedValidationError } from '../../../shared/validation/detailed-validation.error.js';
 import { SchulConnexValidationErrorFilter } from './schulconnex-validation-error.filter.js';
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
-import { ValidationError } from 'class-validator';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
+import { type ValidationError } from 'class-validator';
 import { SchulConnexError } from '../../../shared/error/schul-connex.error.js';
 
 type HttpArgumentsHost = ReturnType<ArgumentsHost['switchToHttp']>;

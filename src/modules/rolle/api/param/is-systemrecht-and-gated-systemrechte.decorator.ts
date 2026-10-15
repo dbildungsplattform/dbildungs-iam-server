@@ -1,7 +1,7 @@
 import { ArrayContains, IsIn } from 'class-validator';
 
 import { RollenmerkmalSystemrechtPaar } from '../../domain/rollenmerkmal-systemrecht-paar.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../../domain/systemrecht.js';
+import { type RollenSystemRecht, type RollenSystemRechtEnum } from '../../domain/systemrecht.js';
 
 export function IsSystemrechtAndGatedSystemrechte(requiredSystemrecht: RollenSystemRechtEnum): PropertyDecorator {
     const allowedSystemrechte: RollenSystemRechtEnum[] = [

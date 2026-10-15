@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { PersonLockOccasion } from '../../modules/person/domain/person.enums.js';
-import { PersonID } from '../types/aggregate-ids.types.js';
+import { type PersonID } from '../types/aggregate-ids.types.js';
 import { KafkaLocksForPersonChangedEvent } from './kafka-locks-for-person-changed.event.js';
-import { UserLockEventData } from './locks-for-person-changed.event.js';
+import { type UserLockEventData } from './locks-for-person-changed.event.js';
 
 describe('KafkaLocksForPersonChangedEvent', () => {
     it('should correctly initialize and implement KafkaEvent', () => {

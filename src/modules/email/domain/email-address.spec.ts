@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { EmailAddress, EmailAddressStatus } from './email-address.js';
 import { faker } from '@faker-js/faker';
 

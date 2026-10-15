@@ -1,6 +1,6 @@
-import { DomainError } from '../../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../../shared/error/domain.error.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
-import { UserNameParams } from './ox-user.types.js';
+import { type UserNameParams } from './ox-user.types.js';
 import { OxBaseAction } from '../ox-base-action.js';
 
 export type ExistsUserResponse = {

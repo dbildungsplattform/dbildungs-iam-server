@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { validate, ValidationError } from 'class-validator';
+import { validate, type ValidationError } from 'class-validator';
 
 import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
 
