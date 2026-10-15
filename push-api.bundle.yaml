@@ -1,0 +1,250 @@
+openapi: 3.1.0
+info:
+  title: SPSH Push API
+  version: 0.1.0
+  description: |
+    Push API für die Übertragung von Datenänderungen aus dem Schulportal Schleswig-Holstein.
+    Angelehnt an Schulconnex https://schulconnex.de/docs/generated/openapi/quellsysteme/schulconnex
+  license:
+    name: EUPL-1.2
+    identifier: EUPL-1.2
+servers: []
+security: []
+tags:
+  - name: Personen
+    description: Endpunkte für die Aktualisierung von Personendaten.
+  - name: Personenkontexte
+    description: Endpunkte für die Aktualisierung von Personenkontextdaten.
+paths:
+  /v1/personen/{personId}:
+    parameters:
+      - $ref: '#/components/parameters/person-id'
+    put:
+      tags:
+        - Personen
+      operationId: upsertPerson
+      summary: Person anlegen oder aktualisieren
+      description: Legt eine Person an oder aktualisiert sie anhand der stabilen Kennung in der Route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/person-payload'
+      responses:
+        '202':
+          description: Anfrage zum Anlegen oder Aktualisieren einer Person wurde akzeptiert.
+        '400':
+          description: Übermittelter Request-Body ist ungültig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+    delete:
+      tags:
+        - Personen
+      operationId: deletePerson
+      summary: Person löschen
+      description: Löscht eine Person im Zielsystem.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/person-delete-payload'
+      responses:
+        '202':
+          description: Anfrage zum Löschen einer Person wurde akzeptiert.
+        '400':
+          description: Übermittelter Request-Body ist ungültig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+  /v1/personen/{personId}/personenkontexte/{personenkontextId}:
+    parameters:
+      - $ref: '#/components/parameters/person-id'
+      - $ref: '#/components/parameters/personenkontext-id'
+    put:
+      tags:
+        - Personenkontexte
+      operationId: upsertPersonenkontext
+      summary: Personenkontext anlegen oder aktualisieren
+      description: Legt einen Personenkontext an oder aktualisiert ihn anhand der stabilen Kennungen in der Route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/personenkontext-payload'
+      responses:
+        '202':
+          description: Anfrage zum Anlegen oder Aktualisieren eines Personenkontexts wurde akzeptiert.
+        '400':
+          description: Übermittelter Request-Body ist ungültig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+    delete:
+      tags:
+        - Personenkontexte
+      operationId: deletePersonenkontext
+      summary: Personenkontext löschen
+      description: Löscht einen Personenkontext im Zielsystem.
+      responses:
+        '202':
+          description: Anfrage zum Löschen eines Personenkontexts wurde akzeptiert.
+        '400':
+          description: Anfrage ist ungültig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+components:
+  parameters:
+    PersonId:
+      $ref: '#/components/parameters/person-id'
+    PersonenkontextId:
+      $ref: '#/components/parameters/personenkontext-id'
+    person-id:
+      name: personId
+      in: path
+      required: true
+      description: Stabile Kennung der Person in dBildungs IAM.
+      schema:
+        type: string
+    personenkontext-id:
+      name: personenkontextId
+      in: path
+      required: true
+      description: Stabile Kennung des Personenkontexts in dBildungs IAM.
+      schema:
+        type: string
+  schemas:
+    PersonPayload:
+      $ref: '#/components/schemas/person-payload'
+    PersonDeletePayload:
+      $ref: '#/components/schemas/person-delete-payload'
+    PersonName:
+      $ref: '#/components/schemas/person-name'
+    PersonenkontextPayload:
+      $ref: '#/components/schemas/personenkontext-payload'
+    Erreichbarkeit:
+      $ref: '#/components/schemas/erreichbarkeit'
+    Organisation:
+      $ref: '#/components/schemas/organisation'
+    ErrorResponse:
+      $ref: '#/components/schemas/error-response'
+    person-name:
+      type: object
+      additionalProperties: false
+      required:
+        - familienname
+        - vorname
+      properties:
+        familienname:
+          type: string
+        vorname:
+          type: string
+    person-payload:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - referrer
+        - name
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        referrer:
+          type: string
+          description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
+        name:
+          $ref: '#/components/schemas/person-name'
+    error-response:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+    person-delete-payload:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+    erreichbarkeit:
+      type: object
+      additionalProperties: false
+      required:
+        - typ
+        - kennung
+      properties:
+        typ:
+          type: string
+          enum:
+            - E-Mail
+        kennung:
+          type: string
+          format: email
+    organisation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kennung
+        - name
+      properties:
+        id:
+          type: string
+        kennung:
+          type: string
+        name:
+          type: string
+    personenkontext-payload:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - referrer
+        - rolle
+        - spshRolleId
+        - erreichbarkeiten
+        - organisation
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        referrer:
+          type: string
+          description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
+        rolle:
+          type: string
+          description: Rolle des Personenkontext nach Schulconnex Standard.
+        spshRolleId:
+          type: string
+          description: Kennung der spezifischen Rolle in dBildungs IAM. Es kann mehrere spezifische Rollenkennungen für die gleiche Schulconnex Rolle geben.
+        erreichbarkeiten:
+          type: array
+          items:
+            $ref: '#/components/schemas/erreichbarkeit'
+        personenstatus:
+          type:
+            - string
+            - 'null'
+          enum:
+            - Aktiv
+            - null
+        organisation:
+          $ref: '#/components/schemas/organisation'

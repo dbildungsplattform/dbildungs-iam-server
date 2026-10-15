@@ -1,13 +1,9 @@
 type: object
 additionalProperties: false
 required:
-    - revision
     - referrer
     - name
 properties:
-    revision:
-        type: integer
-        minimum: 0
     referrer:
         type: string
         description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
