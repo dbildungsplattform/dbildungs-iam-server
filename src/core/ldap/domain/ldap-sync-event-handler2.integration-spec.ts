@@ -1,10 +1,10 @@
 import { MikroORM } from '@mikro-orm/core';
-import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Attribute, Change, Client, Entry, SearchResult } from 'ldapts';
+import { type INestApplication } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { Attribute, Change, Client, type Entry, type SearchResult } from 'ldapts';
 import assert from 'node:assert';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
@@ -12,19 +12,19 @@ import {
     LdapTestModule,
 } from '../../../../test/utils/index.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
-import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../../modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { type Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../../modules/service-provider/repo/service-provider.repo.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
 import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
@@ -36,8 +36,8 @@ import { LdapConfigModule } from '../adapter/technical/ldap-config.module.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { LdapModule } from '../ldap.module.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
-import { Mock } from 'vitest';
-import { OrganisationKennung, PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
+import { type Mock } from 'vitest';
+import { type OrganisationKennung, type PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
 import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';

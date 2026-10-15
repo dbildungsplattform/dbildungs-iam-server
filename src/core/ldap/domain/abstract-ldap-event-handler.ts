@@ -1,11 +1,11 @@
 import { uniq } from 'lodash-es';
-import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
-import { OrganisationID, PersonID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
-import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
-import { ClassLogger } from '../../logging/class-logger.js';
-import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
+import { type Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { type RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
+import { type DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { type Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { type ClassLogger } from '../../logging/class-logger.js';
+import { type OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { UemLdapOuError } from '../adapter/domain/error/uem-ldap-ou.error.js';
 
 export abstract class AbstractLdapEventHandler {

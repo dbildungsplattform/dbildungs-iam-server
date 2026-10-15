@@ -15,7 +15,7 @@ import {
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { type Person } from '../../../modules/person/domain/person.js';
+import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
 import { type Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../../modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
