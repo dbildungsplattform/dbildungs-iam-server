@@ -1,6 +1,6 @@
-import { MockedObject } from 'vitest';
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type MockedObject } from 'vitest';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import {
     DbiamPrivacyIdeaAdministrationError,
     PrivacyIdeaAdministrationErrorI18nTypes,

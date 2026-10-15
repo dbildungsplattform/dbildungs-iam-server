@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Flavor } from './flavor.types.js';
+import { type Flavor } from './flavor.types.js';
 
 declare const oxEmailSymbol: unique symbol;
 export type OXEmail = Flavor<string, typeof oxEmailSymbol>;

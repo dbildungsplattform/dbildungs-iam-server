@@ -1,4 +1,4 @@
-import { KafkaEvent } from './kafka-event.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { LocksForPersonChangedEvent } from './locks-for-person-changed.event.js';
 
 export class KafkaLocksForPersonChangedEvent extends LocksForPersonChangedEvent implements KafkaEvent {

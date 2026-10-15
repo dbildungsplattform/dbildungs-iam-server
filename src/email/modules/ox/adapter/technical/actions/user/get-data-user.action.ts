@@ -1,8 +1,8 @@
-import { DomainError } from '../../../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../../../shared/error/index.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
 
 import { OxBaseAction } from '../ox-base-action.js';
-import { UserIdParams } from './ox-user.types.js';
+import { type UserIdParams } from './ox-user.types.js';
 
 export type GetDataForUserResponse = {
     id: string;

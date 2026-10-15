@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../test/utils/index.js';
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
 import { KafkaOrganisationDeletedEvent } from './kafka-organisation-deleted.event.js';
 
 describe('KafkaOrganisationDeletedEvent', () => {

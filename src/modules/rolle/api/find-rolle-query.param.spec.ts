@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { plainToInstance } from 'class-transformer';
-import { ValidationError, validateSync } from 'class-validator';
+import { type ValidationError, validateSync } from 'class-validator';
 
 import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';

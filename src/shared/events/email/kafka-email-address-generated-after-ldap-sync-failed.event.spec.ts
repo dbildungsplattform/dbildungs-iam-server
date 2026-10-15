@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 
-import { EmailAddressID, PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type EmailAddressID, type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
 import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from './kafka-email-address-generated-after-ldap-sync-failed.event.js';
 
 describe('KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent', () => {

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { Logger } from 'winston';
 import { ConfigTestModule } from '../../../test/utils/index.js';
 import { ClassLogger } from './class-logger.js';
@@ -7,9 +7,9 @@ import { LoggerModule } from './logger.module.js';
 import { ModuleLogger } from './module-logger.js';
 import { EntityNotFoundError } from '../../shared/error/entity-not-found.error.js';
 import { inspect } from 'util';
-import { PersonIdentifier } from './person-identifier.js';
+import { type PersonIdentifier } from './person-identifier.js';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 
 describe('ClassLogger', () => {
     let module: TestingModule;

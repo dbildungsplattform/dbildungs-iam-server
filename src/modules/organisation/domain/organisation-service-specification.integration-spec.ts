@@ -1,17 +1,17 @@
 import { MikroORM } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
-import { DeepMocked } from '../../../../test/utils/createMock.js';
+import { type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock, LoggingTestModule } from '../../../../test/utils/index.js';
 import { EventModule } from '../../../core/eventbus/index.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { DomainError } from '../../../shared/error/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type DataConfig } from '../../../shared/config/data.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
+import { type DomainError } from '../../../shared/error/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
@@ -20,7 +20,7 @@ import { OrganisationsOnDifferentSubtreesError } from '../specification/error/or
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
-import { Organisation } from './organisation.js';
+import { type Organisation } from './organisation.js';
 import { OrganisationService } from './organisation.service.js';
 
 describe('OrganisationServiceSpecificationTest', () => {

@@ -1,5 +1,5 @@
-import { PersonLockOccasion } from '../../modules/person/domain/person.enums.js';
-import { PersonID } from '../types/index.js';
+import { type PersonLockOccasion } from '../../modules/person/domain/person.enums.js';
+import { type PersonID } from '../types/index.js';
 import { BaseEvent } from './base-event.js';
 
 export type UserLockEventData = {

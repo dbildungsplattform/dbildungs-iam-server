@@ -1,12 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { ConfigTestModule, createPersonPermissionsMock, DoFactory } from '../../../../test/utils/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { Paged } from '../../../shared/paging/paged.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Paged } from '../../../shared/paging/paged.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp, Traegerschaft } from '../domain/organisation.enums.js';
 import { Organisation } from '../domain/organisation.js';
 import { OrganisationService } from '../domain/organisation.service.js';
@@ -14,13 +13,13 @@ import { OrganisationRepository } from '../persistence/organisation.repository.j
 import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
-import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { type FindOrganisationQueryParams } from './find-organisation-query.param.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationController } from './organisation.controller.js';
 import { OrganisationResponse } from './organisation.response.js';
-import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
+import { type OrganisationResponseLegacy } from './organisation.response.legacy.js';
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 
@@ -34,6 +33,7 @@ import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
     const params: OrganisationByIdParams = new OrganisationByIdParams();

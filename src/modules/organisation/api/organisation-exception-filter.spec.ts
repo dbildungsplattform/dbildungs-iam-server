@@ -1,12 +1,12 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
-import { MockedObject } from 'vitest';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
+import { type MockedObject } from 'vitest';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
-import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 
 describe('OrganisationExceptionFilter', () => {
     let filter: OrganisationExceptionFilter;

@@ -1,21 +1,21 @@
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { PersonRepository } from '../persistence/person.repository.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Person } from './person.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type PersonRepository } from '../persistence/person.repository.js';
+import { type DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { type Person } from './person.js';
 import { EntityNotFoundError } from '../../../shared/error/index.js';
-import { OrganisationID, PersonID, RolleID } from '../../../shared/types/index.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/index.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { DBiamPersonenzuordnungResponse } from '../api/personenuebersicht/dbiam-personenzuordnung.response.js';
 import { DBiamPersonenuebersichtResponse } from '../api/personenuebersicht/dbiam-personenuebersicht.response.js';
-import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
-import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
-import { ConfigService } from '@nestjs/config';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type PermittedOrgas } from '../../authentication/domain/person-permissions.js';
+import { type DataConfig, type ServerConfig } from '../../../shared/config/index.js';
+import { type ConfigService } from '@nestjs/config';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 export class DbiamPersonenuebersicht {
     public readonly ROOT_ORGANISATION_ID: string;

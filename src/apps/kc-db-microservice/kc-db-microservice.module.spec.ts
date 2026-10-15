@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { KcDbMicroserviceModule } from './kc-db-microservice.module.js';
 import { HealthModule } from '../../modules/kc-db-health/health.module.js';

@@ -1,4 +1,4 @@
-import { KafkaEvent } from './kafka-event.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { KlasseUpdatedEvent } from './klasse-updated.event.js';
 
 export class KafkaKlasseUpdatedEvent extends KlasseUpdatedEvent implements KafkaEvent {

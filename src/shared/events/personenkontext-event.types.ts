@@ -1,7 +1,7 @@
-import { OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
-import { ServiceProviderSystem } from '../../modules/service-provider/domain/service-provider.enum.js';
-import { OrganisationID, PersonenkontextID, PersonID, RolleID } from '../types/index.js';
+import { type OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
+import { type RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
+import { type ServiceProviderSystem } from '../../modules/service-provider/domain/service-provider.enum.js';
+import { type OrganisationID, type PersonenkontextID, type PersonID, type RolleID } from '../types/index.js';
 
 export type PersonenkontextEventPersonData = {
     id: PersonID;

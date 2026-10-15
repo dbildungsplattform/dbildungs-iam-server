@@ -1,22 +1,22 @@
-import { ClassLogger } from '../../core/logging/class-logger.js';
-import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, PersonID } from '../../shared/types/index.js';
+import { type ClassLogger } from '../../core/logging/class-logger.js';
+import { type IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type PersonID } from '../../shared/types/index.js';
 import {
-    PermittedOrgas,
-    PersonenkontextRolleWithOrganisation,
-    PersonFields,
-    PersonPermissions,
+    type PermittedOrgas,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonFields,
+    type PersonPermissions,
 } from '../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
-import { Organisation } from '../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
 import {
-    DBiamPersonenkontextRepo,
-    KontextWithOrgaAndRolle,
+    type DBiamPersonenkontextRepo,
+    type KontextWithOrgaAndRolle,
 } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenMerkmal } from '../rolle/domain/rolle.enums.js';
+import { type RollenMerkmal } from '../rolle/domain/rolle.enums.js';
 import { RollenmerkmalSystemrechtPaar } from '../rolle/domain/rollenmerkmal-systemrecht-paar.js';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
+import { RollenSystemRecht, type RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 
 export type EscalatedPermissionAtOrga = {
     orgaId: OrganisationID | 'ROOT';

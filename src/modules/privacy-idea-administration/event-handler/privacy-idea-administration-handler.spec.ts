@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { PrivacyIdeaAdministrationServiceHandler } from './privacy-idea-administration-handler.js';
 import { PrivacyIdeaAdministrationService } from '../privacy-idea-administration.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DatabaseTestModule } from '../../../../test/utils/index.js';
 
 describe('PrivacyIdeaAdministrationServiceHandler', () => {

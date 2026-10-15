@@ -1,27 +1,27 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { EmailRepo } from '../../../email/persistence/email.repo.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../organisation/domain/organisation.js';
-import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
-import { Person } from '../../../person/domain/person.js';
+import { type Organisation } from '../../../organisation/domain/organisation.js';
+import { type PersonEmailResponse } from '../../../person/api/person-email-response.js';
+import { type Person } from '../../../person/domain/person.js';
 import { PersonApiMapper } from '../../../person/mapper/person-api.mapper.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import { PersonenkontextResponse } from '../../../personenkontext/api/response/personenkontext.response.js';
-import { Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
 import {
     DBiamPersonenkontextRepo,
-    KontextWithOrgaAndRolle,
+    type KontextWithOrgaAndRolle,
 } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
+import { type Rolle } from '../../../rolle/domain/rolle.js';
 import {
     convertSPSHRollenartForBackwardsCampatibilityV1,
     SchulconnexOrganisationTyp,
@@ -34,7 +34,7 @@ import { PersonInfoPersonResponseV1 } from './v1/person-info-person.response.v1.
 import { PersonInfoResponseV1 } from './v1/person-info.response.v1.js';
 import { ConfigTestModule, DatabaseTestModule } from '../../../../../test/utils/index.js';
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
-import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
+import { type IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
 import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
 import { PersonInfoPersonResponseV2 } from './v2/person-info-person.response.v2.js';

@@ -1,5 +1,5 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EmailAddressDeletionService } from './email-address-deletion.service.js';
 import { EmailRepo } from '../persistence/email.repo.js';
@@ -7,13 +7,13 @@ import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
 import { faker } from '@faker-js/faker';
-import { Person } from '../../person/domain/person.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type Person } from '../../person/domain/person.js';
+import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import assert from 'assert';
-import { OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 const EMAIL_ADDRESSES_DELETE_LIMIT: number = 10;
 

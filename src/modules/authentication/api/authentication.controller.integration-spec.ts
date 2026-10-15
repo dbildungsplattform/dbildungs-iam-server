@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { Mock, MockedObject, vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { type Mock, type MockedObject, vi } from 'vitest';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request, Response } from 'express';
-import { SessionData } from 'express-session';
-import { Client, EndSessionParameters, IssuerMetadata } from 'openid-client';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request, type Response } from 'express';
+import { type SessionData } from 'express-session';
+import { type Client, type EndSessionParameters, type IssuerMetadata } from 'openid-client';
 
 import { MikroORM } from '@mikro-orm/core';
 import {
@@ -15,8 +15,8 @@ import {
     DatabaseTestModule,
     DoFactory,
 } from '../../../../test/utils/index.js';
-import { FrontendConfig } from '../../../shared/config/frontend.config.js';
-import { KeycloakConfig } from '../../../shared/config/keycloak.config.js';
+import { type FrontendConfig } from '../../../shared/config/frontend.config.js';
+import { type KeycloakConfig } from '../../../shared/config/keycloak.config.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import PersonTimeLimitService from '../../person/domain/person-time-limit-info.service.js';
@@ -28,10 +28,10 @@ import { PersonenKontextModule } from '../../personenkontext/personenkontext.mod
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { PersonPermissionsRepo } from '../domain/person-permission.repo.js';
-import { PersonenkontextRolleWithOrganisation, PersonPermissions } from '../domain/person-permissions.js';
+import { type PersonenkontextRolleWithOrganisation, type PersonPermissions } from '../domain/person-permissions.js';
 import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
 import { OIDC_CLIENT } from '../services/oidc-client.service.js';
-import { PassportUser } from '../types/user.js';
+import { type PassportUser } from '../types/user.js';
 import { AuthenticationController } from './authentication.controller.js';
 import { UserinfoResponse } from './userinfo.response.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';

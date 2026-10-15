@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { LoggingTestModule } from '../../../test/utils/logging-test.module.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';
 import { KeycloakCommand } from './keycloak.command.js';
-import { DeepMocked } from '../../../test/utils/createMock.js';
+import { type DeepMocked } from '../../../test/utils/createMock.js';
 
 describe('KeycloakCommand', () => {
     let module: TestingModule;

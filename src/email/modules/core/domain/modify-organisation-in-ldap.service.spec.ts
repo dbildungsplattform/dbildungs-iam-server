@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { faker } from '@faker-js/faker';
 import { LoggingTestModule } from '../../../../../test/utils/index.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { EmailConfigTestModule } from '../../../../../test/utils/email-config-test.module.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { LdapUndiClientAdapter } from '../../ldap/adapter/domain/ldap-undi-client.adapter.js';

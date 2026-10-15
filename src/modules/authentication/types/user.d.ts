@@ -1,6 +1,6 @@
 import { type UserinfoResponse } from 'openid-client';
-import { PersonPermissions } from '../domain/person-permissions.js';
-import { StepUpLevel } from '../passport/oidc.strategy.js';
+import { type PersonPermissions } from '../domain/person-permissions.js';
+import { type StepUpLevel } from '../passport/oidc.strategy.js';
 
 /**
  * User for passport session

@@ -1,16 +1,16 @@
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import {
-    OrganisationID,
-    RolleID,
-    RollenerweiterungID,
-    ServiceProviderID,
+    type OrganisationID,
+    type RolleID,
+    type RollenerweiterungID,
+    type ServiceProviderID,
 } from '../../../shared/types/aggregate-ids.types.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { RolleRepo } from '../repo/rolle.repo.js';
-import { Rolle } from './rolle.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { type RolleRepo } from '../repo/rolle.repo.js';
+import { type Rolle } from './rolle.js';
 
 export class Rollenerweiterung<WasPersisted extends boolean> {
     private constructor(

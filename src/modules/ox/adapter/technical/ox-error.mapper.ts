@@ -1,5 +1,5 @@
 import { OxError } from '../../../../shared/error/ox.error.js';
-import { OxErrorResponse } from './actions/ox-base-action.js';
+import { type OxErrorResponse } from './actions/ox-base-action.js';
 import { OxDisplaynameAlreadyUsedError } from '../domain/error/ox-displayname-already-used.error.js';
 import { OxMemberAlreadyInGroupError } from '../domain/error/ox-member-already-in-group.error.js';
 import { OxNoSuchUserError } from '../domain/error/ox-no-such-user.error.js';

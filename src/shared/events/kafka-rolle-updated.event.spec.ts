@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../test/utils/do-factory.js';
-import { Rolle } from '../../modules/rolle/domain/rolle.js';
+import { type Rolle } from '../../modules/rolle/domain/rolle.js';
 import { KafkaRolleUpdatedEvent } from './kafka-rolle-updated.event.js';
 
 describe('KafkaRolleUpdatedEvent', () => {

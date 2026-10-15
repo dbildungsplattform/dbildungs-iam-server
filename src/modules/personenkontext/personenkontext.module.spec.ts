@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DatabaseTestModule } from '../../../test/utils/index.js';
 import { PersonenKontextModule } from './personenkontext.module.js';
 import { PersonenkontextService } from './domain/personenkontext.service.js';

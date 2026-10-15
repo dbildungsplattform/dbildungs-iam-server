@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { LoggingModule } from './logging.module.js';
 import { LoggerService } from './logger.service.js';
 import { ConsoleLoggerService } from './console-logger.service.js';

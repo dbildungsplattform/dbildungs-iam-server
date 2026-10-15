@@ -1,5 +1,5 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { PersonenkontexteUpdateExceptionFilter } from './personenkontexte-update-exception-filter.js';
 import {
     DbiamPersonenkontexteUpdateError,
@@ -7,7 +7,7 @@ import {
 } from './dbiam-personenkontexte-update.error.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('PersonenkontexteUpdateExceptionFilter', () => {
     let filter: PersonenkontexteUpdateExceptionFilter;

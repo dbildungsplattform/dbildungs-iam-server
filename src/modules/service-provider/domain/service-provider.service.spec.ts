@@ -1,24 +1,24 @@
 import { faker } from '@faker-js/faker';
-import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type ConfigService } from '@nestjs/config';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { zip } from 'lodash-es';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
@@ -26,12 +26,12 @@ import { VidisApiAdapter } from '../../vidis/adapter/domain/vidis-api.adapter.js
 import { OrganisationServiceProviderRepo } from '../repo/organisation-service-provider.repo.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
-import { ServiceProvider } from './service-provider.js';
+import { type ServiceProvider } from './service-provider.js';
 import { ServiceProviderService } from './service-provider.service.js';
 import {
-    ManageableServiceProviderDetailsWithReferencedObjects,
-    ManageableServiceProviderWithReferencedObjects,
-    ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
+    type ManageableServiceProviderDetailsWithReferencedObjects,
+    type ManageableServiceProviderWithReferencedObjects,
+    type ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from './types.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 

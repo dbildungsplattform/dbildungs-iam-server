@@ -1,12 +1,12 @@
 /* v8 ignore file @preserv */
 // types can not be covered by v8, since the code does not exist at runtime
 
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { ServiceProviderKategorie } from './service-provider.enum.js';
-import { ServiceProvider } from './service-provider.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
+import { type RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { type ServiceProviderKategorie } from './service-provider.enum.js';
+import { type ServiceProvider } from './service-provider.js';
 
 export type ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount = {
     serviceProvider: ServiceProvider<true>;

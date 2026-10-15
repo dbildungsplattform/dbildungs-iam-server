@@ -1,5 +1,5 @@
 import { PersonenkontexteUpdateResponse } from './personenkontexte-update.response.js';
-import { Personenkontext } from '../../domain/personenkontext.js';
+import { type Personenkontext } from '../../domain/personenkontext.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 
 describe('PersonenkontexteUpdateResponse', () => {

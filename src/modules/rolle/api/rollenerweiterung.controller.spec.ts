@@ -1,19 +1,19 @@
-import { Mock, vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type Mock, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { APP_PIPE } from '@nestjs/core';
 import { createPersonPermissionsMock, LoggingTestModule } from '../../../../test/utils/index.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { RollenerweiterungController } from './rollenerweiterung.controller.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { ApplyRollenerweiterungForSPPathParams } from './apply-rollenerweiterung-for-sp-changes.path.params.js';
-import { ApplyRollenerweiterungBodyParams } from './apply-rollenerweiterung.body.params.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type ApplyRollenerweiterungForSPPathParams } from './apply-rollenerweiterung-for-sp-changes.path.params.js';
+import { type ApplyRollenerweiterungBodyParams } from './apply-rollenerweiterung.body.params.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ApplyRollenerweiterungForAngebotService } from '../domain/apply-rollenerweiterungen-for-angebot-service.js';
 import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
-import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { type DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from '../domain/missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 
 describe('RollenerweiterungController', () => {

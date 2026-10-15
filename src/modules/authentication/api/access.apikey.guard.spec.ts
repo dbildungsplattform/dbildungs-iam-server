@@ -1,9 +1,9 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { Reflector } from '@nestjs/core';
-import { ExecutionContext } from '@nestjs/common';
-import express from 'express';
+import { type ExecutionContext } from '@nestjs/common';
+import type express from 'express';
 import { AccessApiKeyGuard } from './access.apikey.guard.js';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 import { createExecutionContextMock } from '../../../../test/utils/http.mocks.js';
 
 const canActivateSpy: Mock = vi.spyOn(AccessApiKeyGuard.prototype, 'canActivate');

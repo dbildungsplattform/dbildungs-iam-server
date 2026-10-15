@@ -1,4 +1,4 @@
-import { ApiResponseCommonMetadata } from '@nestjs/swagger';
+import { type ApiResponseCommonMetadata } from '@nestjs/swagger';
 
 type HeadersObject = ApiResponseCommonMetadata['headers'];
 

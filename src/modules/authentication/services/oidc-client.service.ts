@@ -1,5 +1,5 @@
-import { FactoryProvider } from '@nestjs/common';
-import { BaseClient, Client, Issuer } from 'openid-client';
+import { type FactoryProvider } from '@nestjs/common';
+import { type BaseClient, type Client, Issuer } from 'openid-client';
 
 import { KeycloakInstanceConfig } from '../../keycloak-administration/keycloak-instance-config.js';
 

@@ -1,12 +1,12 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { faker } from '@faker-js/faker';
 import { PersonDeleteService } from './person-delete.service.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { DomainError } from '../../../shared/error/index.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type DomainError } from '../../../shared/error/index.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/index.js';
 import { PersonDeleteRolleNotFoundError } from './person-delete-rolle-not-found.error.js';

@@ -1,8 +1,8 @@
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     DatabaseTestModule,
@@ -11,14 +11,14 @@ import {
 } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import {
-    DomainError,
+    type DomainError,
     EntityNotFoundError,
     InvalidAttributeLengthError,
     InvalidCharacterSetError,
     InvalidNameError,
     KeycloakClientError,
 } from '../../../shared/error/index.js';
-import { FindUserFilter, KeycloakUserService } from '../../keycloak-administration/index.js';
+import { type FindUserFilter, KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OxUserBlacklistEntity } from '../persistence/ox-user-blacklist.entity.js';
 import { OxUserBlacklistRepo } from '../persistence/ox-user-blacklist.repo.js';
 import { UsernameGeneratorService } from './username-generator.service.js';

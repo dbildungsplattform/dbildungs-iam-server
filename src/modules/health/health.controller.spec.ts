@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { HealthController } from './health.controller.js';
-import { HealthCheckService, HealthIndicatorFunction, HttpHealthIndicator } from '@nestjs/terminus';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { HealthCheckService, type HealthIndicatorFunction, HttpHealthIndicator } from '@nestjs/terminus';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakConfig } from '../../shared/config/index.js';
 import { KeycloakHealthIndicator } from './keycloak.health-indicator.js';

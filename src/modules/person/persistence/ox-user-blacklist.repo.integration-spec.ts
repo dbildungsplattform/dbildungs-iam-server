@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { createMock } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
@@ -10,7 +10,7 @@ import {
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { OXEmail, OXUserName } from '../../../shared/types/ox-ids.types.js';
+import { type OXEmail, type OXUserName } from '../../../shared/types/ox-ids.types.js';
 import { OxUserBlacklistEntry } from '../domain/ox-user-blacklist-entry.js';
 import { OxUserBlacklistEntity } from './ox-user-blacklist.entity.js';
 import { mapAggregateToData, OxUserBlacklistRepo } from './ox-user-blacklist.repo.js';

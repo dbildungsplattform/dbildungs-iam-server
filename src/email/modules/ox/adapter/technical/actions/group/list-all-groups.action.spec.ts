@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ListAllGroupsAction, ListAllGroupsResponseBody } from './list-all-groups.action.js';
+import { ListAllGroupsAction, type ListAllGroupsResponseBody } from './list-all-groups.action.js';
 
 describe('ListAllGroupsAction', () => {
     describe('buildRequest', () => {

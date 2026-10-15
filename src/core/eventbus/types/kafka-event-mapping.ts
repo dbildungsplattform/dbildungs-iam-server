@@ -1,5 +1,5 @@
-import { BaseEvent } from '../../../shared/events/index.js';
-import { KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { type BaseEvent } from '../../../shared/events/index.js';
+import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
 
 import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
 import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
@@ -17,7 +17,7 @@ import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updat
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
 import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
-import { Constructor } from './util.types.js';
+import { type Constructor } from './util.types.js';
 import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
 import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
 import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
