@@ -70,33 +70,6 @@ export class InternalRollenerweiterungRepo {
         };
     }
 
-    public async exists(ids: RollenerweiterungIds): Promise<boolean> {
-        const count: number = await this.em.count(RollenerweiterungEntity, this.getComposedIdFilter(ids));
-
-        return count > 0;
-    }
-
-    public async existsByOrganisationId(organisationId: OrganisationID): Promise<boolean> {
-        const count: number = await this.em.count(RollenerweiterungEntity, {
-            organisationId,
-        });
-
-        return count > 0;
-    }
-
-    public async findByComposedId(ids: RollenerweiterungIds): Promise<Rollenerweiterung<true> | undefined> {
-        const entity: Loaded<RollenerweiterungEntity> | null = await this.em.findOne(
-            RollenerweiterungEntity,
-            this.getComposedIdFilter(ids),
-        );
-
-        if (!entity) {
-            return undefined;
-        }
-
-        return this.mapEntityToAggregate(entity);
-    }
-
     public async create(rollenerweiterung: Rollenerweiterung<false>): Promise<Rollenerweiterung<true>> {
         const ids: RollenerweiterungIds = {
             organisationId: rollenerweiterung.organisationId,
@@ -131,6 +104,33 @@ export class InternalRollenerweiterungRepo {
 
             throw error;
         }
+    }
+
+    public async exists(ids: RollenerweiterungIds): Promise<boolean> {
+        const count: number = await this.em.count(RollenerweiterungEntity, this.getComposedIdFilter(ids));
+
+        return count > 0;
+    }
+
+    public async existsByOrganisationId(organisationId: OrganisationID): Promise<boolean> {
+        const count: number = await this.em.count(RollenerweiterungEntity, {
+            organisationId,
+        });
+
+        return count > 0;
+    }
+
+    public async findByComposedId(ids: RollenerweiterungIds): Promise<Rollenerweiterung<true> | undefined> {
+        const entity: Loaded<RollenerweiterungEntity> | null = await this.em.findOne(
+            RollenerweiterungEntity,
+            this.getComposedIdFilter(ids),
+        );
+
+        if (!entity) {
+            return undefined;
+        }
+
+        return this.mapEntityToAggregate(entity);
     }
 
     public async findManyByOrganisationAndRolle(
@@ -211,42 +211,6 @@ export class InternalRollenerweiterungRepo {
         );
     }
 
-    public async deleteByComposedId(ids: RollenerweiterungIds): Promise<Result<null, DomainError>> {
-        await this.em.nativeDelete(RollenerweiterungEntity, this.getComposedIdFilter(ids));
-
-        return Ok(null);
-    }
-
-    public async deleteByOrganisationIdAndServiceProviderIds(
-        organisationId: OrganisationID,
-        serviceProviderIds: ServiceProviderID[],
-    ): Promise<Result<null, DomainError>> {
-        if (serviceProviderIds.length === 0) {
-            return Ok(null);
-        }
-
-        await this.em.nativeDelete(RollenerweiterungEntity, {
-            organisationId,
-            serviceProviderId: {
-                $in: serviceProviderIds,
-            },
-        });
-
-        return Ok(null);
-    }
-
-    public async deleteByServiceProviderIdAndRollenarten(
-        serviceProviderId: ServiceProviderID,
-        rollenarten?: RollenArt[],
-    ): Promise<Result<null, DomainError>> {
-        await this.em.nativeDelete(
-            RollenerweiterungEntity,
-            this.getServiceProviderAndRollenartenFilter(serviceProviderId, rollenarten),
-        );
-
-        return Ok(null);
-    }
-
     /**
      * Returns the amount of Rollenerweiterungen per ServiceProvider,
      * optionally filtered by Organisations.
@@ -255,6 +219,10 @@ export class InternalRollenerweiterungRepo {
         serviceProviderIds: ServiceProviderID[],
         organisationIds?: OrganisationID[],
     ): Promise<Record<ServiceProviderID, number>> {
+        if (serviceProviderIds.length === 0) {
+            return {};
+        }
+
         const where: FilterQuery<RollenerweiterungEntity> = {
             serviceProviderId: {
                 $in: serviceProviderIds,
@@ -479,6 +447,42 @@ export class InternalRollenerweiterungRepo {
         return entities.map(
             (entity: Loaded<RollenerweiterungEntity>): Rollenerweiterung<true> => this.mapEntityToAggregate(entity),
         );
+    }
+
+    public async deleteByComposedId(ids: RollenerweiterungIds): Promise<Result<null, DomainError>> {
+        await this.em.nativeDelete(RollenerweiterungEntity, this.getComposedIdFilter(ids));
+
+        return Ok(null);
+    }
+
+    public async deleteByOrganisationIdAndServiceProviderIds(
+        organisationId: OrganisationID,
+        serviceProviderIds: ServiceProviderID[],
+    ): Promise<Result<null, DomainError>> {
+        if (serviceProviderIds.length === 0) {
+            return Ok(null);
+        }
+
+        await this.em.nativeDelete(RollenerweiterungEntity, {
+            organisationId,
+            serviceProviderId: {
+                $in: serviceProviderIds,
+            },
+        });
+
+        return Ok(null);
+    }
+
+    public async deleteByServiceProviderIdAndRollenarten(
+        serviceProviderId: ServiceProviderID,
+        rollenarten?: RollenArt[],
+    ): Promise<Result<null, DomainError>> {
+        await this.em.nativeDelete(
+            RollenerweiterungEntity,
+            this.getServiceProviderAndRollenartenFilter(serviceProviderId, rollenarten),
+        );
+
+        return Ok(null);
     }
 
     private getServiceProviderAndRollenartenFilter(

@@ -83,7 +83,10 @@ describe('OrganisationRepository', () => {
 
     describe('findById', () => {
         it('should return one organisation by id', async () => {
-            const orga: Organisation<false> | DomainError = Organisation.createNew();
+            const orga: Organisation<false> | DomainError = Organisation.createNew(
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
+            );
             if (orga instanceof DomainError) {
                 return;
             }
@@ -108,10 +111,10 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
-                faker.lorem.word(),
-                faker.lorem.word(),
                 faker.lorem.word(),
                 faker.string.uuid(),
                 undefined,
@@ -152,6 +155,8 @@ describe('OrganisationRepository', () => {
     describe('exists', () => {
         it('should return true if the orga exists', async () => {
             const orga: Organisation<false> | DomainError = Organisation.createNew(
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
@@ -176,6 +181,8 @@ describe('OrganisationRepository', () => {
     describe('findById', () => {
         it('should return the organisation if it exists', async () => {
             const orga: Organisation<false> | DomainError = Organisation.createNew(
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
@@ -211,13 +218,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Name1',
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '05674',
-                'Name1',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
             organisation2 = Organisation.construct(
@@ -225,13 +232,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Name2',
+                OrganisationsTyp.ROOT,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '44123',
-                'Name2',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
             organisation3 = Organisation.construct(
@@ -239,13 +246,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'TestSchule',
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '75693',
-                'TestSchule',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
             organisationEntity1 = em.create(OrganisationEntity, mapOrgaAggregateToData(organisation1));
@@ -352,13 +359,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 undefined,
                 undefined,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
 
@@ -367,13 +374,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
 
@@ -382,13 +389,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
 
@@ -460,13 +467,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 undefined,
                 undefined,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
                 rootDomain,
             );
@@ -476,13 +483,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
                 traegerDomain,
             );
@@ -492,13 +499,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
                 schuleDomain,
             );
@@ -591,13 +598,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 undefined,
                 undefined,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
             );
 
             const traeger: Organisation<true> = Organisation.construct(
@@ -605,13 +612,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
             );
 
             const schule: Organisation<true> = Organisation.construct(
@@ -619,13 +626,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.alphanumeric(10),
+                OrganisationsTyp.ROOT,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
-                faker.string.alphanumeric(10),
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
             );
 
             await em
@@ -739,13 +746,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
-                faker.string.uuid(),
-                faker.string.uuid(),
                 faker.string.numeric(),
+                OrganisationsTyp.SCHULE,
+                faker.string.uuid(),
+                faker.string.uuid(),
                 'Root',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
             oeffentlich = Organisation.construct(
@@ -753,13 +760,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.numeric(),
+                OrganisationsTyp.ROOT,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
-                faker.string.numeric(),
                 'Öffentliche Schulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
             ersatz = Organisation.construct(
@@ -767,13 +774,13 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                faker.string.numeric(),
+                OrganisationsTyp.SCHULE,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
-                faker.string.numeric(),
                 'Ersatzschulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
             organisationEntity1 = em.create(OrganisationEntity, mapOrgaAggregateToData(root));
@@ -1027,16 +1034,19 @@ describe('OrganisationRepository', () => {
 
             beforeEach(async () => {
                 const oeffentlich: Organisation<false> | DomainError = Organisation.createNew(
+                    'Öffentliche',
+                    OrganisationsTyp.SONSTIGE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     '',
-                    'Öffentliche',
                 );
 
                 if (oeffentlich instanceof DomainError) {
-                    return;
+                    throw oeffentlich;
                 }
+
                 savedOeffentlich = em.create(OrganisationEntity, mapOrgaAggregateToData(oeffentlich));
+
                 await em.persist(savedOeffentlich).flush();
             });
 
@@ -1142,13 +1152,13 @@ describe('OrganisationRepository', () => {
     describe('setEnabledForitslearning', () => {
         it('should enable organisation for itslearning', async () => {
             const orga: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
-                faker.company.name(),
                 undefined,
                 undefined,
-                OrganisationsTyp.SCHULE,
             );
             if (orga instanceof DomainError) {
                 throw orga;
@@ -1200,13 +1210,13 @@ describe('OrganisationRepository', () => {
 
         it('should return error if organisation-typ is NOT Schule', async () => {
             const orga: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.KLASSE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
-                faker.company.name(),
                 undefined,
                 undefined,
-                OrganisationsTyp.KLASSE,
             );
             if (orga instanceof DomainError) {
                 return;
@@ -1289,46 +1299,50 @@ describe('OrganisationRepository', () => {
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Root',
+                OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
-                'Root',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
+
             oeffentlich = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Öffentliche Schulen Land Schleswig-Holstein',
+                OrganisationsTyp.ROOT,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 faker.string.numeric(),
-                'Öffentliche Schulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.ROOT,
                 undefined,
             );
+
             ersatz = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
+                'Ersatzschulen Land Schleswig-Holstein',
+                OrganisationsTyp.SCHULE,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 faker.string.numeric(),
-                'Ersatzschulen Land Schleswig-Holstein',
                 faker.lorem.word(),
                 faker.string.uuid(),
-                OrganisationsTyp.SCHULE,
                 undefined,
             );
+
             organisationEntity1 = em.create(OrganisationEntity, mapOrgaAggregateToData(root));
             organisationEntity2 = em.create(OrganisationEntity, mapOrgaAggregateToData(oeffentlich));
             organisationEntity3 = em.create(OrganisationEntity, mapOrgaAggregateToData(ersatz));
+
             await em.persist([organisationEntity1, organisationEntity2, organisationEntity3]).flush();
         });
 
@@ -1374,14 +1388,14 @@ describe('OrganisationRepository', () => {
                 expect(eventServiceMock.publish).toHaveBeenCalledWith(
                     expect.objectContaining({
                         organisationId: result.id,
-                        kennung: result.kennung,
                         name: result.name,
+                        kennung: result.kennung,
                         rootDirectChildrenZuordnung: RootDirectChildrenType.ERSATZ,
                     }),
                     expect.objectContaining({
                         organisationId: result.id,
-                        kennung: result.kennung,
                         name: result.name,
+                        kennung: result.kennung,
                         rootDirectChildrenZuordnung: RootDirectChildrenType.ERSATZ,
                     }),
                 );
@@ -1462,10 +1476,11 @@ describe('OrganisationRepository', () => {
     describe('isOrgaAParentOfOrgaB', () => {
         it('should return true if A is parent of B', async () => {
             const orgaA: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
-                faker.company.name(),
             );
             if (orgaA instanceof DomainError) {
                 return;
@@ -1473,10 +1488,11 @@ describe('OrganisationRepository', () => {
             const mappedOrgaA: OrganisationEntity = em.create(OrganisationEntity, mapOrgaAggregateToData(orgaA));
             await em.persist(mappedOrgaA).flush();
             const orgaB: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
                 mappedOrgaA.id,
                 mappedOrgaA.id,
                 faker.string.numeric(6),
-                faker.company.name(),
             );
             if (orgaB instanceof DomainError) {
                 return;
@@ -1489,10 +1505,11 @@ describe('OrganisationRepository', () => {
 
         it('should return false if A is not parent of B', async () => {
             const orgaA: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
-                faker.company.name(),
             );
             if (orgaA instanceof DomainError) {
                 return;
@@ -1500,10 +1517,11 @@ describe('OrganisationRepository', () => {
             const mappedOrgaA: OrganisationEntity = em.create(OrganisationEntity, mapOrgaAggregateToData(orgaA));
             await em.persist(mappedOrgaA).flush();
             const orgaB: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
-                faker.company.name(),
             );
             if (orgaB instanceof DomainError) {
                 return;
@@ -1520,10 +1538,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1548,10 +1567,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1577,10 +1597,11 @@ describe('OrganisationRepository', () => {
                 const orgas: OrganisationEntity[] = [];
                 for (let i: number = 0; i < 5; i++) {
                     const orga: Organisation<false> | DomainError = Organisation.createNew(
+                        faker.company.name(),
+                        OrganisationsTyp.SCHULE,
                         sut.ROOT_ORGANISATION_ID,
                         sut.ROOT_ORGANISATION_ID,
                         faker.string.numeric(6),
-                        faker.company.name(),
                     );
                     if (orga instanceof DomainError) {
                         return;
@@ -1617,10 +1638,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    'Test' + faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    'Test' + faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1631,10 +1653,11 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1664,10 +1687,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     '1234567',
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1678,10 +1702,11 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1710,10 +1735,11 @@ describe('OrganisationRepository', () => {
         it('should return all authorized organisations with correct kennung and name', async () => {
             const orgas: OrganisationEntity[] = [];
             const orgaToFind: Organisation<false> | DomainError = Organisation.createNew(
+                'dummy-name',
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 'dummy-kennung',
-                'dummy-name',
             );
             if (orgaToFind instanceof DomainError) {
                 return;
@@ -1727,10 +1753,11 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1757,10 +1784,11 @@ describe('OrganisationRepository', () => {
         it('should return all authorized organisations with given ID even though other criteria are not met', async () => {
             const orgas: OrganisationEntity[] = [];
             const orgaToFind: Organisation<false> | DomainError = Organisation.createNew(
+                'dummy-name',
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 'dummy-kennung',
-                'dummy-name',
             );
             if (orgaToFind instanceof DomainError) {
                 return;
@@ -1774,10 +1802,11 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1805,10 +1834,11 @@ describe('OrganisationRepository', () => {
         it('should not return Orgas for ID without permission', async () => {
             const orgas: OrganisationEntity[] = [];
             const orgaToFind: Organisation<false> | DomainError = Organisation.createNew(
+                'dummy-name',
+                OrganisationsTyp.SCHULE,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 'dummy-kennung',
-                'dummy-name',
             );
             if (orgaToFind instanceof DomainError) {
                 return;
@@ -1822,10 +1852,11 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    'Test' + faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1856,10 +1887,11 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    'dummy-name',
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     'dummy-kennung',
-                    'dummy-name',
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1871,10 +1903,11 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -1910,13 +1943,14 @@ describe('OrganisationRepository', () => {
         it('should return all authorized organisations with correct type and parent under administriertVon', async () => {
             const orgas: OrganisationEntity[] = [];
             const orgaLand: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.LAND,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 '',
                 'Öffentliche Schulen Land Schleswig-Holstein',
                 undefined,
                 undefined,
-                OrganisationsTyp.LAND,
             );
             if (orgaLand instanceof DomainError) {
                 return;
@@ -1927,13 +1961,13 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     mappedOrgaLand.id,
                     mappedOrgaLand.id,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Schule under Land');
@@ -1944,13 +1978,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.TRAEGER,
                     mappedOrgaLand.id,
                     mappedOrgaLand.id,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.TRAEGER,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Traeger');
@@ -1961,13 +1995,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Schule under root');
@@ -2076,13 +2110,14 @@ describe('OrganisationRepository', () => {
         it('should return all authorized organisations with correct type and parent under zugehoerig zu', async () => {
             const orgas: OrganisationEntity[] = [];
             const orgaLand: Organisation<false> | DomainError = Organisation.createNew(
+                faker.company.name(),
+                OrganisationsTyp.LAND,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 '',
                 'Öffentliche Schulen Land Schleswig-Holstein',
                 undefined,
                 undefined,
-                OrganisationsTyp.LAND,
             );
             if (orgaLand instanceof DomainError) {
                 return;
@@ -2093,13 +2128,13 @@ describe('OrganisationRepository', () => {
 
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     mappedOrgaLand.id,
                     mappedOrgaLand.id,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Schule under Land');
@@ -2110,13 +2145,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.TRAEGER,
                     mappedOrgaLand.id,
                     mappedOrgaLand.id,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.TRAEGER,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Traeger');
@@ -2127,13 +2162,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Schule under root');
@@ -2163,13 +2198,13 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 2; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Schule under Land');
@@ -2180,13 +2215,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 2; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.TRAEGER,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.TRAEGER,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Traeger');
@@ -2197,13 +2232,13 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 2; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.KLASSE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                     undefined,
                     undefined,
-                    OrganisationsTyp.KLASSE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('could not create Klasse');
@@ -2234,10 +2269,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -2263,10 +2299,11 @@ describe('OrganisationRepository', () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    'Test' + faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    'Test' + faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -2277,10 +2314,11 @@ describe('OrganisationRepository', () => {
             }
             for (let i: number = 0; i < 3; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
                 );
                 if (orga instanceof DomainError) {
                     return;
@@ -2311,10 +2349,11 @@ describe('OrganisationRepository', () => {
                 organisations = [];
                 for (let i: number = 0; i < 5; i++) {
                     const orga: Organisation<false> | DomainError = Organisation.createNew(
+                        `Organisation ${5 - i}`, // Reverse order for testing sorting
+                        OrganisationsTyp.SCHULE,
                         sut.ROOT_ORGANISATION_ID,
                         sut.ROOT_ORGANISATION_ID,
                         faker.string.numeric(6),
-                        `Organisation ${5 - i}`, // Reverse order for testing sorting
                     );
                     if (orga instanceof DomainError) {
                         throw new Error('Could not create Organisation');
@@ -2400,11 +2439,11 @@ describe('OrganisationRepository', () => {
             // Create 5 organisations
             for (let i: number = 0; i < 5; i++) {
                 const orga: Organisation<false> | DomainError = Organisation.createNew(
+                    faker.company.name(),
+                    OrganisationsTyp.SCHULE,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
                     faker.string.numeric(6),
-                    faker.company.name(),
-                    OrganisationsTyp.SCHULE,
                 );
                 if (orga instanceof DomainError) {
                     throw new Error('Could not create Organisation');
@@ -2481,35 +2520,26 @@ describe('OrganisationRepository', () => {
                 const organisationIds: OrganisationID[] = Array.from({ length: numberOfIds }, () =>
                     faker.string.uuid(),
                 );
+
                 const orgas: OrganisationEntity[] = organisationIds.map((orgaId: OrganisationID) => {
                     return Object.assign(
                         new OrganisationEntity(),
-                        DoFactory.createOrganisation<true>(true, { id: orgaId }),
+                        DoFactory.createOrganisation<true>(true, {
+                            id: orgaId,
+                        }),
                     );
                 });
+
                 await em.persist(orgas).flush();
 
                 const expectedTypen: Set<OrganisationsTyp> = new Set(
-                    orgas.map((o: OrganisationEntity) => o.typ).filter(Boolean),
+                    orgas.map((organisation: OrganisationEntity) => organisation.typ),
                 );
 
                 const result: OrganisationsTyp[] = await sut.findDistinctOrganisationsTypen(organisationIds);
+
                 expect(result).toHaveLength(expectedTypen.size);
                 expect(result).toEqual(expect.arrayContaining(Array.from(expectedTypen)));
-            });
-        });
-
-        describe('when typ is undefined', () => {
-            it('should filter the orga out', async () => {
-                const orga: OrganisationEntity = Object.assign(
-                    new OrganisationEntity(),
-                    DoFactory.createOrganisation<true>(true, { typ: undefined }),
-                );
-                await em.persist(orga).flush();
-
-                const result: OrganisationsTyp[] = await sut.findDistinctOrganisationsTypen([orga.id]);
-                expect(result).not.toContain(undefined);
-                expect(result).toHaveLength(0);
             });
         });
     });

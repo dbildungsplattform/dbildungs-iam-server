@@ -10,7 +10,7 @@ import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
@@ -246,6 +246,66 @@ describe('ServiceProviderService', () => {
                         permissions,
                     );
                 });
+
+                it('throws MissingPermissionsError when loading Rollenerweiterungen is not permitted', async () => {
+                    const organisationId: OrganisationID = faker.string.uuid();
+
+                    const rolleId: RolleID = faker.string.uuid();
+
+                    const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+                    const permissionError: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+
+                    const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> = {
+                        ok: false,
+                        error: permissionError,
+                    };
+
+                    const organisationAndRolleIds: Array<{
+                        organisationId: OrganisationID;
+                        rolleId: RolleID;
+                    }> = [
+                        {
+                            organisationId,
+                            rolleId,
+                        },
+                    ];
+
+                    rolleRepo.findByIds.mockResolvedValueOnce(
+                        new Map([
+                            [
+                                rolleId,
+                                DoFactory.createRolle(true, {
+                                    id: rolleId,
+                                    serviceProviderIds: [],
+                                }),
+                            ],
+                        ]),
+                    );
+
+                    rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce(
+                        rollenerweiterungenResult,
+                    );
+
+                    await expect(
+                        (
+                            service as unknown as {
+                                getServiceProvidersByOrganisationenAndRollen: (
+                                    ids: Array<{
+                                        organisationId: OrganisationID;
+                                        rolleId: RolleID;
+                                    }>,
+                                    permissions: IPersonPermissions,
+                                ) => Promise<ServiceProvider<true>[]>;
+                            }
+                        ).getServiceProvidersByOrganisationenAndRollen(organisationAndRolleIds, permissions),
+                    ).rejects.toBe(permissionError);
+                    expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith(
+                        organisationAndRolleIds,
+                        permissions,
+                    );
+                    expect(serviceProviderRepo.findByIds).not.toHaveBeenCalled();
+                });
             },
         );
     });
@@ -458,15 +518,15 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
                 undefined,
                 undefined,
-            );
+            });
             expect(rollenerweiterungRepo.findByServiceProviderIds).toHaveBeenCalledWith(
                 [serviceProvider.id],
                 permissions,
@@ -534,15 +594,13 @@ describe('ServiceProviderService', () => {
                 MissingPermissionsError
             > = await service.getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung(organisation.id, permissions);
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-                undefined,
-                undefined,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map(
@@ -583,15 +641,15 @@ describe('ServiceProviderService', () => {
                 offset,
             );
 
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrga.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrga.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
                 limit,
                 offset,
-            );
+            });
             expectOkResult(result);
             expect(
                 result.value[0].map(
@@ -843,6 +901,38 @@ describe('ServiceProviderService', () => {
                 await service.findManageableById(permissions, serviceProvider.id);
             expect(result?.relevantSystemrechte).toContain(RollenSystemRecht.ROLLEN_ERWEITERN);
         });
+
+        it('throws MissingPermissionsError when loading Rollenerweiterungen is not permitted', async () => {
+            const permissionError: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+
+            const rollenerweiterungenResult: Result<
+                Map<ServiceProviderID, Rollenerweiterung<true>[]>,
+                MissingPermissionsError
+            > = {
+                ok: false,
+                error: permissionError,
+            };
+
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: true,
+            });
+
+            serviceProviderRepo.findById.mockResolvedValue(serviceProvider);
+
+            organisationRepo.findByIds.mockResolvedValue(
+                new Map([[serviceProvider.providedOnSchulstrukturknoten, organisation]]),
+            );
+
+            rollenerweiterungRepo.findByServiceProviderIds.mockResolvedValueOnce(rollenerweiterungenResult);
+
+            await expect(service.findManageableById(permissions, serviceProvider.id)).rejects.toBe(permissionError);
+            expect(rollenerweiterungRepo.findByServiceProviderIds).toHaveBeenCalledWith(
+                [serviceProvider.id],
+                permissions,
+                undefined,
+            );
+            expect(rolleRepo.findByServiceProviderIds).not.toHaveBeenCalled();
+        });
     });
 
     describe('findAuthorized', () => {
@@ -1092,13 +1182,13 @@ describe('ServiceProviderService', () => {
             );
 
             expect(organisationRepo.findParentOrgasForIds).toHaveBeenCalledWith([organisation.id]);
-            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith(
-                [organisation.id, parentOrganisation.id],
-                [
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
                 ],
-            );
+            });
             expect(result[0]).toContain(serviceProvider);
             expect(result[1]).toBe(1);
         });
@@ -1130,37 +1220,29 @@ describe('ServiceProviderService', () => {
             expect(result[1]).toBe(0);
         });
 
-        it('should filter service providers by rollenArten and include providers with an unrestricted whitelist', async () => {
-            const unrestrictedProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [],
-            });
-            const matchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [RollenArt.LERN],
-            });
-            const nonMatchingProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
-                providedOnSchulstrukturknoten: organisation.id,
-                merkmale: [ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG],
-                rollenartenWhitelist: [RollenArt.LEHR],
-            });
-
-            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValue([
-                [unrestrictedProvider, matchingProvider, nonMatchingProvider],
-                3,
-            ]);
+        it('passes rollenArten and pagination to the repository for filtering before paging', async () => {
+            const resultFromRepository: Counted<ServiceProvider<true>> = [[serviceProvider], 1];
+            serviceProviderRepo.findByOrgasWithMerkmale.mockResolvedValueOnce(resultFromRepository);
 
             const result: Counted<ServiceProvider<true>> = await service.findAllowedProvidersForRollenerweiterungAtOrga(
                 organisation.id,
                 permissions,
                 [RollenArt.LERN],
+                10,
+                20,
             );
 
-            expect(result[0]).toEqual([unrestrictedProvider, matchingProvider]);
-            expect(result[0]).not.toContain(nonMatchingProvider);
-            expect(result[1]).toBe(2);
+            expect(serviceProviderRepo.findByOrgasWithMerkmale).toHaveBeenCalledWith({
+                organisationIds: [organisation.id, parentOrganisation.id],
+                merkmale: [
+                    ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
+                    ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
+                ],
+                rollenArten: [RollenArt.LERN],
+                limit: 10,
+                offset: 20,
+            });
+            expect(result).toBe(resultFromRepository);
         });
     });
 

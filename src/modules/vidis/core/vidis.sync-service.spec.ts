@@ -36,6 +36,7 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { VidisSyncService } from './vidis.sync-service.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
 type TorgaIds = {
     id: string;
@@ -121,6 +122,8 @@ describe('VidisSyncService', () => {
             new Date('2026-01-01'),
             new Date('2026-01-02'),
             1,
+            faker.lorem.word(),
+            OrganisationsTyp.SCHULE,
             undefined,
             undefined,
             kennung,
@@ -310,7 +313,14 @@ describe('VidisSyncService', () => {
 
             vi.mocked(permissionsMock.hasSystemrechteAtOrganisation).mockResolvedValue(true);
             organisationRepoMock.findById.mockResolvedValue(
-                Organisation.construct(organisationId, new Date('2026-01-01'), new Date('2026-01-02'), 1),
+                Organisation.construct(
+                    organisationId,
+                    new Date('2026-01-01'),
+                    new Date('2026-01-02'),
+                    1,
+                    faker.lorem.word(),
+                    OrganisationsTyp.SCHULE,
+                ),
             );
 
             const result: Result<void, SharedDomainError> = await sut.syncAngeboteForSchool(
@@ -1213,6 +1223,140 @@ describe('VidisSyncService', () => {
                 false,
             );
         });
+
+        it('should track successfully deleted stale ServiceProviders', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+
+            const existingServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '1');
+
+            const staleServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '2');
+
+            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(Ok(null));
+
+            serviceProviderRepoMock.deleteByIdAuthorized.mockResolvedValueOnce(Ok(undefined));
+
+            await (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).syncForSchoolInternal(
+                orga.id,
+                [createAngebot(1, 'Existing Angebot')],
+                [existingServiceProvider, staleServiceProvider],
+                [],
+                permissionsMock,
+            );
+
+            expect(rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds).toHaveBeenCalledWith(
+                orga.id,
+                [staleServiceProvider.id],
+                permissionsMock,
+            );
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).toHaveBeenCalledWith(
+                permissionsMock,
+                staleServiceProvider.id,
+            );
+        });
+
+        it('should not track a stale ServiceProvider as deleted if deletion returns an error result', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+
+            const staleServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '2');
+
+            const deleteError: MissingPermissionsError = new MissingPermissionsError('ServiceProvider deletion failed');
+
+            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(Ok(null));
+
+            serviceProviderRepoMock.deleteByIdAuthorized.mockResolvedValueOnce(Err(deleteError));
+
+            await (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).syncForSchoolInternal(
+                orga.id,
+                [createAngebot(1, 'Existing Angebot')],
+                [createExistingVidisServiceProvider(orga.id, '1'), staleServiceProvider],
+                [],
+                permissionsMock,
+            );
+
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).toHaveBeenCalledWith(
+                permissionsMock,
+                staleServiceProvider.id,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `VIDIS sync for organisation ${orga.id} finished with 1 failed operations.`,
+            );
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `VIDIS sync operation for organisation ${orga.id} returned an error result`,
+                deleteError,
+                false,
+            );
+        });
+
+        it('should not track a stale ServiceProvider as deleted if deletion is rejected', async () => {
+            const orga: TorgaIds = {
+                id: faker.string.uuid(),
+                kennung: faker.string.alphanumeric(8),
+            };
+
+            const staleServiceProvider: ServiceProvider<true> = createExistingVidisServiceProvider(orga.id, '2');
+
+            const deleteError: Error = new Error('ServiceProvider deletion rejected');
+
+            rollenerweiterungRepoMock.deleteByOrganisationIdAndServiceProviderIds.mockResolvedValueOnce(Ok(null));
+
+            serviceProviderRepoMock.deleteByIdAuthorized.mockRejectedValueOnce(deleteError);
+
+            await (
+                sut as unknown as {
+                    syncForSchoolInternal: (
+                        organisationId: string,
+                        angeboteInVidis: VidisApiResponseAngebotBySchool[],
+                        angeboteInDb: ServiceProvider<true>[],
+                        nonSchoolProvidedVidisAngeboteInDB: ServiceProvider<true>[],
+                        permissions: IPersonPermissions,
+                    ) => Promise<void>;
+                }
+            ).syncForSchoolInternal(
+                orga.id,
+                [createAngebot(1, 'Existing Angebot')],
+                [createExistingVidisServiceProvider(orga.id, '1'), staleServiceProvider],
+                [],
+                permissionsMock,
+            );
+
+            expect(serviceProviderRepoMock.deleteByIdAuthorized).toHaveBeenCalledWith(
+                permissionsMock,
+                staleServiceProvider.id,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `VIDIS sync for organisation ${orga.id} finished with 1 failed operations.`,
+            );
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                `VIDIS sync operation for organisation ${orga.id} rejected`,
+                deleteError,
+            );
+        });
     });
 
     describe('updateAngebotToMatchVidis', () => {
@@ -1648,9 +1792,8 @@ describe('VidisSyncService', () => {
                 new Date('2026-01-01'),
                 new Date('2026-01-02'),
                 1,
-                undefined,
-                undefined,
-                undefined,
+                faker.lorem.word(),
+                OrganisationsTyp.SCHULE,
             );
 
             expect(mapOrganisationIdsByKennung([schoolWithoutKennung, createSchool(orga.id, orga.kennung)])).toEqual({

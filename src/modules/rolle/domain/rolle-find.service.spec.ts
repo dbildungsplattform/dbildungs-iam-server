@@ -142,7 +142,7 @@ describe('RolleFindService', () => {
                 const s: Set<OrganisationsTyp> = new Set();
                 allowedOrgas.forEach((o: Organisation<true>) => {
                     if (orgaIds.includes(o.id)) {
-                        s.add(o.typ!);
+                        s.add(o.typ);
                     }
                 });
                 return Promise.resolve(Array.from(s));
@@ -162,7 +162,7 @@ describe('RolleFindService', () => {
                         uniq(
                             requestedOrgas
                                 .map((o: Organisation<true>) =>
-                                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(o.typ!),
+                                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(o.typ),
                                 )
                                 .flatMap((set: Set<RollenArt>) => Array.from(set)),
                         ),
@@ -182,7 +182,7 @@ describe('RolleFindService', () => {
                 const s: Set<OrganisationsTyp> = new Set();
                 allowedOrgas.forEach((o: Organisation<true>) => {
                     if (orgaIds.includes(o.id)) {
-                        s.add(o.typ!);
+                        s.add(o.typ);
                     }
                 });
                 return Promise.resolve(Array.from(s));
@@ -200,7 +200,7 @@ describe('RolleFindService', () => {
                         uniq(
                             allowedOrgas
                                 .map((o: Organisation<true>) =>
-                                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(o.typ!),
+                                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(o.typ),
                                 )
                                 .flatMap((set: Set<RollenArt>) => Array.from(set)),
                         ),
@@ -224,7 +224,7 @@ describe('RolleFindService', () => {
                 const s: Set<OrganisationsTyp> = new Set();
                 allowedOrgas.forEach((o: Organisation<true>) => {
                     if (orgaIds.includes(o.id)) {
-                        s.add(o.typ!);
+                        s.add(o.typ);
                     }
                 });
                 return Promise.resolve(Array.from(s));
@@ -442,7 +442,6 @@ describe('RolleFindService', () => {
     });
 
     describe('findMptRollenAuthorized', () => {
-        const includeTechnische: boolean = faker.datatype.boolean();
         const searchStr: string = faker.string.alphanumeric();
         const limit: number = faker.number.int();
         const offset: number = faker.number.int();
@@ -459,7 +458,6 @@ describe('RolleFindService', () => {
 
             const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
                 permissions: permissionsMock,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -468,7 +466,7 @@ describe('RolleFindService', () => {
 
             expect(result[1]).toEqual(1);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -489,7 +487,6 @@ describe('RolleFindService', () => {
 
             const result: Counted<Rolle<true>> = await rolleFindService.findMptRollenAuthorized({
                 permissions: permissionsMock,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -517,7 +514,6 @@ describe('RolleFindService', () => {
 
             await rolleFindService.findMptRollenAuthorized({
                 permissions: permissionsMock,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -526,7 +522,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -561,7 +557,6 @@ describe('RolleFindService', () => {
 
             await rolleFindService.findMptRollenAuthorized({
                 permissions: permissionsMock,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -571,7 +566,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-1']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -606,7 +601,6 @@ describe('RolleFindService', () => {
 
             await rolleFindService.findMptRollenAuthorized({
                 permissions: permissionsMock,
-                includeTechnische,
                 searchStr,
                 limit,
                 offset,
@@ -616,7 +610,7 @@ describe('RolleFindService', () => {
 
             expect(organisationRepoMock.findParentOrgasForIds).toHaveBeenCalledWith(['orga-2']);
             expect(rolleRepoMock.findBy).toHaveBeenCalledWith({
-                includeTechnische,
+                includeTechnische: false,
                 searchStr,
                 limit,
                 offset,
@@ -664,7 +658,7 @@ describe('RolleFindService', () => {
                 const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
                 permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
                 permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-                organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+                organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
                 organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
                 await rolleFindService.findRollenAvailableForPersonenkontextCreation({
@@ -678,7 +672,7 @@ describe('RolleFindService', () => {
                 });
 
                 const allowedRollenarten: Array<RollenArt> = Array.from(
-                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
+                    OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ),
                 );
                 expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith({
                     organisationId: schule.id,
@@ -704,7 +698,7 @@ describe('RolleFindService', () => {
                     });
                     permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
                     permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-                    organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+                    organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
                     organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
                     await rolleFindService.findRollenAvailableForPersonenkontextCreation({
@@ -714,7 +708,7 @@ describe('RolleFindService', () => {
                     });
 
                     const allowedRollenartenForMPTRollen: Array<RollenArt> = Array.from(
-                        OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ!),
+                        OrganisationMatchesRollenart.getAllowedRollenartenForOrganisationsTyp(schule.typ),
                     );
                     expect(rolleRepoMock.findRollenAvailableForPersonenkontextCreation).toHaveBeenLastCalledWith({
                         organisationId: schule.id,
@@ -737,7 +731,7 @@ describe('RolleFindService', () => {
             });
             permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [schule.id] });
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ!]);
+            organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([schule.typ]);
             organisationRepoMock.findParentOrgasForIds.mockResolvedValue([traeger]);
 
             const result: Counted<Rolle<true>> = await rolleFindService.findRollenAvailableForPersonenkontextCreation({
