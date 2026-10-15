@@ -449,8 +449,8 @@ export class RolleFindService {
         const organisationIds: OrganisationID[] = selectedAndPermittedOrgas
             ? selectedAndPermittedOrgas
             : Array.from(
-                      new Set(
-                          permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas) =>
+                  new Set(
+                      permittedOrgasBySystemrecht.flatMap((permittedOrgas: PermittedOrgas) =>
                           permittedOrgas.all ? [] : permittedOrgas.orgaIds,
                       ),
                   ),
@@ -481,9 +481,7 @@ export class RolleFindService {
                         return organisationMerkmale.get(organisationId)?.includes(_paar.merkmal) ?? false;
                     }
                     const permittedOrgas: PermittedOrgas = permittedOrgasBySystemrecht[index]!;
-                    return (
-                        permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId)
-                    );
+                    return permittedOrgas.all || permittedOrgas.orgaIds.includes(organisationId);
                 })
                 .map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
             if (authorizedMerkmale.length === 0) {
