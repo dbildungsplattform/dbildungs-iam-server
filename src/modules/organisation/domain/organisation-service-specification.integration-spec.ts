@@ -165,6 +165,7 @@ describe('OrganisationServiceSpecificationTest', () => {
             });
             const klassePersisted: Organisation<true> = await organisationRepository.save(klasse);
 
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const result: Result<Organisation<true>, DomainError> = await organisationService.updateOrganisation(
                 klassePersisted,
                 permissionsMock,
