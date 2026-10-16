@@ -1,7 +1,6 @@
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { Injectable } from '@nestjs/common';
-import { uniq } from 'lodash-es';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
@@ -112,8 +111,8 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
 
         const personKontextWithUemRolle: Personenkontext<true>[] = await this.findUemKontexts(personId);
 
-        const organisationIDs: OrganisationID[] = uniq(
-            personKontextWithUemRolle.map((pk: Personenkontext<true>) => pk.organisationId),
+        const organisationIDs: OrganisationID[] = Array.from(
+            new Set(personKontextWithUemRolle.map((pk: Personenkontext<true>) => pk.organisationId)),
         );
         const organisations: Map<OrganisationID, Organisation<true>> = await this.organisationRepository.findByIds(
             organisationIDs,
@@ -206,7 +205,7 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             givenName: givenName,
             surName: surName,
             cn: cn,
-            enabledEmailAddress: emailToSync, // TODO sync email addresses form microservice
+            enabledEmailAddress: emailToSync,
             disabledEmailAddresses: [],
             groupsToAdd: groupsToAdd,
             groupsToRemove: groupsToRemove,

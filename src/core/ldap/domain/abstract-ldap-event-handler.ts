@@ -1,4 +1,3 @@
-import { uniq } from 'lodash-es';
 import { type Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { type RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
@@ -33,7 +32,7 @@ export abstract class AbstractLdapEventHandler {
     protected async findUemKontexts(personId: PersonID): Promise<Personenkontext<true>[]> {
         const personKontexts: Option<Personenkontext<true>[]> =
             await this.dbiamPersonenkontextRepo.findByPerson(personId);
-        const rollenIDs: RolleID[] = uniq(personKontexts.map((pk: Personenkontext<true>) => pk.rolleId));
+        const rollenIDs: RolleID[] = Array.from(new Set(personKontexts.map((pk: Personenkontext<true>) => pk.rolleId)));
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rollenIDs);
 
         // Delete all rollen from map which do NOT have the UEM service provider

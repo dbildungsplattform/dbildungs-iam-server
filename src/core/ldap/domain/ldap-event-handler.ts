@@ -146,7 +146,6 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
             event.newPrimaryAddress,
             undefined,
         );
-        return;
     }
 
     @KafkaEventHandler(KafkaPersonRenamedEvent)
