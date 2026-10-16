@@ -6,7 +6,11 @@ import { OrganisationZuordnungVerschiebenError } from '../domain/organisation-zu
 import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
 import { OrganisationHasPersonenkontexteError } from '../organisation-delete/errors/organisation-has-personenkontexte.error.js';
 import { OrganisationHasRollenError } from '../organisation-delete/errors/organisation-has-rollen.error.js';
+import { OrganisationHasRollenerweiterungError } from '../organisation-delete/errors/organisation-has-rollenerweiterung.error.js';
 import { OrganisationHasServiceProvidersError } from '../organisation-delete/errors/organisation-has-service-provider.error.js';
+import { OrganisationHasZugehoerigeError } from '../organisation-delete/errors/organisation-has-zugehoerige.error.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
@@ -25,12 +29,24 @@ import { SchultraegerNameEindeutigError } from '../specification/error/Schultrae
 import { TraegerInTraegerError } from '../specification/error/traeger-in-traeger.error.js';
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
-import { OrganisationHasRollenerweiterungError } from '../organisation-delete/errors/organisation-has-rollenerweiterung.error.js';
-import { OrganisationHasZugehoerigeError } from '../organisation-delete/errors/organisation-has-zugehoerige.error.js';
 
 @Catch(OrganisationSpecificationError)
 export class OrganisationExceptionFilter implements ExceptionFilter<OrganisationSpecificationError> {
     private ERROR_MAPPINGS: Map<string, DbiamOrganisationError> = new Map([
+        [
+            BehoerdeNameEindeutigError.name,
+            new DbiamOrganisationError({
+                code: 400,
+                i18nKey: OrganisationSpecificationErrorI18nTypes.BEHOERDE_NAME_EINDEUTIG,
+            }),
+        ],
+        [
+            BehoerdeAdministriertVonError.name,
+            new DbiamOrganisationError({
+                code: 400,
+                i18nKey: OrganisationSpecificationErrorI18nTypes.BEHOERDE_ADMINISTRIERT_VON,
+            }),
+        ],
         [
             KennungRequiredForSchuleError.name,
             new DbiamOrganisationError({
