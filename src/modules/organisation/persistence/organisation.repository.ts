@@ -35,7 +35,7 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation, Organisationsbeziehung } from '../domain/organisation.js';
+import { Organisation, Organisationsbeziehung, Organisationsbeziehungen } from '../domain/organisation.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
 import { OrganisationScope } from './organisation.scope.js';
@@ -92,6 +92,30 @@ export function mapOrganisationsbeziehungEntityToAggregate(
         zielOrganisationId: entity.zielOrganisationId,
         typ: entity.typ,
     };
+}
+
+export function mapOrgaEntityToAggregateWithRelationships(
+    entity: OrganisationEntity,
+    organisationsbeziehungen: Organisationsbeziehungen,
+): Organisation<true, true> {
+    return Organisation.construct<true, true>(
+        entity.id,
+        entity.createdAt,
+        entity.updatedAt,
+        entity.version,
+        entity.name,
+        entity.typ,
+        organisationsbeziehungen,
+        entity.administriertVon,
+        entity.zugehoerigZu,
+        entity.kennung,
+        entity.namensergaenzung,
+        entity.kuerzel,
+        entity.traegerschaft,
+        entity.emailDomain,
+        entity.emailAddress,
+        entity.itslearningEnabled,
+    );
 }
 
 export type OrganisationSearchOptions = {
@@ -814,5 +838,28 @@ export class OrganisationRepository {
         }
 
         return mapOrganisationsbeziehungEntityToAggregate(entity);
+    }
+
+    public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {
+        const organisationEntity: OrganisationEntity | null = await this.em.findOne(OrganisationEntity, {
+            id: organisationId,
+        });
+        if (!organisationEntity) {
+            return undefined;
+        }
+
+        const organisationsbeziehungEntities: OrganisationsbeziehungEntity[] = await this.em.find(
+            OrganisationsbeziehungEntity,
+            {
+                quellOrganisationId: organisationId,
+            },
+        );
+
+        const organisationsbeziehungen: Organisationsbeziehungen = organisationsbeziehungEntities.map(
+            (entity: OrganisationsbeziehungEntity): Organisationsbeziehung<true> =>
+                mapOrganisationsbeziehungEntityToAggregate(entity),
+        );
+
+        return mapOrgaEntityToAggregateWithRelationships(organisationEntity, organisationsbeziehungen);
     }
 }
