@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { NameRequiredForKlasse } from './name-required-for-klasse.js';
 
 describe('NameRequiredForKlasse specification', () => {

@@ -1,4 +1,4 @@
-import { PersonID } from '../../types/aggregate-ids.types.js';
+import { type PersonID } from '../../types/aggregate-ids.types.js';
 import { BaseEvent } from '../base-event.js';
 
 export class EmailMicroserviceAddressChangedEvent extends BaseEvent {

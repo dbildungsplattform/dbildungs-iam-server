@@ -1,7 +1,7 @@
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { Personenkontext } from '../domain/personenkontext.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 
 export class CheckBefristungSpecification {
     public constructor(private readonly rolleRepo: RolleRepo) {}

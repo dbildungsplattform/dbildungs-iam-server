@@ -1,10 +1,10 @@
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import {
-    ServiceProviderKategorie,
+    type ServiceProviderKategorie,
     ServiceProviderMerkmal,
-    ServiceProviderSystem,
-    ServiceProviderTarget,
+    type ServiceProviderSystem,
+    type ServiceProviderTarget,
 } from './service-provider.enum.js';
 
 const MERKMALE_REQUIRING_VERFUEGBAR_FUER_ROLLENERWEITERUNG: ServiceProviderMerkmal[] = [

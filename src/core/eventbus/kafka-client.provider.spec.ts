@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
 import { KafkaJS } from '@confluentinc/kafka-javascript';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { LoggingTestModule } from '../../../test/utils/logging-test.module.js';
-import { KafkaConfig } from '../../shared/config/kafka.config.js';
+import { type KafkaConfig } from '../../shared/config/kafka.config.js';
 import { ClassLogger } from '../logging/class-logger.js';
 import { KAFKA_INSTANCE, KafkaLogger, KafkaProvider } from './kafka-client-provider.js';
 

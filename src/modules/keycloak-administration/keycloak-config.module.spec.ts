@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule } from '../../../test/utils/index.js';
 import { KeycloakConfigModule } from './keycloak-config.module.js';
 import { KeycloakInstanceConfig } from './keycloak-instance-config.js';

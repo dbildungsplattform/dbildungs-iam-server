@@ -1,4 +1,4 @@
-import { BaseEvent } from '../../../shared/events/index.js';
+import { type BaseEvent } from '../../../shared/events/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Constructor<T = unknown> = new (...args: any[]) => T;

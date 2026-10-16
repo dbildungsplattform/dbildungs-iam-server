@@ -3,7 +3,7 @@ import { cloneDeep } from 'lodash-es';
 import { DoFactory } from '../../../test/utils/do-factory.js';
 import { RollenMerkmal } from '../../modules/rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../modules/rolle/domain/systemrecht.js';
-import { Rolle } from '../../modules/rolle/domain/rolle.js';
+import { type Rolle } from '../../modules/rolle/domain/rolle.js';
 import { RolleUpdatedEvent } from './rolle-updated.event.js';
 
 describe('RolleUpdatedEvent', () => {

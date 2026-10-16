@@ -1,6 +1,6 @@
 import { BaseEvent } from './base-event.js';
-import { PersonID, PersonUsername } from '../types/index.js';
-import { OXUserID } from '../types/ox-ids.types.js';
+import { type PersonID, type PersonUsername } from '../types/index.js';
+import { type OXUserID } from '../types/ox-ids.types.js';
 
 export class PersonDeletedAfterDeadlineExceededEvent extends BaseEvent {
     public constructor(

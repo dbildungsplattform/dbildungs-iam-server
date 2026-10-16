@@ -1,5 +1,5 @@
 import { DomainError } from '../../../../../shared/error/index.js';
-import { LdapEntityType } from '../ldap.types.js';
+import { type LdapEntityType } from '../ldap.types.js';
 
 export class LdapSearchError extends DomainError {
     public constructor(

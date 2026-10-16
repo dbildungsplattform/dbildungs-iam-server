@@ -1,4 +1,4 @@
-import { KafkaEvent } from '../kafka-event.js';
+import { type KafkaEvent } from '../kafka-event.js';
 import { DisabledOxUserChangedEvent } from './disabled-ox-user-changed.event.js';
 
 /**

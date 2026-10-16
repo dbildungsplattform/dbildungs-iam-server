@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { EmailCoreModule } from './email-core.module.js';
 import { SetEmailAddressForSpshPersonService } from './domain/set-email-address-for-spsh-person.service.js';
 import { DatabaseTestModule, EmailConfigTestModule, LoggingTestModule } from '../../../../test/utils/index.js';

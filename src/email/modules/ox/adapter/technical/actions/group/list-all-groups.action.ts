@@ -1,8 +1,8 @@
-import { DomainError } from '../../../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../../../shared/error/index.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
 
-import { AuthParams, OxBaseAction } from '../ox-base-action.js';
-import { OXGroup } from './ox-group.types.js';
+import { type AuthParams, OxBaseAction } from '../ox-base-action.js';
+import { type OXGroup } from './ox-group.types.js';
 
 export type ListAllGroupsParams = AuthParams & {
     contextId: string;

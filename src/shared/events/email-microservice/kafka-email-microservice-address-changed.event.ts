@@ -1,4 +1,4 @@
-import { KafkaEvent } from '../kafka-event.js';
+import { type KafkaEvent } from '../kafka-event.js';
 import { EmailMicroserviceAddressChangedEvent } from './email-microservice-address-changed.event.js';
 
 export class KafkaEmailMicroserviceAddressChangedEvent

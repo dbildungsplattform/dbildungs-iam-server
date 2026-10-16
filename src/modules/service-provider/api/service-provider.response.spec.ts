@@ -1,5 +1,5 @@
 import { DoFactory } from '../../../../test/utils/index.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 
 describe('ServiceProviderResponse', () => {

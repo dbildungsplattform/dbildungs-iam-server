@@ -1,7 +1,7 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
 
-import { Rolle } from '../domain/rolle.js';
-import { RolleRepo } from '../repo/rolle.repo.js';
+import { type Rolle } from '../domain/rolle.js';
+import { type RolleRepo } from '../repo/rolle.repo.js';
 
 export class RolleNameUniqueOnSsk extends CompositeSpecification<Rolle<boolean>> {
     public constructor(

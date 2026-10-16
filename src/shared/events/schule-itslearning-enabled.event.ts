@@ -1,5 +1,5 @@
-import { OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
-import { OrganisationID } from '../types/index.js';
+import { type OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
+import { type OrganisationID } from '../types/index.js';
 import { BaseEvent } from './base-event.js';
 
 export class SchuleItslearningEnabledEvent extends BaseEvent {

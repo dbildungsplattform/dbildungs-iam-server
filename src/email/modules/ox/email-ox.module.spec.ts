@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DatabaseTestModule, EmailConfigTestModule } from '../../../../test/utils/index.js';
 import { EmailOxModule } from './email-ox.module.js';
 import { OxSendService } from './adapter/technical/ox-send.service.js';

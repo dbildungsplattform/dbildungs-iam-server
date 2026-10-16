@@ -1,19 +1,19 @@
 import { vi } from 'vitest';
 import { HttpService } from '@nestjs/axios';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AxiosResponse } from 'axios';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ConfigTestModule } from '../../../../../test/utils/config-test.module.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import {
-    VidisAngebotWithSchoolActivations,
-    VidisApiResponse,
-    VidisApiResponseAngebotBySchool,
-    VidisApiResponseAngebotByRegion,
-    VidisApiResponseSchoolActivation,
-    VidisServiceResponseAngebot,
+    type VidisAngebotWithSchoolActivations,
+    type VidisApiResponse,
+    type VidisApiResponseAngebotBySchool,
+    type VidisApiResponseAngebotByRegion,
+    type VidisApiResponseSchoolActivation,
+    type VidisServiceResponseAngebot,
 } from '../domain/vidis.types.js';
 import { VidisApiAdapter } from './vidis-api.adapter.js';
 import { VidisApiError } from '../../error/vidis-api.error.js';

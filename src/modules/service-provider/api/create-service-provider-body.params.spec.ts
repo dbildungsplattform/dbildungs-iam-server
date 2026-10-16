@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { validate, ValidationError } from 'class-validator';
+import { validate, type ValidationError } from 'class-validator';
 
 import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
 import { ServiceProviderKategorie } from '../domain/service-provider.enum.js';

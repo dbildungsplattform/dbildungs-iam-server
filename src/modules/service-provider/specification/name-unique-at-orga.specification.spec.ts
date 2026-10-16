@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../../test/utils/index.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
 import { NameUniqueAtOrgaSpecification } from './name-unique-at-orga.specification.js';
 

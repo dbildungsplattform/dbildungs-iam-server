@@ -2,25 +2,25 @@ import { ServiceProviderRepo } from '../../service-provider/repo/service-provide
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { Rollenerweiterung } from './rollenerweiterung.js';
 import { Rolle } from './rolle.js';
 import { Ok } from '../../../shared/util/result.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
 import { MissingMerkmalVerfuegbarFuerRollenerweiterungError } from './missing-merkmal-verfuegbar-fuer-rollenerweiterung.error.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     createPersonPermissionsMock,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { ApplyRollenerweiterungForRolleService } from './apply-rollenerweiterungen-for-rolle-service.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';

@@ -1,5 +1,5 @@
-import { IsIn, ValidationOptions } from 'class-validator';
-import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
+import { IsIn, type ValidationOptions } from 'class-validator';
+import { type RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 
 export function IsSystemrechtForRollenAdministration(validationOptions?: ValidationOptions): PropertyDecorator {

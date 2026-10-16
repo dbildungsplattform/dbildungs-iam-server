@@ -1,6 +1,6 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
-import { Rolle } from '../domain/rolle.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { type Rolle } from '../domain/rolle.js';
+import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 
 export class NoRedundantRollenerweiterung extends CompositeSpecification<Rollenerweiterung<boolean>> {
     public constructor() {

@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
 
 import { ConfigTestModule, LoggingTestModule } from '../../../../test/utils/index.js';
-import { DomainError, KeycloakClientError } from '../../../shared/error/index.js';
+import { type DomainError, KeycloakClientError } from '../../../shared/error/index.js';
 import { PersonService } from '../../person/domain/person.service.js';
 import { KeycloakAdministrationService } from './keycloak-admin-client.service.js';
 import { KeycloakGroupRoleService } from './keycloak-group-role.service.js';

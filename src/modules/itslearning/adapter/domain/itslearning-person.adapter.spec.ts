@@ -1,18 +1,18 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { DoFactory, expectErrResult, expectOkResult, LoggingTestModule } from '../../../../../test/utils/index.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../shared/error/its-learning.error.js';
-import { CreatePersonAction, CreatePersonParams } from '../technical/actions/create-person.action.js';
+import { CreatePersonAction, type CreatePersonParams } from '../technical/actions/create-person.action.js';
 import { DeletePersonAction } from '../technical/actions/delete-person.action.js';
-import { PersonResponse, ReadPersonAction } from '../technical/actions/read-person.action.js';
+import { type PersonResponse, ReadPersonAction } from '../technical/actions/read-person.action.js';
 import { ItsLearningIMSESApiService } from '../technical/itslearning.api-service.js';
 import { IMSESInstitutionRoleType } from './role.enum.js';
 import { ItslearningPersonAdapter } from './itslearning-person.adapter.js';
 import { CreatePersonsAction } from '../technical/actions/create-persons.action.js';
-import { MassResult } from '../technical/actions/base-mass-action.js';
+import { type MassResult } from '../technical/actions/base-mass-action.js';
 import { DeletePersonsAction } from '../technical/actions/delete-persons.action.js';
 import { DomainErrorMock } from '../../../../../test/utils/error.mock.js';
 

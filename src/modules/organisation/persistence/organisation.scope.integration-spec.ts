@@ -1,6 +1,6 @@
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
@@ -11,8 +11,8 @@ import {
 } from '../../../../test/utils/index.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
-import { OrganisationEntity } from './organisation.entity.js';
+import { type Organisation } from '../domain/organisation.js';
+import { type OrganisationEntity } from './organisation.entity.js';
 import { OrganisationRepository } from './organisation.repository.js';
 import { OrganisationScope } from './organisation.scope.js';
 

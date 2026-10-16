@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { PersonID } from '../types/aggregate-ids.types.js';
+import { type PersonID } from '../types/aggregate-ids.types.js';
 import { KafkaPersonLdapSyncEvent } from './kafka-person-ldap-sync.event.js';
 
 describe('KafkaPersonLdapSyncEvent', () => {

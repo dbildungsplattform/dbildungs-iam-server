@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { APP_PIPE } from '@nestjs/core';
 import { GlobalValidationPipe } from '../../../../../shared/validation/global-validation.pipe.js';
 import {

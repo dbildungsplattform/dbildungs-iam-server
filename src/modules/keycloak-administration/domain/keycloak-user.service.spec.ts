@@ -1,21 +1,21 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
-    CredentialRepresentation,
-    GroupRepresentation,
+    type CredentialRepresentation,
+    type GroupRepresentation,
     KeycloakAdminClient,
-    UserRepresentation,
+    type UserRepresentation,
 } from '@s3pweb/keycloak-admin-client-cjs';
 
 import { faker } from '@faker-js/faker';
 import { ConfigTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { DomainError, EntityNotFoundError, KeycloakClientError } from '../../../shared/error/index.js';
+import { type DomainError, EntityNotFoundError, KeycloakClientError } from '../../../shared/error/index.js';
 import { PersonService } from '../../person/domain/person.service.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { KeycloakAdministrationService } from './keycloak-admin-client.service.js';
 import { KeycloakUserService } from './keycloak-user.service.js';
-import { User } from './user.js';
+import { type User } from './user.js';
 import { UserLock } from './user-lock.js';
 import { UserLockRepository } from '../repository/user-lock.repository.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';

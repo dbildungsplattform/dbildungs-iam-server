@@ -1,8 +1,8 @@
 /* v8 ignore file -- @preserve */
 // type definitions only can not be covered by v8
-import { PersonID, PersonUsername } from '../../shared/types/aggregate-ids.types.js';
-import { OXUserID, OXUserName } from '../../shared/types/ox-ids.types.js';
-import { Person } from '../../modules/person/domain/person.js';
+import { type PersonID, type PersonUsername } from '../../shared/types/aggregate-ids.types.js';
+import { type OXUserID, type OXUserName } from '../../shared/types/ox-ids.types.js';
+import { type Person } from '../../modules/person/domain/person.js';
 
 export type PersonIdentifier = {
     personId: PersonID | undefined;

@@ -1,11 +1,12 @@
-import { AccessGuard, DISABLE_ACCESS_GUARD_FLAG } from './access.guard.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ExecutionContext } from '@nestjs/common';
-import express, { Request } from 'express';
-import { AuthGuard, IAuthGuard } from '@nestjs/passport';
-import { Mock, MockedObject } from 'vitest';
+import { AuthGuard, type IAuthGuard } from '@nestjs/passport';
+import type express from 'express';
+import type { Request } from 'express';
+import { type Mock, type MockedObject } from 'vitest';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { createExecutionContextMock, createRequestMock } from '../../../../test/utils/http.mocks.js';
+import { AccessGuard, DISABLE_ACCESS_GUARD_FLAG } from './access.guard.js';
 
 const canActivateSpy: Mock = vi.spyOn(AuthGuard('jwt').prototype as IAuthGuard, 'canActivate');
 

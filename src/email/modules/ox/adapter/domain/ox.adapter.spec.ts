@@ -1,12 +1,12 @@
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { OxAdapter } from './ox.adapter.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { DatabaseTestModule, EmailConfigTestModule, LoggingTestModule } from '../../../../../../test/utils/index.js';
 import { OxSendService } from '../technical/ox-send.service.js';
 import { OxGroupNotFoundError } from './error/ox-group-not-found.error.js';
 import { OxGroupNameAmbiguousError } from './error/ox-group-name-ambiguous.error.js';
-import { OXGroupID } from '../../../../../shared/types/ox-ids.types.js';
+import { type OXGroupID } from '../../../../../shared/types/ox-ids.types.js';
 import { OxMemberAlreadyInGroupError } from './error/ox-member-already-in-group.error.js';
 import { AddMemberToGroupAction } from '../technical/actions/group/add-member-to-group.action.js';
 import { faker } from '@faker-js/faker';
@@ -17,10 +17,10 @@ import { ExistsUserAction } from '../technical/actions/user/exists-user.action.j
 import { ChangeByModuleAccessAction } from '../technical/actions/user/change-by-module-access.action.js';
 import { CreateUserAction } from '../technical/actions/user/create-user.action.js';
 import { Err, Ok } from '../../../../../shared/util/result.js';
-import { OXGroup } from '../technical/actions/group/ox-group.types.js';
+import { type OXGroup } from '../technical/actions/group/ox-group.types.js';
 import { OxError } from '../../../../../shared/error/ox.error.js';
-import { ListGroupsForUserResponse } from '../technical/actions/group/list-groups-for-user.action.js';
-import { Mock } from 'vitest';
+import { type ListGroupsForUserResponse } from '../technical/actions/group/list-groups-for-user.action.js';
+import { type Mock } from 'vitest';
 import { EmailAppConfig } from '../../../../../shared/config/email-app.config.js';
 
 describe('OxAdapter', () => {
