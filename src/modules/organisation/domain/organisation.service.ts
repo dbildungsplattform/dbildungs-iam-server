@@ -424,23 +424,31 @@ export class OrganisationService {
     }
 
     private async validateSchultraegerSpecifications(
-        organisationDo: Organisation<false>,
+        organisationDo: Organisation<false, false>,
     ): Promise<Result<void, DomainError>> {
         // Only validate for Schulträger
         if (organisationDo.typ !== OrganisationsTyp.TRAEGER) {
             return { ok: true, value: undefined };
         }
 
-        const traegerUnterRootChild: TraegerUnterRootChild<false> = new TraegerUnterRootChild(this.organisationRepo);
+        const traegerUnterRootChild: TraegerUnterRootChild<false, false> = new TraegerUnterRootChild(
+            this.organisationRepo,
+        );
         if (!(await traegerUnterRootChild.isSatisfiedBy(organisationDo))) {
-            return { ok: false, error: new TraegerUnterRootChildError(organisationDo.id ?? undefined) };
+            return {
+                ok: false,
+                error: new TraegerUnterRootChildError(organisationDo.id ?? undefined),
+            };
         }
 
-        const traegerNameUniqueInSubtree: TraegerNameUniqueInSubtree<false> = new TraegerNameUniqueInSubtree(
+        const traegerNameUniqueInSubtree: TraegerNameUniqueInSubtree<false, false> = new TraegerNameUniqueInSubtree(
             this.organisationRepo,
         );
         if (!(await traegerNameUniqueInSubtree.isSatisfiedBy(organisationDo))) {
-            return { ok: false, error: new SchultraegerNameEindeutigError(organisationDo.id ?? undefined) };
+            return {
+                ok: false,
+                error: new SchultraegerNameEindeutigError(organisationDo.id ?? undefined),
+            };
         }
 
         return { ok: true, value: undefined };

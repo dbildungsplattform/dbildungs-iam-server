@@ -35,12 +35,15 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { Organisation, Organisationsbeziehung } from '../domain/organisation.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
 import { OrganisationScope } from './organisation.scope.js';
+import { OrganisationsbeziehungEntity } from './organisationsbeziehung.entity.js';
 
-export function mapOrgaAggregateToData(organisation: Organisation<boolean>): RequiredEntityData<OrganisationEntity> {
+export function mapOrgaAggregateToData<WasPersisted extends boolean, RelationshipsLoaded extends boolean>(
+    organisation: Organisation<WasPersisted, RelationshipsLoaded>,
+): RequiredEntityData<OrganisationEntity> {
     return {
         id: organisation.id,
         administriertVon: organisation.administriertVon,
@@ -57,14 +60,15 @@ export function mapOrgaAggregateToData(organisation: Organisation<boolean>): Req
     };
 }
 
-export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisation<true> {
-    return Organisation.construct(
+export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisation<true, false> {
+    return Organisation.construct<true, false>(
         entity.id,
         entity.createdAt,
         entity.updatedAt,
         entity.version,
         entity.name,
         entity.typ,
+        undefined,
         entity.administriertVon,
         entity.zugehoerigZu,
         entity.kennung,
@@ -75,6 +79,19 @@ export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisati
         entity.emailAddress,
         entity.itslearningEnabled,
     );
+}
+
+export function mapOrganisationsbeziehungEntityToAggregate(
+    entity: OrganisationsbeziehungEntity,
+): Organisationsbeziehung<true> {
+    return {
+        id: entity.id,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+        quellOrganisationId: entity.quellOrganisationId,
+        zielOrganisationId: entity.zielOrganisationId,
+        typ: entity.typ,
+    };
 }
 
 export type OrganisationSearchOptions = {
@@ -107,20 +124,22 @@ export class OrganisationRepository {
         this.ROOT_ORGANISATION_ID = config.getOrThrow<DataConfig>('DATA').ROOT_ORGANISATION_ID;
     }
 
-    public async findBy(scope: OrganisationScope): Promise<Counted<Organisation<true>>> {
+    public async findBy(scope: OrganisationScope): Promise<Counted<Organisation<true, false>>> {
         const [entities, total]: Counted<OrganisationEntity> = await scope.executeQuery(this.em);
-        const organisations: Organisation<true>[] = entities.map((entity: OrganisationEntity) =>
+
+        const organisations: Array<Organisation<true, false>> = entities.map((entity: OrganisationEntity) =>
             mapOrgaEntityToAggregate(entity),
         );
         return [organisations, total];
     }
 
-    public async save(organisation: Organisation<boolean>): Promise<Organisation<true>> {
+    public async save(
+        organisation: Organisation<false, false> | Organisation<true, false>,
+    ): Promise<Organisation<true, false>> {
         if (organisation.id) {
-            return this.update(organisation);
-        } else {
-            return this.create(organisation);
+            return this.update(organisation as Organisation<true, false>);
         }
+        return this.create(organisation as Organisation<false, false>);
     }
 
     public async exists(id: OrganisationID): Promise<boolean> {
@@ -629,7 +648,7 @@ export class OrganisationRepository {
         return this.create(organisation);
     }
 
-    private async create(organisation: Organisation<boolean>): Promise<Organisation<true>> {
+    private async create(organisation: Organisation<false, false>): Promise<Organisation<true, false>> {
         const organisationEntity: OrganisationEntity = this.em.create(
             OrganisationEntity,
             mapOrgaAggregateToData(organisation),
@@ -673,7 +692,9 @@ export class OrganisationRepository {
         return mapOrgaEntityToAggregate(organisationEntity);
     }
 
-    private async update(organisation: Organisation<true>): Promise<Organisation<true>> {
+    private async update<RelationshipsLoaded extends boolean>(
+        organisation: Organisation<true, RelationshipsLoaded>,
+    ): Promise<Organisation<true, false>> {
         const organisationEntity: Loaded<OrganisationEntity> = await this.em.findOneOrFail(
             OrganisationEntity,
             organisation.id,
@@ -683,14 +704,14 @@ export class OrganisationRepository {
             throw new OrganisationUpdateOutdatedError();
         }
 
-        const oldOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
-        organisationEntity.version += 1;
+        const oldOrganisation: Organisation<true, false> = mapOrgaEntityToAggregate(organisationEntity);
 
+        organisationEntity.version += 1;
         organisationEntity.assign(mapOrgaAggregateToData(organisation));
 
         await this.em.persist(organisationEntity).flush();
 
-        const updatedOrganisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
+        const updatedOrganisation: Organisation<true, false> = mapOrgaEntityToAggregate(organisationEntity);
         if (updatedOrganisation.typ === OrganisationsTyp.SCHULE) {
             this.eventService.publish(
                 SchuleUpdatedEvent.fromOrganisations(updatedOrganisation, oldOrganisation),
@@ -760,5 +781,38 @@ export class OrganisationRepository {
         const ids: OrganisationID[] = entities.map((e: Loaded<OrganisationEntity, never, 'id', never>) => e.id);
 
         return ids;
+    }
+
+    public async createOrganisationsbeziehung(
+        organisationsbeziehung: Organisationsbeziehung<false>,
+    ): Promise<Organisationsbeziehung<true>> {
+        const entity: OrganisationsbeziehungEntity = this.em.create(OrganisationsbeziehungEntity, {
+            quellOrganisationId: organisationsbeziehung.quellOrganisationId,
+            zielOrganisationId: organisationsbeziehung.zielOrganisationId,
+            typ: organisationsbeziehung.typ,
+        });
+
+        await this.em.persist(entity).flush();
+
+        return mapOrganisationsbeziehungEntityToAggregate(entity);
+    }
+
+    public async deleteOrganisationsbeziehung(organisationsbeziehungId: string): Promise<void> {
+        await this.em.nativeDelete(OrganisationsbeziehungEntity, {
+            id: organisationsbeziehungId,
+        });
+    }
+
+    public async findOrganisationsbeziehungById(
+        organisationsbeziehungId: string,
+    ): Promise<Option<Organisationsbeziehung<true>>> {
+        const entity: OrganisationsbeziehungEntity | null = await this.em.findOne(OrganisationsbeziehungEntity, {
+            id: organisationsbeziehungId,
+        });
+        if (!entity) {
+            return undefined;
+        }
+
+        return mapOrganisationsbeziehungEntityToAggregate(entity);
     }
 }
