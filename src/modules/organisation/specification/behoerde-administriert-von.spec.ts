@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/index.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { BehoerdeAdministriertVon } from './behoerde-administriert-von.js';
 
