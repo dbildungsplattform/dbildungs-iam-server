@@ -141,7 +141,6 @@ export class OrganisationController {
                 name: body.name,
                 namensergaenzung: body.namensergaenzung,
                 kuerzel: body.kuerzel,
-                typ: body.typ,
                 traegerschaft: body.traegerschaft,
                 emailAdress: body.emailAdress,
             },

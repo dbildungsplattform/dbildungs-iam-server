@@ -603,7 +603,6 @@ describe('OrganisationService', () => {
                 const originalOrganisation: Organisation<true> = DoFactory.createOrganisation(true, organisation);
                 const updateData: UpdateOrganisationData = {
                     id: organisation.id,
-                    typ: OrganisationsTyp.SONSTIGE,
                     name: 'Changed name',
                     administriertVon: faker.string.uuid(),
                 };
@@ -655,7 +654,6 @@ describe('OrganisationService', () => {
                 const originalOrganisation: Organisation<true> = DoFactory.createOrganisation(true, organisation);
                 const updateData: UpdateOrganisationData = {
                     id: organisation.id,
-                    typ: OrganisationsTyp.SONSTIGE,
                     name: 'Changed name',
                     administriertVon: faker.string.uuid(),
                 };
@@ -703,7 +701,6 @@ describe('OrganisationService', () => {
                 });
                 const updateData: UpdateOrganisationData = {
                     id: organisation.id,
-                    typ: OrganisationsTyp.SONSTIGE,
                     name: 'Updated name',
                     administriertVon: faker.string.uuid(),
                     zugehoerigZu: faker.string.uuid(),
@@ -735,12 +732,16 @@ describe('OrganisationService', () => {
                 expect(result).toEqual({ ok: true, value: organisation });
                 expect(organisationRepositoryMock.findById).toHaveBeenCalledWith(updateData.id);
                 expect(organisationRepositoryMock.save).toHaveBeenCalledExactlyOnceWith(organisation);
-                expect(organisation).toMatchObject({ ...updateData, kennung: 'stored-kennung' });
+                expect(organisation).toMatchObject({
+                    ...updateData,
+                    typ: OrganisationsTyp.SONSTIGE,
+                    kennung: 'stored-kennung',
+                });
                 expect(organisation.updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdate);
             });
         });
 
-        describe('when updating a Schule to a Schule', () => {
+        describe('when updating a Schule', () => {
             function setup(): {
                 organisation: Organisation<true>;
                 originalOrganisation: Organisation<true>;
@@ -756,7 +757,6 @@ describe('OrganisationService', () => {
                 const updateData: UpdateOrganisationData = {
                     id: organisation.id,
                     name: 'Updated organisation',
-                    typ: OrganisationsTyp.SCHULE,
                     administriertVon: faker.string.uuid(),
                     zugehoerigZu: faker.string.uuid(),
                 };
@@ -785,6 +785,7 @@ describe('OrganisationService', () => {
                 );
 
                 expect(result).toEqual({ ok: true, value: organisation });
+                expect(organisation.typ).toBe(OrganisationsTyp.SCHULE);
                 expect(organisation.administriertVon).toBe(originalOrganisation.administriertVon);
                 expect(organisation.zugehoerigZu).toBe(originalOrganisation.zugehoerigZu);
                 expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(
@@ -794,60 +795,7 @@ describe('OrganisationService', () => {
             });
         });
 
-        describe('when updating a Schule to Sonstige', () => {
-            function setup(): {
-                organisation: Organisation<true>;
-                originalOrganisation: Organisation<true>;
-                updateData: UpdateOrganisationData;
-            } {
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: faker.string.uuid(),
-                    zugehoerigZu: faker.string.uuid(),
-                    kennung: '1234567',
-                });
-                const originalOrganisation: Organisation<true> = DoFactory.createOrganisation(true, organisation);
-                const updateData: UpdateOrganisationData = {
-                    id: organisation.id,
-                    name: 'Updated organisation',
-                    typ: OrganisationsTyp.SONSTIGE,
-                    administriertVon: faker.string.uuid(),
-                    zugehoerigZu: faker.string.uuid(),
-                };
-                return { organisation, originalOrganisation, updateData };
-            }
-
-            it('should change both parent references', async () => {
-                const {
-                    organisation,
-                    originalOrganisation,
-                    updateData,
-                }: {
-                    organisation: Organisation<true>;
-                    originalOrganisation: Organisation<true>;
-                    updateData: UpdateOrganisationData;
-                } = setup();
-                organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
-                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValue(true);
-                organisationRepositoryMock.exists.mockResolvedValue(true);
-                organisationRepositoryMock.save.mockResolvedValueOnce(organisation);
-
-                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
-                    updateData,
-                    permissionsMock,
-                );
-
-                expect(result).toEqual({ ok: true, value: organisation });
-                expect(organisation.administriertVon).toBe(updateData.administriertVon);
-                expect(organisation.zugehoerigZu).toBe(updateData.zugehoerigZu);
-                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(
-                    originalOrganisation.typ,
-                    originalOrganisation.administriertVon,
-                );
-            });
-        });
-
-        describe('when updating Sonstige to a Schule', () => {
+        describe('when updating Sonstige', () => {
             function setup(): {
                 organisation: Organisation<true>;
                 originalOrganisation: Organisation<true>;
@@ -863,7 +811,6 @@ describe('OrganisationService', () => {
                 const updateData: UpdateOrganisationData = {
                     id: organisation.id,
                     name: 'Updated organisation',
-                    typ: OrganisationsTyp.SCHULE,
                     administriertVon: faker.string.uuid(),
                     zugehoerigZu: faker.string.uuid(),
                 };
@@ -892,6 +839,7 @@ describe('OrganisationService', () => {
                 );
 
                 expect(result).toEqual({ ok: true, value: organisation });
+                expect(organisation.typ).toBe(OrganisationsTyp.SONSTIGE);
                 expect(organisation.administriertVon).toBe(updateData.administriertVon);
                 expect(organisation.zugehoerigZu).toBe(updateData.zugehoerigZu);
                 expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(

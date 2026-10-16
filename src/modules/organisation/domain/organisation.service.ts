@@ -57,7 +57,6 @@ export type UpdateOrganisationData = Pick<
     | 'name'
     | 'namensergaenzung'
     | 'kuerzel'
-    | 'typ'
     | 'traegerschaft'
     | 'emailAdress'
 >;
@@ -271,8 +270,7 @@ export class OrganisationService {
         updateData: UpdateOrganisationData,
         organisationDo: Organisation<true>,
     ): void {
-        const canUpdateParentReferences: boolean =
-            organisationDo.typ !== OrganisationsTyp.SCHULE || updateData.typ !== OrganisationsTyp.SCHULE;
+        const canUpdateParentReferences: boolean = organisationDo.typ !== OrganisationsTyp.SCHULE;
 
         if (canUpdateParentReferences) {
             organisation.administriertVon = updateData.administriertVon;
@@ -281,7 +279,6 @@ export class OrganisationService {
         organisation.name = updateData.name;
         organisation.namensergaenzung = updateData.namensergaenzung;
         organisation.kuerzel = updateData.kuerzel;
-        organisation.typ = updateData.typ;
         organisation.traegerschaft = updateData.traegerschaft;
         organisation.emailAdress = updateData.emailAdress;
         organisation.updatedAt = new Date();
