@@ -218,19 +218,7 @@ export class OrganisationService {
             return permissionErrorResult;
         }
 
-        const canUpdateParentReferences: boolean =
-            organisationDo.typ !== OrganisationsTyp.SCHULE || updateData.typ !== OrganisationsTyp.SCHULE;
-        const hasOrgVerwaltenRechtAtDestination: boolean = await this.checkDestinationPermission(
-            organisationDo,
-            updateData,
-            canUpdateParentReferences,
-            permissions,
-        );
-        if (!hasOrgVerwaltenRechtAtDestination) {
-            return permissionErrorResult;
-        }
-
-        this.applyChangesToOrganisation(organisationDo, updateData, canUpdateParentReferences);
+        this.applyChangesToOrganisation(organisationDo, updateData, organisationDo);
 
         const cycleError: DomainError | undefined = await this.validateOrganisationCycles(organisationDo);
         if (cycleError) {
@@ -281,8 +269,11 @@ export class OrganisationService {
     private applyChangesToOrganisation(
         organisation: Organisation<true>,
         updateData: UpdateOrganisationData,
-        canUpdateParentReferences: boolean,
+        organisationDo: Organisation<true>,
     ): void {
+        const canUpdateParentReferences: boolean =
+            organisationDo.typ !== OrganisationsTyp.SCHULE || updateData.typ !== OrganisationsTyp.SCHULE;
+
         if (canUpdateParentReferences) {
             organisation.administriertVon = updateData.administriertVon;
             organisation.zugehoerigZu = updateData.zugehoerigZu;
@@ -298,23 +289,6 @@ export class OrganisationService {
 
     private checkSourcePermisson(organisation: Organisation<true>, permissions: IPersonPermissions): Promise<boolean> {
         return permissions.hasOrgVerwaltenRechtAtOrga(organisation.typ, organisation.administriertVon);
-    }
-
-    private async checkDestinationPermission(
-        organisation: Organisation<true>,
-        updateData: UpdateOrganisationData,
-        canUpdateParentReferences: boolean,
-        permissions: IPersonPermissions,
-    ): Promise<boolean> {
-        const changesAuthorizationDestination: boolean =
-            organisation.typ !== updateData.typ ||
-            (canUpdateParentReferences && organisation.administriertVon !== updateData.administriertVon);
-
-        if (!changesAuthorizationDestination) {
-            return true;
-        }
-
-        return permissions.hasOrgVerwaltenRechtAtOrga(updateData.typ, updateData.administriertVon);
     }
 
     private async validateOrganisationCycles(organisationDo: Organisation<true>): Promise<DomainError | undefined> {
