@@ -1041,6 +1041,93 @@ describe('RolleRepo', () => {
             expect(count).toEqual(1);
         });
 
+        it('should return gated roles only within the organisation scope granting their merkmal rights', async () => {
+            const organisationA: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationB: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const normalRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+            });
+            const pilotRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const mixedGatedRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE, RollenMerkmal.PILOT_2_ROLLE],
+            });
+            const normalRolleB: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationB.id,
+                rollenart: RollenArt.LEIT,
+            });
+            const pilotRolleB: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationB.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const excludedNormalRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
+            });
+            const excludedPilotRolleA: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisationA.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE, RollenMerkmal.BEFRISTUNG_PFLICHT],
+            });
+
+            const [rollen, total]: Counted<Rolle<true>> = await sut.findBy({
+                allowedOrganisationIds: [organisationA.id, organisationB.id],
+                rollenArten: [RollenArt.LEIT],
+                excludeMerkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT, RollenMerkmal.PILOT_2_ROLLE],
+                gatedRollenFindScopes: [
+                    {
+                        allowedOrganisationIds: [organisationB.id],
+                        authorizedMerkmale: [],
+                    },
+                    {
+                        allowedOrganisationIds: [organisationA.id],
+                        authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                    },
+                ],
+                limit: 10,
+            });
+
+            expect(total).toBe(3);
+            expect(rollen.map((rolle: Rolle<true>) => rolle.id)).toEqual(
+                expect.arrayContaining([normalRolleA.id, normalRolleB.id, pilotRolleA.id]),
+            );
+            expect(rollen.map((rolle: Rolle<true>) => rolle.id)).not.toEqual(
+                expect.arrayContaining([
+                    mixedGatedRolleA.id,
+                    pilotRolleB.id,
+                    excludedNormalRolleA.id,
+                    excludedPilotRolleA.id,
+                ]),
+            );
+        });
+
+        it.each([{ excludeMerkmale: undefined }, { excludeMerkmale: [RollenMerkmal.PILOT_2_ROLLE] }])(
+            'should filter globally authorized gated roles with excluded merkmale $excludeMerkmale',
+            async ({ excludeMerkmale }: { excludeMerkmale: RollenMerkmal[] | undefined }) => {
+                const normalRolle: Rolle<true> = await createRolle({ merkmale: [] });
+                const pilotRolle: Rolle<true> = await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE] });
+                await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE, RollenMerkmal.PILOT_2_ROLLE] });
+
+                const [rollen, total]: Counted<Rolle<true>> = await sut.findBy({
+                    excludeMerkmale,
+                    gatedRollenFindScopes: [{ authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE] }],
+                });
+
+                expect(total).toBe(2);
+                expect(rollen.map((rolle: Rolle<true>) => rolle.id)).toEqual(
+                    expect.arrayContaining([normalRolle.id, pilotRolle.id]),
+                );
+            },
+        );
+
         it.each([false, true])(
             'should exclude rollen with excluded merkmale (selected=%s)',
             async (selected: boolean) => {
@@ -1087,17 +1174,20 @@ describe('RolleRepo', () => {
             expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithAllRequiredMerkmale.id]);
         });
 
-        it('should return rollen by rolleIds even if they do not match other filters', async () => {
+        it('should return selected rollen within scope even if they do not match the name search', async () => {
             const rolleInScope: Rolle<true> = await createRolle({
+                name: 'Matching role',
                 rollenart: RollenArt.LEIT,
                 administeredBySchulstrukturknoten: faker.string.uuid(),
             });
             const rolleOutOfFilter: Rolle<true> = await createRolle({
-                rollenart: RollenArt.LERN, // nicht in rollenArten-Filter
+                name: 'Selected role',
+                rollenart: RollenArt.LEIT,
                 administeredBySchulstrukturknoten: rolleInScope.administeredBySchulstrukturknoten,
             });
 
             const scope: RolleFindByParameters = {
+                searchStr: rolleInScope.name,
                 rollenArten: [RollenArt.LEIT],
                 allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
                 rolleIds: [rolleOutOfFilter.id],
@@ -1113,19 +1203,26 @@ describe('RolleRepo', () => {
         });
 
         it.each([
-            { outsideOrganisation: true, missingMerkmal: false },
-            { outsideOrganisation: false, missingMerkmal: true },
+            { outsideOrganisation: true, missingMerkmal: false, outsideRollenart: false },
+            { outsideOrganisation: false, missingMerkmal: true, outsideRollenart: false },
+            { outsideOrganisation: false, missingMerkmal: false, outsideRollenart: true },
         ])(
-            'should reject selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal)',
+            'should reject selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal, outsideRollenart=$outsideRollenart)',
             async ({
                 outsideOrganisation,
                 missingMerkmal,
+                outsideRollenart,
             }: {
                 outsideOrganisation: boolean;
                 missingMerkmal: boolean;
+                outsideRollenart: boolean;
             }) => {
-                const rolleInScope: Rolle<true> = await createRolle({ merkmale: [RollenMerkmal.PILOT_1_ROLLE] });
+                const rolleInScope: Rolle<true> = await createRolle({
+                    rollenart: RollenArt.LEIT,
+                    merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                });
                 const selectedRolle: Rolle<true> = await createRolle({
+                    rollenart: outsideRollenart ? RollenArt.LERN : RollenArt.LEIT,
                     administeredBySchulstrukturknoten: outsideOrganisation
                         ? faker.string.uuid()
                         : rolleInScope.administeredBySchulstrukturknoten,
@@ -1133,6 +1230,7 @@ describe('RolleRepo', () => {
                 });
 
                 const [result, count]: Counted<Rolle<true>> = await sut.findBy({
+                    rollenArten: [RollenArt.LEIT],
                     allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
                     requireMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
                     rolleIds: [selectedRolle.id],
