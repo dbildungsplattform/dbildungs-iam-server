@@ -1,4 +1,4 @@
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 import { LandesbediensteterWorkflowAggregate } from '../../src/modules/landesbediensteter/domain/landesbediensteter-workflow.js';
 import { OrganisationRepository } from '../../src/modules/organisation/persistence/organisation.repository.js';
 import { PersonRepository } from '../../src/modules/person/persistence/person.repository.js';
@@ -8,14 +8,14 @@ import { PersonenkontextWorkflowSharedKernel } from '../../src/modules/personenk
 import { DBiamPersonenkontextRepo } from '../../src/modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../src/modules/rolle/repo/rolle.repo.js';
 import { createMock } from './createMock.js';
-import { EventRoutingLegacyKafkaService } from '../../src/core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { ClassLogger } from '../../src/core/logging/class-logger.js';
-import { DbiamPersonenkontextBodyParams } from '../../src/modules/personenkontext/api/param/dbiam-personenkontext.body.params.js';
-import { PersonenkontextFactory } from '../../src/modules/personenkontext/domain/personenkontext.factory.js';
+import { type EventRoutingLegacyKafkaService } from '../../src/core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { type ClassLogger } from '../../src/core/logging/class-logger.js';
+import { type DbiamPersonenkontextBodyParams } from '../../src/modules/personenkontext/api/param/dbiam-personenkontext.body.params.js';
+import { type PersonenkontextFactory } from '../../src/modules/personenkontext/domain/personenkontext.factory.js';
 import { PersonenkontexteUpdate } from '../../src/modules/personenkontext/domain/personenkontexte-update.js';
-import { DBiamPersonenkontextRepoInternal } from '../../src/modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
-import { PersonID } from '../../src/shared/types/index.js';
+import { type DBiamPersonenkontextRepoInternal } from '../../src/modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
+import { type IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
+import { type PersonID } from '../../src/shared/types/index.js';
 import { EscalatedPersonPermissionsFactory } from '../../src/modules/permission/escalated-person-permissions.factory.js';
 
 export function createLandesbediensteterWorkflowAggregateMock(): MockedObject<LandesbediensteterWorkflowAggregate> {

@@ -1,10 +1,10 @@
-import { EntityManager, RequiredEntityData } from '@mikro-orm/core';
+import { type EntityManager, type RequiredEntityData } from '@mikro-orm/core';
 import { faker } from '@faker-js/faker';
 
 import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
 import { OrganisationEntity } from '../../src/modules/organisation/persistence/organisation.entity.js';
-import { OrganisationRepository } from '../../src/modules/organisation/persistence/organisation.repository.js';
-import { OrganisationID } from '../../src/shared/types/index.js';
+import { type OrganisationRepository } from '../../src/modules/organisation/persistence/organisation.repository.js';
+import { type OrganisationID } from '../../src/shared/types/index.js';
 
 export async function createAndPersistRootOrganisation(
     em: EntityManager,

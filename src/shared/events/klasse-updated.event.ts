@@ -1,5 +1,5 @@
 import { BaseEvent } from './base-event.js';
-import { OrganisationID } from '../types/index.js';
+import { type OrganisationID } from '../types/index.js';
 
 export class KlasseUpdatedEvent extends BaseEvent {
     public constructor(

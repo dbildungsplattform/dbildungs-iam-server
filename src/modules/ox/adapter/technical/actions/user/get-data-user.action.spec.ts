@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 
-import { GetDataForUserAction, GetDataForUserResponseBody } from './get-data-user.action.js';
+import { GetDataForUserAction, type GetDataForUserResponseBody } from './get-data-user.action.js';
 
 describe('GetDataUserAction', () => {
     describe('buildRequest', () => {

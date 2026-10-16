@@ -1,4 +1,4 @@
-import { PersonID } from '../../../shared/types/index.js';
+import { type PersonID } from '../../../shared/types/index.js';
 
 export const EmailAddressStatusName: string = 'EmailAddressStatus';
 

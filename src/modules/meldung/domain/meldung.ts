@@ -1,7 +1,7 @@
-import { DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
+import { type DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
 import { MeldungValidator } from '../../../shared/validation/meldung-validator.js';
 import { MeldungInhaltError } from './meldung-inhalt.error.js';
-import { MeldungStatus } from '../persistence/meldung.entity.js';
+import { type MeldungStatus } from '../persistence/meldung.entity.js';
 
 export class Meldung<WasPersisted extends boolean> {
     private constructor(

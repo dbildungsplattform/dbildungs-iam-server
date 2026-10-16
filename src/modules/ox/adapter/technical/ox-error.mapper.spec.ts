@@ -1,8 +1,8 @@
 import { OxErrorMapper } from './ox-error.mapper.js';
-import { Test, TestingModule } from '@nestjs/testing';
-import { OxErrorResponse } from './actions/ox-base-action.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type OxErrorResponse } from './actions/ox-base-action.js';
 import { faker } from '@faker-js/faker';
-import { OxError } from '../../../../shared/error/ox.error.js';
+import { type OxError } from '../../../../shared/error/ox.error.js';
 
 describe('OXErrorMapper', () => {
     let module: TestingModule;

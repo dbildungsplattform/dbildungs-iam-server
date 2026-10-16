@@ -1,6 +1,6 @@
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-import { ExecutionContext } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type ExecutionContext } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import * as crypto from 'crypto';
 import { createMock } from '../../../test/utils/createMock.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';

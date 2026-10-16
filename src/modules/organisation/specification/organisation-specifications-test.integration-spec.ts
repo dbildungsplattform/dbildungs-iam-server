@@ -1,6 +1,6 @@
 import { MikroORM } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DatabaseTestModule,
@@ -9,10 +9,10 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { EventModule } from '../../../core/eventbus/index.js';
-import { DataConfig } from '../../../shared/config/data.config.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
+import { type DataConfig } from '../../../shared/config/data.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KlasseNurVonSchuleAdministriert } from './klasse-nur-von-schule-administriert.js';

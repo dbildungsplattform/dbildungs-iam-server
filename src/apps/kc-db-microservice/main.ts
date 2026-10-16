@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { NestFactory } from '@nestjs/core';
 import { KcDbMicroserviceModule } from './kc-db-microservice.module.js';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
     const app: INestApplication = await NestFactory.create(KcDbMicroserviceModule);

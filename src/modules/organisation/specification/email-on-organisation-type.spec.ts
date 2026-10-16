@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../../test/utils/index.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { EmailAdressOnOrganisationTyp } from './email-on-organisation-type.js';
 
 describe('EmailAdressOnOrganisationTyp specification', () => {

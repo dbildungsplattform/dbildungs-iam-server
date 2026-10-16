@@ -1,17 +1,17 @@
 import { faker } from '@faker-js/faker';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderFindService } from './service-provider-find.service.js';
-import { ServiceProvider } from './service-provider.js';
+import { type ServiceProvider } from './service-provider.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 
 describe('ServiceProviderFindService', () => {

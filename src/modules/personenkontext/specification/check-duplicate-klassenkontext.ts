@@ -1,10 +1,10 @@
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Personenkontext } from '../domain/personenkontext.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 
 export class CheckDuplicateKlassenkontextSpecification {
     public constructor(

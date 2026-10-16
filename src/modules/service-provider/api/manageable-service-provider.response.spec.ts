@@ -1,8 +1,8 @@
 import { DoFactory } from '../../../../test/utils/index.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { ManageableServiceProviderResponse } from './manageable-service-provider.response.js';
 
 describe('ManageableServiceProviderResponse', () => {

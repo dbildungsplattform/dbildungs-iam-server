@@ -1,18 +1,18 @@
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityAlreadyExistsError, EntityNotFoundError } from '../../../shared/error/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { NameForRolleWithTrailingSpaceError } from './name-with-trailing-space.error.js';
-import { RollenArt, RollenMerkmal } from './rolle.enums.js';
+import { type RollenArt, type RollenMerkmal } from './rolle.enums.js';
 import { ServiceProviderProvidedOutOfTreeError } from './service-provider-provided-out-of-tree.error.js';
 import { OrganisationMatchesRollenartError } from './specification/error/organisation-matches-rollenart.error.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
-import { RollenSystemRecht } from './systemrecht.js';
+import { type RollenSystemRecht } from './systemrecht.js';
 
 export class Rolle<WasPersisted extends boolean> {
     private constructor(

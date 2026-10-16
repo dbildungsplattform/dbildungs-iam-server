@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { Collection, EntityManager, MikroORM, ref, RequiredEntityData } from '@mikro-orm/core';
+import { Collection, EntityManager, MikroORM, ref, type RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -27,39 +27,39 @@ import {
     MismatchedRevisionError,
     MissingPermissionsError,
 } from '../../../shared/error/index.js';
-import { BaseEvent } from '../../../shared/events/index.js';
-import { KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { type BaseEvent } from '../../../shared/events/index.js';
+import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
+import { type PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import { OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { PermittedOrgas, PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { type PermittedOrgas, type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { KeycloakUserService, PersonHasNoKeycloakId } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { PersonenkontextEntity } from '../../personenkontext/persistence/personenkontext.entity.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleEntity } from '../../rolle/entity/rolle.entity.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { FamiliennameForPersonWithTrailingSpaceError } from '../domain/familienname-with-trailing-space.error.js';
 import { DownstreamKeycloakError } from '../domain/person-keycloak.error.js';
@@ -77,9 +77,9 @@ import {
     mapAggregateToData,
     mapEntityToAggregate,
     mapEntityToAggregateInplace,
-    PersonenQueryParams,
+    type PersonenQueryParams,
     PersonRepository,
-    PersonWithoutOrgDeleteListResult,
+    type PersonWithoutOrgDeleteListResult,
 } from './person.repository.js';
 import { PersonScope } from './person.scope.js';
 

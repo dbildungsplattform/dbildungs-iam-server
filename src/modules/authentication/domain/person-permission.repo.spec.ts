@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DatabaseTestModule,
@@ -14,7 +14,7 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { KeycloakUserNotFoundError } from './keycloak-user-not-found.error.js';
 import { PersonPermissionsRepo } from './person-permission.repo.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 describe('PersonPermissionRepo', () => {
     let module: TestingModule;

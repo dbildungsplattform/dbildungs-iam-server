@@ -1,11 +1,11 @@
-import { DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
-import { PersonExternalIdType } from './person.enums.js';
-import { UsernameGeneratorService } from './username-generator.service.js';
+import { type DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
+import { type PersonExternalIdType } from './person.enums.js';
+import { type UsernameGeneratorService } from './username-generator.service.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { VornameForPersonWithTrailingSpaceError } from './vorname-with-trailing-space.error.js';
 import { FamiliennameForPersonWithTrailingSpaceError } from './familienname-with-trailing-space.error.js';
 import { PersonalNummerForPersonWithTrailingSpaceError } from './personalnummer-with-trailing-space.error.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 
 type PasswordInternalState = { passwordInternal: string | undefined; isTemporary: boolean };

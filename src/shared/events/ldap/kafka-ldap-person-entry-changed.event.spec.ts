@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaLdapPersonEntryChangedEvent } from './kafka-ldap-person-entry-changed.event.js';
-import { PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type PersonUsername } from '../../types/aggregate-ids.types.js';
 
 describe('KafkaLdapPersonEntryChangedEvent', () => {
     it('should correctly initialize and implement KafkaEvent', () => {

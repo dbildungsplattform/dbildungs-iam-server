@@ -1,4 +1,4 @@
-import { OrganisationsTyp, Traegerschaft } from '../domain/organisation.enums.js';
+import { type OrganisationsTyp, type Traegerschaft } from '../domain/organisation.enums.js';
 
 export class CreatedOrganisationDto {
     public readonly id!: string;

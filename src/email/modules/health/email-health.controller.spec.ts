@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HealthCheckService, HealthIndicatorFunction } from '@nestjs/terminus';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { HealthCheckService, type HealthIndicatorFunction } from '@nestjs/terminus';
 import { EmailHealthController } from './email-health.controller.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseHealthIndicator } from '../../../modules/health/database.health-indicator.js';
 
 describe('EmailHealthController', () => {

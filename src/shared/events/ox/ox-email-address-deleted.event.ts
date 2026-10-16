@@ -1,6 +1,6 @@
 import { BaseEvent } from '../base-event.js';
-import { OXContextID, OXContextName, OXUserID } from '../../types/ox-ids.types.js';
-import { PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type OXContextID, type OXContextName, type OXUserID } from '../../types/ox-ids.types.js';
+import { type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
 
 export class OxEmailAddressDeletedEvent extends BaseEvent {
     public constructor(
