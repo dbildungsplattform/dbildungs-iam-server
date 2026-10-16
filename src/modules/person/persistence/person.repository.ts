@@ -52,6 +52,7 @@ import { PersonUpdateOutdatedError } from '../domain/update-outdated.error.js';
 import { UsernameGeneratorService } from '../domain/username-generator.service.js';
 import { VornameForPersonWithTrailingSpaceError } from '../domain/vorname-with-trailing-space.error.js';
 import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
+import { PersonenkontextEntity } from '../../personenkontext/persistence/personenkontext.entity.js';
 import { PersonEntity } from './person.entity.js';
 import { PersonScope } from './person.scope.js';
 
@@ -1138,6 +1139,28 @@ export class PersonRepository {
             limit,
         });
         return { ids: personEntities.map((person: PersonEntity) => person.id), total };
+    }
+
+    /**
+     * Sets orgUnassignmentDate if the person has no personenkontext left, clears it otherwise.
+     * Must be called after every deletion of personenkontexte. An already existing date is kept.
+     */
+    public async syncOrgUnassignmentDate(personId: PersonID): Promise<void> {
+        const personEntity: Option<PersonEntity> = await this.em.findOne(PersonEntity, { id: personId });
+        if (!personEntity) {
+            return;
+        }
+
+        const kontextCount: number = await this.em.count(PersonenkontextEntity, { personId });
+        if (kontextCount === 0) {
+            if (!personEntity.orgUnassignmentDate) {
+                personEntity.orgUnassignmentDate = new Date();
+                await this.em.flush();
+            }
+        } else if (personEntity.orgUnassignmentDate) {
+            personEntity.orgUnassignmentDate = undefined;
+            await this.em.flush();
+        }
     }
 
     public async findOrganisationAdminsByOrganisationId(organisation_id: string): Promise<string[]> {
