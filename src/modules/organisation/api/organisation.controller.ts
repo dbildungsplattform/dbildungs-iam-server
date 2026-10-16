@@ -102,7 +102,6 @@ export class OrganisationController {
             params.namensergaenzung,
             params.kuerzel,
             params.traegerschaft,
-            undefined,
             params.emailAdress,
         );
         if (organisation instanceof DomainError) {
