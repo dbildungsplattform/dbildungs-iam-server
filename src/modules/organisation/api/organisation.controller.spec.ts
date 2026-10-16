@@ -23,6 +23,7 @@ import { type OrganisationResponseLegacy } from './organisation.response.legacy.
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
@@ -33,7 +34,6 @@ import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
     const params: OrganisationByIdParams = new OrganisationByIdParams();
@@ -347,7 +347,6 @@ describe('OrganisationController', () => {
                         name: body.name,
                         namensergaenzung: body.namensergaenzung,
                         kuerzel: body.kuerzel,
-                        typ: body.typ,
                         traegerschaft: body.traegerschaft,
                         emailAdress: body.emailAdress,
                     },
