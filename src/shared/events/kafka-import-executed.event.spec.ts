@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { OrganisationID, RolleID } from '../types/aggregate-ids.types.js';
+import { type OrganisationID, type RolleID } from '../types/aggregate-ids.types.js';
 import { KafkaImportExecutedEvent } from './kafka-import-executed.event.js';
 
 describe('KafkaImportExecutedEvent', () => {

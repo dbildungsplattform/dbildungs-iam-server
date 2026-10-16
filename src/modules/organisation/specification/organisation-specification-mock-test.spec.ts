@@ -1,13 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
 import { NurKlasseKursUnterSchule } from './nur-klasse-kurs-unter-schule.js';
 import { SchuleUnterTraeger } from './schule-unter-traeger.js';
 import { KlasseNurVonSchuleAdministriert } from './klasse-nur-von-schule-administriert.js';
 import { KlassenNameAnSchuleEindeutig } from './klassen-name-an-schule-eindeutig.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 
 describe('OrganisationSpecificationMockedRepoTest', () => {
     let module: TestingModule;

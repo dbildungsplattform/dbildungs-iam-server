@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
@@ -23,11 +23,11 @@ import { EmailPersistenceModule } from '../../email/email-persistence.module.js'
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonModule } from '../../person/person.module.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import {
     DBiamPersonenkontextRepo,
-    ErweiterterServiceProviderForPK,
-    ExternalPkData,
+    type ErweiterterServiceProviderForPK,
+    type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonenKontextModule } from '../../personenkontext/personenkontext.module.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';

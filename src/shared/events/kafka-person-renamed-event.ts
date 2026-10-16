@@ -1,6 +1,6 @@
-import { Person } from '../../modules/person/domain/person.js';
-import { PersonUsername } from '../types/aggregate-ids.types.js';
-import { KafkaEvent } from './kafka-event.js';
+import { type Person } from '../../modules/person/domain/person.js';
+import { type PersonUsername } from '../types/aggregate-ids.types.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { PersonRenamedEvent } from './person-renamed-event.js';
 
 export class KafkaPersonRenamedEvent extends PersonRenamedEvent implements KafkaEvent {

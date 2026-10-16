@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EventModule } from '../../../core/eventbus/event.module.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { MeldungRepo } from '../persistence/meldung.repo.js';
 import { Meldung } from './meldung.js';
 import { MeldungStatus } from '../persistence/meldung.entity.js';
-import { DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
+import { type DomainError, MismatchedRevisionError } from '../../../shared/error/index.js';
 import { MeldungInhaltError } from './meldung-inhalt.error.js';
 import { faker } from '@faker-js/faker';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';

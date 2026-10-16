@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ResultInterceptor } from './result-interceptor.js';
-import { ArgumentsHost, CallHandler, ExecutionContext } from '@nestjs/common';
-import { Observable, of } from 'rxjs';
+import { type ArgumentsHost, type CallHandler, type ExecutionContext } from '@nestjs/common';
+import { type Observable, of } from 'rxjs';
 import { ConfigTestModule } from '../../../test/utils/index.js';
 import { EntityNotFoundError, KeycloakClientError } from '../error/index.js';
-import { Response } from 'express';
+import { type Response } from 'express';
 
 type HttpArgumentsHost = ReturnType<ArgumentsHost['switchToHttp']>;
 

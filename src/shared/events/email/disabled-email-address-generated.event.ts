@@ -1,4 +1,4 @@
-import { EmailAddressID, PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type EmailAddressID, type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
 import { BaseEvent } from '../base-event.js';
 
 /**

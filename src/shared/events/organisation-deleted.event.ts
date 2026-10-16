@@ -1,6 +1,6 @@
-import { OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
-import { OrganisationID } from '../types/index.js';
+import { type OrganisationsTyp } from '../../modules/organisation/domain/organisation.enums.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type OrganisationID } from '../types/index.js';
 import { BaseEvent } from './base-event.js';
 
 export class OrganisationDeletedEvent extends BaseEvent {

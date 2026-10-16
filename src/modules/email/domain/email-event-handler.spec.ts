@@ -1,9 +1,9 @@
 import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { INestApplication } from '@nestjs/common';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DatabaseTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
 import { EventModule } from '../../../core/eventbus/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
@@ -15,17 +15,27 @@ import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-pe
 import { DisabledOxUserChangedEvent } from '../../../shared/events/ox/disabled-ox-user-changed.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { PersonenkontextID, PersonID, PersonUsername, RolleID } from '../../../shared/types/index.js';
-import { OXContextID, OXContextName, OXUserID, OXUserName } from '../../../shared/types/ox-ids.types.js';
+import {
+    type PersonenkontextID,
+    type PersonID,
+    type PersonUsername,
+    type RolleID,
+} from '../../../shared/types/index.js';
+import {
+    type OXContextID,
+    type OXContextName,
+    type OXUserID,
+    type OXUserName,
+} from '../../../shared/types/ox-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderKategorie } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { EmailModule } from '../email.module.js';
 import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
@@ -38,8 +48,8 @@ import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.ev
 import { OxSyncUserCreatedEvent } from '../../../shared/events/ox/ox-sync-user-created.event.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import {
-    PersonenkontextEventKontextData,
-    PersonenkontextEventPersonData,
+    type PersonenkontextEventKontextData,
+    type PersonenkontextEventPersonData,
 } from '../../../shared/events/personenkontext-event.types.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 

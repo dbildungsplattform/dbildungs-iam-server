@@ -1,14 +1,14 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
+import { type CallHandler, type ExecutionContext, type INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
-import { Observable } from 'rxjs';
-import request, { Response } from 'supertest';
-import { App } from 'supertest/types.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
+import { type Observable } from 'rxjs';
+import request, { type Response } from 'supertest';
+import { type App } from 'supertest/types.js';
 import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -22,32 +22,32 @@ import {
 import { DomainError } from '../../../../shared/error/index.js';
 import { SharedExceptionFilter } from '../../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../../shared/paging/index.js';
+import { type PagedResponse } from '../../../../shared/paging/index.js';
 import { GlobalValidationPipe } from '../../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../../authentication/api/authentication-exception-filter.js';
 import { PersonPermissionsRepo } from '../../../authentication/domain/person-permission.repo.js';
-import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
 import { EmailMicroserviceModule } from '../../../email-microservice/email-microservice.module.js';
 import { EmailPersistenceModule } from '../../../email/email-persistence.module.js';
 import { KeycloakUserService } from '../../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
-import { OrganisationEntity } from '../../../organisation/persistence/organisation.entity.js';
+import { type OrganisationEntity } from '../../../organisation/persistence/organisation.entity.js';
 import { OrganisationRepository } from '../../../organisation/persistence/organisation.repository.js';
 import { PersonenkontextFactory } from '../../../personenkontext/domain/personenkontext.factory.js';
-import { Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from '../../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
 import { RolleFactory } from '../../../rolle/domain/rolle.factory.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
+import { type Rolle } from '../../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
 import { ServiceProviderModule } from '../../../service-provider/service-provider.module.js';
-import { Person, PersonCreationParams } from '../../domain/person.js';
+import { Person, type PersonCreationParams } from '../../domain/person.js';
 import { UsernameGeneratorService } from '../../domain/username-generator.service.js';
 import { PersonRepository } from '../../persistence/person.repository.js';
 import { PersonApiModule } from '../../person-api.module.js';
 import { DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
-import { DBiamPersonenzuordnungResponse } from './dbiam-personenzuordnung.response.js';
+import { type DBiamPersonenzuordnungResponse } from './dbiam-personenzuordnung.response.js';
 
 describe('Personenuebersicht API', () => {
     let app: INestApplication;

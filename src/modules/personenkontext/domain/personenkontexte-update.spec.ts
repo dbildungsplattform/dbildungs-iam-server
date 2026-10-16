@@ -1,24 +1,24 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { faker } from '@faker-js/faker';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
-import { PersonenkontexteUpdate } from './personenkontexte-update.js';
+import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
-import { PersonID } from '../../../shared/types/index.js';
+import { type PersonID } from '../../../shared/types/index.js';
 import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
-import { Personenkontext } from './personenkontext.js';
+import { type Personenkontext } from './personenkontext.js';
 import { UpdateCountError } from './error/update-count.error.js';
 import { UpdateOutdatedError } from './error/update-outdated.error.js';
-import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
+import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
 import { PersonenkontextFactory } from './personenkontext.factory.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import {
     ConfigTestModule,
@@ -27,8 +27,8 @@ import {
     DoFactory,
     PersonPermissionsMock,
 } from '../../../../test/utils/index.js';
-import { Person } from '../../person/domain/person.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Person } from '../../person/domain/person.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
@@ -38,7 +38,7 @@ import { CheckBefristungSpecification } from '../specification/befristung-requir
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
 import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-schule-and-klasse.error.js';
 import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
@@ -186,7 +186,7 @@ describe('PersonenkontexteUpdate', () => {
         );
         pk2 = vi.mockObject<Personenkontext<true>>(
             DoFactory.createPersonenkontext<true>(true, {
-                updatedAt: faker.date.past(),
+                updatedAt: faker.date.past({ refDate: lastModified }),
                 personId: bodyParam2.personId,
                 organisationId: bodyParam2.organisationId,
                 rolleId: bodyParam2.rolleId,

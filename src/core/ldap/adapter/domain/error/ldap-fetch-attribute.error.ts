@@ -1,5 +1,5 @@
 import { DomainError } from '../../../../../shared/error/index.js';
-import { PersonID, PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
+import { type PersonID, type PersonUsername } from '../../../../../shared/types/aggregate-ids.types.js';
 
 export class LdapFetchAttributeError extends DomainError {
     public constructor(

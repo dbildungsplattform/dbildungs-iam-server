@@ -1,10 +1,10 @@
 import { DoFactory } from '../../../../test/utils/index.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import {
-    ManageableServiceProviderWithReferencedObjects,
-    RollenerweiterungForManageableServiceProvider,
+    type ManageableServiceProviderWithReferencedObjects,
+    type RollenerweiterungForManageableServiceProvider,
 } from '../domain/types.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
 

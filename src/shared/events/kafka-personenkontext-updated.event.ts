@@ -1,4 +1,4 @@
-import { KafkaEvent } from './kafka-event.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { PersonenkontextUpdatedEvent } from './personenkontext-updated.event.js';
 import { type Person } from '../../modules/person/domain/person.js';
 import { type Personenkontext } from '../../modules/personenkontext/domain/personenkontext.js';

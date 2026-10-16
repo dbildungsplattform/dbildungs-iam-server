@@ -1,11 +1,11 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
-import { Personenkontext } from '../domain/personenkontext.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 
 /**
  * Only needs to be checked when referenced organisation is of type KLASSE.

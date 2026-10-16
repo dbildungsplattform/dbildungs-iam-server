@@ -12,7 +12,7 @@ import { TraegerUnterRootChildError } from '../specification/error/traeger-unter
 import { NameRequiredForKlasse } from '../specification/name-required-for-klasse.js';
 import { TraegerNameUniqueInSubtree } from '../specification/traeger-name-unique-in-subtree.js';
 import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child.js';
-import { OrganisationsTyp, Traegerschaft } from './organisation.enums.js';
+import { OrganisationsTyp, type Traegerschaft } from './organisation.enums.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 
 export type Organisationsbeziehung<WasPersisted extends boolean> = {

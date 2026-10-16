@@ -1,6 +1,6 @@
 import { CompositeSpecification } from '../../specification/specifications.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 
 export class NameRequiredForKlasse extends CompositeSpecification<Organisation<boolean, boolean>> {
     // eslint-disable-next-line @typescript-eslint/require-await

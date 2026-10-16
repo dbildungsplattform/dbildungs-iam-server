@@ -1,30 +1,30 @@
 import { faker } from '@faker-js/faker';
-import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
-import { Request } from 'express';
+import { type CallHandler, type ExecutionContext, type NestInterceptor } from '@nestjs/common';
+import { type Request } from 'express';
 import {
-    BaseClient,
-    ClientMetadata,
-    Issuer,
-    IssuerMetadata,
-    UserinfoResponse as OidcUserinfoResponse,
+    type BaseClient,
+    type ClientMetadata,
+    type Issuer,
+    type IssuerMetadata,
+    type UserinfoResponse as OidcUserinfoResponse,
 } from 'openid-client';
-import { Observable } from 'rxjs';
+import { type Observable } from 'rxjs';
 import { UserinfoResponse } from '../../src/modules/authentication/api/userinfo.response.js';
 import {
-    PermittedOrgas,
-    PersonenkontextRolleWithOrganisation,
-    PersonFields,
+    type PermittedOrgas,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonFields,
     PersonPermissions,
 } from '../../src/modules/authentication/domain/person-permissions.js';
 import { StepUpLevel } from '../../src/modules/authentication/passport/oidc.strategy.js';
-import { PassportUser } from '../../src/modules/authentication/types/user.js';
-import { OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
-import { RollenMerkmal } from '../../src/modules/rolle/domain/rolle.enums.js';
+import { type PassportUser } from '../../src/modules/authentication/types/user.js';
+import { type OrganisationsTyp } from '../../src/modules/organisation/domain/organisation.enums.js';
+import { type RollenMerkmal } from '../../src/modules/rolle/domain/rolle.enums.js';
 import { RollenmerkmalSystemrechtPaar } from '../../src/modules/rolle/domain/rollenmerkmal-systemrecht-paar.js';
-import { RollenSystemRecht } from '../../src/modules/rolle/domain/systemrecht.js';
-import { IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
-import { OrganisationID, RolleID } from '../../src/shared/types/aggregate-ids.types.js';
-import { createMock, DeepMocked } from './createMock.js';
+import { type RollenSystemRecht } from '../../src/modules/rolle/domain/systemrecht.js';
+import { type IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type RolleID } from '../../src/shared/types/aggregate-ids.types.js';
+import { createMock, type DeepMocked } from './createMock.js';
 
 export class PersonPermissionsMock implements IPersonPermissions {
     public id: string;

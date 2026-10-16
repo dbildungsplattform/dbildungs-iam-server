@@ -1,10 +1,10 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { MeldungExceptionFilter } from './meldung.exception-filter.js';
 import { DbiamMeldungError, MeldungErrorI18nTypes } from './dbiam-meldung.error.js';
 import { MeldungDomainError } from '../domain/meldung-domain.error.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('MeldungExceptionFilter', () => {
     let filter: MeldungExceptionFilter;

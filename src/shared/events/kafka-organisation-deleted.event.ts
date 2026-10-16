@@ -1,5 +1,5 @@
-import { Organisation } from '../../modules/organisation/domain/organisation.js';
-import { KafkaEvent } from './kafka-event.js';
+import { type Organisation } from '../../modules/organisation/domain/organisation.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { OrganisationDeletedEvent } from './organisation-deleted.event.js';
 
 export class KafkaOrganisationDeletedEvent extends OrganisationDeletedEvent implements KafkaEvent {

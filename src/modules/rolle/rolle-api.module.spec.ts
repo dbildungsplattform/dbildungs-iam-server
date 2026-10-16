@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { RolleController } from './api/rolle.controller.js';
 import { RolleApiModule } from './rolle-api.module.js';
 import { DatabaseTestModule } from '../../../test/utils/database-test.module.js';

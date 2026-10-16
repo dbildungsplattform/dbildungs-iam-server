@@ -1,17 +1,17 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { TestingModule, Test } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import PersonTimeLimitService from './person-time-limit-info.service.js';
 import { DBiamPersonenkontextService } from '../../personenkontext/domain/dbiam-personenkontext.service.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { TimeLimitOccasion } from '../domain/time-limit-occasion.enums.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { PersonTimeLimitInfo } from './person-time-limit-info.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type PersonTimeLimitInfo } from './person-time-limit-info.js';
 import { KONTEXT_EXPIRES_IN_DAYS, KOPERS_DEADLINE_IN_DAYS, NO_KONTEXTE_DEADLINE_IN_DAYS } from './person-time-limit.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 
 describe('PersonTimeLimitInfoService', () => {
     let module: TestingModule;

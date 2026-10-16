@@ -1,17 +1,17 @@
 import { faker } from '@faker-js/faker';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { Paged } from '../../../shared/paging/paged.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type Paged } from '../../../shared/paging/paged.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationService } from '../../organisation/domain/organisation.service.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
@@ -21,17 +21,17 @@ import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing
 import { RolleFindService } from '../domain/rolle-find.service.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
-import { Rolle } from '../domain/rolle.js';
+import { type Rolle } from '../domain/rolle.js';
 import { RollenerweiterungFactory } from '../domain/rollenerweiterung.factory.js';
 import { RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
-import { CreateRolleBodyParams } from './create-rolle.body.params.js';
+import { type CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { CreateRollenerweiterungBodyParams } from './create-rollenerweiterung.body.params.js';
-import { FindRolleByIdParams } from './find-rolle-by-id.params.js';
-import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
+import { type FindRolleByIdParams } from './find-rolle-by-id.params.js';
+import { type FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
 import { RolleController } from './rolle.controller.js';
-import { RolleResponse } from './rolle.response.js';
+import { type RolleResponse } from './rolle.response.js';
 import { RollenerweiterungResponse } from './rollenerweiterung.response.js';
 
 describe('Rolle API with mocked ServiceProviderRepo', () => {

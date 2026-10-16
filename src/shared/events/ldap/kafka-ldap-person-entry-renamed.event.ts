@@ -1,5 +1,5 @@
-import { KafkaEvent } from '../kafka-event.js';
-import { PersonRenamedEvent } from '../person-renamed-event.js';
+import { type KafkaEvent } from '../kafka-event.js';
+import { type PersonRenamedEvent } from '../person-renamed-event.js';
 import { LdapPersonEntryRenamedEvent } from './ldap-person-entry-renamed.event.js';
 
 /**

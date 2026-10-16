@@ -1,5 +1,5 @@
 import { DomainError } from '../../../shared/error/index.js';
-import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OrganisationID, type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 
 export class EmailDomainNotFoundError extends DomainError {
     public constructor(

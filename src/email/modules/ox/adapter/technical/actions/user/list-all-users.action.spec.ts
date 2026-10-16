@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ListAllUsersAction, ListAllUsersResponseBody } from './list-all-users.action.js';
+import { ListAllUsersAction, type ListAllUsersResponseBody } from './list-all-users.action.js';
 
 describe('ListAllUsersAction', () => {
     describe('buildRequest', () => {

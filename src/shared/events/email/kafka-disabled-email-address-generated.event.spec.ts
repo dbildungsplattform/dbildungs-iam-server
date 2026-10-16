@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaDisabledEmailAddressGeneratedEvent } from './kafka-disabled-email-address-generated.event.js';
 
 describe('KafkaDisabledEmailAddressGeneratedEvent', () => {

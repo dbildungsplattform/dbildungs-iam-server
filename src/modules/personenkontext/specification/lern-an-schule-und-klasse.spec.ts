@@ -1,12 +1,12 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Personenkontext } from '../domain/personenkontext.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
 import { LernAnSchuleUndKlasse } from './lern-an-schule-und-klasse.js';
 
 describe('LernAnSchuleUndKlasse specification', () => {

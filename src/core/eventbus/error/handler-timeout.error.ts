@@ -1,5 +1,5 @@
 import { DomainError } from '../../../shared/error/domain.error.js';
-import { BaseEvent } from '../../../shared/events/base-event.js';
+import { type BaseEvent } from '../../../shared/events/base-event.js';
 
 export class EventHandlerTimeoutError<Event extends BaseEvent> extends DomainError {
     public constructor(event: Event, timeoutMs: number, details?: unknown[] | Record<string, undefined>) {

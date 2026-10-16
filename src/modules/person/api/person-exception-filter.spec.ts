@@ -1,10 +1,10 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
 import { PersonDomainError } from '../domain/person-domain.error.js';
 import { DbiamPersonError, PersonErrorI18nTypes } from './dbiam-person.error.js';
 import { PersonExceptionFilter } from './person-exception-filter.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('PersonExceptionFilter', () => {
     let filter: PersonExceptionFilter;

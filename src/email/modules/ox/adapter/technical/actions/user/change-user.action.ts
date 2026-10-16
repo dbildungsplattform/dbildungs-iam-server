@@ -1,7 +1,7 @@
-import { DomainError } from '../../../../../../../shared/error/index.js';
-import { OXUserID } from '../../../../../../../shared/types/ox-ids.types.js';
+import { type DomainError } from '../../../../../../../shared/error/index.js';
+import { type OXUserID } from '../../../../../../../shared/types/ox-ids.types.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
-import { AuthParams, OxBaseAction } from '../ox-base-action.js';
+import { type AuthParams, OxBaseAction } from '../ox-base-action.js';
 
 // Incomplete
 export type ChangeUserParams = AuthParams & {

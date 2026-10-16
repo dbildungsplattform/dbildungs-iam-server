@@ -1,5 +1,5 @@
-import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import { PersonLockOccasion } from '../../person/domain/person.enums.js';
+import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type PersonLockOccasion } from '../../person/domain/person.enums.js';
 
 export class UserLock {
     private constructor(

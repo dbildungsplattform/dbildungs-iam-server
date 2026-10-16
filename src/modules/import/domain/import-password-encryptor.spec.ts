@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { ImportPasswordEncryptor } from './import-password-encryptor.js';
 import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { faker } from '@faker-js/faker';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { ImportDomainError } from './import-domain.error.js';
 
 describe('ImportPasswordEncryptor', () => {

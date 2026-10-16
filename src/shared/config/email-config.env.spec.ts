@@ -1,4 +1,4 @@
-import { EmailAppConfig, getEmailConfig } from './email-config.env.js';
+import { type EmailAppConfig, getEmailConfig } from './email-config.env.js';
 
 describe('Config Loader For Email App', () => {
     beforeEach(() => {
