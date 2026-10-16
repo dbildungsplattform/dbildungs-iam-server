@@ -9,6 +9,7 @@ import { PersonenInfoService } from './domain/personeninfo/personeninfo.service.
 import { PersonModule } from '../person/person.module.js';
 import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
 import { SchulconnexRepo } from './persistence/schulconnex.repo.js';
+import { SchulconnexPushRegistryRepo } from './persistence/schulconnex-push-registry.repo.js';
 import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.js';
 import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
@@ -24,7 +25,7 @@ import { EmailPersistenceModule } from '../email/email-persistence.module.js';
         EmailPersistenceModule,
         LoggerModule.register(SchulconnexModule.name),
     ],
-    providers: [PersonenInfoService, SchulconnexRepo, EntityAggregateMapper],
+    providers: [PersonenInfoService, SchulconnexRepo, SchulconnexPushRegistryRepo, EntityAggregateMapper],
     controllers: [PersonInfoController, PersonenInfoController],
 })
 export class SchulconnexModule {}
