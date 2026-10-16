@@ -8,6 +8,7 @@ import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.r
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
 import { Personenkontext } from './personenkontext.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonenkontextQueryParams } from '../api/param/personenkontext-query.params.js';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class PersonenkontextService {
     public constructor(
         private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         private readonly dBiamPersonenkontextRepoInternal: DBiamPersonenkontextRepoInternal,
+        private readonly personRepository: PersonRepository,
     ) {}
 
     public async findAllPersonenkontexte(
@@ -76,6 +78,8 @@ export class PersonenkontextService {
         if (deletedPersons === false) {
             return { ok: false, error: new EntityCouldNotBeDeleted('Personenkontext', id) };
         }
+
+        await this.personRepository.syncOrgUnassignmentDate(personenkontext.personId);
 
         return { ok: true, value: undefined };
     }

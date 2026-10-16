@@ -22,6 +22,7 @@ describe('PersonenkontextService', () => {
     let personenkontextService: PersonenkontextService;
     let dbiamPersonenKontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let dbiamPersonenKontextRepoInternalMock: DeepMocked<DBiamPersonenkontextRepoInternal>;
+    let personRepoMock: DeepMocked<PersonRepository>;
 
     let personenkontextFactory: PersonenkontextFactory;
 
@@ -57,6 +58,7 @@ describe('PersonenkontextService', () => {
             ],
         }).compile();
         personenkontextService = module.get(PersonenkontextService);
+        personRepoMock = module.get(PersonRepository);
         dbiamPersonenKontextRepoMock = module.get(DBiamPersonenkontextRepo);
         dbiamPersonenKontextRepoInternalMock = module.get(DBiamPersonenkontextRepoInternal);
         personenkontextFactory = module.get(PersonenkontextFactory);
@@ -179,6 +181,7 @@ describe('PersonenkontextService', () => {
                 );
 
                 expect(result).toEqual<Result<void, DomainError>>({ ok: true, value: undefined });
+                expect(personRepoMock.syncOrgUnassignmentDate).toHaveBeenCalledWith(personenkontext.personId);
             });
         });
 
