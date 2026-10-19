@@ -366,12 +366,32 @@ describe('LdapEventHandler', () => {
     });
 
     describe('handlePersonRenamedEvent', () => {
+        it('should skip LDAP update when the person has no UEM kontexts', async () => {
+            const event: PersonRenamedEvent = createMock(PersonRenamedEvent);
+            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+
+            const result: Result<unknown> = await ldapEventHandler.personRenamedEventHandler(event);
+
+            expect(result.ok).toBe(true);
+            expect(ldapClientAdapterMock.modifyPersonAttributes).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
         describe('when calling LdapClientService.modifyPersonAttributes is successful', () => {
             it('should NOT log errors', async () => {
                 const modifyResult: Result<PersonUsername> = {
                     ok: true,
                     value: faker.internet.username(),
                 };
+                const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                    serviceProviderData: [
+                        DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
+                    ],
+                });
+                const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
+                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
                 ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
                 await ldapEventHandler.personRenamedEventHandler(createMock(PersonRenamedEvent));
                 expect(loggerMock.error).toHaveBeenCalledTimes(0);
@@ -385,6 +405,14 @@ describe('LdapEventHandler', () => {
                     ok: false,
                     error: error,
                 };
+                const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                    serviceProviderData: [
+                        DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
+                    ],
+                });
+                const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
+                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
                 ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
                 await ldapEventHandler.personRenamedEventHandler(createMock(PersonRenamedEvent));
                 expect(loggerMock.error).toHaveBeenCalledWith(error.message);
@@ -802,7 +830,7 @@ describe('LdapEventHandler', () => {
             expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Error in removePersonFromGroup:'));
         });
 
-        it('should log error when error occurs while getUemLdapOuForOrganisation deleting person', async () => {
+        it('should return an accumulated failure when getting the LDAP OU for a deleted context rejects', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -836,12 +864,12 @@ describe('LdapEventHandler', () => {
 
             organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce(new Error('Test'));
 
-            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+            const result: Result<unknown> = await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
-            expect(loggerMock.error).toHaveBeenCalledTimes(1);
-            expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getUemLdapOuForOrganisation:'),
-            );
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error.message).toContain('Test');
+            }
         });
 
         it('should log error when error occurs while create Lehrer', async () => {
@@ -885,7 +913,7 @@ describe('LdapEventHandler', () => {
             expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Error in createLehrer:'));
         });
 
-        it('should log error when error occurs while getUemLdapOuForOrganisation adding person', async () => {
+        it('should return an accumulated failure when getting the LDAP OU for a new context rejects', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -919,12 +947,12 @@ describe('LdapEventHandler', () => {
 
             organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce(new Error('Test'));
 
-            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+            const result: Result<unknown> = await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
-            expect(loggerMock.error).toHaveBeenCalledTimes(1);
-            expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getUemLdapOuForOrganisation:'),
-            );
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error.message).toContain('Test');
+            }
         });
 
         it('should persist entryUUID to database', async () => {
@@ -1094,7 +1122,7 @@ describe('LdapEventHandler', () => {
             );
         });
 
-        it('should stringify a non-Error thrown in getUemLdapOuForOrganisation', async () => {
+        it('should include a non-Error rejection in the accumulated failure', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 {
                     id: faker.string.uuid(),
@@ -1119,11 +1147,12 @@ describe('LdapEventHandler', () => {
 
             organisationRepositoryMock.findUemLdapOuForOrganisation.mockRejectedValueOnce('non-error reason');
 
-            await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
+            const result: Result<unknown> = await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
-            expect(loggerMock.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error in getUemLdapOuForOrganisation: non-error reason'),
-            );
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error.message).toContain('non-error reason');
+            }
         });
 
         it('should not persist entryUUID when createLehrer returns no ldapEntryUUID', async () => {

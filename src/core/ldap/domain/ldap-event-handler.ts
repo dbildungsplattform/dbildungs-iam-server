@@ -42,6 +42,7 @@ import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
 import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
 import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
 import { LdapEventInvalidUemLdapOuError } from './error/ldap-event-invalid-uem-ldap-ou.error.js';
+import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 
 @Injectable()
 export class LdapEventHandler extends AbstractLdapEventHandler {
@@ -157,6 +158,12 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
         this.logger.info(
             `Received PersonRenamedEvent, personId:${event.personId}, username:${event.username}, oldUsername:${event.oldUsername}`,
         );
+        const uemKontextsResult: Personenkontext<true>[] = await this.findUemKontexts(event.personId);
+        if (uemKontextsResult.length === 0) {
+            // no uem kontexts found for this person, skipping LDAP update
+            return Ok();
+        }
+
         const modifyResult: Result<PersonUsername> = await this.ldapClientAdapter.modifyPersonAttributes(
             event.oldUsername,
             event.vorname,
@@ -223,7 +230,7 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
             throw new LdapEventOrganisationWithoutKennungError();
         }
 
-        const uemLdapOu: Result<string> = await this.resolveUemLdapOuOrThrow(pk.orgaId);
+        const uemLdapOu: Result<string> = await this.getUemLdapOuForOrganisation(pk.orgaId);
         if (!uemLdapOu.ok) {
             this.logger.error(
                 `LdapClientService removePersonFromGroup NOT called, because organisation:${pk.orgaId} has no valid uemLdapOu`,
@@ -260,7 +267,7 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
             throw new LdapEventOrganisationWithoutKennungError();
         }
 
-        const uemLdapOu: Result<string> = await this.resolveUemLdapOuOrThrow(pk.orgaId);
+        const uemLdapOu: Result<string> = await this.getUemLdapOuForOrganisation(pk.orgaId);
         if (!uemLdapOu.ok) {
             this.logger.error(
                 `LdapClientService createLehrer NOT called, because organisation:${pk.orgaId} has no valid uemLdapOu`,

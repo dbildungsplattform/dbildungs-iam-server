@@ -130,7 +130,7 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
                 `Could NOT fetch domain from organisations, no organisations found for person, ABORTING SYNC, personId:${personId}`,
             );
         }
-        const uemLdapOu: Result<string> = await this.resolveUemLdapOuOrThrow(organisationIDs[0]);
+        const uemLdapOu: Result<string> = await this.getUemLdapOuForOrganisation(organisationIDs[0]);
         if (!uemLdapOu.ok) {
             return this.logger.error(
                 `Could NOT fetch LDAP OU from organisations, LDAP-root CANNOT be chosen, ABORTING SYNC, personId:${personId}`,

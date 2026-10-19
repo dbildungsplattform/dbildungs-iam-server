@@ -23,7 +23,7 @@ export abstract class AbstractLdapEventHandler {
             );
             return { ok: false, error: new UemLdapOuError() };
         }
-        const uemLdapOuResult: Result<string> = await this.resolveUemLdapOuOrThrow(
+        const uemLdapOuResult: Result<string> = await this.getUemLdapOuForOrganisation(
             personKontextWithUemRolle[0].organisationId,
         );
         return uemLdapOuResult;
@@ -59,16 +59,5 @@ export abstract class AbstractLdapEventHandler {
         }
 
         return { ok: false, error: new UemLdapOuError() };
-    }
-
-    protected async resolveUemLdapOuOrThrow(organisationId: OrganisationID): Promise<Result<string>> {
-        try {
-            return await this.getUemLdapOuForOrganisation(organisationId);
-        } catch (error: unknown) {
-            this.logger.error(
-                `Error in getUemLdapOuForOrganisation: ${error instanceof Error ? error.message : String(error)}`,
-            );
-            throw error;
-        }
     }
 }
