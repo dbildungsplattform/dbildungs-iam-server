@@ -3302,6 +3302,7 @@ describe('PersonRepository Integration', () => {
                 const person: Person<true> = await savePerson(false);
 
                 await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
 
                 const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
                 expect(entity.orgUnassignmentDate).toBeInstanceOf(Date);
@@ -3315,6 +3316,7 @@ describe('PersonRepository Integration', () => {
                 await em.flush();
 
                 await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
 
                 const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
                 expect(entity.orgUnassignmentDate).toEqual(existingDate);
@@ -3324,6 +3326,7 @@ describe('PersonRepository Integration', () => {
                 const person: Person<true> = await createPersonWithKontext(new Date());
 
                 await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
 
                 const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
                 expect(entity.orgUnassignmentDate).toBeFalsy();
@@ -3333,6 +3336,7 @@ describe('PersonRepository Integration', () => {
                 const person: Person<true> = await createPersonWithKontext();
 
                 await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
 
                 const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
                 expect(entity.orgUnassignmentDate).toBeFalsy();

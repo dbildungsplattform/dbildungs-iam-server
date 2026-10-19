@@ -1,4 +1,14 @@
-import { Cursor, EntityKey, EntityManager, FilterQuery, Loaded, QueryOrder, raw } from '@mikro-orm/postgresql';
+import { Transactional } from '@mikro-orm/decorators/legacy';
+import {
+    Cursor,
+    EntityKey,
+    EntityManager,
+    FilterQuery,
+    Loaded,
+    LockMode,
+    QueryOrder,
+    raw,
+} from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -1144,23 +1154,26 @@ export class PersonRepository {
     /**
      * Sets orgUnassignmentDate if the person has no personenkontext left, clears it otherwise.
      * Must be called after every deletion of personenkontexte. An already existing date is kept.
+     * Runs in a transaction and locks the person row, so concurrent calls are serialized.
      */
+    @Transactional()
     public async syncOrgUnassignmentDate(personId: PersonID): Promise<void> {
-        const personEntity: Option<PersonEntity> = await this.em.findOne(PersonEntity, { id: personId });
+        const personEntity: Option<PersonEntity> = await this.em.findOne(
+            PersonEntity,
+            { id: personId },
+            { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+        );
         if (!personEntity) {
             return;
         }
 
         const kontextCount: number = await this.em.count(PersonenkontextEntity, { personId });
         if (kontextCount === 0) {
-            if (!personEntity.orgUnassignmentDate) {
-                personEntity.orgUnassignmentDate = new Date();
-                await this.em.flush();
-            }
-        } else if (personEntity.orgUnassignmentDate) {
+            personEntity.orgUnassignmentDate ??= new Date();
+        } else {
             personEntity.orgUnassignmentDate = undefined;
-            await this.em.flush();
         }
+        await this.em.flush();
     }
 
     public async findOrganisationAdminsByOrganisationId(organisation_id: string): Promise<string[]> {
