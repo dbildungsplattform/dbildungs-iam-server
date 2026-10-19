@@ -1,28 +1,28 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Ok } from '../../../shared/util/result.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
-import { ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung.body.params.js';
+import { type ApplyRollenerweiterungChangesBodyParams } from '../api/apply-rollenerweiterung-changes.body.params.js';
+import { type ApplyRollenerweiterungBodyParams } from '../api/apply-rollenerweiterung.body.params.js';
 import { ApplyRollenerweiterungError } from '../api/apply-rollenerweiterung.error.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { ApplyRollenerweiterungService } from './apply-rollenerweiterung-changes.service.js';
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
-import { Rolle } from './rolle.js';
-import { Rollenerweiterung } from './rollenerweiterung.js';
+import { type Rolle } from './rolle.js';
+import { type Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
 import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 
