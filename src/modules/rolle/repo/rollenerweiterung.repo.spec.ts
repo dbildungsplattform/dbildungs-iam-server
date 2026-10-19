@@ -2,18 +2,22 @@ import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { type DomainError } from '../../../shared/error/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import {
+    type OrganisationID,
+    type RolleID,
+    type ServiceProviderID,
+} from '../../../shared/types/aggregate-ids.types.js';
 import { Ok } from '../../../shared/util/result.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { RollenArt } from '../domain/rolle.enums.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { InternalRollenerweiterungRepo } from './internal-rollenerweiterung.repo.js';
 import { RollenerweiterungRepo } from './rollenerweiterung.repo.js';
-import { DomainError } from '../../../shared/error/index.js';
 
 describe('RollenerweiterungRepo', () => {
     let sut: RollenerweiterungRepo;
@@ -265,6 +269,82 @@ describe('RollenerweiterungRepo', () => {
                 await sut.findManyByOrganisationAndRolle(query, permissionsMock);
 
             expect(result).toEqual(Ok(rollenerweiterungen));
+        });
+    });
+
+    describe('findServiceProviderIdsByOrganisationAndRolle', () => {
+        it('should return unique ServiceProvider IDs from matching Rollenerweiterungen', async () => {
+            const organisationIdA: OrganisationID = faker.string.uuid();
+            const organisationIdB: OrganisationID = faker.string.uuid();
+
+            const rolleIdA: RolleID = faker.string.uuid();
+            const rolleIdB: RolleID = faker.string.uuid();
+
+            const serviceProviderIdA: ServiceProviderID = faker.string.uuid();
+            const serviceProviderIdB: ServiceProviderID = faker.string.uuid();
+
+            const query: Array<{
+                organisationId: OrganisationID;
+                rolleId: RolleID;
+            }> = [
+                {
+                    organisationId: organisationIdA,
+                    rolleId: rolleIdA,
+                },
+                {
+                    organisationId: organisationIdB,
+                    rolleId: rolleIdB,
+                },
+            ];
+
+            const rollenerweiterungen: Rollenerweiterung<true>[] = [
+                createPersistedRollenerweiterung(organisationIdA, rolleIdA, serviceProviderIdA),
+                createPersistedRollenerweiterung(organisationIdB, rolleIdB, serviceProviderIdA),
+                createPersistedRollenerweiterung(organisationIdB, rolleIdB, serviceProviderIdB),
+            ];
+
+            internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle.mockResolvedValueOnce(rollenerweiterungen);
+
+            const result: ServiceProviderID[] = await sut.findServiceProviderIdsByOrganisationAndRolle(query);
+
+            expect(result).toEqual([serviceProviderIdA, serviceProviderIdB]);
+            expect(internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle).toHaveBeenCalledOnce();
+            expect(internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle).toHaveBeenCalledWith(query);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
+            expect(permissionsMock.getOrgIdsWithSystemrecht).not.toHaveBeenCalled();
+        });
+
+        it('should return an empty array if no Rollenerweiterungen exist', async () => {
+            const query: Array<{
+                organisationId: OrganisationID;
+                rolleId: RolleID;
+            }> = [
+                {
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                },
+            ];
+
+            internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
+
+            const result: ServiceProviderID[] = await sut.findServiceProviderIdsByOrganisationAndRolle(query);
+
+            expect(result).toEqual([]);
+            expect(internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle).toHaveBeenCalledWith(query);
+        });
+
+        it('should delegate an empty query and return an empty array', async () => {
+            const query: Array<{
+                organisationId: OrganisationID;
+                rolleId: RolleID;
+            }> = [];
+
+            internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle.mockResolvedValueOnce([]);
+
+            const result: ServiceProviderID[] = await sut.findServiceProviderIdsByOrganisationAndRolle(query);
+
+            expect(result).toEqual([]);
+            expect(internalRollenerweiterungRepoMock.findManyByOrganisationAndRolle).toHaveBeenCalledWith([]);
         });
     });
 

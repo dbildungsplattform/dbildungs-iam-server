@@ -114,6 +114,33 @@ export class RollenerweiterungRepo {
     }
 
     /**
+     * Returns ServiceProvider references for an already authorized person lookup.
+     *
+     * This method does not require ROLLEN_ERWEITERN because it does not expose
+     * Rollenerweiterungen and is used only to resolve ServiceProviders assigned
+     * to a person's Rollen. The calling use case is responsible for authorizing
+     * access to the person.
+     */
+    public async findServiceProviderIdsByOrganisationAndRolle(
+        query: Array<{
+            organisationId: OrganisationID;
+            rolleId: RolleID;
+        }>,
+    ): Promise<ServiceProviderID[]> {
+        const rollenerweiterungen: Rollenerweiterung<true>[] =
+            await this.internalRollenerweiterungRepo.findManyByOrganisationAndRolle(query);
+
+        return Array.from(
+            new Set(
+                rollenerweiterungen.map(
+                    (rollenerweiterung: Rollenerweiterung<true>): ServiceProviderID =>
+                        rollenerweiterung.serviceProviderId,
+                ),
+            ),
+        );
+    }
+
+    /**
      * Returns the number of references for the given ServiceProviders.
      *
      * This method performs no Rollenerweiterung permission check because it is
