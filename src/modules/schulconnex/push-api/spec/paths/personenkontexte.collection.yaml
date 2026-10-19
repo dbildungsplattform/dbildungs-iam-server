@@ -1,0 +1,23 @@
+parameters:
+    - $ref: ../components/parameters/person-id.yaml
+post:
+    tags:
+        - Personenkontexte
+    operationId: createPersonenkontext
+    summary: Personenkontext anlegen
+    description: Legt einen Personenkontext für eine bestehende Person an.
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    $ref: ../components/schemas/personenkontext-payload.yaml
+    responses:
+        '202':
+            description: Anfrage zum Anlegen eines Personenkontexts wurde akzeptiert.
+        '400':
+            description: Übermittelter Request-Body ist ungültig.
+            content:
+                application/json:
+                    schema:
+                        $ref: ../components/schemas/error-response.yaml

@@ -1,0 +1,6 @@
+name: personId
+in: path
+required: true
+description: Stabile Kennung der Person in dBildungs IAM.
+schema:
+    type: string
