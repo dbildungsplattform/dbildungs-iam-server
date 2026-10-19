@@ -262,5 +262,31 @@ describe('Rollenerweiterung Aggregate', () => {
             }
             expect(result.error).toBeInstanceOf(ServiceProviderNichtVerfuegbarFuerRollenerweiterungError);
         });
+
+        it('should return ServiceProviderNichtVerfuegbarFuerRollenerweiterungError if the ServiceProvider is not available for Rollenerweiterungen', () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+
+            const rolle: Rolle<true> = DoFactory.createRolle(true, {
+                rollenart: RollenArt.LEHR,
+                serviceProviderIds: [],
+            });
+
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                merkmale: [],
+                rollenartenWhitelist: [],
+            });
+
+            const result: Result<Rollenerweiterung<false>, CreateRollenerweiterungError> = Rollenerweiterung.createNew(
+                organisationId,
+                rolle,
+                serviceProvider,
+            );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected operation to fail');
+            }
+            expect(result.error).toBeInstanceOf(ServiceProviderNichtVerfuegbarFuerRollenerweiterungError);
+        });
     });
 });
