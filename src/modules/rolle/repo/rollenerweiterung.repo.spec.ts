@@ -792,91 +792,40 @@ describe('RollenerweiterungRepo', () => {
         });
     });
 
-    describe('deleteByServiceProviderIdAndRollenarten', () => {
-        it('should delete if there are no affected Rollenerweiterungen', async () => {
+    describe('deleteByServiceProviderIdAndRollenartenForSPUpdate', () => {
+        it('should delegate the consistency cleanup to the internal repository', async () => {
             const serviceProviderId: ServiceProviderID = faker.string.uuid();
 
-            internalRollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten.mockResolvedValueOnce([]);
+            const rollenarten: RollenArt[] = [RollenArt.LEHR, RollenArt.LERN];
 
             internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten.mockResolvedValueOnce(Ok(null));
 
-            const result: Result<null, DomainError | MissingPermissionsError> =
-                await sut.deleteByServiceProviderIdAndRollenarten(serviceProviderId, permissionsMock);
+            const result: Result<null, DomainError> = await sut.deleteByServiceProviderIdAndRollenartenForSPUpdate(
+                serviceProviderId,
+                rollenarten,
+            );
 
             expect(result).toEqual(Ok(null));
-            expect(permissionsMock.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
+            expect(internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
+                serviceProviderId,
+                rollenarten,
+            );
+            expect(internalRollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten).not.toHaveBeenCalled();
+        });
+
+        it('should delegate cleanup without a Rollenarten filter', async () => {
+            const serviceProviderId: ServiceProviderID = faker.string.uuid();
+
+            internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten.mockResolvedValueOnce(Ok(null));
+
+            const result: Result<null, DomainError> =
+                await sut.deleteByServiceProviderIdAndRollenartenForSPUpdate(serviceProviderId);
+
+            expect(result).toEqual(Ok(null));
             expect(internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
                 serviceProviderId,
                 undefined,
             );
-        });
-
-        it('should check permission once per affected organisation', async () => {
-            const serviceProviderId: ServiceProviderID = faker.string.uuid();
-
-            const organisationIdA: OrganisationID = faker.string.uuid();
-            const organisationIdB: OrganisationID = faker.string.uuid();
-
-            const rollenarten: RollenArt[] = [RollenArt.LEHR];
-
-            internalRollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten.mockResolvedValueOnce([
-                createPersistedRollenerweiterung(organisationIdA, faker.string.uuid(), serviceProviderId),
-                createPersistedRollenerweiterung(organisationIdA, faker.string.uuid(), serviceProviderId),
-                createPersistedRollenerweiterung(organisationIdB, faker.string.uuid(), serviceProviderId),
-            ]);
-
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-
-            internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten.mockResolvedValueOnce(Ok(null));
-
-            const result: Result<null, DomainError | MissingPermissionsError> =
-                await sut.deleteByServiceProviderIdAndRollenarten(serviceProviderId, permissionsMock, rollenarten);
-
-            expect(result).toEqual(Ok(null));
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledTimes(2);
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                organisationIdA,
-                RollenSystemRecht.ROLLEN_ERWEITERN,
-            );
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
-                organisationIdB,
-                RollenSystemRecht.ROLLEN_ERWEITERN,
-            );
-            expect(internalRollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
-                serviceProviderId,
-                rollenarten,
-            );
-            expect(internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
-                serviceProviderId,
-                rollenarten,
-            );
-        });
-
-        it('should return MissingPermissionsError and not delete if one affected organisation is not permitted', async () => {
-            const serviceProviderId: ServiceProviderID = faker.string.uuid();
-
-            const organisationIdA: OrganisationID = faker.string.uuid();
-            const organisationIdB: OrganisationID = faker.string.uuid();
-
-            internalRollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten.mockResolvedValueOnce([
-                createPersistedRollenerweiterung(organisationIdA, faker.string.uuid(), serviceProviderId),
-                createPersistedRollenerweiterung(organisationIdB, faker.string.uuid(), serviceProviderId),
-            ]);
-
-            permissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
-                (organisationId: OrganisationID): Promise<boolean> =>
-                    Promise.resolve(organisationId === organisationIdA),
-            );
-
-            const result: Result<null, DomainError | MissingPermissionsError> =
-                await sut.deleteByServiceProviderIdAndRollenarten(serviceProviderId, permissionsMock);
-
-            expect(result.ok).toBe(false);
-            if (result.ok) {
-                throw new Error('Expected operation to fail');
-            }
-            expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            expect(internalRollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).not.toHaveBeenCalled();
         });
     });
 });

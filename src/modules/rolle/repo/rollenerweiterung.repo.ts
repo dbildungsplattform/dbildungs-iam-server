@@ -257,40 +257,17 @@ export class RollenerweiterungRepo {
         );
     }
 
-    public async deleteByServiceProviderIdAndRollenarten(
+    /**
+     * Removes Rollenerweiterungen that became invalid because an authorized
+     * ServiceProvider update changed its availability or Rollenarten whitelist.
+     *
+     * Authorization for the ServiceProvider update must be performed by the
+     * calling service before invoking this consistency cleanup.
+     */
+    public async deleteByServiceProviderIdAndRollenartenForSPUpdate(
         serviceProviderId: ServiceProviderID,
-        permissions: IPersonPermissions,
         rollenarten?: RollenArt[],
-    ): Promise<Result<null, DomainError | MissingPermissionsError>> {
-        const affectedRollenerweiterungen: Rollenerweiterung<true>[] =
-            await this.internalRollenerweiterungRepo.findByServiceProviderIdAndRollenarten(
-                serviceProviderId,
-                rollenarten,
-            );
-
-        const affectedOrganisationIds: OrganisationID[] = Array.from(
-            new Set(
-                affectedRollenerweiterungen.map(
-                    (rollenerweiterung: Rollenerweiterung<true>): OrganisationID => rollenerweiterung.organisationId,
-                ),
-            ),
-        );
-
-        const permissionResults: boolean[] = await Promise.all(
-            affectedOrganisationIds.map(
-                (organisationId: OrganisationID): Promise<boolean> =>
-                    permissions.hasSystemrechtAtOrganisation(organisationId, RollenSystemRecht.ROLLEN_ERWEITERN),
-            ),
-        );
-
-        const isAuthorizedForAllAffectedOrganisations: boolean = permissionResults.every(
-            (hasPermission: boolean): boolean => hasPermission,
-        );
-
-        if (!isAuthorizedForAllAffectedOrganisations) {
-            return Err(new MissingPermissionsError('Not authorized'));
-        }
-
+    ): Promise<Result<null, DomainError>> {
         return this.internalRollenerweiterungRepo.deleteByServiceProviderIdAndRollenarten(
             serviceProviderId,
             rollenarten,

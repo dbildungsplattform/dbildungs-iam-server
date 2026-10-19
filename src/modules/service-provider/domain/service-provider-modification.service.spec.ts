@@ -93,7 +93,9 @@ describe('ServiceProviderModificationService', () => {
 
             serviceProviderRepoMock.findById.mockResolvedValueOnce(existingProvider);
 
-            rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten.mockResolvedValueOnce(deleteResult);
+            rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenartenForSPUpdate.mockResolvedValueOnce(
+                deleteResult,
+            );
 
             const result: Result<ServiceProvider<true>, DomainError> = await sut.update(
                 permissions,
@@ -105,9 +107,8 @@ describe('ServiceProviderModificationService', () => {
                 throw new Error('Expected operation to fail');
             }
             expect(result.error).toBe(permissionError);
-            expect(rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
+            expect(rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenartenForSPUpdate).toHaveBeenCalledWith(
                 serviceProviderToUpdate.id,
-                permissions,
             );
             expect(serviceProviderInternalRepoMock.persistAndFlush).not.toHaveBeenCalled();
         });
@@ -143,7 +144,9 @@ describe('ServiceProviderModificationService', () => {
 
             rolleRepoMock.existsForServiceProviderId.mockResolvedValueOnce(false);
 
-            rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten.mockResolvedValueOnce(deleteResult);
+            rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenartenForSPUpdate.mockResolvedValueOnce(
+                deleteResult,
+            );
 
             const result: Result<ServiceProvider<true>, DomainError> = await sut.update(
                 permissions,
@@ -160,9 +163,8 @@ describe('ServiceProviderModificationService', () => {
                 expect.arrayContaining([RollenArt.LEHR]),
             );
 
-            expect(rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenarten).toHaveBeenCalledWith(
+            expect(rollenerweiterungRepoMock.deleteByServiceProviderIdAndRollenartenForSPUpdate).toHaveBeenCalledWith(
                 serviceProviderToUpdate.id,
-                permissions,
                 expect.arrayContaining([RollenArt.LEHR]),
             );
             expect(serviceProviderInternalRepoMock.persistAndFlush).not.toHaveBeenCalled();
