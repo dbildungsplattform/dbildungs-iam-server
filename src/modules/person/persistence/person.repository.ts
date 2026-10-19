@@ -1067,8 +1067,7 @@ export class PersonRepository {
             }
         }
 
-        const savedPerson: Person<true> | DomainError = await this.save(personFound);
-        return savedPerson;
+        return await this.save(personFound);
     }
 
     private hasNameChanged(
