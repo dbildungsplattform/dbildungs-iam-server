@@ -1,13 +1,13 @@
 import { MikroORM } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DatabaseTestModule,
     LoggingTestModule,
 } from '../../test/utils/index.js';
-import { DbConfig, ServerConfig } from '../shared/config/index.js';
+import { type DbConfig, type ServerConfig } from '../shared/config/index.js';
 import { DbInitConsole } from './db-init.console.js';
 
 describe('DbInitConsole', () => {

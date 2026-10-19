@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM, UniqueConstraintViolationException } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
@@ -9,21 +9,21 @@ import { EmailMicroserviceModule } from '../../email-microservice/email-microser
 import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationModule } from '../../organisation/organisation.module.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { UsernameGeneratorService } from '../../person/domain/username-generator.service.js';
 import { OxUserBlacklistRepo } from '../../person/persistence/ox-user-blacklist.repo.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { RolleFactory } from '../../rolle/domain/rolle.factory.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
-import { mapAggregateToPartial, Personenkontext } from '../domain/personenkontext.js';
+import { mapAggregateToPartial, type Personenkontext } from '../domain/personenkontext.js';
 import { DBiamPersonenkontextRepoInternal } from './internal-dbiam-personenkontext.repo.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
 

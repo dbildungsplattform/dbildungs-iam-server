@@ -1,7 +1,7 @@
-import { EmailAddressID, PersonID } from '../../types/aggregate-ids.types.js';
+import { type EmailAddressID, type PersonID } from '../../types/aggregate-ids.types.js';
 import { BaseEvent } from '../base-event.js';
-import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
-import { OXUserID } from '../../types/ox-ids.types.js';
+import { type EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
+import { type OXUserID } from '../../types/ox-ids.types.js';
 
 export class EmailAddressDeletedInDatabaseEvent extends BaseEvent {
     public constructor(

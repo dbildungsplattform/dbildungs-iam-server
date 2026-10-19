@@ -1,4 +1,4 @@
-import { KafkaEvent } from './kafka-event.js';
+import { type KafkaEvent } from './kafka-event.js';
 import { PersonLdapSyncEvent } from './person-ldap-sync.event.js';
 
 /**

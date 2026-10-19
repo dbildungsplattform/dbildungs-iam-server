@@ -1,5 +1,5 @@
 import { KafkaPersonRenamedEvent } from './kafka-person-renamed-event.js';
-import { Person } from '../../modules/person/domain/person.js';
+import { type Person } from '../../modules/person/domain/person.js';
 import { DoFactory } from '../../../test/utils/index.js';
 
 describe('KafkaPersonRenamedEvent', () => {

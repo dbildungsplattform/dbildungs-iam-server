@@ -1,4 +1,4 @@
-import { TimeLimitOccasion } from './time-limit-occasion.enums.js';
+import { type TimeLimitOccasion } from './time-limit-occasion.enums.js';
 
 export class PersonTimeLimitInfo {
     public constructor(

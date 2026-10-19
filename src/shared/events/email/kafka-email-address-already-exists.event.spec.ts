@@ -1,6 +1,6 @@
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { KafkaEmailAddressAlreadyExistsEvent } from './kafka-email-address-already-exists.event.js';
 
 describe('KafkaEmailAddressAlreadyExistsEvent', () => {

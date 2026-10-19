@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -9,25 +9,25 @@ import {
 } from '../../../../../test/utils/index.js';
 import { PersonApiModule } from '../../person-api.module.js';
 import { PersonRepository } from '../../persistence/person.repository.js';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { faker } from '@faker-js/faker';
 import { RolleFactory } from '../../../rolle/domain/rolle.factory.js';
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
+import { type Rolle } from '../../../rolle/domain/rolle.js';
 import { Personenkontext } from '../../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenuebersichtController } from './dbiam-personenuebersicht.controller.js';
-import { DBiamFindPersonenuebersichtByPersonIdParams } from './dbiam-find-personenuebersicht-by-personid.params.js';
+import { type DBiamFindPersonenuebersichtByPersonIdParams } from './dbiam-find-personenuebersicht-by-personid.params.js';
 import { Person } from '../../domain/person.js';
 import { OrganisationRepository } from '../../../organisation/persistence/organisation.repository.js';
-import { PersonPermissions } from '../../../authentication/domain/person-permissions.js';
-import { DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
-import { Organisation } from '../../../organisation/domain/organisation.js';
-import { PersonenuebersichtBodyParams } from './personenuebersicht-body.params.js';
+import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
+import { type DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
+import { type Organisation } from '../../../organisation/domain/organisation.js';
+import { type PersonenuebersichtBodyParams } from './personenuebersicht-body.params.js';
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
 import { DbiamPersonenuebersicht } from '../../domain/dbiam-personenuebersicht.js';
 import { PersonLandesbediensteterSearchService } from '../../person-landesbedienstete-search/person-landesbediensteter-search.service.js';
-import { PersonID } from '../../../../shared/types/aggregate-ids.types.js';
+import { type PersonID } from '../../../../shared/types/aggregate-ids.types.js';
 import { ServiceProviderRepo } from '../../../service-provider/repo/service-provider.repo.js';
 import { PermissionTestModule } from '../../../../../test/utils/permission-test.module.js';
 

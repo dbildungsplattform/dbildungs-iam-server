@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { PersonRenamedEvent } from '../person-renamed-event.js';
 import { KafkaLdapPersonEntryRenamedEvent } from './kafka-ldap-person-entry-renamed.event.js';
 

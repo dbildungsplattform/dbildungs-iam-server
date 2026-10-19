@@ -1,6 +1,6 @@
 import { BaseEvent } from '../base-event.js';
-import { OXUserID } from '../../types/ox-ids.types.js';
-import { PersonID, PersonUsername } from '../../types/aggregate-ids.types.js';
+import { type OXUserID } from '../../types/ox-ids.types.js';
+import { type PersonID, type PersonUsername } from '../../types/aggregate-ids.types.js';
 
 export class OxAccountDeletedEvent extends BaseEvent {
     public constructor(

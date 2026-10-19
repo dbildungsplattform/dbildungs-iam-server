@@ -1,15 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock } from '../../../test/utils/createMock.js';
-import { BaseClient } from 'openid-client';
-import { KeycloakHealthIndicator } from './keycloak.health-indicator.js';
-import { HealthIndicatorResult, HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
 import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../shared/config/index.js';
+import { type HealthIndicatorResult, type HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type BaseClient } from 'openid-client';
+import { createMock } from '../../../test/utils/createMock.js';
 import { ConfigTestModule, createOidcClientMock, KeycloakConfigTestModule } from '../../../test/utils/index.js';
+import { type ServerConfig } from '../../shared/config/index.js';
+import type * as OidcClientService from '../authentication/services/oidc-client.service.js';
+import { KeycloakHealthIndicator } from './keycloak.health-indicator.js';
 
 let error: Error | string | undefined = undefined;
 
-type importType = typeof import('../authentication/services/oidc-client.service.js');
+type importType = typeof OidcClientService;
 
 vi.mock<importType>(
     import('../authentication/services/oidc-client.service.js'),

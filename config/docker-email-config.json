@@ -1,0 +1,47 @@
+{
+    "HOST": {
+        "PORT": 9091
+    },
+    "LOGGING": {
+        "DEFAULT_LOG_LEVEL": "info"
+    },
+    "DB": {
+        "CLIENT_URL": "postgres://db:5432",
+        "DB_NAME": "dbildungs-iam-server",
+        "USERNAME": "admin",
+        "SECRET": "password",
+        "USE_SSL": false
+    },
+    "LDAP": {
+        "ENABLED": false,
+        "URL": "ldap://localhost",
+        "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
+        "ADMIN_PASSWORD": "admin",
+        "BASE_DN": "dc=schule-sh,dc=de",
+        "RETRY_WRAPPER_DEFAULT_RETRIES": 3,
+        "OEFFENTLICHE_SCHULEN_DOMAIN": "qs.schule-sh.de",
+        "ERSATZSCHULEN_DOMAIN": "qs.ersatzschule-sh.de"
+    },
+    "OX": {
+        "ENABLED": false,
+        "ENDPOINT": "http://ox.dev.spsh.dbildungsplattform.de/webservices/",
+        "CONTEXT_ID": "1337",
+        "CONTEXT_NAME": "contextname",
+        "USERNAME": "username",
+        "PASSWORD": "password",
+        "NUMBER_OF_RETRIES": 3,
+        "USER_PASSWORD_DEFAULT": "placeholder",
+        "EMAIL_ADDRESS_DELETED_EVENT_DELAY": 0
+    },
+    "EMAIL": {
+        "NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS": 90
+    },
+    "WEBHOOK": {
+        "ENDPOINT": "http://localhost:9090/api/email-webhook/changed",
+        "NUMBER_OF_RETRIES": 5,
+        "RETRY_DELAY": 5000
+    },
+    "HEADER_API_KEY": {
+        "INTERNAL_COMMUNICATION_API_KEY": "api-key"
+    }
+}

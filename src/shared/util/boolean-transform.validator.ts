@@ -1,4 +1,4 @@
-import { Transform, TransformFnParams } from 'class-transformer';
+import { Transform, type TransformFnParams } from 'class-transformer';
 
 // should be considered to be changed
 export function TransformToBoolean(): PropertyDecorator {

@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
 import { vi } from 'vitest';
 import { CsrfTokenService } from './csrf-token.service.js';
-import { DeepMocked, createMock } from '../../../../test/utils/createMock.js';
+import { type DeepMocked, createMock } from '../../../../test/utils/createMock.js';
 
 describe('CsrfTokenService', () => {
     let module: TestingModule;

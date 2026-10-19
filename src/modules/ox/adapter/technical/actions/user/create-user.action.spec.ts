@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 
-import { CreateUserAction, CreateUserResponseBody } from './create-user.action.js';
+import { CreateUserAction, type CreateUserResponseBody } from './create-user.action.js';
 
 describe('CreateUserAction', () => {
     describe('buildRequest', () => {

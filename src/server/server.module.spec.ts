@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { Issuer } from 'openid-client';
 import { ServerModule } from './server.module.js';
 import { OIDC_CLIENT } from '../modules/authentication/services/oidc-client.service.js';
-import { MiddlewareConsumer } from '@nestjs/common';
-import { RedisClientType } from 'redis';
+import { type MiddlewareConsumer } from '@nestjs/common';
+import { type RedisClientType } from 'redis';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../test/utils/index.js';
 
 function createRedisClientMock(overrides?: Partial<RedisClientType>): RedisClientType {

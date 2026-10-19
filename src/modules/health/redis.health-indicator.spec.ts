@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DeepMocked } from '../../../test/utils/createMock.js';
-import { HealthIndicatorResult, HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type DeepMocked } from '../../../test/utils/createMock.js';
+import { type HealthIndicatorResult, type HealthIndicatorStatus, TerminusModule } from '@nestjs/terminus';
 import { ConfigTestModule } from '../../../test/utils/index.js';
 import { RedisHealthIndicator } from './redis.health-indicator.js';
-import { RedisClientOptions, RedisClientType } from 'redis';
+import { type RedisClientOptions, type RedisClientType } from 'redis';
 import EventEmitter from 'node:events';
 
 const redisClient: DeepMocked<RedisClientType> = {

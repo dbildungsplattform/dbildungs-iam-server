@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/postgresql';
-import { Test, TestingModule } from '@nestjs/testing';
-import { DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -13,14 +13,14 @@ import {
     LoggingTestModule,
 } from '../../../../test/utils/index.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
@@ -31,8 +31,8 @@ import { AttachedRollenerweiterungenError } from './errors/attached-rollenerweit
 import { VidisServiceProviderImmutableError } from './errors/vidis-service-provider-immutable.error.js';
 import { ServiceProviderModificationService } from './service-provider-modification.service.js';
 import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
-import { ServiceProvider } from './service-provider.js';
 import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
+import { type ServiceProvider } from './service-provider.js';
 
 describe('ServiceProviderModificationService', () => {
     let module: TestingModule;

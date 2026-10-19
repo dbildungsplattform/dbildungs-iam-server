@@ -1,7 +1,7 @@
 import { DoFactory } from '../../../../test/utils/index.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
 import { CreateServiceProviderResponse } from './create-service-provider.response.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 
 describe('CreateServiceProviderResponse', () => {
     it('should inherit directly from ServiceProviderResponse', () => {

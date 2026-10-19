@@ -1,9 +1,9 @@
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
+import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type ServiceProviderMerkmal } from '../domain/service-provider.enum.js';
 import { ServiceProvider } from '../domain/service-provider.js';
-import { ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
-import { ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
-import { ServiceProviderEntity } from './service-provider.entity.js';
+import { type ServiceProviderMerkmalEntity } from './service-provider-merkmal.entity.js';
+import { type ServiceProviderRollenartWhitelistEntity } from './service-provider-rollenart-whitelist.entity.js';
+import { type ServiceProviderEntity } from './service-provider.entity.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

@@ -2,13 +2,13 @@ import { ClassLogger } from '../../core/logging/class-logger.js';
 import { PrivacyIdeaAdministrationEventHandler } from './privacy-idea-administration-event-handler.js';
 import { PrivacyIdeaAdministrationService } from './privacy-idea-administration.service.js';
 import { faker } from '@faker-js/faker';
-import { TestingModule, Test } from '@nestjs/testing';
+import { type TestingModule, Test } from '@nestjs/testing';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../../test/utils/index.js';
 import { PersonDeletedEvent } from '../../shared/events/person-deleted.event.js';
-import { ResetTokenResponse, PrivacyIdeaToken } from './privacy-idea-api.types.js';
+import { type ResetTokenResponse, type PrivacyIdeaToken } from './privacy-idea-api.types.js';
 import { TokenResetError } from './api/error/token-reset.error.js';
-import { PersonUsername } from '../../shared/types/aggregate-ids.types.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { type PersonUsername } from '../../shared/types/aggregate-ids.types.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 
 export const mockPrivacyIdeaToken: PrivacyIdeaToken = {
     active: true,

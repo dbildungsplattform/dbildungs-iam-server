@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
@@ -10,7 +10,7 @@ import {
     ServiceProviderTarget,
 } from './service-provider.enum.js';
 import { ServiceProviderFactory } from './service-provider.factory.js';
-import { ServiceProvider } from './service-provider.js';
+import { type ServiceProvider } from './service-provider.js';
 
 describe('ServiceProviderFactory', () => {
     let module: TestingModule;

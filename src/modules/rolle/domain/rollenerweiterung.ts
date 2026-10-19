@@ -1,16 +1,16 @@
 import {
-    OrganisationID,
-    RolleID,
-    RollenerweiterungID,
-    ServiceProviderID,
+    type OrganisationID,
+    type RolleID,
+    type RollenerweiterungID,
+    type ServiceProviderID,
 } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { NoRedundantRollenerweiterung } from '../specification/no-redundant-rollenerweiterung.specification.js';
 import { ServiceProviderVerfuegbarFuerRollenerweiterung } from '../specification/service-provider-verfuegbar-fuer-rollenerweiterung.specification.js';
-import { Rolle } from './rolle.js';
+import { type Rolle } from './rolle.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 export type CreateRollenerweiterungError =

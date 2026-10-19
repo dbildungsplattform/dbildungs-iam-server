@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EmailRepo } from '../persistence/email.repo.js';
 import { EmailFactory } from './email.factory.js';
-import { EmailAddress, EmailAddressStatus } from './email-address.js';
+import { type EmailAddress, EmailAddressStatus } from './email-address.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { EntityNotFoundError, InvalidNameError } from '../../../shared/error/index.js';

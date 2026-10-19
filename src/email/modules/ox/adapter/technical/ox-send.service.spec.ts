@@ -1,22 +1,22 @@
 import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import assert from 'assert';
-import { AxiosResponse } from 'axios';
+import { type AxiosResponse } from 'axios';
 import { plainToInstance } from 'class-transformer';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
 import { EmailConfigTestModule } from '../../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { EmailAppConfig } from '../../../../../shared/config/email-app.config.js';
-import { DomainError } from '../../../../../shared/error/index.js';
+import { type DomainError } from '../../../../../shared/error/index.js';
 import { OxError } from '../../../../../shared/error/ox.error.js';
 import { OxMemberAlreadyInGroupError } from '../domain/error/ox-member-already-in-group.error.js';
 import { OxPrimaryMailNotEqualEmail1Error } from '../domain/error/ox-primary-mail-not-equal-email1.error.js';
 import { AddMemberToGroupAction } from './actions/group/add-member-to-group.action.js';
 import { OxBaseAction } from './actions/ox-base-action.js';
-import { OxErrorType, OxSendService } from './ox-send.service.js';
+import { type OxErrorType, OxSendService } from './ox-send.service.js';
 
 class MockAction extends OxBaseAction<unknown, string> {
     public override action: string = 'http://soap.admin.openexchange.com/mockAction';

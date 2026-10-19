@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import request, { Response } from 'supertest';
-import { App } from 'supertest/types.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import request, { type Response } from 'supertest';
+import { type App } from 'supertest/types.js';
 
 import {
     createAuthInterceptorMock,
@@ -13,7 +13,7 @@ import {
     createPersonPermissionsMock,
 } from '../../../../test/utils/auth.mock.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createAndPersistPersonenkontext } from '../../../../test/utils/personenkontext-test-helper.js';
@@ -22,21 +22,21 @@ import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeo
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../shared/paging/index.js';
-import { RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
+import { type PagedResponse } from '../../../shared/paging/index.js';
+import { type RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OIDC_CLIENT } from '../../authentication/services/oidc-client.service.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonEntity } from '../../person/persistence/person.entity.js';
 import { mapAggregateToData } from '../../person/persistence/person.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import {
@@ -44,22 +44,22 @@ import {
     ServiceProviderMerkmal,
     ServiceProviderSystem,
 } from '../domain/service-provider.enum.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { mapEntityToAggregate } from '../repo/service-provider-entity-mapper.js';
 import { ServiceProviderEntity } from '../repo/service-provider.entity.js';
 import { ServiceProviderApiModule } from '../service-provider-api.module.js';
-import { CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
-import { CreateServiceProviderResponse } from './create-service-provider.response.js';
-import { FindServiceProviderForRolleQueryParams } from './find-service-provider-for-rolle-query.params.js';
-import { ManageableLandRootServiceProvidersQueryParams } from './manageable-land-root-service-providers-query.params.js';
-import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
-import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
-import { ManageableServiceProviderResponse } from './manageable-service-provider.response.js';
+import { type CreateServiceProviderBodyParams } from './create-service-provider-body.params.js';
+import { type CreateServiceProviderResponse } from './create-service-provider.response.js';
+import { type FindServiceProviderForRolleQueryParams } from './find-service-provider-for-rolle-query.params.js';
+import { type ManageableLandRootServiceProvidersQueryParams } from './manageable-land-root-service-providers-query.params.js';
+import { type ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
+import { type ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
+import { type ManageableServiceProviderResponse } from './manageable-service-provider.response.js';
 import { ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
-import { RollenerweiterungForManageableServiceProviderResponse } from './RollenerweiterungForManageableServiceProviderResponse.js';
+import { type RollenerweiterungForManageableServiceProviderResponse } from './RollenerweiterungForManageableServiceProviderResponse.js';
 import { ServiceProviderResponse } from './service-provider.response.js';
-import { UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
 import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
+import { type UpdateServiceProviderBodyParams } from './update-service-provider-body.params.js';
 
 describe('ServiceProvider API', () => {
     let app: INestApplication;

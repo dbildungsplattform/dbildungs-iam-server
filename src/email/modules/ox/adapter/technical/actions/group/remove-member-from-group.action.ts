@@ -1,7 +1,7 @@
-import { DomainError } from '../../../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../../../shared/error/domain.error.js';
 import { NS2_SCHEMA, NS6_SCHEMA, TNS_SCHEMA } from '../../schemas.js';
-import { OxBaseAction, OXRequestStatus } from '../ox-base-action.js';
-import { GroupMemberParams } from './ox-group.types.js';
+import { OxBaseAction, type OXRequestStatus } from '../ox-base-action.js';
+import { type GroupMemberParams } from './ox-group.types.js';
 
 export type RemoveMemberFromGroupResponse = {
     status: OXRequestStatus;

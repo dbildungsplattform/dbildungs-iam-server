@@ -1,8 +1,8 @@
-import { EntityName, FilterObject, FilterQuery } from '@mikro-orm/core';
+import { type EntityName, type FilterObject, type FilterQuery } from '@mikro-orm/core';
 import { ScopeBase, ScopeOperator } from '../../../shared/persistence/index.js';
 import { PersonEntity } from './person.entity.js';
-import { OrganisationID, PersonID } from '../../../shared/types/aggregate-ids.types.js';
-import { EntityManager, SelectQueryBuilder } from '@mikro-orm/postgresql';
+import { type OrganisationID, type PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { type EntityManager, type SelectQueryBuilder } from '@mikro-orm/postgresql';
 
 type FindProps = {
     ids?: PersonID[] | undefined[];

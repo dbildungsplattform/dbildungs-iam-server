@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
-import { Transform, TransformFnParams } from 'class-transformer';
-import { IsString, Matches, ValidationOptions } from 'class-validator';
+import { Transform, type TransformFnParams } from 'class-transformer';
+import { IsString, Matches, type ValidationOptions } from 'class-validator';
 
 // Regex to validate DIN-91379A for a string
 // Generated using the list of legal characters using these steps:

@@ -1,10 +1,10 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { EntityNotFoundError } from '../../../shared/error/index.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { PersonService } from './person.service.js';
-import { Paged } from '../../../shared/paging/index.js';
-import { Person } from './person.js';
+import { type Paged } from '../../../shared/paging/index.js';
+import { type Person } from './person.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 
 describe('PersonService', () => {

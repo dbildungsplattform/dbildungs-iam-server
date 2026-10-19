@@ -1,8 +1,14 @@
-import { createParamDecorator, ExecutionContext, HttpException, PipeTransform, Type } from '@nestjs/common';
-import { Request } from 'express';
-import { PassportUser } from '../types/user.js';
-import { PersonPermissions } from '../domain/person-permissions.js';
-import winston, { format, Logger } from 'winston';
+import {
+    createParamDecorator,
+    type ExecutionContext,
+    HttpException,
+    type PipeTransform,
+    type Type,
+} from '@nestjs/common';
+import { type Request } from 'express';
+import { type PassportUser } from '../types/user.js';
+import { type PersonPermissions } from '../domain/person-permissions.js';
+import winston, { format, type Logger } from 'winston';
 import { localFormatter } from '../../../core/logging/module-logger.js';
 import { inspect } from 'util';
 import { NoPassportUserInRequestError } from '../domain/no-passport-user.error.js';

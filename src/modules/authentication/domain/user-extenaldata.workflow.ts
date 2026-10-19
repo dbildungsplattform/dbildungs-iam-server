@@ -1,29 +1,33 @@
-import { ConfigService } from '@nestjs/config';
+import { type ConfigService } from '@nestjs/config';
 import { uniq, uniqBy } from 'lodash-es';
-import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
+import { type EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
-import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
-import { ServerConfig } from '../../../shared/config/server.config.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
+import { type OxServerConfig } from '../../../shared/config/ox-server.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
+import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MultipleRollenartenError } from '../../../shared/error/index.js';
-import { OXContextID } from '../../../shared/types/ox-ids.types.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { type OXContextID } from '../../../shared/types/ox-ids.types.js';
+import { type EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { Person } from '../../person/domain/person.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { type EmailRepo } from '../../email/persistence/email.repo.js';
+import { type PersonEmailResponse } from '../../person/api/person-email-response.js';
+import { type Person } from '../../person/domain/person.js';
+import { type PersonRepository } from '../../person/persistence/person.repository.js';
 import {
-    DBiamPersonenkontextRepo,
-    ErweiterterServiceProviderForPK,
-    ExternalPkData,
+    type DBiamPersonenkontextRepo,
+    type ErweiterterServiceProviderForPK,
+    type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { RequiredExternalPkData } from '../api/authentication.controller.js';
-import { NewOxParams, OldOxParams, OxParams } from '../api/externaldata/user-externaldata-ox.response.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type RequiredExternalPkData } from '../api/authentication.controller.js';
+import {
+    type NewOxParams,
+    type OldOxParams,
+    type OxParams,
+} from '../api/externaldata/user-externaldata-ox.response.js';
 
 export const POLYTHEA_SERVICE_PROVIDER_ID: string = 'b2478ade-f0d1-4864-9713-a12c95cde898';
 export class UserExternaldataWorkflowAggregate {

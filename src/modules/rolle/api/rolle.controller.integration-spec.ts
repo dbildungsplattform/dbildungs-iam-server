@@ -1,14 +1,14 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM, RequiredEntityData } from '@mikro-orm/core';
-import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
+import { EntityManager, MikroORM, type RequiredEntityData } from '@mikro-orm/core';
+import { type CallHandler, type ExecutionContext, type INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
-import { Observable } from 'rxjs';
-import request, { Response } from 'supertest';
-import { App } from 'supertest/types.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
+import { type Observable } from 'rxjs';
+import request, { type Response } from 'supertest';
+import { type App } from 'supertest/types.js';
 
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     CommonTestModule,
     createPersonPermissionsMock,
@@ -21,52 +21,53 @@ import { createAndPersistServiceProvider } from '../../../../test/utils/service-
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../shared/paging/index.js';
+import { type PagedResponse, type RawPagedResponse } from '../../../shared/paging/index.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
 import {
-    PersonenkontextRolleWithOrganisation,
-    PersonPermissions,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonPermissions,
 } from '../../authentication/domain/person-permissions.js';
-import { PassportUser } from '../../authentication/types/user.js';
+import { type PassportUser } from '../../authentication/types/user.js';
 import { KeycloakUserService } from '../../keycloak-administration/domain/keycloak-user.service.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
+import { type ServiceProviderResponse } from '../../service-provider/api/service-provider.response.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
-import { Rolle } from '../domain/rolle.js';
-import { Rollenerweiterung } from '../domain/rollenerweiterung.js';
+import { type Rolle } from '../domain/rolle.js';
+import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleEntity } from '../entity/rolle.entity.js';
 import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
 import { RolleApiModule } from '../rolle-api.module.js';
-import { CreateRolleBodyParams } from './create-rolle.body.params.js';
-import { DbiamRolleError } from './dbiam-rolle.error.js';
+import { type CreateRolleBodyParams } from './create-rolle.body.params.js';
+import { type DbiamRolleError } from './dbiam-rolle.error.js';
 import { ErrorIdType } from './ErrorIdType.enum.js';
-import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
-import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
-import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
-import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
-import { FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
-import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
-import { RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
-import { RolleResponse } from './rolle.response.js';
-import { ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
+import { type FindAvailableRollenForPKCreationQueryParams } from './find-available-rollen-for-pk-creation.query.params.js';
+import { type FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query.params.js';
+import { type FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
+import { type FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
+import { type FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
+import { type FindRollenForPersonAdministrationQueryParams } from './param/find-rollen-for-person-administration.query.params.js';
+import { type FindRollenQueryParams } from './param/find-rollen.query.params.js';
+import { type RolleWithServiceProvidersResponse } from './rolle-with-serviceprovider.response.js';
+import { type RolleResponse } from './rolle.response.js';
+import { type ServiceProviderIdNameResponse } from './serviceprovider-id-name.response.js';
 import { SystemRechtResponse } from './systemrecht.response.js';
-import { UpdateRolleBodyParams } from './update-rolle.body.params.js';
+import { type UpdateRolleBodyParams } from './update-rolle.body.params.js';
 
 describe('Rolle API', () => {
     let app: INestApplication;
@@ -2520,6 +2521,120 @@ describe('Rolle API', () => {
                     },
                 ],
             });
+        });
+    });
+
+    describe('GET rolle/for-personenkontext-creation', () => {
+        it('should return available rollen for personenkontext creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({
+                    organisationId: organisation.id,
+                    limit: 5,
+                    offset: 1,
+                } as FindAvailableRollenForPKCreationQueryParams)
+                .send();
+
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
+            expect(response.status).toBe(200);
+            expect(body.total).toBe(2);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
+            expect(body.offset).toBe(1);
+            expect(body.limit).toBe(5);
+        });
+
+        it('should return empty result if user is missing permissions', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({
+                all: false,
+                orgaIds: [],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({ organisationId: organisation.id })
+                .send();
+
+            expect(response.body).toStrictEqual({
+                items: [],
+                limit: 0,
+                offset: 0,
+                total: 0,
+            });
+        });
+
+        it('should return 400 if organisationId is missing', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .send();
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should use provided systemrecht for personenkontext creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                all: false,
+                orgaIds: [organisation.id],
+            });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/for-personenkontext-creation`)
+                .query({
+                    organisationId: organisation.id,
+                    systemrecht: RollenSystemRechtEnum.PERSONEN_VERWALTEN,
+                } as FindAvailableRollenForPKCreationQueryParams)
+                .send();
+
+            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+
+            expect(response.status).toBe(200);
+            expect(body.total).toBe(1);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]!.id).toBe(rolle.id);
         });
     });
 });

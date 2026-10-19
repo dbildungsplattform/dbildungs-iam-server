@@ -1,0 +1,6 @@
+name: personenkontextId
+in: path
+required: true
+description: Stabile Kennung des Personenkontexts in dBildungs IAM.
+schema:
+    type: string

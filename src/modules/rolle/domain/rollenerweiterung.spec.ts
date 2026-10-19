@@ -1,20 +1,19 @@
 import { faker } from '@faker-js/faker';
-import { describe, expect, it } from 'vitest';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import {
-    OrganisationID,
-    RolleID,
-    RollenerweiterungID,
-    ServiceProviderID,
+    type OrganisationID,
+    type RolleID,
+    type RollenerweiterungID,
+    type ServiceProviderID,
 } from '../../../shared/types/aggregate-ids.types.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { RollenArt } from './rolle.enums.js';
-import { Rolle } from './rolle.js';
+import { type Rolle } from './rolle.js';
 import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
-import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
+import { Rollenerweiterung, type CreateRollenerweiterungError } from './rollenerweiterung.js';
 
 describe('Rollenerweiterung Aggregate', () => {
     describe('construct', () => {

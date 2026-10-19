@@ -1,14 +1,14 @@
 import { uniq } from 'lodash-es';
 
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OrganisationID, type RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { CompositeSpecification } from '../../specification/specifications.js';
-import { Personenkontext } from '../domain/personenkontext.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
 
 export class LernAnSchuleUndKlasse extends CompositeSpecification<Array<Personenkontext<boolean>>> {
     public constructor(

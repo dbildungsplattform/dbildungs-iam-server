@@ -1,5 +1,5 @@
 import { UpdateNotFoundError } from './update-not-found.error.js';
-import { PersonID, OrganisationID, RolleID } from '../../../../shared/types/index.js';
+import { type PersonID, type OrganisationID, type RolleID } from '../../../../shared/types/index.js';
 import { PersonenkontexteUpdateError } from './personenkontexte-update.error.js';
 
 describe('UpdateNotFoundError', () => {

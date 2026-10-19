@@ -1,39 +1,38 @@
-import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { Personenkontext } from './personenkontext.js';
+import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
+import { type DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { type Personenkontext } from './personenkontext.js';
 import { UpdateCountError } from './error/update-count.error.js';
 import { UpdateOutdatedError } from './error/update-outdated.error.js';
-import { OrganisationID, PersonID, RolleID } from '../../../shared/types/index.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/index.js';
 import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
 import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { PersonenkontextFactory } from './personenkontext.factory.js';
+import { type PersonenkontextFactory } from './personenkontext.factory.js';
 import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Person } from '../../person/domain/person.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type PersonRepository } from '../../person/persistence/person.repository.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Person } from '../../person/domain/person.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { CheckRollenartSpecification } from '../specification/nur-gleiche-rolle.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { type ClassLogger } from '../../../core/logging/class-logger.js';
 import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
 import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
-import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { type DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
+import { type EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
 import { LernAnSchuleUndKlasse } from '../specification/lern-an-schule-und-klasse.js';
 import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-schule-and-klasse.error.js';
-import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
+import { type DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
 import { CheckDuplicateKlassenkontextSpecification } from '../specification/check-duplicate-klassenkontext.js';
 import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { type EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 
 export class PersonenkontexteUpdate {
     private constructor(
@@ -220,30 +219,26 @@ export class PersonenkontexteUpdate {
             ...new Set(modifiedPKs.map((pk: Personenkontext<true>) => pk.rolleId)),
         ]);
 
-        return this.checkMptPermissions(modifiedPKs, modifiedRollen);
+        return this.checkGatedRollenPermissions(modifiedPKs, modifiedRollen);
     }
 
-    private async checkMptPermissions(
+    private async checkGatedRollenPermissions(
         modifiedPKs: Personenkontext<true>[],
         modifiedRollen: Map<RolleID, Rolle<true>>,
     ): Promise<Option<DomainError>> {
-        const hasMptPermissions: boolean = (
-            await Promise.all(
-                modifiedPKs
-                    .filter((pk: Personenkontext<true>) =>
-                        modifiedRollen.get(pk.rolleId)?.hasMerkmal(RollenMerkmal.MPT_ROLLE),
-                    )
-                    .map((pk: Personenkontext<true>) =>
-                        this.permissions.hasSystemrechtAtOrganisation(
-                            pk.organisationId,
-                            RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
-                        ),
-                    ),
-            )
-        ).every(Boolean);
+        const permissionChecks: Promise<boolean>[] = [];
+        for (const pk of modifiedPKs) {
+            const rolle: Rolle<true> | undefined = modifiedRollen.get(pk.rolleId);
+            if (rolle) {
+                permissionChecks.push(
+                    this.permissions.hasPermissionForRolleMerkmale(rolle.merkmale, pk.organisationId),
+                );
+            }
+        }
+        const hasGatedRollenPermissions: boolean = (await Promise.all(permissionChecks)).every(Boolean);
 
-        if (!hasMptPermissions) {
-            return new MissingPermissionsError('Unauthorized to modify MPT-Rollen at the organisation');
+        if (!hasGatedRollenPermissions) {
+            return new MissingPermissionsError('Unauthorized to modify MPT/Pilot-Rollen at the organisation');
         }
 
         return undefined;

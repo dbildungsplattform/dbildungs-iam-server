@@ -46,6 +46,14 @@ eflkLdap:
   retryWrapperNumberOfRetries: 3
   retryWrapperDelayInMs: 15000
 
+eflkLdapUndi:
+  enabled: false
+  url: ldap://dbildungs-iam-ldap.spsh-xxx.svc.cluster.local
+  oeffentlicheSchulenDomain: schule-sh.de
+  ersatzschulenDomain: ersatzschule-sh.de
+  base_dn: dc=schule-sh,dc=de
+  retryWrapperDefaultRetries: 3
+
 itslearning:
   enabled: false
   endpoint: https://enterprise.itslintegrations.com/WCFServiceLibrary/ImsEnterpriseServicesPort.svc
@@ -95,6 +103,8 @@ emailMicroserviceAuth:
   secretName: dbildungs-iam-server-email
   ldap_bind_dn: ""
   ldap_admin_password: ""
+  ldap_undi_bind_dn: ""
+  ldap_undi_admin_password: ""
   secrets_json: ""
   ox_password: ""
 
@@ -337,33 +347,27 @@ cronjobs:
   backendHostname: "{{ $.Values.frontendHostname }}"
   scriptDir: scripts
   jobs:
-    cron-trigger-1:
+    lock-persons-without-kopers:
       schedule: 20 0 * * *
       endpoint: "/api/cron/kopers-lock"
       httpMethod: "PUT"
       script: "cron_trigger.sh"
-    cron-trigger-2:
+    delete-expired-context:
       schedule: 40 0 * * *
       endpoint: "/api/cron/kontext-expired"
       httpMethod: "PUT"
       script: "cron_trigger.sh"
-    cron-trigger-3:
+    delete-person-without-org:
       schedule: "*/15 0-3,22-23 * * *"
       endpoint: "/api/cron/person-without-org"
       httpMethod: "PUT"
       script: "cron_trigger.sh"
-    cron-trigger-4:
+    remove-expired-locks:
       schedule: 10 0 * * *
       endpoint: "/api/cron/unlock"
       httpMethod: "PUT"
       script: "cron_trigger.sh"
-    # Disabled old E-Mail cronjob
-    # cron-trigger-5:
-    #   schedule: "5-59/15 0-3,22-23 * * *"
-    #   endpoint: "/api/cron/email-addresses-delete"
-    #   httpMethod: "DELETE"
-    #   script: "cron_trigger.sh"
-    cron-trigger-6:
+    vidis-sync:
       schedule: "30 0 1 6 *"
       endpoint: "/api/cron/vidis-sync"
       httpMethod: "PUT"
@@ -378,7 +382,7 @@ cronjobsEmail:
   port: 5656
   scriptDir: scripts
   jobs:
-    cron-trigger-email:
+    delete-marked-emails:
       schedule: "0 4 * * *"
       endpoint: "api/cron/delete"
       httpMethod: "DELETE"
@@ -396,7 +400,7 @@ featureFlags:
   setUemPassword: true
 
 emailMicroservice:
-  useService: false
+  useService: true
   endpoint: http://dbildungs-iam-server-email-backend.spsh-xxx.svc.cluster.local:80/
 
 cron:

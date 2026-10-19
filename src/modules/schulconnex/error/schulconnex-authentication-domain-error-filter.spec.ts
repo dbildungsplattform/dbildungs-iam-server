@@ -1,5 +1,5 @@
-import { ArgumentsHost, UnauthorizedException } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost, UnauthorizedException } from '@nestjs/common';
+import { type Response } from 'express';
 import { SchulConnexError } from '../../../shared/error/schul-connex.error.js';
 import { SchulConnexAuthenticationDomainErrorFilter } from './schulconnex-authentication-domain-error-filter.js';
 import { AuthenticationDomainError } from '../../authentication/domain/authentication-domain.error.js';
