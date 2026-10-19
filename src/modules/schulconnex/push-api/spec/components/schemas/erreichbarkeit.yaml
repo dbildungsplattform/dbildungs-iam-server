@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required:
+    - typ
+    - kennung
+properties:
+    typ:
+        type: string
+        enum:
+            - E-Mail
+    kennung:
+        type: string
+        format: email
