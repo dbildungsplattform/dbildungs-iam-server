@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigTestModule } from '../../../test/utils/index.js';
-import { KeycloakConfig, ServerConfig } from '../../shared/config/index.js';
+import { type KeycloakConfig, type ServerConfig } from '../../shared/config/index.js';
 import { KeycloakInstanceConfig } from './keycloak-instance-config.js';
 
 describe('KeycloakInstanceConfig', () => {

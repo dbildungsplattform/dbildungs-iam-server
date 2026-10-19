@@ -1,14 +1,14 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
+import { type CallHandler, type ExecutionContext, type INestApplication } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
-import { Observable } from 'rxjs';
-import request, { Response } from 'supertest';
-import { App } from 'supertest/types.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
+import { type Observable } from 'rxjs';
+import request, { type Response } from 'supertest';
+import { type App } from 'supertest/types.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -18,22 +18,22 @@ import {
 } from '../../../../test/utils/index.js';
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
-import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { KeycloakUserService } from '../../keycloak-administration/domain/keycloak-user.service.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { type Organisation } from '../domain/organisation.js';
 import { OrganisationApiModule } from '../organisation-api.module.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';

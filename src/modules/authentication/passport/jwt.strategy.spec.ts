@@ -1,16 +1,17 @@
-import { JwtStrategy } from './jwt.strategy.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { BaseClient, Issuer } from 'openid-client';
+import { faker } from '@faker-js/faker';
+import type * as JsonWebToken from 'jsonwebtoken';
+import { decode } from 'jsonwebtoken';
+import { type BaseClient, type Issuer } from 'openid-client';
+import { type Mock } from 'vitest';
+import { createOidcClientMock } from '../../../../test/utils/auth.mock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { createRequestMock } from '../../../../test/utils/http.mocks.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { KeycloakUserNotFoundError } from '../domain/keycloak-user-not-found.error.js';
-import { faker } from '@faker-js/faker';
-import { createOidcClientMock } from '../../../../test/utils/auth.mock.js';
-import { createRequestMock } from '../../../../test/utils/http.mocks.js';
-import { decode } from 'jsonwebtoken';
-import { Mock } from 'vitest';
-import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { JwtStrategy } from './jwt.strategy.js';
 
-type importType = typeof import('jsonwebtoken');
+type importType = typeof JsonWebToken;
 vi.mock<importType>(import('jsonwebtoken'), async (importOriginal: () => Promise<importType>) => {
     const originalModule: importType = await importOriginal();
     return {

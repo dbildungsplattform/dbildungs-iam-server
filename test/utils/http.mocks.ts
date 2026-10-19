@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker/locale/af_ZA';
-import { ArgumentsHost, ExecutionContext } from '@nestjs/common';
-import { Response, Request } from 'express';
-import { Session } from 'express-session';
-import { MockedObject } from 'vitest';
+import { type ArgumentsHost, type ExecutionContext } from '@nestjs/common';
+import { type Response, type Request } from 'express';
+import { type Session } from 'express-session';
+import { type MockedObject } from 'vitest';
 
 export function createResponseMock(): MockedObject<Response> {
     return {

@@ -1,8 +1,8 @@
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Personenkontext } from '../domain/personenkontext.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { ExistingRolleUndefined } from '../domain/error/existing-rolle-undefined.error.js';
 
 export class CheckRollenartSpecification {

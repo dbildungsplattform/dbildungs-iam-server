@@ -1,10 +1,10 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { ExecutionContext, BadRequestException } from '@nestjs/common';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type ExecutionContext, BadRequestException } from '@nestjs/common';
 import { createExecutionContextMock, createRequestMock } from '../../../../test/utils/http.mocks.js';
 import { CsrfTokenService } from '../services/csrf-token.service.js';
 import { CsrfProtectionGuard } from './csrf-token.guard.js';
 import { Reflector } from '@nestjs/core';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 import type { Request as ExpressRequest } from 'express';
 
 describe('The CSRF protection guard', () => {

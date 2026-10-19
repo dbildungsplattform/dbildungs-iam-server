@@ -1,23 +1,23 @@
-import { Mock, MockedObject } from 'vitest';
+import { type Mock, type MockedObject } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { ExecutionContext } from '@nestjs/common';
-import { AuthGuard, IAuthGuard } from '@nestjs/passport';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { type ExecutionContext } from '@nestjs/common';
+import { AuthGuard, type IAuthGuard } from '@nestjs/passport';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
 
 import { LoginGuard } from './login.guard.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
+import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { KeycloakUserNotFoundError } from '../domain/keycloak-user-not-found.error.js';
 import { HttpFoundException } from '../../../shared/error/http.found.exception.js';
 import { AuthenticationErrorI18nTypes } from './dbiam-authentication.error.js';
 import { StepUpLevel } from '../passport/oidc.strategy.js';
 import { createExecutionContextMock, createRequestMock } from '../../../../test/utils/http.mocks.js';
-import { Session } from 'express-session';
+import { type Session } from 'express-session';
 import { createPersonPermissionsMock, createUserinfoResponseMock } from '../../../../test/utils/auth.mock.js';
-import { UserinfoResponse } from 'openid-client';
+import { type UserinfoResponse } from 'openid-client';
 
 const canActivateSpy: Mock = vi.spyOn(AuthGuard(['jwt', 'oidc']).prototype as IAuthGuard, 'canActivate');
 const logInSpy: Mock = vi.spyOn(AuthGuard(['jwt', 'oidc']).prototype as IAuthGuard, 'logIn');

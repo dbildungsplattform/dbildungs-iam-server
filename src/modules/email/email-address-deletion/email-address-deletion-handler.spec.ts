@@ -1,23 +1,23 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import {
     CommonTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
 } from '../../../../test/utils/index.js';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EventModule } from '../../../core/eventbus/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EmailRepo } from '../persistence/email.repo.js';
-import { PersonID, PersonUsername } from '../../../shared/types/index.js';
+import { type PersonID, type PersonUsername } from '../../../shared/types/index.js';
 import { EmailAddressDeletionModule } from './email-address-deletion.module.js';
 import { EmailAddressDeletionHandler } from './email-address-deletion-handler.js';
 import { LdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/ldap-email-address-deleted.event.js';
 import { EmailAddress, EmailAddressStatus } from '../domain/email-address.js';
 import { EmailAddressDeletionError } from '../error/email-address-deletion.error.js';
 import { OxEmailAddressDeletedEvent } from '../../../shared/events/ox/ox-email-address-deleted.event.js';
-import { OXContextID, OXContextName, OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { type OXContextID, type OXContextName, type OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { EmailAddressNotFoundError } from '../error/email-address-not-found.error.js';
 import { EmailAddressDeletedInDatabaseEvent } from '../../../shared/events/email/email-address-deleted-in-database.event.js';
 import { EmailAddressDeletionService } from './email-address-deletion.service.js';

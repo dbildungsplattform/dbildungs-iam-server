@@ -1,4 +1,4 @@
-import { PersonenkontextResponse } from './personenkontext.response.js';
+import { type PersonenkontextResponse } from './personenkontext.response.js';
 import { LoeschungResponse } from '../../../person/api/loeschung.response.js';
 
 import { Personenkontext } from '../../domain/personenkontext.js';
@@ -6,11 +6,11 @@ import { Personenkontext } from '../../domain/personenkontext.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import { OrganisationRepository } from '../../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { PersonApiMapper } from '../../../person/mapper/person-api.mapper.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
+import { type Rolle } from '../../../rolle/domain/rolle.js';
 import { faker } from '@faker-js/faker';
 
 describe('PersonenkontextResponse', () => {

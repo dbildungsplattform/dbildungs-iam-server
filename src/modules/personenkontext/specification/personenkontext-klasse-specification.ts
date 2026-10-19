@@ -1,12 +1,12 @@
-import { Personenkontext } from '../domain/personenkontext.js';
-import { NurLehrUndLernAnKlasse } from './nur-lehr-und-lern-an-klasse.js';
-import { GleicheRolleAnKlasseWieSchule } from './gleiche-rolle-an-klasse-wie-schule.js';
-import { DomainError } from '../../../shared/error/index.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
+import { type NurLehrUndLernAnKlasse } from './nur-lehr-und-lern-an-klasse.js';
+import { type GleicheRolleAnKlasseWieSchule } from './gleiche-rolle-an-klasse-wie-schule.js';
+import { type DomainError } from '../../../shared/error/index.js';
 import { NurLehrUndLernAnKlasseError } from './error/nur-lehr-und-lern-an-klasse.error.js';
 import { GleicheRolleAnKlasseWieSchuleError } from './error/gleiche-rolle-an-klasse-wie-schule.error.js';
-import { CheckRollenartSpecification } from './nur-gleiche-rolle.js';
+import { type CheckRollenartSpecification } from './nur-gleiche-rolle.js';
 import { UpdateInvalidRollenartForLernError } from '../domain/error/update-invalid-rollenart-for-lern.error.js';
-import { CheckBefristungSpecification } from './befristung-required-bei-rolle-befristungspflicht.js';
+import { type CheckBefristungSpecification } from './befristung-required-bei-rolle-befristungspflicht.js';
 import { PersonenkontextBefristungRequiredError } from '../domain/error/personenkontext-befristung-required.error.js';
 
 /**

@@ -1,28 +1,29 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { RolleID } from '../../../shared/types/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type RolleID } from '../../../shared/types/index.js';
 import { OrganisationResponse } from '../../organisation/api/organisation.response.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonenkontextFactory } from '../../personenkontext/domain/personenkontext.factory.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonenkontextRolleFieldsResponse } from '../api/personen-kontext-rolle-fields.response.js';
 import { RollenSystemRechtServiceProviderIDResponse } from '../api/rolle-systemrechte-serviceproviderid.response.js';
 import { PersonPermissionsRepo } from './person-permission.repo.js';
 import {
-    PermittedOrgas,
-    PersonenkontextRolleWithOrganisation,
-    PersonFields,
+    type PermittedOrgas,
+    type PersonenkontextRolleWithOrganisation,
+    type PersonFields,
     PersonPermissions,
 } from './person-permissions.js';
 
@@ -388,6 +389,69 @@ describe('PersonPermissions', () => {
             );
             expect(result).toBeTruthy();
             expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('getPermittedMerkmaleForOrga', () => {
+        it('should return the gated Merkmale whose paired rights are held at the organisation', async () => {
+            const person: Person<true> = DoFactory.createPerson(true);
+            dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockImplementation(
+                (_personId: string, _organisationId: OrganisationID, systemrecht: RollenSystemRecht) =>
+                    Promise.resolve(
+                        systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN ||
+                            systemrecht === RollenSystemRecht.PILOT_2_ROLLEN_ZUORDNEN,
+                    ),
+            );
+            const permissions: PersonPermissions = new PersonPermissions(
+                dbiamPersonenkontextRepoMock,
+                organisationRepoMock,
+                rolleRepoMock,
+                person,
+            );
+
+            const merkmale: RollenMerkmal[] = await permissions.getPermittedMerkmaleForOrga('orga-1');
+
+            expect(merkmale).toEqual([RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_2_ROLLE]);
+        });
+    });
+
+    describe('hasPermissionForRolleMerkmale', () => {
+        it('should require every matching system right', async () => {
+            const person: Person<true> = DoFactory.createPerson(true);
+            dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockImplementation(
+                (_personId: string, _organisationId: string, systemrecht: RollenSystemRecht) =>
+                    Promise.resolve(systemrecht === RollenSystemRecht.MPT_ROLLEN_ZUORDNEN),
+            );
+            const permissions: PersonPermissions = new PersonPermissions(
+                dbiamPersonenkontextRepoMock,
+                organisationRepoMock,
+                rolleRepoMock,
+                person,
+            );
+
+            const result: boolean = await permissions.hasPermissionForRolleMerkmale(
+                [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                'orga-1',
+            );
+
+            expect(result).toBe(false);
+        });
+
+        it('should allow roles without gated Merkmale without checking rights', async () => {
+            const permissions: PersonPermissions = new PersonPermissions(
+                dbiamPersonenkontextRepoMock,
+                organisationRepoMock,
+                rolleRepoMock,
+                DoFactory.createPerson(true),
+            );
+
+            const result: boolean = await permissions.hasPermissionForRolleMerkmale(
+                [RollenMerkmal.BEFRISTUNG_PFLICHT],
+                'orga-1',
+            );
+
+            expect(result).toBe(true);
+            expect(dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
         });
     });
 

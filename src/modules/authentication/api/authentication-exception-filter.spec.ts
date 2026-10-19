@@ -1,10 +1,10 @@
-import { ArgumentsHost, UnauthorizedException } from '@nestjs/common';
-import { Response } from 'express';
+import { type ArgumentsHost, UnauthorizedException } from '@nestjs/common';
+import { type Response } from 'express';
 import { AuthenticationDomainError } from '../domain/authentication-domain.error.js';
 import { AuthenticationExceptionFilter } from './authentication-exception-filter.js';
 import { AuthenticationErrorI18nTypes, DbiamAuthenticationError } from './dbiam-authentication.error.js';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { MockedObject } from 'vitest';
+import { type MockedObject } from 'vitest';
 
 describe('AuthenticationExceptionFilter', () => {
     let filter: AuthenticationExceptionFilter;

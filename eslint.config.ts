@@ -71,6 +71,10 @@ const customRules: Partial<Linter.RulesRecord> = {
         },
     ],
     '@typescript-eslint/no-empty-interface': ['error', { allowSingleExtends: true }],
+    '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+    ],
 };
 
 const customRulesTestsOnly: Partial<Linter.RulesRecord> = {

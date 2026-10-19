@@ -1,4 +1,4 @@
-import { EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
+import { type EmailAddressStatusEnum } from '../persistence/email-address-status.entity.js';
 
 export type EmailAddressStatus = {
     id?: string;

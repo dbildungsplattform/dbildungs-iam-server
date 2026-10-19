@@ -1,13 +1,13 @@
 import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AxiosResponse } from 'axios';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { DomainError, ItsLearningError } from '../../../../shared/error/index.js';
+import { type DomainError, ItsLearningError } from '../../../../shared/error/index.js';
 import { IMSESAction } from './actions/base-action.js';
 import { ItsLearningIMSESApiService } from './itslearning.api-service.js';
 

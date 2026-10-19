@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 
 import { ChangeUserAction } from './change-user.action.js';
-import { OXUserID } from '../../../../../../shared/types/ox-ids.types.js';
+import { type OXUserID } from '../../../../../../shared/types/ox-ids.types.js';
 
 describe('ChangeUserAction', () => {
     let username: string;

@@ -4,7 +4,7 @@ import {
     InvalidAttributeLengthError,
 } from '../../../shared/error/index.js';
 import { isDIN91379A, toDIN91379SearchForm } from '../../../shared/util/din-91379-validation.js';
-import { EmailRepo } from '../persistence/email.repo.js';
+import { type EmailRepo } from '../persistence/email.repo.js';
 import { EmailAddressGenerationAttemptsExceededError } from '../error/email-address-generation-attempts-exceeded.error.js';
 
 export class EmailGenerator {

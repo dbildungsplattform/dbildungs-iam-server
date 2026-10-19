@@ -2,9 +2,12 @@ import {
     EntityName,
     FilterQuery,
     ForeignKeyConstraintViolationException,
+    FindAllOptions,
     Loaded,
+    ObjectQuery,
     OrderDefinition,
     PopulatePath,
+    WithUsingOptions,
 } from '@mikro-orm/core';
 import { EntityManager, RawQueryFragment, sql } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
@@ -26,6 +29,7 @@ import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkonte
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { Rolle } from '../domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
@@ -106,12 +110,18 @@ export function mapRolleEntityToAggregate(entity: RolleEntity, rolleFactory: Rol
     );
 }
 
+export type GatedRollenFindScope = {
+    allowedOrganisationIds?: OrganisationID[];
+    authorizedMerkmale: RollenMerkmal[];
+};
+
 export type RolleFindByParameters = {
     includeTechnische?: boolean;
     searchStr?: string;
     allowedOrganisationIds?: OrganisationID[];
     rollenArten?: RollenArt[];
     excludeMerkmale?: RollenMerkmal[];
+    gatedRollenFindScopes?: GatedRollenFindScope[];
     requireMerkmale?: RollenMerkmal[];
     merkmale?: RollenMerkmal[];
     rolleIds?: RolleID[];
@@ -138,14 +148,31 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     organisationId: OrganisationID;
     allowedOrganisationIds: Array<OrganisationID>;
     allowedRollenarten: Array<RollenArt>;
-    mpt?: {
+    /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
+    gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
+        authorizedMerkmale: Array<RollenMerkmal>;
     };
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
     limit?: number;
     offset?: number;
 }
+
+type RolleFindAllOptions = WithUsingOptions<
+    FindAllOptions<
+        NoInfer<RolleEntity>,
+        | 'merkmale'
+        | 'systemrechte'
+        | 'serviceProvider.serviceProvider'
+        | 'serviceProvider.serviceProvider.merkmale'
+        | 'serviceProvider.serviceProvider.rollenartenWhitelist',
+        never,
+        'serviceProvider.serviceProvider.logo'
+    >,
+    NoInfer<RolleEntity>,
+    never
+>;
 
 @Injectable()
 export class RolleRepo {
@@ -295,19 +322,8 @@ export class RolleRepo {
         if (params.includeTechnische === undefined || params.includeTechnische === false) {
             queries.push({ istTechnisch: false });
         }
-        if (params.rollenArten) {
-            queries.push({ rollenart: params.rollenArten });
-        }
-        if (params.allowedOrganisationIds) {
-            queries.push({ administeredBySchulstrukturknoten: params.allowedOrganisationIds });
-        }
         if (params.searchStr) {
             queries.push({ name: { $ilike: '%' + params.searchStr + '%' } });
-        }
-        if (params.excludeMerkmale) {
-            for (const merkmal of params.excludeMerkmale) {
-                queries.push({ merkmale: { $none: { merkmal } } });
-            }
         }
         if (params.requireMerkmale) {
             for (const merkmal of params.requireMerkmale) {
@@ -321,11 +337,26 @@ export class RolleRepo {
             queries.push({ serviceProvider: { serviceProvider: { id: { $in: params.serviceProviderIds } } } });
         }
 
+        const roleScopeQuery: FilterQuery<NoInfer<RolleEntity>> = this.createRoleScopeQuery(params);
+        queries.push(roleScopeQuery);
         const baseQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
 
         // TODO: this can fail if there are more rollen than limit
         const finalQuery: FilterQuery<NoInfer<RolleEntity>> = params.rolleIds?.length
-            ? { $or: [baseQuery, { id: { $in: params.rolleIds } }] }
+            ? {
+                  $or: [
+                      baseQuery,
+                      {
+                          $and: [
+                              { id: { $in: params.rolleIds } },
+                              roleScopeQuery,
+                              ...(params.requireMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
+                                  merkmale: { $some: { merkmal } },
+                              })),
+                          ],
+                      },
+                  ],
+              }
             : baseQuery;
 
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
@@ -347,6 +378,71 @@ export class RolleRepo {
         return [rollen.map((rolle: RolleEntity) => mapRolleEntityToAggregate(rolle, this.rolleFactory)), total];
     }
 
+    private createRoleScopeQuery(params: RolleFindByParameters): FilterQuery<NoInfer<RolleEntity>> {
+        if (!params.gatedRollenFindScopes) {
+            const roleQueries: Array<FilterQuery<NoInfer<RolleEntity>>> = [];
+            if (params.rollenArten) {
+                roleQueries.push({ rollenart: params.rollenArten });
+            }
+            if (params.allowedOrganisationIds) {
+                roleQueries.push({ administeredBySchulstrukturknoten: params.allowedOrganisationIds });
+            }
+            if (params.excludeMerkmale) {
+                roleQueries.push(
+                    ...params.excludeMerkmale.map((merkmal: RollenMerkmal) => ({
+                        merkmale: { $none: { merkmal } },
+                    })),
+                );
+            }
+            return { $and: roleQueries };
+        }
+
+        const allGatedMerkmale: RollenMerkmal[] = Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE);
+        const nonGatedExcludedMerkmale: RollenMerkmal[] = (params.excludeMerkmale ?? []).filter(
+            (merkmal: RollenMerkmal) => !allGatedMerkmale.includes(merkmal),
+        );
+        const normalRoleQueries: Array<FilterQuery<NoInfer<RolleEntity>>> = [
+            { merkmale: { $none: { merkmal: { $in: allGatedMerkmale } } } },
+            ...nonGatedExcludedMerkmale.map((merkmal: RollenMerkmal) => ({
+                merkmale: { $none: { merkmal } },
+            })),
+        ];
+        if (params.rollenArten) {
+            normalRoleQueries.push({ rollenart: params.rollenArten });
+        }
+        if (params.allowedOrganisationIds) {
+            normalRoleQueries.push({ administeredBySchulstrukturknoten: params.allowedOrganisationIds });
+        }
+
+        const roleQueries: Array<FilterQuery<NoInfer<RolleEntity>>> = [{ $and: normalRoleQueries }];
+        for (const scope of params.gatedRollenFindScopes) {
+            if (scope.authorizedMerkmale.length === 0) {
+                continue;
+            }
+            const unauthorizedGatedMerkmale: RollenMerkmal[] = allGatedMerkmale.filter(
+                (merkmal: RollenMerkmal) => !scope.authorizedMerkmale.includes(merkmal),
+            );
+            const gatedRoleQueries: Array<FilterQuery<NoInfer<RolleEntity>>> = [
+                { merkmale: { $some: { merkmal: { $in: scope.authorizedMerkmale } } } },
+                ...unauthorizedGatedMerkmale.map((merkmal: RollenMerkmal) => ({
+                    merkmale: { $none: { merkmal } },
+                })),
+                ...nonGatedExcludedMerkmale.map((merkmal: RollenMerkmal) => ({
+                    merkmale: { $none: { merkmal } },
+                })),
+            ];
+            if (scope.allowedOrganisationIds) {
+                gatedRoleQueries.push({ administeredBySchulstrukturknoten: scope.allowedOrganisationIds });
+            }
+            if (params.rollenArten) {
+                gatedRoleQueries.push({ rollenart: params.rollenArten });
+            }
+            roleQueries.push({ $and: gatedRoleQueries });
+        }
+
+        return { $or: roleQueries };
+    }
+
     private mapParametersToOrderDefinition(params: RolleFindByParameters): OrderDefinition<RolleEntity> | undefined {
         switch (params.orderBy) {
             case 'artAndName':
@@ -360,7 +456,6 @@ export class RolleRepo {
 
     public async findRollenAuthorized(
         permissions: IPersonPermissions,
-        systemrechte: RollenSystemRecht[] | undefined,
         includeTechnische: boolean,
         searchStr?: string,
         limit?: number,
@@ -371,10 +466,10 @@ export class RolleRepo {
         rollenArten?: RollenArt[],
         serviceProviderIds?: ServiceProviderID[],
     ): Promise<[Rolle<true>[], number]> {
-        // Fallback to ROLLEN_VERWALTEN if no systemrechte are provided (this is the default behavior expected from the frontend)
         const orgIdsWithRecht: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
-            systemrechte ?? [RollenSystemRecht.ROLLEN_VERWALTEN],
+            [RollenSystemRecht.ROLLEN_VERWALTEN],
             false,
+            true,
         );
         if (!orgIdsWithRecht.all && orgIdsWithRecht.orgaIds.length === 0) {
             return [[], 0];
@@ -387,20 +482,12 @@ export class RolleRepo {
             allowedOrganisationIds = orgIdsWithRecht.orgaIds;
         }
 
-        // we can assume that MPT_ROLLEN_ZUORDNEN is not exclusive to a single orga here, since matchAll on permissions.getOrgIdsWithSystemrecht is true by default
-        const hasMptRollenZuordnenPermission: boolean =
-            systemrechte?.includes(RollenSystemRecht.MPT_ROLLEN_ZUORDNEN) ?? false;
-        const excludeMerkmale: RollenMerkmal[] | undefined = hasMptRollenZuordnenPermission
-            ? undefined
-            : [RollenMerkmal.MPT_ROLLE];
-
         return this.findBy({
             includeTechnische,
             searchStr,
             limit,
             offset,
             allowedOrganisationIds,
-            excludeMerkmale,
             rolleIds,
             orderBy: 'artAndName',
             merkmale,
@@ -480,46 +567,72 @@ export class RolleRepo {
     public async findRollenAvailableForPersonenkontextCreation(
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<Rolle<true>>> {
-        const stickyRollenEntities: Array<RolleEntity> = params.stickyRollenIds
-            ? await this.em.findAll(RolleEntity, {
-                  where: {
-                      id: { $in: params.stickyRollenIds },
-                  },
-                  populate: [
-                      'merkmale',
-                      'systemrechte',
-                      'serviceProvider.serviceProvider',
-                      'serviceProvider.serviceProvider.merkmale',
-                      'serviceProvider.serviceProvider.rollenartenWhitelist',
-                  ] as const,
-                  exclude: ['serviceProvider.serviceProvider.logo'] as const,
-              })
-            : [];
-
-        const where: FilterQuery<NoInfer<RolleEntity>> = {
+        const allowedRollenWhere: ObjectQuery<NoInfer<RolleEntity>> =
+            params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0
+                ? {
+                      $or: [
+                          {
+                              rollenart: { $in: params.allowedRollenarten },
+                              merkmale: {
+                                  $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
+                              },
+                          },
+                          {
+                              rollenart: { $in: params.gatedBucket.allowedRollenarten },
+                              $and: [
+                                  { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
+                                  {
+                                      merkmale: {
+                                          $none: {
+                                              merkmal: {
+                                                  $in: RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(
+                                                      params.gatedBucket.authorizedMerkmale,
+                                                  ),
+                                              },
+                                          },
+                                      },
+                                  },
+                              ],
+                          },
+                      ],
+                  }
+                : {
+                      rollenart: { $in: params.allowedRollenarten },
+                      merkmale: {
+                          $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
+                      },
+                  };
+        const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = {
             istTechnisch: false,
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
+            ...allowedRollenWhere,
+        };
+        const stickyFindOptions: RolleFindAllOptions = {
+            where: {
+                id: { $in: params.stickyRollenIds ?? [] },
+                ...creationScopeWhere,
+            },
+            populate: [
+                'merkmale',
+                'systemrechte',
+                'serviceProvider.serviceProvider',
+                'serviceProvider.serviceProvider.merkmale',
+                'serviceProvider.serviceProvider.rollenartenWhitelist',
+            ],
+            exclude: ['serviceProvider.serviceProvider.logo'],
+        };
+        const stickyRollenEntities: Array<RolleEntity> = params.stickyRollenIds
+            ? await this.em.findAll(RolleEntity, stickyFindOptions)
+            : [];
+
+        const where: ObjectQuery<NoInfer<RolleEntity>> = {
+            ...creationScopeWhere,
         };
         if (params.stickyRollenIds) {
             where.id = { $nin: params.stickyRollenIds };
         }
         if (params.searchStr) {
             where.name = { $ilike: `%${params.searchStr}%` };
-        }
-        if (params.mpt) {
-            where.$or = [
-                {
-                    rollenart: { $in: params.allowedRollenarten },
-                    merkmale: { $none: { merkmal: RollenMerkmal.MPT_ROLLE } },
-                },
-                {
-                    rollenart: { $in: params.mpt.allowedRollenarten },
-                    merkmale: { $some: { merkmal: RollenMerkmal.MPT_ROLLE } },
-                },
-            ];
-        } else {
-            where.rollenart = { $in: params.allowedRollenarten };
-            where.merkmale = { $none: { merkmal: RollenMerkmal.MPT_ROLLE } };
         }
         const [rollenEntities, count]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, where, {
             populate: [

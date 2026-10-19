@@ -1,16 +1,16 @@
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { KeycloackServiceProviderHandler } from './keycloack-service-provider.event-handler.js';
 import { KeycloakUserService } from '../keycloak-administration/index.js';
 import {
-    PersonenkontextUpdatedData,
+    type PersonenkontextUpdatedData,
     PersonenkontextUpdatedEvent,
-    PersonenkontextUpdatedPersonData,
+    type PersonenkontextUpdatedPersonData,
 } from '../../shared/events/personenkontext-updated.event.js';
-import { RolleID } from '../../shared/types/aggregate-ids.types.js';
+import { type RolleID } from '../../shared/types/aggregate-ids.types.js';
 import { faker } from '@faker-js/faker';
 import { RolleRepo } from '../rolle/repo/rolle.repo.js';
-import { Rolle } from '../rolle/domain/rolle.js';
+import { type Rolle } from '../rolle/domain/rolle.js';
 import { DoFactory } from '../../../test/utils/do-factory.js';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../../test/utils/index.js';
 

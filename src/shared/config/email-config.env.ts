@@ -1,10 +1,10 @@
-import { DbConfig } from './db.config.js';
-import { EmailConfig } from './email.config.js';
-import { HeaderApiKeyConfig } from './headerapikey.config.js';
-import { HostConfig } from './host.config.js';
-import { LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
-import { LoggingConfig } from './logging.config.js';
-import { OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
+import { type DbConfig } from './db.config.js';
+import { type EmailConfig } from './email.config.js';
+import { type HeaderApiKeyConfig } from './headerapikey.config.js';
+import { type HostConfig } from './host.config.js';
+import { type LdapEmailMicroserviceConfig } from './ldap-email-microservice.config.js';
+import { type LoggingConfig } from './logging.config.js';
+import { type OxEmailMicroserviceConfig } from './ox-email-microservice.config.js';
 import { envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 
 export type EmailAppConfig = {
@@ -12,6 +12,7 @@ export type EmailAppConfig = {
     LOGGING: Partial<LoggingConfig>;
     DB: Partial<DbConfig>;
     LDAP: Partial<LdapEmailMicroserviceConfig>;
+    LDAP_UNDI: Partial<LdapEmailMicroserviceConfig>;
     OX: Partial<OxEmailMicroserviceConfig>;
     EMAIL: Partial<EmailConfig>;
     HEADER_API_KEY: Partial<HeaderApiKeyConfig>;
@@ -37,6 +38,17 @@ export function getEmailConfig(): EmailAppConfig {
             OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_OEFFENTLICHE_SCHULEN_DOMAIN'],
             ERSATZSCHULEN_DOMAIN: process.env['LDAP_ERSATZSCHULEN_DOMAIN'],
             BASE_DN: process.env['LDAP_BASE_DN'],
+            RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
+            RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
+        },
+        LDAP_UNDI: {
+            ENABLED: envToOptionalBoolean('LDAP_UNDI_ENABLED'),
+            URL: process.env['LDAP_UNDI_URL'],
+            BIND_DN: process.env['LDAP_UNDI_BIND_DN'],
+            ADMIN_PASSWORD: process.env['LDAP_UNDI_ADMIN_PASSWORD'],
+            OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_UNDI_OEFFENTLICHE_SCHULEN_DOMAIN'],
+            ERSATZSCHULEN_DOMAIN: process.env['LDAP_UNDI_ERSATZSCHULEN_DOMAIN'],
+            BASE_DN: process.env['LDAP_UNDI_BASE_DN'],
             RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
             RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
         },

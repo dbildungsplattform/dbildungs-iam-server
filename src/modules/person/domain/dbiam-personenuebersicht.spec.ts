@@ -1,5 +1,5 @@
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { PersonService } from './person.service.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonRepository } from '../persistence/person.repository.js';
@@ -7,10 +7,10 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenuebersicht } from './dbiam-personenuebersicht.js';
 import { ConfigService } from '@nestjs/config';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { DBiamPersonenzuordnungResponse } from '../api/personenuebersicht/dbiam-personenzuordnung.response.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type DBiamPersonenzuordnungResponse } from '../api/personenuebersicht/dbiam-personenzuordnung.response.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { ConfigTestModule, DatabaseTestModule, DoFactory } from '../../../../test/utils/index.js';
 import { faker } from '@faker-js/faker';

@@ -1,7 +1,7 @@
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../organisation/domain/organisation.js';
+import { type Organisation } from '../../../organisation/domain/organisation.js';
 import { RollenArt } from '../rolle.enums.js';
-import { Rolle } from '../rolle.js';
+import { type Rolle } from '../rolle.js';
 
 /**
  * Needs to be refactored into a specification

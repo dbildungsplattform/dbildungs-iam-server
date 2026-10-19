@@ -1,5 +1,5 @@
 import { DomainError } from '../../../shared/error/index.js';
-import { EmailAddressID } from '../../../shared/types/aggregate-ids.types.js';
+import { type EmailAddressID } from '../../../shared/types/aggregate-ids.types.js';
 
 export class EmailAddressDeletionError extends DomainError {
     public constructor(id: EmailAddressID, address?: string, details?: unknown[] | Record<string, unknown>) {

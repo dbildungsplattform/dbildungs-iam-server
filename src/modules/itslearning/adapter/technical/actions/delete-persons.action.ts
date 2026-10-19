@@ -1,4 +1,4 @@
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { IMS_COMMON_SCHEMA, IMS_PERSON_MAN_MESS_SCHEMA } from '../../../schemas.js';
 import { IMSESMassAction } from './base-mass-action.js';
 

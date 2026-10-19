@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { EscalatedPersonPermissionsFactory } from './escalated-person-permissions.factory.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';
 import { DBiamPersonenkontextRepo } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissions } from './escalated-person-permissions.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 import { createPersonPermissionsMock } from '../../../test/utils/index.js';
-import { PersonPermissions } from '../authentication/domain/person-permissions.js';
-import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
+import { type PersonPermissions } from '../authentication/domain/person-permissions.js';
+import { type IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 
 describe('EscalatedPersonPermissionsFactory', () => {
     let sut: EscalatedPersonPermissionsFactory;

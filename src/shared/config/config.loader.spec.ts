@@ -1,8 +1,8 @@
 import fs from 'fs';
-import { PathLike } from 'node:fs';
+import { type PathLike } from 'node:fs';
 import 'reflect-metadata'; // some decorators use reflect-metadata in the background
-import { Mock } from 'vitest';
-import { DeepPartial } from '../../../test/utils/index.js';
+import { type Mock } from 'vitest';
+import { type DeepPartial } from '../../../test/utils/index.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { JsonConfig, loadConfigFiles, loadEmailAppConfigFiles } from './index.js';
 
@@ -424,6 +424,14 @@ describe('configloader', () => {
                     RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
                     RETRY_WRAPPER_DELAY_IN_MS: 15000,
                 },
+                LDAP_UNDI: {
+                    ENABLED: true,
+                    URL: 'ldap://localhost',
+                    BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
+                    BASE_DN: 'dc=schule-sh,dc=de',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
+                },
                 EMAIL: {
                     NON_ENABLED_EMAIL_ADDRESSES_DEADLINE_IN_DAYS: 90,
                 },
@@ -432,9 +440,10 @@ describe('configloader', () => {
                 },
             };
 
-            const secrets: DeepPartial<JsonConfig> = {
+            const secrets: DeepPartial<EmailAppConfig> = {
                 DB: { SECRET: 'SuperSecretSecret' },
                 LDAP: { ADMIN_PASSWORD: 'password' },
+                LDAP_UNDI: { ADMIN_PASSWORD: 'password' },
                 OX: {
                     PASSWORD: 'password',
                 },
@@ -487,6 +496,15 @@ describe('configloader', () => {
                     PASSWORD: 'x',
                 },
                 LDAP: {
+                    ENABLED: true,
+                    URL: 'ldap://localhost',
+                    BIND_DN: 'cn=admin,dc=schule-sh,dc=de',
+                    BASE_DN: 'dc=schule-sh,dc=de',
+                    ADMIN_PASSWORD: 'x',
+                    RETRY_WRAPPER_NUMBER_OF_RETRIES: 3,
+                    RETRY_WRAPPER_DELAY_IN_MS: 15000,
+                },
+                LDAP_UNDI: {
                     ENABLED: true,
                     URL: 'ldap://localhost',
                     BIND_DN: 'cn=admin,dc=schule-sh,dc=de',

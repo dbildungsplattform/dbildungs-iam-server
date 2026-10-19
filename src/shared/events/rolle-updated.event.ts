@@ -1,7 +1,7 @@
-import { RollenArt, RollenMerkmal } from '../../modules/rolle/domain/rolle.enums.js';
-import { RollenSystemRecht } from '../../modules/rolle/domain/systemrecht.js';
-import { Rolle } from '../../modules/rolle/domain/rolle.js';
-import { RolleID } from '../types/aggregate-ids.types.js';
+import { type RollenArt, type RollenMerkmal } from '../../modules/rolle/domain/rolle.enums.js';
+import { type RollenSystemRecht } from '../../modules/rolle/domain/systemrecht.js';
+import { type Rolle } from '../../modules/rolle/domain/rolle.js';
+import { type RolleID } from '../types/aggregate-ids.types.js';
 import { BaseEvent } from './base-event.js';
 
 export class RolleUpdatedEvent extends BaseEvent {

@@ -1,4 +1,4 @@
-import { ValidationError } from 'class-validator';
+import { type ValidationError } from 'class-validator';
 import { DomainError } from '../../error/domain.error.js';
 
 export class ConfigLoaderValidationError extends DomainError {

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { EmailAddressStatusEnum } from '../../persistence/email-address-status.entity.js';
 import { EmailAddressResponse } from '../dtos/response/email-address.response.js';
 import { EmailReadController } from './email-read.controller.js';
@@ -19,7 +19,7 @@ import { EmailAddressNotFoundError } from '../../error/email-address-not-found.e
 import { EmailAddressMissingStatusError } from '../../error/email-address-missing-status.error.js';
 import { EmailAddress } from '../../domain/email-address.js';
 import { FindEmailAddressPathParams } from '../dtos/params/find-email-address.pathparams.js';
-import { FindEmailAddressBySpshPersonIdsBodyParams } from '../dtos/params/find-email-addresses-by-spsh-person-ids.bodyparams.js';
+import { type FindEmailAddressBySpshPersonIdsBodyParams } from '../dtos/params/find-email-addresses-by-spsh-person-ids.bodyparams.js';
 
 describe('EmailReadController', () => {
     let emailReadController: EmailReadController;

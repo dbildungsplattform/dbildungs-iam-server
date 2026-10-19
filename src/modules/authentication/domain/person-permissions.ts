@@ -1,15 +1,17 @@
 import { intersection, uniq } from 'lodash-es';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID, PersonID, RolleID } from '../../../shared/types/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/index.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { Person } from '../../person/domain/person.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Person } from '../../person/domain/person.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { type DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { type RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 
 export type PersonFields = Pick<
     Person<true>,
@@ -144,6 +146,29 @@ export class PersonPermissions implements IPersonPermissions {
         systemrecht: RollenSystemRecht,
     ): Promise<boolean> {
         return this.personenkontextRepo.hasSystemrechtAtOrganisation(this.id, organisationId, systemrecht);
+    }
+
+    public async getPermittedMerkmaleForOrga(organisationId: OrganisationID): Promise<RollenMerkmal[]> {
+        const permissionsPerPaar: boolean[] = await Promise.all(
+            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) =>
+                this.hasSystemrechtAtOrganisation(organisationId, paar.systemrecht),
+            ),
+        );
+        return RollenmerkmalSystemrechtPaar.ALL.filter(
+            (_paar: RollenmerkmalSystemrechtPaar, index: number) => permissionsPerPaar[index],
+        ).map((paar: RollenmerkmalSystemrechtPaar) => paar.merkmal);
+    }
+
+    public async hasPermissionForRolleMerkmale(
+        merkmale: Iterable<RollenMerkmal>,
+        organisationId: OrganisationID,
+    ): Promise<boolean> {
+        const requiredMerkmale: RollenMerkmal[] = RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(merkmale);
+        if (requiredMerkmale.length === 0) {
+            return true;
+        }
+        const permittedMerkmale: RollenMerkmal[] = await this.getPermittedMerkmaleForOrga(organisationId);
+        return requiredMerkmale.every((merkmal: RollenMerkmal) => permittedMerkmale.includes(merkmal));
     }
 
     public async canModifyPerson(personId: PersonID): Promise<boolean> {

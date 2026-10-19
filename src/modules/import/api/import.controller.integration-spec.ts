@@ -1,14 +1,14 @@
 import { faker } from '@faker-js/faker';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { CallHandler, ExecutionContext, INestApplication } from '@nestjs/common';
+import { type CallHandler, type ExecutionContext, type INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Request } from 'express';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Request } from 'express';
 import * as fs from 'node:fs';
-import { Observable } from 'rxjs';
-import request, { Response } from 'supertest';
-import { App } from 'supertest/types.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { type Observable } from 'rxjs';
+import request, { type Response } from 'supertest';
+import { type App } from 'supertest/types.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     createPassportUserMock,
     createPersonPermissionsMock,
@@ -22,36 +22,36 @@ import { OrganisationEntity } from '../../organisation/persistence/organisation.
 
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
-import { KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
+import { type KeycloakAdminClient } from '@s3pweb/keycloak-admin-client-cjs';
 import path from 'node:path';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { PagedResponse } from '../../../shared/paging/paged.response.js';
+import { type PagedResponse } from '../../../shared/paging/paged.response.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { PassportUser } from '../../authentication/types/user.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PassportUser } from '../../authentication/types/user.js';
 import { KeycloakAdministrationService } from '../../keycloak-administration/domain/keycloak-admin-client.service.js';
 import { KeycloakUserService } from '../../keycloak-administration/domain/keycloak-user.service.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonEntity } from '../../person/persistence/person.entity.js';
 import { mapAggregateToData, PersonRepository } from '../../person/persistence/person.repository.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { ImportDataItem } from '../domain/import-data-item.js';
-import { ImportVorgang } from '../domain/import-vorgang.js';
+import { type ImportDataItem } from '../domain/import-data-item.js';
+import { type ImportVorgang } from '../domain/import-vorgang.js';
 import { ImportStatus } from '../domain/import.enums.js';
 import { ImportDataItemStatus } from '../domain/importDataItem.enum.js';
 import { ImportApiModule } from '../import-api.module.js';
 import { ImportDataRepository } from '../persistence/import-data.repository.js';
 import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
-import { ImportResultResponse } from './import-result.response.js';
-import { ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
-import { ImportVorgangResponse } from './importvorgang.response.js';
+import { type ImportResultResponse } from './import-result.response.js';
+import { type ImportvorgangByIdBodyParams } from './importvorgang-by-id.body.params.js';
+import { type ImportVorgangResponse } from './importvorgang.response.js';
 
 describe('Import API', () => {
     let app: INestApplication;

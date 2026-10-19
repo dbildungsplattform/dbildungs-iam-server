@@ -1,12 +1,12 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
-import { EmailAddress } from '../../../email/modules/core/domain/email-address.js';
+import { type EmailAddress } from '../../../email/modules/core/domain/email-address.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
 import {
-    DomainError,
+    type DomainError,
     EntityNotFoundError,
     MissingPermissionsError,
     MultipleRollenartenError,
@@ -14,15 +14,15 @@ import {
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressNotFoundError } from '../../email/error/email-address-not-found.error.js';
-import { Person } from '../../person/domain/person.js';
+import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
-    ExternalPkData,
+    type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { UserExternalData, UserExternaldataService } from './user-externaldata.service.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type UserExternalData, UserExternaldataService } from './user-externaldata.service.js';
 
 describe('UserExternaldataService', () => {
     let module: TestingModule;

@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
-import { Test, TestingModule } from '@nestjs/testing';
-import { Client } from 'openid-client';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { type Client } from 'openid-client';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
@@ -13,19 +13,19 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EntityNotFoundError, MissingAttributeError } from '../../../shared/error/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
-import { OrganisationID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { type OrganisationID, type ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { StreamableFileFactory } from '../../../shared/util/streamable-file.factory.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OIDC_CLIENT } from '../../authentication/services/oidc-client.service.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RollenerweiterungWithExtendedDataResponse } from '../../rolle/api/rollenerweiterung-with-extended-data.response.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { InvalidLogoCombinationError } from '../domain/errors/invalid-logo-combination.error.js';
@@ -37,11 +37,11 @@ import {
     ServiceProviderTarget,
 } from '../domain/service-provider.enum.js';
 import { ServiceProviderFactory } from '../domain/service-provider.factory.js';
-import { ServiceProvider } from '../domain/service-provider.js';
+import { type ServiceProvider } from '../domain/service-provider.js';
 import { ServiceProviderService } from '../domain/service-provider.service.js';
 import {
-    ManageableServiceProviderWithReferencedObjects,
-    ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
+    type ManageableServiceProviderWithReferencedObjects,
+    type ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from '../domain/types.js';
 import { ServiceProviderRepo } from '../repo/service-provider.repo.js';
 import { ServiceProviderApiModule } from '../service-provider-api.module.js';
@@ -50,8 +50,8 @@ import { CreateServiceProviderResponse } from './create-service-provider.respons
 import { FindAngeboteQueryParams } from './find-angebote-query.params.js';
 import { ManageableServiceProviderListEntryResponse } from './manageable-service-provider-list-entry.response.js';
 import { ManageableServiceProviderSimpleListEntryResponse } from './manageable-service-provider-simple-list-entry.response.js';
-import { ManageableServiceProvidersForOrganisationParams } from './manageable-service-providers-for-organisation.params.js';
-import { ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
+import { type ManageableServiceProvidersForOrganisationParams } from './manageable-service-providers-for-organisation.params.js';
+import { type ManageableServiceProvidersParams } from './manageable-service-providers.params.js';
 import { ProviderController } from './provider.controller.js';
 import { RollenerweiterungByServiceProvidersIdPathParams } from './rollenerweiterung-by-service-provider-id.pathparams.js';
 import { RollenerweiterungByServiceProvidersIdQueryParams } from './rollenerweiterung-by-service-provider-id.queryparams.js';
@@ -713,6 +713,7 @@ describe('Provider Controller Test', () => {
                     systemrechte: [RollenSystemRechtEnum.ROLLEN_ERWEITERN],
                     offset: 3,
                     limit: 25,
+                    rollenArten: [RollenArt.LEHR],
                 });
 
                 serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga.mockResolvedValueOnce([

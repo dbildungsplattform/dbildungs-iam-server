@@ -1,8 +1,8 @@
 import { EntityManager, MikroORM, UniqueConstraintViolationException } from '@mikro-orm/core';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { faker } from '@faker-js/faker';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { createMock } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule } from '../../../../test/utils/database-test.module.js';
@@ -13,11 +13,11 @@ import { createAndPersistServiceProvider } from '../../../../test/utils/service-
 import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeouts.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
-import { OrganisationID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationID, type ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { RollenArt } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';

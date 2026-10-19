@@ -1,6 +1,6 @@
-import { ArgumentsHost } from '@nestjs/common';
-import { Response } from 'express';
-import { ValidationError } from 'class-validator';
+import { type ArgumentsHost } from '@nestjs/common';
+import { type Response } from 'express';
+import { type ValidationError } from 'class-validator';
 import { DbiamValidationError, ValidationErrorI18nTypes } from '../validation/dbiam-validation.error.js';
 import { ValidationExceptionFilter } from './validation-exception-filter.js';
 import { DetailedValidationError } from '../validation/detailed-validation.error.js';

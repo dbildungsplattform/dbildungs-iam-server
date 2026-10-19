@@ -1,7 +1,7 @@
-import { DomainError } from '../../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../../shared/error/its-learning.error.js';
 import { IMS_COMMON_SCHEMA, IMS_PERSON_MAN_MESS_SCHEMA } from '../../../schemas.js';
-import { IMSESInstitutionRoleType } from '../../domain/role.enum.js';
+import { type IMSESInstitutionRoleType } from '../../domain/role.enum.js';
 import { IMSESAction } from './base-action.js';
 
 export type PersonResponse = {

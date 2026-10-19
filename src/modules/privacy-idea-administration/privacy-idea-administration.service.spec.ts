@@ -1,34 +1,34 @@
 import { faker } from '@faker-js/faker';
 import { HttpService } from '@nestjs/axios';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AxiosError, AxiosHeaders, AxiosResponse } from 'axios';
-import { Observable, of, throwError } from 'rxjs';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
+import { type Observable, of, throwError } from 'rxjs';
 import { ConfigTestModule, DoFactory } from '../../../test/utils/index.js';
 import { PersonenkontextService } from '../personenkontext/domain/personenkontext.service.js';
-import { ServiceProvider } from '../service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../service-provider/domain/service-provider.js';
 import { ServiceProviderService } from '../service-provider/domain/service-provider.service.js';
 import { OTPnotValidError } from './api/error/otp-not-valid.error.js';
 import { SoftwareTokenVerificationError } from './api/error/software-token-verification.error.js';
 import { TokenResetError } from './api/error/token-reset.error.js';
 import { PrivacyIdeaAdministrationService } from './privacy-idea-administration.service.js';
 import {
-    AssignTokenResponse,
-    PrivacyIdeaToken,
-    ResetTokenResponse,
-    TokenOTPSerialResponse,
-    TokenVerificationResponse,
-    User,
-    VerificationResponse,
+    type AssignTokenResponse,
+    type PrivacyIdeaToken,
+    type ResetTokenResponse,
+    type TokenOTPSerialResponse,
+    type TokenVerificationResponse,
+    type User,
+    type VerificationResponse,
 } from './privacy-idea-api.types.js';
 import { LoggingTestModule } from '../../../test/utils/logging-test.module.js';
-import { DomainError } from '../../shared/error/domain.error.js';
+import { type DomainError } from '../../shared/error/domain.error.js';
 import { DeleteUserError } from './api/error/delete-user.error.js';
 import { SoftwareTokenInitializationError } from './api/error/software-token-initialization.error.js';
 import { TokenStateError } from './api/error/token-state.error.js';
 import { PIUnavailableError } from './api/error/pi-unavailable.error.js';
-import { PersonUsername } from '../../shared/types/aggregate-ids.types.js';
-import { createMock, DeepMocked } from '../../../test/utils/createMock.js';
-import { Mock } from 'vitest';
+import { type PersonUsername } from '../../shared/types/aggregate-ids.types.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
+import { type Mock } from 'vitest';
 
 const mockErrorMsg: string = `Mock error`;
 

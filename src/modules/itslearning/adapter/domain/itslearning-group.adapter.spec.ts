@@ -1,16 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { createMock, DeepMocked } from '../../../../../test/utils/createMock.js';
-import { Test, TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { LoggingTestModule } from '../../../../../test/utils/index.js';
-import { DomainError } from '../../../../shared/error/domain.error.js';
+import { type DomainError } from '../../../../shared/error/domain.error.js';
 import { ItsLearningError } from '../../../../shared/error/its-learning.error.js';
-import { StatusInfo, MassResult } from '../technical/actions/base-mass-action.js';
+import { type StatusInfo, type MassResult } from '../technical/actions/base-mass-action.js';
 import { CreateGroupAction } from '../technical/actions/create-group.action.js';
-import { CreateGroupParams } from '../technical/actions/create-group.params.js';
+import { type CreateGroupParams } from '../technical/actions/create-group.params.js';
 import { CreateGroupsAction } from '../technical/actions/create-groups.action.js';
 import { DeleteGroupAction } from '../technical/actions/delete-group.action.js';
-import { GroupResponse, ReadGroupAction } from '../technical/actions/read-group.action.js';
+import { type GroupResponse, ReadGroupAction } from '../technical/actions/read-group.action.js';
 import { ItsLearningIMSESApiService } from '../technical/itslearning.api-service.js';
 import { ItslearningGroupAdapter } from './itslearning-group.adapter.js';
 import { DomainErrorMock } from '../../../../../test/utils/error.mock.js';

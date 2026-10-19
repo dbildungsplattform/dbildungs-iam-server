@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { DbSeedService } from './db-seed.service.js';
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
@@ -6,38 +6,41 @@ import fs from 'fs';
 import { DataProviderFile } from '../file/data-provider-file.js';
 import { PersonFactory } from '../../../modules/person/domain/person.factory.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EntityNotFoundError } from '../../../shared/error/index.js';
 import { faker } from '@faker-js/faker';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { Rolle } from '../../../modules/rolle/domain/rolle.js';
+import { type Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleFactory } from '../../../modules/rolle/domain/rolle.factory.js';
 import { ServiceProviderRepo } from '../../../modules/service-provider/repo/service-provider.repo.js';
 import { ServiceProviderFactory } from '../../../modules/service-provider/domain/service-provider.factory.js';
 import { KeycloakUserService, User } from '../../../modules/keycloak-administration/index.js';
-import { Person } from '../../../modules/person/domain/person.js';
+import { type Person } from '../../../modules/person/domain/person.js';
 import { DBiamPersonenkontextService } from '../../../modules/personenkontext/domain/dbiam-personenkontext.service.js';
 import { DbSeedReferenceRepo } from '../repo/db-seed-reference.repo.js';
-import { ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
+import { type ServiceProvider } from '../../../modules/service-provider/domain/service-provider.js';
 import { GleicheRolleAnKlasseWieSchuleError } from '../../../modules/personenkontext/specification/error/gleiche-rolle-an-klasse-wie-schule.error.js';
 import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/personenkontext.factory.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { KeycloakGroupRoleService } from '../../../modules/keycloak-administration/domain/keycloak-group-role.service.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
 import { NameForOrganisationWithTrailingSpaceError } from '../../../modules/organisation/specification/error/name-with-trailing-space.error.js';
 import { NameForRolleWithTrailingSpaceError } from '../../../modules/rolle/domain/name-with-trailing-space.error.js';
 import { RollenArt, RollenMerkmal } from '../../../modules/rolle/domain/rolle.enums.js';
 import { DBiamPersonenkontextRepoInternal } from '../../../modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { EmailDomainRepo } from '../../../email/modules/core/persistence/email-domain.repo.js';
-import { EmailDomain } from '../../../email/modules/core/domain/email-domain.js';
+import { type EmailDomain } from '../../../email/modules/core/domain/email-domain.js';
 import { DbSeedReference } from './db-seed-reference.js';
 import { ReferencedEntityType } from '../repo/db-seed-reference.entity.js';
 import { InvalidLogoCombinationError } from '../../../modules/service-provider/domain/errors/invalid-logo-combination.error.js';
-import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
-import { CreateRollenerweiterungError, Rollenerweiterung } from '../../../modules/rolle/domain/rollenerweiterung.js';
+import {
+    type CreateRollenerweiterungError,
+    type Rollenerweiterung,
+} from '../../../modules/rolle/domain/rollenerweiterung.js';
 import { ServiceProviderMerkmal } from '../../../modules/service-provider/domain/service-provider.enum.js';
 import { InternalRollenerweiterungService } from '../../../modules/rolle/domain/internal-rollenerweiterung.service.js';
 import { Err, Ok } from '../../../shared/util/result.js';
+import { type DataConfig, type ServerConfig } from '../../../shared/config/index.js';
 
 function createDbSeedReference(): DbSeedReference {
     return DbSeedReference.createNew(ReferencedEntityType.ORGANISATION, faker.number.int(), faker.string.uuid());

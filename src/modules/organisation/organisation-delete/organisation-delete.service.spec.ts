@@ -1,14 +1,14 @@
 import { faker } from '@faker-js/faker';
-import { Test, TestingModule } from '@nestjs/testing';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/index.js';
-import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { OrganisationID } from '../../../shared/types/index.js';
+import { type DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Err, Ok } from '../../../shared/util/result.js';
+import { type OrganisationID } from '../../../shared/types/index.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
