@@ -12,6 +12,7 @@ import { SchulconnexRepo } from './persistence/schulconnex.repo.js';
 import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.js';
 import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
+import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js';
 
 @Module({
     imports: [
@@ -24,7 +25,8 @@ import { EmailPersistenceModule } from '../email/email-persistence.module.js';
         EmailPersistenceModule,
         LoggerModule.register(SchulconnexModule.name),
     ],
-    providers: [PersonenInfoService, SchulconnexRepo, EntityAggregateMapper],
+    providers: [PersonenInfoService, SchulconnexRepo, EntityAggregateMapper, SchulconnexMapperService],
+    exports: [SchulconnexMapperService],
     controllers: [PersonInfoController, PersonenInfoController],
 })
 export class SchulconnexModule {}

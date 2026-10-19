@@ -27,6 +27,7 @@ import { IPersonPermissions } from '../../../../shared/permissions/person-permis
 import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulconnex-authentication-domain-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
+import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
 
 @UseFilters(
@@ -46,6 +47,7 @@ export class PersonInfoController {
         private readonly userLockRepo: UserLockRepository,
         private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
+        private readonly schulconnexMapper: SchulconnexMapperService,
     ) {
         this.logger.info(`Creating ${PersonInfoController.name}`);
     }
@@ -115,8 +117,8 @@ export class PersonInfoController {
         operationId: 'personInfoControllerInfoV2',
     })
     @ApiUnauthorizedResponse({ description: 'person is not logged in.' })
-    @ApiOkResponse({ description: 'Returns info about the person.', type: PersonInfoResponseV1 })
-    public async infoV2(@Permissions() permissions: IPersonPermissions): Promise<PersonInfoResponseV1> {
+    @ApiOkResponse({ description: 'Returns info about the person.', type: PersonInfoResponseV2 })
+    public async infoV2(@Permissions() permissions: IPersonPermissions): Promise<PersonInfoResponseV2> {
         const personId: string = permissions.personFields.id;
         const person: Option<Person<true>> = await this.personRepo.findById(personId);
 
@@ -138,6 +140,6 @@ export class PersonInfoController {
             this.userLockRepo.findByPersonId(personId),
         ]);
 
-        return PersonInfoResponseV2.createNew(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
+        return this.schulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
     }
 }
