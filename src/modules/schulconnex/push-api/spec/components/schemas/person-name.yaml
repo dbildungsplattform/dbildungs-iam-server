@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required:
+    - familienname
+    - vorname
+properties:
+    familienname:
+        type: string
+    vorname:
+        type: string
