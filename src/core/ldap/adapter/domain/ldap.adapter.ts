@@ -230,6 +230,13 @@ export class LdapAdapter {
         return this.executeWithRetry(() => this.organisationExistsInternal(kennung));
     }
 
+    public async findPersonByUsername(
+        personId: PersonID,
+        username: string,
+    ): Promise<Result<LdapPersonAttributes | null>> {
+        return this.executeWithRetry(() => this.findPersonByUsernameInternal(personId, username));
+    }
+
     private async organisationExistsInternal(orgaKennung: string): Promise<Result<boolean, Error>> {
         const result: Result<boolean, Error> = await this.addPersonToGroupMutex.runExclusive(async () => {
             this.logger.info(`LDAP: Checking if organisation ${orgaKennung} exists in LDAP`);
@@ -1379,6 +1386,94 @@ export class LdapAdapter {
             this.logger.info(`LDAP: Successfully deleted organisation with kennung:${kennung}.`);
 
             return Ok<string, Error>(kennung);
+        });
+
+        return result;
+    }
+
+    private async findPersonByUsernameInternal(
+        personId: PersonID,
+        username: PersonUsername,
+    ): Promise<Result<LdapPersonAttributes | null>> {
+        const result: Result<LdapPersonAttributes | null> = await this.mutex.runExclusive(async () => {
+            this.logger.info('LDAP: getPersonAttributes');
+            const client: Client = this.ldapClient.getClient();
+            const bindResult: Result<boolean> = await this.bind();
+            if (!bindResult.ok) {
+                return bindResult;
+            }
+
+            const searchResult: SearchResult = await client.search(`${this.ldapInstanceConfig.BASE_DN}`, {
+                scope: 'sub',
+                filter: `(uid=${username})`,
+                attributes: [
+                    LdapAdapter.DN,
+                    LdapAdapter.UID,
+                    LdapAdapter.GIVEN_NAME,
+                    LdapAdapter.SUR_NAME,
+                    LdapAdapter.COMMON_NAME,
+                    LdapAdapter.MAIL_PRIMARY_ADDRESS,
+                    LdapAdapter.MAIL_ALTERNATIVE_ADDRESS,
+                ],
+                returnAttributeValues: true,
+            });
+            if (!searchResult.searchEntries[0]) {
+                return Ok(null);
+            }
+
+            const givenName: Result<string> = this.getAttributeAsStringOrError(
+                searchResult.searchEntries[0],
+                LdapAdapter.GIVEN_NAME,
+                username,
+                personId,
+            );
+            if (!givenName.ok) {
+                this.logger.warning(`GivenName was undefined, username:${username}, personId:${personId}`);
+            }
+            const surName: Result<string> = this.getAttributeAsStringOrError(
+                searchResult.searchEntries[0],
+                LdapAdapter.SUR_NAME,
+                username,
+                personId,
+            );
+            if (!surName.ok) {
+                this.logger.warning(`Surname was undefined, username:${username}, personId:${personId}`);
+            }
+            const cn: Result<string> = this.getAttributeAsStringOrError(
+                searchResult.searchEntries[0],
+                LdapAdapter.COMMON_NAME,
+                username,
+                personId,
+            );
+            if (!cn.ok) {
+                this.logger.warning(`CN was undefined, username:${username}, personId:${personId}`);
+            }
+            const mailPrimaryAddress: Result<string> = this.getAttributeAsStringOrError(
+                searchResult.searchEntries[0],
+                LdapAdapter.MAIL_PRIMARY_ADDRESS,
+                username,
+                personId,
+            );
+            if (!mailPrimaryAddress.ok) {
+                this.logger.warning(`MailPrimaryAddress was undefined, username:${username}, personId:${personId}`);
+            }
+            const mailAlternativeAddress: Result<string> = this.getAttributeAsStringOrError(
+                searchResult.searchEntries[0],
+                LdapAdapter.MAIL_ALTERNATIVE_ADDRESS,
+                username,
+                personId,
+            );
+
+            const personAttributes: LdapPersonAttributes = {
+                dn: searchResult.searchEntries[0].dn,
+                givenName: givenName.ok ? givenName.value : undefined,
+                cn: cn.ok ? cn.value : undefined,
+                surName: surName.ok ? surName.value : undefined,
+                mailPrimaryAddress: mailPrimaryAddress.ok ? mailPrimaryAddress.value : undefined,
+                mailAlternativeAddress: mailAlternativeAddress.ok ? mailAlternativeAddress.value : undefined,
+            };
+
+            return { ok: true, value: personAttributes };
         });
 
         return result;

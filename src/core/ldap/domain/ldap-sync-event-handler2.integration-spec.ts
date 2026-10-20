@@ -430,6 +430,19 @@ describe('LdapSyncEventHandler with PostgreSQL and LDAP', () => {
         expect(await search(`(uid=${person.username})`)).toHaveLength(0);
     });
 
+    it('deletes the LDAP person when the person has no UEM context', async () => {
+        await createTeacher();
+        await personenkontextRepo.delete(personenkontext);
+
+        await sut.triggerLdapSync(person.id);
+
+        expect(await search(`(uid=${person.username})`)).toHaveLength(0);
+        expect(logger.info).toHaveBeenCalledWith(
+            `No relevant person contexts but LDAP entry found for person. Deleting LDAP entry. PersonId:${person.id}`,
+        );
+        expect(eventService.publish).not.toHaveBeenCalled();
+    });
+
     it('aborts when the organisation hierarchy has no LDAP OU', async () => {
         landOeffentlich.uemLdapOu = undefined;
         await organisationRepository.save(landOeffentlich);

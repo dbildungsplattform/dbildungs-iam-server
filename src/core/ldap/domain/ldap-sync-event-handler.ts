@@ -118,6 +118,18 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             organisationIDs,
         );
 
+        const ldapPerson: Result<LdapPersonAttributes | null> = await this.ldapClientAdapter.findPersonByUsername(
+            personId,
+            person.username,
+        );
+        if (personKontextWithUemRolle.length === 0 && ldapPerson.ok && ldapPerson.value) {
+            this.logger.info(
+                `No relevant person contexts but LDAP entry found for person. Deleting LDAP entry. PersonId:${personId}`,
+            );
+            await this.ldapClientAdapter.deleteLehrerByUsername(person.username);
+            return;
+        }
+
         // Delete all organisations from map which are NOT typ SCHULE
         for (const [orgaId, orga] of organisations.entries()) {
             if (orga.typ !== OrganisationsTyp.SCHULE) {

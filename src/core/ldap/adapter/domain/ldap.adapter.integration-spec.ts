@@ -244,6 +244,73 @@ describe('LDAP Adapter', () => {
     it('should be defined', () => {
         expect(em).toBeDefined();
     });
+
+    describe('findPersonByUsername', () => {
+        const username: PersonUsername = faker.internet.username();
+        const personId: PersonID = faker.string.uuid();
+        const entry: Entry = getPersonEntry(
+            `uid=${username},${mockLdapInstanceConfig.BASE_DN}`,
+            'Given',
+            'Surname',
+            username,
+            'primary@example.com',
+            'alternative@example.com',
+        );
+
+        it('should find and map a person by username', async () => {
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [entry], searchReferences: [] });
+
+            const result: Result<LdapPersonAttributes | null> = await ldapClientAdapter.findPersonByUsername(
+                personId,
+                username,
+            );
+
+            assert(result.ok);
+            expect(result.value).toEqual({
+                dn: entry.dn,
+                givenName: 'Given',
+                surName: 'Surname',
+                cn: username,
+                mailPrimaryAddress: 'primary@example.com',
+                mailAlternativeAddress: 'alternative@example.com',
+            });
+            expect(clientMock.search).toHaveBeenCalledWith(mockLdapInstanceConfig.BASE_DN, {
+                scope: 'sub',
+                filter: `(uid=${username})`,
+                attributes: ['dn', 'uid', 'givenName', 'sn', 'cn', 'mailPrimaryAddress', 'mailAlternativeAddress'],
+                returnAttributeValues: true,
+            });
+        });
+        it('should return the bind error without searching', async () => {
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockRejectedValueOnce(new Error('Bind failed'));
+
+            const result: Result<LdapPersonAttributes | null> = await ldapClientAdapter.findPersonByUsername(
+                personId,
+                username,
+            );
+
+            assert(!result.ok);
+            expect(result.error).toEqual(new LdapBindError());
+            expect(clientMock.search).not.toHaveBeenCalled();
+        });
+
+        it('should return null when the person is not found', async () => {
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.search.mockResolvedValueOnce({ searchEntries: [], searchReferences: [] });
+
+            const result: Result<LdapPersonAttributes | null> = await ldapClientAdapter.findPersonByUsername(
+                personId,
+                username,
+            );
+
+            expect(result).toEqual({ ok: true, value: null });
+        });
+    });
+
     describe('updateMemberDnInGroups', () => {
         const fakeOldUsername: PersonUsername = 'old-user';
         const fakeNewUsername: PersonUsername = 'new-user';
