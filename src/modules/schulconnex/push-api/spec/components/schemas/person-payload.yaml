@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required:
+    - referrer
+    - name
+properties:
+    referrer:
+        type: string
+        description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
+    name:
+        $ref: ./person-name.yaml

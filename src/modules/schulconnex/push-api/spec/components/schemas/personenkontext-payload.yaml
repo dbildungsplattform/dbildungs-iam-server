@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+required:
+    - referrer
+    - rolle
+    - spshRolleId
+    - erreichbarkeiten
+    - organisation
+properties:
+    referrer:
+        type: string
+        description: Kennung des Auslösers, der das Push-Ereignis verursacht hat.
+    rolle:
+        type: string
+        description: Rolle des Personenkontext nach Schulconnex Standard.
+    spshRolleId:
+        type: string
+        description: Kennung der spezifischen Rolle in dBildungs IAM. Es kann mehrere spezifische Rollenkennungen für die gleiche Schulconnex Rolle geben.
+    erreichbarkeiten:
+        type: array
+        items:
+            $ref: ./erreichbarkeit.yaml
+    personenstatus:
+        type:
+            - string
+            - 'null'
+        enum:
+            - Aktiv
+            - null
+    organisation:
+        $ref: ./organisation.yaml
