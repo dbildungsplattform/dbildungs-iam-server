@@ -1,0 +1,39 @@
+parameters:
+    - $ref: ../components/parameters/person-id.yaml
+    - $ref: ../components/parameters/personenkontext-id.yaml
+put:
+    tags:
+        - Personenkontexte
+    operationId: upsertPersonenkontext
+    summary: Personenkontext anlegen oder aktualisieren
+    description: Legt einen Personenkontext an oder aktualisiert ihn anhand der stabilen Kennungen in der Route.
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    $ref: ../components/schemas/personenkontext-payload.yaml
+    responses:
+        '202':
+            description: Anfrage zum Anlegen oder Aktualisieren eines Personenkontexts wurde akzeptiert.
+        '400':
+            description: Übermittelter Request-Body ist ungültig.
+            content:
+                application/json:
+                    schema:
+                        $ref: ../components/schemas/error-response.yaml
+delete:
+    tags:
+        - Personenkontexte
+    operationId: deletePersonenkontext
+    summary: Personenkontext löschen
+    description: Löscht einen Personenkontext im Zielsystem.
+    responses:
+        '202':
+            description: Anfrage zum Löschen eines Personenkontexts wurde akzeptiert.
+        '400':
+            description: Anfrage ist ungültig.
+            content:
+                application/json:
+                    schema:
+                        $ref: ../components/schemas/error-response.yaml
