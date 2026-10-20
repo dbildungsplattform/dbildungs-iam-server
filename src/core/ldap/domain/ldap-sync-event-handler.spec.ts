@@ -580,6 +580,10 @@ describe('LdapSyncEventHandler', () => {
                     new Map<OrganisationID, Organisation<true>>(),
                     new Map<RolleID, Rolle<true>>(),
                 );
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: true,
+                    value: null,
+                });
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
