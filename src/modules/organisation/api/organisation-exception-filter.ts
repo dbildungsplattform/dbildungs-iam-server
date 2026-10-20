@@ -12,6 +12,7 @@ import { OrganisationHasZugehoerigeError } from '../organisation-delete/errors/o
 import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
+import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
@@ -33,6 +34,13 @@ import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from 
 @Catch(OrganisationSpecificationError)
 export class OrganisationExceptionFilter implements ExceptionFilter<OrganisationSpecificationError> {
     private ERROR_MAPPINGS: Map<string, DbiamOrganisationError> = new Map([
+        [
+            KennungOnlyForSchuleError.name,
+            new DbiamOrganisationError({
+                code: 400,
+                i18nKey: OrganisationSpecificationErrorI18nTypes.KENNUNG_ONLY_FOR_SCHULE,
+            }),
+        ],
         [
             BehoerdeNameEindeutigError.name,
             new DbiamOrganisationError({

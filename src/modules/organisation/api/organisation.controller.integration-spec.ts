@@ -19,6 +19,7 @@ import {
 import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
 import { SharedErrorI18nTypes } from '../../../shared/error/dbiam-shared.error.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { type OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
@@ -40,7 +41,6 @@ import { OrganisationApiModule } from '../organisation-api.module.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
-import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 
 describe('Organisation API', () => {
     let app: INestApplication;
@@ -133,6 +133,145 @@ describe('Organisation API', () => {
 
     beforeEach(async () => {
         await DatabaseTestModule.clearDatabase(orm);
+    });
+
+    describe('/POST organisation kennung', () => {
+        it('should reject a kennung for a non-school organisation without persisting it', async () => {
+            const parent: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND, kennung: undefined }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen')
+                .send({
+                    typ: OrganisationsTyp.SONSTIGE,
+                    name: 'Organisation with forbidden kennung',
+                    kennung: '1234567',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                });
+
+            expect(response.status).toBe(400);
+            expect(response.body).toEqual(
+                expect.objectContaining({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.KENNUNG_ONLY_FOR_SCHULE,
+                }),
+            );
+            expect(await em.fork().count(OrganisationEntity, {})).toBe(1);
+        });
+
+        it('should create a school with a kennung', async () => {
+            const parent: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND, kennung: undefined }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen')
+                .send({
+                    typ: OrganisationsTyp.SCHULE,
+                    name: 'School with kennung',
+                    kennung: '1234567',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                });
+
+            expect(response.status).toBe(201);
+            const storedOrganisation: OrganisationEntity = await em
+                .fork()
+                .findOneOrFail(OrganisationEntity, { name: 'School with kennung' });
+            expect(storedOrganisation.kennung).toBe('1234567');
+        });
+
+        it('should create a non-school organisation without a kennung', async () => {
+            const parent: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND, kennung: undefined }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen')
+                .send({
+                    typ: OrganisationsTyp.SONSTIGE,
+                    name: 'Organisation without kennung',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                });
+
+            expect(response.status).toBe(201);
+            const storedOrganisation: OrganisationEntity = await em
+                .fork()
+                .findOneOrFail(OrganisationEntity, { name: 'Organisation without kennung' });
+            expect(storedOrganisation.kennung).toBeUndefined();
+        });
+    });
+
+    describe('/PUT organisation kennung', () => {
+        it('should preserve the stored school kennung when another kennung is submitted', async () => {
+            const parent: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND, kennung: undefined }),
+            );
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                    kennung: '1234567',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(`/organisationen/${organisation.id}`)
+                .send({
+                    typ: OrganisationsTyp.SCHULE,
+                    name: 'Updated school',
+                    kennung: '7654321',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                });
+
+            expect(response.status).toBe(200);
+            const storedOrganisation: OrganisationEntity = await em
+                .fork()
+                .findOneOrFail(OrganisationEntity, organisation.id);
+            expect(storedOrganisation.name).toBe('Updated school');
+            expect(storedOrganisation.kennung).toBe('1234567');
+        });
+
+        it('should leave a non-school kennung unset when a kennung is submitted', async () => {
+            const parent: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND, kennung: undefined }),
+            );
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SONSTIGE,
+                    kennung: undefined,
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                }),
+            );
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(`/organisationen/${organisation.id}`)
+                .send({
+                    typ: OrganisationsTyp.SONSTIGE,
+                    name: 'Updated organisation',
+                    kennung: '7654321',
+                    administriertVon: parent.id,
+                    zugehoerigZu: parent.id,
+                });
+
+            expect(response.status).toBe(200);
+            const storedOrganisation: OrganisationEntity = await em
+                .fork()
+                .findOneOrFail(OrganisationEntity, organisation.id);
+            expect(storedOrganisation.name).toBe('Updated organisation');
+            expect(storedOrganisation.kennung).toBeUndefined();
+        });
     });
 
     describe('/PUT organisation authorization', () => {

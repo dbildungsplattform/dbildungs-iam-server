@@ -21,6 +21,7 @@ import { EmailAdressOnOrganisationTyp } from '../specification/email-on-organisa
 import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
+import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
@@ -148,6 +149,14 @@ export class OrganisationService {
         organisationDo: Organisation<false>,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
+        const kennungError: DomainError | undefined = this.validateKennungForTyp(
+            organisationDo.typ,
+            organisationDo.kennung,
+        );
+        if (kennungError) {
+            return { ok: false, error: kennungError };
+        }
+
         const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
         if (referenceError) {
             await this.logCreation(permissions, organisationDo, referenceError);
@@ -282,6 +291,16 @@ export class OrganisationService {
         organisation.traegerschaft = updateData.traegerschaft;
         organisation.emailAdress = updateData.emailAdress;
         organisation.updatedAt = new Date();
+    }
+
+    private validateKennungForTyp(
+        typ: OrganisationsTyp | undefined,
+        kennung: string | undefined,
+    ): DomainError | undefined {
+        if (kennung !== undefined && kennung !== null && typ !== OrganisationsTyp.SCHULE) {
+            return new KennungOnlyForSchuleError();
+        }
+        return undefined;
     }
 
     private checkSourcePermisson(organisation: Organisation<true>, permissions: IPersonPermissions): Promise<boolean> {

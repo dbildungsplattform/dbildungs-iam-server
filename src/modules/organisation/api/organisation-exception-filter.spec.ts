@@ -2,11 +2,12 @@ import { type ArgumentsHost } from '@nestjs/common';
 import { type Response } from 'express';
 import { type MockedObject } from 'vitest';
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
+import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
-import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
-import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 
 describe('OrganisationExceptionFilter', () => {
     let filter: OrganisationExceptionFilter;
@@ -26,6 +27,18 @@ describe('OrganisationExceptionFilter', () => {
     });
 
     describe('catch', () => {
+        it('should map KennungOnlyForSchuleError to its validation key', () => {
+            filter.catch(new KennungOnlyForSchuleError(), argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(400);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.KENNUNG_ONLY_FOR_SCHULE,
+                }),
+            );
+        });
+
         it('should map BehoerdeNameEindeutigError to its validation key', () => {
             const error: BehoerdeNameEindeutigError = new BehoerdeNameEindeutigError();
 

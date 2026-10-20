@@ -19,6 +19,7 @@ import { OrganisationRepository } from '../persistence/organisation.repository.j
 import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
+import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
@@ -35,6 +36,16 @@ import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-
 import { OrganisationsTyp, RootDirectChildrenType, Traegerschaft } from './organisation.enums.js';
 import { type Organisation } from './organisation.js';
 import { OrganisationService, type UpdateOrganisationData } from './organisation.service.js';
+
+function createOrganisation<WasPersisted extends boolean>(
+    withId: WasPersisted,
+    props?: Partial<Organisation<false>>,
+): Organisation<WasPersisted> {
+    return DoFactory.createOrganisation(withId, {
+        kennung: props?.typ === OrganisationsTyp.SCHULE ? '1234567' : undefined,
+        ...props,
+    });
+}
 
 describe('OrganisationService', () => {
     let module: TestingModule;
@@ -70,6 +81,24 @@ describe('OrganisationService', () => {
 
     describe('createOrganisation', () => {
         const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+        it.each(Object.values(OrganisationsTyp).filter((typ: OrganisationsTyp) => typ !== OrganisationsTyp.SCHULE))(
+            'should reject a kennung for %s before saving',
+            async (typ: OrganisationsTyp) => {
+                const organisation: Organisation<false> = DoFactory.createOrganisation(false, {
+                    typ,
+                    kennung: '1234567',
+                });
+
+                const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                    organisation,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({ ok: false, error: new KennungOnlyForSchuleError() });
+                expect(organisationRepositoryMock.save).not.toHaveBeenCalled();
+            },
+        );
+
         const organisationUser: Organisation<true> = DoFactory.createOrganisation(true);
         const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
             {
@@ -79,7 +108,7 @@ describe('OrganisationService', () => {
         ];
 
         it('should create an organisation', async () => {
-            const organisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const organisation: Organisation<false> = createOrganisation(false);
             organisationRepositoryMock.save.mockResolvedValue(organisation as unknown as Organisation<true>);
             const result: Result<Organisation<true>> = await organisationService.createOrganisation(
                 organisation,
@@ -112,7 +141,7 @@ describe('OrganisationService', () => {
 
         it('should create a Klasse and log its creation', async () => {
             const schule: Organisation<true> = DoFactory.createOrganisation(true);
-            const klasse: Organisation<false> = DoFactory.createOrganisation(false);
+            const klasse: Organisation<false> = createOrganisation(false);
             schule.typ = OrganisationsTyp.SCHULE;
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.administriertVon = schule.id;
@@ -140,7 +169,7 @@ describe('OrganisationService', () => {
         it('should fail to create a Klasse and log the creation attempt', async () => {
             const schule: Organisation<true> = DoFactory.createOrganisation(true);
             organisationRepositoryMock.findById.mockResolvedValueOnce(schule);
-            const klasse: Organisation<false> = DoFactory.createOrganisation(false);
+            const klasse: Organisation<false> = createOrganisation(false);
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.zugehoerigZu = schule.id;
             klasse.administriertVon = schule.id;
@@ -160,7 +189,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error if first parent organisation does not exist', async () => {
-            const organisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const organisation: Organisation<false> = createOrganisation(false);
             organisation.administriertVon = faker.string.uuid();
             organisationRepositoryMock.exists.mockResolvedValueOnce(false);
 
@@ -178,7 +207,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error if second parent organisation does not exist', async () => {
-            const organisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const organisation: Organisation<false> = createOrganisation(false);
             organisation.zugehoerigZu = faker.string.uuid();
             organisationRepositoryMock.exists.mockResolvedValueOnce(false);
 
@@ -239,7 +268,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error if type is klasse and email is set', async () => {
-            const organisation: Organisation<false> = DoFactory.createOrganisation(false, {
+            const organisation: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.KLASSE,
                 emailAdress: 'klassenmail123@spsh.de',
                 name: 'Klasse123',
@@ -293,7 +322,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error', async () => {
-            const organisation: Organisation<false> = DoFactory.createOrganisation(false);
+            const organisation: Organisation<false> = createOrganisation(false);
             organisation.id = faker.string.uuid();
             const result: Result<Organisation<true>> = await organisationService.createOrganisation(
                 organisation,
@@ -306,7 +335,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if name contains trailing space', async () => {
-            const organisationDo: Organisation<false> = DoFactory.createOrganisation(false, { name: ' name' });
+            const organisationDo: Organisation<false> = createOrganisation(false, { name: ' name' });
             organisationRepositoryMock.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
             const result: Result<Organisation<true>> = await organisationService.createOrganisation(
                 organisationDo,
@@ -319,7 +348,10 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if kennung contains trailing space', async () => {
-            const organisationDo: Organisation<false> = DoFactory.createOrganisation(false, { kennung: ' ' });
+            const organisationDo: Organisation<false> = createOrganisation(false, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: ' ',
+            });
             organisationRepositoryMock.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
             const result: Result<Organisation<true>> = await organisationService.createOrganisation(
                 organisationDo,
@@ -332,7 +364,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if name contains no letter nor number', async () => {
-            const organisationDo: Organisation<false> = DoFactory.createOrganisation(false, {
+            const organisationDo: Organisation<false> = createOrganisation(false, {
                 name: '-',
                 typ: OrganisationsTyp.KLASSE,
             });
@@ -368,7 +400,7 @@ describe('OrganisationService', () => {
                 name,
                 zugehoerigZu: ersatz.id,
             });
-            const schultraeger: Organisation<false> = DoFactory.createOrganisation(false, {
+            const schultraeger: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.TRAEGER,
                 name,
                 zugehoerigZu: oeffentlich.id,
@@ -406,7 +438,7 @@ describe('OrganisationService', () => {
             const oeffentlich: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.LAND,
             });
-            const schultraeger: Organisation<false> = DoFactory.createOrganisation(false, {
+            const schultraeger: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.TRAEGER,
                 name: name,
                 zugehoerigZu: oeffentlich.id,
@@ -448,6 +480,7 @@ describe('OrganisationService', () => {
             });
             const schultraeger: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
                 typ: OrganisationsTyp.TRAEGER,
+                kennung: undefined,
             });
 
             // mock root nodes for specification
@@ -470,7 +503,7 @@ describe('OrganisationService', () => {
         it('should create a Behoerde when name is unique and administriertVon is a Land', async () => {
             organisationRepositoryMock.exists.mockResolvedValue(true);
             const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
-            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+            const behoerde: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: land.id,
             });
@@ -494,7 +527,7 @@ describe('OrganisationService', () => {
             const parentBehoerde: Organisation<true> = DoFactory.createOrganisation(true, {
                 typ: OrganisationsTyp.BEHOERDE,
             });
-            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+            const behoerde: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: parentBehoerde.id,
             });
@@ -515,7 +548,7 @@ describe('OrganisationService', () => {
 
         it('should return a domain error if Behoerde administriertVon is not set', async () => {
             organisationRepositoryMock.exists.mockResolvedValue(true);
-            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+            const behoerde: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: undefined,
             });
@@ -534,7 +567,7 @@ describe('OrganisationService', () => {
         it('should return a domain error if Behoerde administriertVon is neither Behoerde nor Land', async () => {
             organisationRepositoryMock.exists.mockResolvedValue(true);
             const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
-            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+            const behoerde: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: schule.id,
             });
@@ -555,7 +588,7 @@ describe('OrganisationService', () => {
             organisationRepositoryMock.exists.mockResolvedValue(true);
             const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
             const name: string = faker.company.name();
-            const behoerde: Organisation<false> = DoFactory.createOrganisation(false, {
+            const behoerde: Organisation<false> = createOrganisation(false, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: land.id,
                 name,
@@ -581,6 +614,28 @@ describe('OrganisationService', () => {
 
     describe('updateOrganisation', () => {
         const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+        it('should preserve the stored kennung even when the input contains another kennung', async () => {
+            const organisation: Organisation<true> = createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const updateData: Organisation<true> = createOrganisation(true, {
+                ...organisation,
+                kennung: '7654321',
+            });
+            organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
+            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+            organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
+            organisationRepositoryMock.save.mockResolvedValueOnce(organisation);
+
+            const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                updateData,
+                permissionsMock,
+            );
+
+            expect(result).toEqual({ ok: true, value: organisation });
+            expect(organisationRepositoryMock.save).toHaveBeenCalledWith(
+                expect.objectContaining({ kennung: '1234567' }),
+            );
+        });
 
         const organisationUser: Organisation<true> = DoFactory.createOrganisation(true);
         const personenkontextewithRolesMock: PersonenkontextRolleWithOrganisation[] = [
@@ -788,6 +843,7 @@ describe('OrganisationService', () => {
                 expect(organisation.typ).toBe(OrganisationsTyp.SCHULE);
                 expect(organisation.administriertVon).toBe(originalOrganisation.administriertVon);
                 expect(organisation.zugehoerigZu).toBe(originalOrganisation.zugehoerigZu);
+                expect(organisation.kennung).toBe(originalOrganisation.kennung);
                 expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).toHaveBeenCalledExactlyOnceWith(
                     originalOrganisation.typ,
                     originalOrganisation.administriertVon,
@@ -852,7 +908,7 @@ describe('OrganisationService', () => {
         describe('when an organisation administers itself', () => {
             it('should reject the update before checking references', async () => {
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                const organisation: Organisation<true> = createOrganisation(true, {
                     typ: OrganisationsTyp.SONSTIGE,
                 });
                 organisation.administriertVon = organisation.id;
@@ -875,7 +931,7 @@ describe('OrganisationService', () => {
         describe('when an organisation belongs to itself', () => {
             it('should reject the update before checking references', async () => {
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                const organisation: Organisation<true> = createOrganisation(true, {
                     typ: OrganisationsTyp.SONSTIGE,
                 });
                 organisation.zugehoerigZu = organisation.id;
@@ -905,7 +961,7 @@ describe('OrganisationService', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     administriertVon: storedOrganisation.id,
                 });
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                const organisation: Organisation<true> = createOrganisation(true, {
                     id: storedOrganisation.id,
                     typ: OrganisationsTyp.SONSTIGE,
                     administriertVon: child.id,
@@ -938,7 +994,7 @@ describe('OrganisationService', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     zugehoerigZu: storedOrganisation.id,
                 });
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                const organisation: Organisation<true> = createOrganisation(true, {
                     id: storedOrganisation.id,
                     typ: OrganisationsTyp.SONSTIGE,
                     zugehoerigZu: child.id,
@@ -964,7 +1020,7 @@ describe('OrganisationService', () => {
         describe('when the administering organisation does not exist', () => {
             it('should reject the update', async () => {
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+                const organisation: Organisation<true> = createOrganisation(true);
                 organisation.administriertVon = faker.string.uuid();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
                 organisationRepositoryMock.exists.mockResolvedValueOnce(false);
@@ -986,7 +1042,7 @@ describe('OrganisationService', () => {
         describe('when the organisation to belong to does not exist', () => {
             it('should reject the update', async () => {
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-                const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+                const organisation: Organisation<true> = createOrganisation(true);
                 organisation.zugehoerigZu = faker.string.uuid();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(organisation);
                 organisationRepositoryMock.exists.mockResolvedValueOnce(false);
@@ -1007,7 +1063,7 @@ describe('OrganisationService', () => {
 
         it('should update an organisation with existing parent references', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            const organisation: Organisation<true> = createOrganisation(true, {
                 administriertVon: faker.string.uuid(),
                 zugehoerigZu: faker.string.uuid(),
             });
@@ -1047,7 +1103,7 @@ describe('OrganisationService', () => {
 
         it('should update an organisation', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+            const organisation: Organisation<true> = createOrganisation(true);
             organisationRepositoryMock.save.mockResolvedValue(organisation);
             organisationRepositoryMock.findById.mockResolvedValue(organisation);
             const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
@@ -1064,7 +1120,7 @@ describe('OrganisationService', () => {
             it('should update with its own unchanged name', async () => {
                 permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
                 const parent: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
-                const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                const behoerde: Organisation<true> = createOrganisation(true, {
                     typ: OrganisationsTyp.BEHOERDE,
                     administriertVon: parent.id,
                 });
@@ -1094,7 +1150,7 @@ describe('OrganisationService', () => {
                     typ: OrganisationsTyp.BEHOERDE,
                     administriertVon: land.id,
                 });
-                const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+                const behoerde: Organisation<true> = createOrganisation(true, {
                     typ: OrganisationsTyp.BEHOERDE,
                     administriertVon: parent.id,
                 });
@@ -1124,7 +1180,7 @@ describe('OrganisationService', () => {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: land.id,
             });
-            const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+            const behoerde: Organisation<true> = createOrganisation(true, {
                 id: storedBehoerde.id,
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: storedBehoerde.id,
@@ -1166,7 +1222,7 @@ describe('OrganisationService', () => {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: child.id,
             });
-            const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+            const behoerde: Organisation<true> = createOrganisation(true, {
                 id: storedBehoerde.id,
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: descendant.id,
@@ -1198,7 +1254,7 @@ describe('OrganisationService', () => {
         it('should reject updating a Behoerde administered by a Schule', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
-            const behoerde: Organisation<true> = DoFactory.createOrganisation(true, {
+            const behoerde: Organisation<true> = createOrganisation(true, {
                 typ: OrganisationsTyp.BEHOERDE,
                 administriertVon: schule.id,
             });
@@ -1220,7 +1276,7 @@ describe('OrganisationService', () => {
         it('should reject changing an organisation to a Behoerde with a duplicate name', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const land: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            const organisation: Organisation<true> = createOrganisation(true, {
                 typ: OrganisationsTyp.TRAEGER,
                 administriertVon: land.id,
             });
@@ -1272,7 +1328,7 @@ describe('OrganisationService', () => {
         it('should update a Klasse and log the update', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const schule: Organisation<true> = DoFactory.createOrganisation(true);
-            const klasse: Organisation<true> = DoFactory.createOrganisation(true);
+            const klasse: Organisation<true> = createOrganisation(true);
             schule.typ = OrganisationsTyp.SCHULE;
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.administriertVon = schule.id;
@@ -1301,7 +1357,7 @@ describe('OrganisationService', () => {
         it('should fail to update a Klasse and log the update attempt', async () => {
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             const schule: Organisation<true> = DoFactory.createOrganisation(true);
-            const klasse: Organisation<true> = DoFactory.createOrganisation(true);
+            const klasse: Organisation<true> = createOrganisation(true);
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.zugehoerigZu = schule.id;
             organisationRepositoryMock.findById.mockResolvedValueOnce(klasse);
@@ -1321,7 +1377,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error', async () => {
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true);
+            const organisation: Organisation<true> = createOrganisation(true);
             organisation.id = '';
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             organisationRepositoryMock.findById.mockResolvedValue(organisation);
@@ -1380,7 +1436,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return a domain error if type is klasse and email is set', async () => {
-            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            const organisation: Organisation<true> = createOrganisation(true, {
                 typ: OrganisationsTyp.KLASSE,
                 emailAdress: 'klassenmail123@spsh.de',
                 name: 'Klasse123',
@@ -1475,7 +1531,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if name contains trailing space', async () => {
-            const organisationDo: Organisation<true> = DoFactory.createOrganisation(true, { name: '  ' });
+            const organisationDo: Organisation<true> = createOrganisation(true, { name: '  ' });
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
             const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
@@ -1489,7 +1545,10 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if kennung contains trailing space', async () => {
-            const organisationDo: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'kennung ' });
+            const organisationDo: Organisation<true> = createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: 'kennung ',
+            });
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             organisationRepositoryMock.findById.mockResolvedValueOnce(organisationDo);
             const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
@@ -1503,7 +1562,7 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if name contains trailing space', async () => {
-            const organisationDo: Organisation<true> = DoFactory.createOrganisation(true, { name: '  ' });
+            const organisationDo: Organisation<true> = createOrganisation(true, { name: '  ' });
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
             const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
@@ -1517,7 +1576,10 @@ describe('OrganisationService', () => {
         });
 
         it('should return domain error if kennung contains trailing space', async () => {
-            const organisationDo: Organisation<true> = DoFactory.createOrganisation(true, { kennung: 'kennung ' });
+            const organisationDo: Organisation<true> = createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                kennung: 'kennung ',
+            });
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
             organisationRepositoryMock.findById.mockResolvedValueOnce(organisationDo);
             const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
