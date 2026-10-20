@@ -14,7 +14,7 @@ import { type OrganisationResponseLegacy } from './organisation.response.legacy.
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { Organisation } from '../domain/organisation.js';
+import { Organisation, type Organisationsbeziehung } from '../domain/organisation.js';
 import { OrganisationResponse } from './organisation.response.js';
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
@@ -35,6 +35,12 @@ import { OrganisationDeleteService } from '../organisation-delete/organisation-d
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
 import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update.body.params.js';
+import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
+import { CreateOrganisationsbeziehungBodyParams } from './create-organisationsbeziehung.body.params.js';
+import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { EntityCouldNotBeUpdated } from '../../../shared/error/index.js';
+import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbeziehung.body.params.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
     const params: OrganisationByIdParams = new OrganisationByIdParams();
@@ -1056,6 +1062,228 @@ describe('OrganisationController', () => {
                     organisationController.deleteOrganisation({ organisationId: orga.id }, permissionsMock),
                 ).rejects.toThrow(OrganisationHasChildrenError);
             });
+        });
+    });
+
+    describe('createOrganisationsbeziehung', () => {
+        it('should create an Organisationsbeziehung', async () => {
+            const body: CreateOrganisationsbeziehungBodyParams = new CreateOrganisationsbeziehungBodyParams();
+
+            Object.assign(body, {
+                quellOrganisationId: faker.string.uuid(),
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const persistedOrganisationsbeziehung: Organisationsbeziehung<true> = {
+                id: faker.string.uuid(),
+                createdAt: faker.date.past(),
+                updatedAt: faker.date.recent(),
+                quellOrganisationId: body.quellOrganisationId,
+                zielOrganisationId: body.zielOrganisationId,
+                typ: body.typ,
+            };
+
+            organisationServiceMock.createOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: true,
+                value: persistedOrganisationsbeziehung,
+            });
+
+            await expect(
+                organisationController.createOrganisationsbeziehung(body, permissionsMock),
+            ).resolves.not.toThrow();
+            expect(organisationServiceMock.createOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+            expect(organisationServiceMock.createOrganisationsbeziehung).toHaveBeenCalledWith(
+                body.quellOrganisationId,
+                body.zielOrganisationId,
+                body.typ,
+                permissionsMock,
+            );
+        });
+
+        it('should return the created Organisationsbeziehung', async () => {
+            const body: CreateOrganisationsbeziehungBodyParams = new CreateOrganisationsbeziehungBodyParams();
+
+            Object.assign(body, {
+                quellOrganisationId: faker.string.uuid(),
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            const persistedOrganisationsbeziehung: Organisationsbeziehung<true> = {
+                id: faker.string.uuid(),
+                createdAt: faker.date.past(),
+                updatedAt: faker.date.recent(),
+                quellOrganisationId: body.quellOrganisationId,
+                zielOrganisationId: body.zielOrganisationId,
+                typ: body.typ,
+            };
+
+            organisationServiceMock.createOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: true,
+                value: persistedOrganisationsbeziehung,
+            });
+
+            const result: OrganisationsbeziehungResponse = await organisationController.createOrganisationsbeziehung(
+                body,
+                permissionsMock,
+            );
+
+            expect(result).toEqual(persistedOrganisationsbeziehung);
+        });
+
+        it('should throw error when creating the Organisationsbeziehung fails', async () => {
+            const body: CreateOrganisationsbeziehungBodyParams = new CreateOrganisationsbeziehungBodyParams();
+
+            Object.assign(body, {
+                quellOrganisationId: faker.string.uuid(),
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const error: EntityCouldNotBeCreated = new EntityCouldNotBeCreated(
+                'Organisationsbeziehung could not be created',
+            );
+
+            organisationServiceMock.createOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(organisationController.createOrganisationsbeziehung(body, permissionsMock)).rejects.toBe(
+                error,
+            );
+            expect(organisationServiceMock.createOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+            expect(organisationServiceMock.createOrganisationsbeziehung).toHaveBeenCalledWith(
+                body.quellOrganisationId,
+                body.zielOrganisationId,
+                body.typ,
+                permissionsMock,
+            );
+        });
+
+        it('should throw error when permission for an organisation is missing', async () => {
+            const body: CreateOrganisationsbeziehungBodyParams = new CreateOrganisationsbeziehungBodyParams();
+
+            Object.assign(body, {
+                quellOrganisationId: faker.string.uuid(),
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const error: MissingPermissionsError = new MissingPermissionsError('Not permitted to manage organisation');
+
+            organisationServiceMock.createOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(organisationController.createOrganisationsbeziehung(body, permissionsMock)).rejects.toBe(
+                error,
+            );
+        });
+    });
+
+    describe('deleteOrganisationsbeziehung', () => {
+        it('should delete an Organisationsbeziehung', async () => {
+            const params: DeleteOrganisationsbeziehungBodyParams = new DeleteOrganisationsbeziehungBodyParams();
+
+            Object.assign(params, {
+                organisationsbeziehungId: faker.string.uuid(),
+            });
+
+            organisationServiceMock.deleteOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: true,
+                value: undefined,
+            });
+
+            await expect(
+                organisationController.deleteOrganisationsbeziehung(params, permissionsMock),
+            ).resolves.toBeUndefined();
+
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
+                params.organisationsbeziehungId,
+                permissionsMock,
+            );
+        });
+
+        it('should throw error when the Organisationsbeziehung does not exist', async () => {
+            const params: DeleteOrganisationsbeziehungBodyParams = new DeleteOrganisationsbeziehungBodyParams();
+
+            Object.assign(params, {
+                organisationsbeziehungId: faker.string.uuid(),
+            });
+
+            const error: EntityNotFoundError = new EntityNotFoundError(
+                'Organisationsbeziehung',
+                params.organisationsbeziehungId,
+            );
+
+            organisationServiceMock.deleteOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(organisationController.deleteOrganisationsbeziehung(params, permissionsMock)).rejects.toBe(
+                error,
+            );
+
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
+                params.organisationsbeziehungId,
+                permissionsMock,
+            );
+        });
+
+        it('should throw error when permission for an organisation is missing', async () => {
+            const params: DeleteOrganisationsbeziehungBodyParams = new DeleteOrganisationsbeziehungBodyParams();
+
+            Object.assign(params, {
+                organisationsbeziehungId: faker.string.uuid(),
+            });
+
+            const error: MissingPermissionsError = new MissingPermissionsError('Not permitted to manage organisation');
+
+            organisationServiceMock.deleteOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(organisationController.deleteOrganisationsbeziehung(params, permissionsMock)).rejects.toBe(
+                error,
+            );
+
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+        });
+
+        it('should throw error when deleting the Organisationsbeziehung fails', async () => {
+            const params: DeleteOrganisationsbeziehungBodyParams = new DeleteOrganisationsbeziehungBodyParams();
+
+            Object.assign(params, {
+                organisationsbeziehungId: faker.string.uuid(),
+            });
+
+            const error: EntityCouldNotBeUpdated = new EntityCouldNotBeUpdated(
+                'Organisationsbeziehung could not be deleted',
+                params.organisationsbeziehungId,
+            );
+
+            organisationServiceMock.deleteOrganisationsbeziehung.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(organisationController.deleteOrganisationsbeziehung(params, permissionsMock)).rejects.toBe(
+                error,
+            );
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledTimes(1);
+            expect(organisationServiceMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
+                params.organisationsbeziehungId,
+                permissionsMock,
+            );
         });
     });
 });
