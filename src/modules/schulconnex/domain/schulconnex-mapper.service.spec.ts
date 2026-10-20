@@ -80,7 +80,7 @@ describe('SchulconnexMapperService', () => {
         ['5a', '5a'],
         [undefined, ''],
     ])('should map a group with name %s', (name: string | undefined, expected: string | undefined) => {
-        organisation.name = name  as unknown as string;;
+        organisation.name = name as unknown as string;
 
         expect(sut.mapGruppe(organisation)).toEqual({
             id: 'schule-1',
