@@ -3,7 +3,7 @@ import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { Attribute, Change, Client, type Entry, type SearchResult } from 'ldapts';
+import { Attribute, Change, Client, type Entry, NoSuchObjectError, type SearchResult } from 'ldapts';
 import assert from 'node:assert';
 import { vi } from 'vitest';
 import { CommonTestModule } from '../../../../../test/utils/common-test.module.js';
@@ -283,6 +283,59 @@ describe('LDAP Adapter', () => {
                 returnAttributeValues: true,
             });
         });
+
+        it.each([
+            { attribute: 'givenName', property: 'givenName', warning: 'GivenName' },
+            { attribute: 'sn', property: 'surName', warning: 'Surname' },
+            { attribute: 'cn', property: 'cn', warning: 'CN' },
+            { attribute: 'mailPrimaryAddress', property: 'mailPrimaryAddress', warning: 'MailPrimaryAddress' },
+            { attribute: 'mailAlternativeAddress', property: 'mailAlternativeAddress', warning: undefined },
+        ])(
+            'should return undefined for a missing $attribute and preserve other attributes',
+            async ({
+                attribute,
+                property,
+                warning,
+            }: {
+                attribute: string;
+                property: string;
+                warning: string | undefined;
+            }) => {
+                const incompleteEntry: Entry = { ...entry };
+                delete incompleteEntry[attribute];
+                ldapClientMock.getClient.mockReturnValue(clientMock);
+                clientMock.bind.mockResolvedValue();
+                clientMock.search.mockResolvedValueOnce({ searchEntries: [incompleteEntry], searchReferences: [] });
+
+                const result: Result<LdapPersonAttributes | null> = await ldapClientAdapter.findPersonByUsername(
+                    personId,
+                    username,
+                );
+
+                expect(result).toEqual(
+                    Ok({
+                        dn: entry.dn,
+                        givenName: 'Given',
+                        surName: 'Surname',
+                        cn: username,
+                        mailPrimaryAddress: 'primary@example.com',
+                        mailAlternativeAddress: 'alternative@example.com',
+                        [property]: undefined,
+                    }),
+                );
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    `Could not fetch attribute:${attribute}, personId:${personId}, username:${username}`,
+                );
+                if (warning) {
+                    expect(loggerMock.warning).toHaveBeenCalledExactlyOnceWith(
+                        `${warning} was undefined, username:${username}, personId:${personId}`,
+                    );
+                } else {
+                    expect(loggerMock.warning).not.toHaveBeenCalled();
+                }
+            },
+        );
+
         it('should return the bind error without searching', async () => {
             ldapClientMock.getClient.mockReturnValue(clientMock);
             clientMock.bind.mockRejectedValueOnce(new Error('Bind failed'));
@@ -3137,6 +3190,36 @@ describe('LDAP Adapter', () => {
                 `LDAP: Successfully deleted organisation with kennung:${kennung}.`,
             );
             expect(result).toEqual(Ok(kennung));
+        });
+
+        it('should still delete the organisation when its group is already absent', async () => {
+            const kennung: string = '1234567';
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.del.mockRejectedValueOnce(new NoSuchObjectError());
+            clientMock.del.mockResolvedValueOnce();
+
+            const result: Result<string> = await ldapClientAdapter.deleteOrganisation(kennung);
+
+            expect(result).toEqual(Ok(kennung));
+            expect(clientMock.del).toHaveBeenCalledTimes(2);
+            expect(clientMock.del).toHaveBeenLastCalledWith(`ou=${kennung},${mockLdapInstanceConfig.BASE_DN}`);
+            expect(loggerMock.logUnknownAsError).not.toHaveBeenCalled();
+        });
+
+        it('should succeed when the organisation is already absent', async () => {
+            const kennung: string = '1234567';
+            ldapClientMock.getClient.mockReturnValue(clientMock);
+            clientMock.bind.mockResolvedValue();
+            clientMock.del.mockResolvedValueOnce();
+            clientMock.del.mockRejectedValueOnce(new NoSuchObjectError());
+
+            const result: Result<string> = await ldapClientAdapter.deleteOrganisation(kennung);
+
+            expect(result).toEqual(Ok(kennung));
+            expect(clientMock.del).toHaveBeenCalledTimes(2);
+            expect(clientMock.del).toHaveBeenLastCalledWith(`ou=${kennung},${mockLdapInstanceConfig.BASE_DN}`);
+            expect(loggerMock.logUnknownAsError).not.toHaveBeenCalled();
         });
 
         describe('when bind fails', () => {
