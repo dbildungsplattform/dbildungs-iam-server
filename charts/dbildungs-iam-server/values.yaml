@@ -52,7 +52,7 @@ eflkLdapUndi:
   oeffentlicheSchulenDomain: schule-sh.de
   ersatzschulenDomain: ersatzschule-sh.de
   base_dn: dc=schule-sh,dc=de
-  retryWrapperDefaultRetries: 3
+  retryWrapperNumberOfRetries: 3
 
 itslearning:
   enabled: false

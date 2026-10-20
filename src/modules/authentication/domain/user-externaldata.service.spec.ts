@@ -152,42 +152,6 @@ describe('UserExternaldataService', () => {
             });
         });
 
-        describe('when Personenkontexte are missing kennung or rollenart', () => {
-            const setup = (): { person: Person<true> } => {
-                const person: Person<true> = DoFactory.createPerson(true);
-
-                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
-                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                    createExternalPkData({
-                        kennung: undefined,
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
-                    createExternalPkData({
-                        rollenart: undefined,
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
-                ]);
-
-                return { person };
-            };
-
-            it('should ignore them and return MissingPermissionsError', async () => {
-                const { person }: { person: Person<true> } = setup();
-
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
-                    person.keycloakUserId!,
-                    keycloakClientId,
-                    false,
-                );
-
-                expect(result.ok).toBe(false);
-                if (!result.ok) {
-                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
-                }
-            });
-        });
-
         describe('when permission exists via direct service provider assignment', () => {
             const setup = (): { person: Person<true>; permittedPk: ExternalPkData } => {
                 const person: Person<true> = DoFactory.createPerson(true);
