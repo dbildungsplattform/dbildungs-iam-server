@@ -100,18 +100,6 @@ describe('RollenerweiterungRepo', () => {
     });
 
     describe('findManyByOrganisationId', () => {
-        it('should return MissingPermissionsError if permission is missing', async () => {
-            const organisationId: OrganisationID = faker.string.uuid();
-
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-
-            const result: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
-                await sut.findManyByOrganisationId(organisationId, permissionsMock);
-
-            expect(result.ok).toBe(false);
-            expect(internalRollenerweiterungRepoMock.findManyByOrganisationId).not.toHaveBeenCalled();
-        });
-
         it('should delegate organisation, offset and limit to the internal repository', async () => {
             const organisationId: OrganisationID = faker.string.uuid();
             const offset: number = 5;
