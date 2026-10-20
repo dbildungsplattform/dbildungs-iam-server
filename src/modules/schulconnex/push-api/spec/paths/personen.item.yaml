@@ -1,0 +1,44 @@
+parameters:
+    - $ref: ../components/parameters/person-id.yaml
+put:
+    tags:
+        - Personen
+    operationId: upsertPerson
+    summary: Person anlegen oder aktualisieren
+    description: Legt eine Person an oder aktualisiert sie anhand der stabilen Kennung in der Route.
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    $ref: ../components/schemas/person-payload.yaml
+    responses:
+        '202':
+            description: Anfrage zum Anlegen oder Aktualisieren einer Person wurde akzeptiert.
+        '400':
+            description: Übermittelter Request-Body ist ungültig.
+            content:
+                application/json:
+                    schema:
+                        $ref: ../components/schemas/error-response.yaml
+delete:
+    tags:
+        - Personen
+    operationId: deletePerson
+    summary: Person löschen
+    description: Löscht eine Person im Zielsystem.
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    $ref: ../components/schemas/person-delete-payload.yaml
+    responses:
+        '202':
+            description: Anfrage zum Löschen einer Person wurde akzeptiert.
+        '400':
+            description: Übermittelter Request-Body ist ungültig.
+            content:
+                application/json:
+                    schema:
+                        $ref: ../components/schemas/error-response.yaml
