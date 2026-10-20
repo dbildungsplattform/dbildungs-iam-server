@@ -1,4 +1,3 @@
-
 import { PersonInfoPersonResponseV1 } from '../v1/person-info-person.response.v1.js';
 import { type PersonInfoPersonNameResponseV2 } from './person-info-person-name.response.v2.js';
 
