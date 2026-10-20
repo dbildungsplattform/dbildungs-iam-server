@@ -41,7 +41,7 @@ import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { Organisation, Organisationsbeziehung } from '../domain/organisation.js';
 import { OrganisationService } from '../domain/organisation.service.js';
 import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
@@ -60,6 +60,9 @@ import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
+import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbeziehung.body.params.js';
+import { CreateOrganisationsbeziehungBodyParams } from './create-organisationsbeziehung.body.params.js';
+import { OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
 
 @UseFilters(new OrganisationExceptionFilter())
 @ApiTags('organisationen')
@@ -496,6 +499,78 @@ export class OrganisationController {
         );
         if (result instanceof DomainError) {
             throw result;
+        }
+    }
+
+    @Post('beziehungen')
+    @UseGuards(StepUpGuard)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({
+        description: 'Create a relationship between two organisations.',
+    })
+    @ApiCreatedResponse({
+        description: 'The organisation relationship was created successfully.',
+        type: OrganisationsbeziehungResponse,
+    })
+    @ApiBadRequestResponse({
+        description: 'The input was not valid.',
+        type: DbiamOrganisationError,
+    })
+    @ApiNotFoundResponse({
+        description: 'The source organisation or target organisation does not exist.',
+    })
+    @ApiUnauthorizedResponse({
+        description: 'Not authorized to manage the source organisation or target organisation.',
+    })
+    public async createOrganisationsbeziehung(
+        @Body() body: CreateOrganisationsbeziehungBodyParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<OrganisationsbeziehungResponse> {
+        const result: Result<
+            Organisationsbeziehung<true>,
+            DomainError
+        > = await this.organisationService.createOrganisationsbeziehung(
+            body.quellOrganisationId,
+            body.zielOrganisationId,
+            body.typ,
+            permissions,
+        );
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return OrganisationsbeziehungResponse.fromDomain(result.value);
+    }
+
+    @Delete('beziehungen/:organisationsbeziehungId')
+    @UseGuards(StepUpGuard)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({
+        description: 'Delete an organisation relationship by id.',
+    })
+    @ApiNoContentResponse({
+        description: 'The organisation relationship was deleted successfully.',
+    })
+    @ApiBadRequestResponse({
+        description: 'The input was not valid.',
+        type: DbiamOrganisationError,
+    })
+    @ApiNotFoundResponse({
+        description: 'The organisation relationship, source organisation or target organisation does not exist.',
+    })
+    @ApiUnauthorizedResponse({
+        description: 'Not authorized to manage the source organisation or target organisation.',
+    })
+    public async deleteOrganisationsbeziehung(
+        @Param() params: DeleteOrganisationsbeziehungBodyParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<void> {
+        const result: Result<void, DomainError> = await this.organisationService.deleteOrganisationsbeziehung(
+            params.organisationsbeziehungId,
+            permissions,
+        );
+        if (!result.ok) {
+            throw result.error;
         }
     }
 }
