@@ -105,6 +105,7 @@ describe('OrganisationServiceSpecificationTest', () => {
         it('should return DomainError, when KlasseNurVonSchuleAdministriert specificaton is not satisfied and type is KLASSE', async () => {
             const klasseDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Klasse',
+                kennung: undefined,
                 administriertVon: traeger1.id,
                 zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.KLASSE,
@@ -138,6 +139,7 @@ describe('OrganisationServiceSpecificationTest', () => {
             await organisationRepository.save(klasseDo);
             const weitereKlasseDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Klasse',
+                kennung: undefined,
                 administriertVon: schule.id,
                 zugehoerigZu: schule.id,
                 typ: OrganisationsTyp.KLASSE,
