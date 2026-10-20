@@ -28,7 +28,7 @@ import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-err
 import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulconnex-authentication-domain-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
 import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
-import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
 
 @UseFilters(
     new SchulConnexSharedErrorFilter(),
@@ -117,8 +117,8 @@ export class PersonInfoController {
         operationId: 'personInfoControllerInfoV2',
     })
     @ApiUnauthorizedResponse({ description: 'person is not logged in.' })
-    @ApiOkResponse({ description: 'Returns info about the person.', type: PersonInfoResponseV2 })
-    public async infoV2(@Permissions() permissions: IPersonPermissions): Promise<PersonInfoResponseV2> {
+    @ApiOkResponse({ description: 'Returns info about the person.', type: PersonInfoDtoV2 })
+    public async infoV2(@Permissions() permissions: IPersonPermissions): Promise<PersonInfoDtoV2> {
         const personId: string = permissions.personFields.id;
         const person: Option<Person<true>> = await this.personRepo.findById(personId);
 

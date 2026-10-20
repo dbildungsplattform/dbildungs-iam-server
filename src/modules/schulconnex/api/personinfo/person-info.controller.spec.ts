@@ -36,8 +36,8 @@ import { ConfigTestModule, DatabaseTestModule } from '../../../../../test/utils/
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { type IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
-import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
-import { PersonInfoPersonResponseV2 } from './v2/person-info-person.response.v2.js';
+import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
+import { PersonInfoPersonDtoV2 } from './v2/person-info-person.response.v2.js';
 import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 import { type INestApplication, VersioningType } from '@nestjs/common';
 import request from 'supertest';
@@ -718,9 +718,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`using old emailRepo`));
                 expect(result.pid).toEqual(person?.id);
@@ -768,9 +768,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`using new Microservice`));
                 expect(result.pid).toEqual(person?.id);
@@ -819,9 +819,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -870,9 +870,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -957,9 +957,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);

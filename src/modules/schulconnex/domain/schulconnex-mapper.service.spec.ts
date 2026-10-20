@@ -7,8 +7,8 @@ import { type PersonEmailResponse } from '../../person/api/person-email-response
 import { type Person } from '../../person/domain/person.js';
 import { type KontextWithOrgaAndRolle } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { PersonInfoResponseV2 } from '../api/personinfo/v2/person-info.response.v2.js';
-import { PersonInfoPersonResponseV2 } from '../api/personinfo/v2/person-info-person.response.v2.js';
+import { PersonInfoDtoV2 } from '../api/personinfo/v2/person-info.response.v2.js';
+import { PersonInfoPersonDtoV2 } from '../api/personinfo/v2/person-info-person.response.v2.js';
 import {
     SchulconnexErreichbarkeitTyp,
     SchulconnexGruppeTyp,
@@ -46,9 +46,9 @@ describe('SchulconnexMapperService', () => {
     });
 
     it('should map a person independently', () => {
-        const result: PersonInfoPersonResponseV2 = sut.mapPerson(person);
+        const result: PersonInfoPersonDtoV2 = sut.mapPerson(person);
 
-        expect(result).toBeInstanceOf(PersonInfoPersonResponseV2);
+        expect(result).toBeInstanceOf(PersonInfoPersonDtoV2);
         expect(JSON.parse(JSON.stringify(result))).toEqual({ name: { familiennamen: 'Test', vorname: 'Anna' } });
     });
 
@@ -156,9 +156,9 @@ describe('SchulconnexMapperService', () => {
             }),
         };
 
-        const result: PersonInfoResponseV2 = sut.mapPersonInfo(person, [klasse, kontext, fremdeKlasse], email, []);
+        const result: PersonInfoDtoV2 = sut.mapPersonInfo(person, [klasse, kontext, fremdeKlasse], email, []);
 
-        expect(result).toBeInstanceOf(PersonInfoResponseV2);
+        expect(result).toBeInstanceOf(PersonInfoDtoV2);
         expect(JSON.parse(JSON.stringify(result))).toEqual({
             pid: 'person-1',
             person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
@@ -182,7 +182,7 @@ describe('SchulconnexMapperService', () => {
             personenkontext: DoFactory.createPersonenkontext(true, { id: 'kontext-2' }),
         };
 
-        const result: PersonInfoResponseV2 = sut.mapPersonInfo(person, [weitererKontext, kontext], undefined, []);
+        const result: PersonInfoDtoV2 = sut.mapPersonInfo(person, [weitererKontext, kontext], undefined, []);
 
         expect(result.personenkontexte.map((response: { id: string }) => response.id)).toEqual([
             'kontext-2',
