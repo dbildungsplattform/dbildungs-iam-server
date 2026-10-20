@@ -1,16 +1,16 @@
 import { faker } from '@faker-js/faker';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { createMock, DeepMocked } from '../../../../test/utils/createMock.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
+import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 import { InternalRollenerweiterungService } from './internal-rollenerweiterung.service.js';
 import { RollenArt } from './rolle.enums.js';
-import { Rolle } from './rolle.js';
-import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
+import { type Rolle } from './rolle.js';
+import { type CreateRollenerweiterungError, type Rollenerweiterung } from './rollenerweiterung.js';
 
 describe('InternalRollenerweiterungService', () => {
     let sut: InternalRollenerweiterungService;

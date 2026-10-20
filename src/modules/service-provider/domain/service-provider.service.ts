@@ -74,10 +74,8 @@ export class ServiceProviderService {
 
         const personenkontexte: Pick<Personenkontext<true>, 'organisationId' | 'rolleId'>[] =
             await this.dBiamPersonenkontextRepo.findByPerson(personId);
-        const serviceProviders: ServiceProvider<true>[] = await this.getServiceProvidersByOrganisationenAndRollen(
-            personenkontexte,
-            permissions,
-        );
+        const serviceProviders: ServiceProvider<true>[] =
+            await this.getServiceProvidersByOrganisationenAndRollen(personenkontexte);
 
         return Ok(serviceProviders);
     }
@@ -432,7 +430,6 @@ export class ServiceProviderService {
             organisationId: OrganisationID;
             rolleId: RolleID;
         }>,
-        permissions: IPersonPermissions,
     ): Promise<ServiceProvider<true>[]> {
         const uniqueRollenIds: RolleID[] = uniq(
             ids.map(({ rolleId }: { organisationId: OrganisationID; rolleId: RolleID }): RolleID => rolleId),
@@ -448,15 +445,11 @@ export class ServiceProviderService {
         }
 
         if (this.isFeatureRolleErweiternEnabled) {
-            const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> =
-                await this.rollenerweiterungRepo.findManyByOrganisationAndRolle(ids, permissions);
+            const rollenerweiterungServiceProviderIds: ServiceProviderID[] =
+                await this.rollenerweiterungRepo.findServiceProviderIdsByOrganisationAndRolle(ids);
 
-            if (!rollenerweiterungenResult.ok) {
-                throw rollenerweiterungenResult.error;
-            }
-
-            for (const rollenerweiterung of rollenerweiterungenResult.value) {
-                serviceProviderIds.add(rollenerweiterung.serviceProviderId);
+            for (const serviceProviderId of rollenerweiterungServiceProviderIds) {
+                serviceProviderIds.add(serviceProviderId);
             }
         }
 

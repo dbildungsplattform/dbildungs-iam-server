@@ -1,26 +1,24 @@
 import { faker } from '@faker-js/faker';
-import { type ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { zip } from 'lodash-es';
-import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
-import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import {
     type OrganisationID,
     type RolleID,
     type ServiceProviderID,
 } from '../../../shared/types/aggregate-ids.types.js';
+import { Ok } from '../../../shared/util/result.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { type Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
@@ -37,9 +35,7 @@ import {
     type ManageableServiceProviderWithReferencedObjects,
     type ManageableServiceProviderWithReferencedObjectsAndRollenerweiterungCount,
 } from './types.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { Ok } from '../../../shared/util/result.js';
+import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 
 // helper to mock output of some repos
 function getIdMap<T>(arr: Array<T & { id: string }>): Map<string, T> {
@@ -168,9 +164,12 @@ describe('ServiceProviderService', () => {
                 );
 
                 let permissions: DeepMocked<PersonPermissions>;
+                let personId: string;
+                let rollenerweiterungServiceProviderIds: ServiceProviderID[];
 
                 beforeEach(() => {
                     permissions = createPersonPermissionsMock();
+                    personId = faker.string.uuid();
 
                     rolleRepo.findByIds.mockImplementation((ids: Array<string>): Promise<Map<string, Rolle<true>>> => {
                         return Promise.resolve(
@@ -178,20 +177,13 @@ describe('ServiceProviderService', () => {
                         );
                     });
 
-                    const rollenerweiterungen: Array<Rollenerweiterung<true>> = haveRollenerweiterungen
-                        ? zip(organisations, rollen).map(
-                              ([organisation, rolle]: [
-                                  Organisation<true> | undefined,
-                                  Rolle<true> | undefined,
-                              ]): Rollenerweiterung<true> =>
-                                  DoFactory.createRollenerweiterung<true>(true, {
-                                      organisationId: organisation!.id,
-                                      rolleId: rolle!.id,
-                                  }),
-                          )
+                    rollenerweiterungServiceProviderIds = haveRollenerweiterungen
+                        ? organisations.map((): ServiceProviderID => faker.string.uuid())
                         : [];
 
-                    rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValue(Ok(rollenerweiterungen));
+                    rollenerweiterungRepo.findServiceProviderIdsByOrganisationAndRolle.mockResolvedValue(
+                        rollenerweiterungServiceProviderIds,
+                    );
 
                     serviceProviderRepo.findByIds.mockImplementation(
                         (ids: Array<string>): Promise<Map<string, ServiceProvider<true>>> => {
@@ -234,223 +226,64 @@ describe('ServiceProviderService', () => {
                                     organisationId: OrganisationID;
                                     rolleId: RolleID;
                                 }>,
-                                permissions: IPersonPermissions,
                             ) => Promise<Array<ServiceProvider<true>>>;
                         }
-                    ).getServiceProvidersByOrganisationenAndRollen(organisationAndRolleIds, permissions);
+                    ).getServiceProvidersByOrganisationenAndRollen(organisationAndRolleIds);
 
-                    expect(result.length).toBe(
+                    expect(result).toHaveLength(
                         haveRollenerweiterungen
-                            ? organisations.length + serviceProviders.length
+                            ? serviceProviders.length + rollenerweiterungServiceProviderIds.length
                             : serviceProviders.length,
                     );
-
-                    expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith(
+                    expect(rollenerweiterungRepo.findServiceProviderIdsByOrganisationAndRolle).toHaveBeenCalledWith(
                         organisationAndRolleIds,
-                        permissions,
+                    );
+                    expect(serviceProviderRepo.findByIds).toHaveBeenCalledWith(
+                        expect.arrayContaining([
+                            ...serviceProviders.map(
+                                (serviceProvider: ServiceProvider<true>): ServiceProviderID => serviceProvider.id,
+                            ),
+                            ...rollenerweiterungServiceProviderIds,
+                        ]),
                     );
                 });
 
-                it('throws MissingPermissionsError when loading Rollenerweiterungen is not permitted', async () => {
-                    const organisationId: OrganisationID = faker.string.uuid();
-
-                    const rolleId: RolleID = faker.string.uuid();
-
-                    const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-
-                    const permissionError: MissingPermissionsError = new MissingPermissionsError('Not authorized');
-
-                    const rollenerweiterungenResult: Result<Rollenerweiterung<true>[], MissingPermissionsError> = {
+                it('returns the error when the person is not manageable', async () => {
+                    const permissionError: MissingPermissionsError = new MissingPermissionsError('Access denied');
+                    dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
                         ok: false,
                         error: permissionError,
-                    };
+                    });
 
-                    const organisationAndRolleIds: Array<{
-                        organisationId: OrganisationID;
-                        rolleId: RolleID;
-                    }> = [
-                        {
-                            organisationId,
-                            rolleId,
-                        },
-                    ];
-
-                    rolleRepo.findByIds.mockResolvedValueOnce(
-                        new Map([
-                            [
-                                rolleId,
-                                DoFactory.createRolle(true, {
-                                    id: rolleId,
-                                    serviceProviderIds: [],
-                                }),
-                            ],
-                        ]),
-                    );
-
-                    rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce(
-                        rollenerweiterungenResult,
-                    );
-
-                    await expect(
-                        (
-                            service as unknown as {
-                                getServiceProvidersByOrganisationenAndRollen: (
-                                    ids: Array<{
-                                        organisationId: OrganisationID;
-                                        rolleId: RolleID;
-                                    }>,
-                                    permissions: IPersonPermissions,
-                                ) => Promise<ServiceProvider<true>[]>;
-                            }
-                        ).getServiceProvidersByOrganisationenAndRollen(organisationAndRolleIds, permissions),
-                    ).rejects.toBe(permissionError);
-                    expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith(
-                        organisationAndRolleIds,
+                    const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
+                        personId,
                         permissions,
                     );
-                    expect(serviceProviderRepo.findByIds).not.toHaveBeenCalled();
+
+                    expectErrResult(result);
+                    expect(result.error).toBe(permissionError);
+                    expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
+                    expect(rollenerweiterungRepo.findServiceProviderIdsByOrganisationAndRolle).not.toHaveBeenCalled();
+                });
+
+                it('returns a MissingPermissionsError when the person has no manageable Kontext', async () => {
+                    dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
+                        ok: true,
+                        value: false,
+                    });
+
+                    const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
+                        personId,
+                        permissions,
+                    );
+
+                    expectErrResult(result);
+                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
+                    expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
+                    expect(rollenerweiterungRepo.findServiceProviderIdsByOrganisationAndRolle).not.toHaveBeenCalled();
                 });
             },
         );
-    });
-
-    describe('getServiceProvidersByPersonIdAuthorized', () => {
-        let personId: string;
-        let permissions: DeepMocked<PersonPermissions>;
-
-        beforeEach(() => {
-            personId = faker.string.uuid();
-            permissions = createPersonPermissionsMock();
-        });
-
-        it('returns the assigned service providers when the person is manageable', async () => {
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderIds: [serviceProvider.id] });
-            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
-                personId,
-                rolleId: rolle.id,
-            });
-
-            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({ ok: true, value: true });
-            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
-            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
-            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce(Ok([]));
-            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
-
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
-                personId,
-                permissions,
-            );
-
-            expectOkResult(result);
-            expect(result.value).toHaveLength(1);
-            expect(result.value[0]?.id).toBe(serviceProvider.id);
-            expect(dBiamPersonenkontextRepo.findByPerson).toHaveBeenCalledWith(personId);
-        });
-
-        it('returns providers assigned through rollenerweiterungen when the feature is enabled', async () => {
-            permissions = createPersonPermissionsMock({
-                id: personId,
-            });
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-            const rolle: Rolle<true> = DoFactory.createRolle(true, {
-                serviceProviderIds: [],
-            });
-            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
-                personId,
-                rolleId: rolle.id,
-            });
-            const rollenerweiterung: Rollenerweiterung<true> = DoFactory.createRollenerweiterung(true, {
-                organisationId: personenkontext.organisationId,
-                rolleId: rolle.id,
-                serviceProviderId: serviceProvider.id,
-            });
-
-            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
-            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
-            rollenerweiterungRepo.findManyByOrganisationAndRolle.mockResolvedValueOnce(Ok([rollenerweiterung]));
-            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
-
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
-                personId,
-                permissions,
-            );
-
-            expectOkResult(result);
-            expect(result.value).toEqual([serviceProvider]);
-            expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).toHaveBeenCalledWith(
-                [
-                    expect.objectContaining({
-                        organisationId: personenkontext.organisationId,
-                        rolleId: rolle.id,
-                    }),
-                ],
-                permissions,
-            );
-        });
-
-        it('does not resolve rollenerweiterungen providers when the feature is disabled', async () => {
-            const featureDisabledService: ServiceProviderService = new ServiceProviderService(
-                rolleRepo,
-                rollenerweiterungRepo,
-                serviceProviderRepo,
-                organisationRepo,
-                dBiamPersonenkontextRepo,
-                {
-                    getOrThrow: () => ({ FEATURE_FLAG_ROLLE_ERWEITERN: false }),
-                } as unknown as ConfigService<ServerConfig>,
-            );
-            permissions = createPersonPermissionsMock({ id: personId });
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
-            const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderIds: [serviceProvider.id] });
-            const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
-                personId,
-                rolleId: rolle.id,
-            });
-
-            dBiamPersonenkontextRepo.findByPerson.mockResolvedValueOnce([personenkontext]);
-            rolleRepo.findByIds.mockResolvedValueOnce(getIdMap([rolle]));
-            serviceProviderRepo.findByIds.mockResolvedValueOnce(getIdMap([serviceProvider]));
-
-            const result: Result<ServiceProvider<true>[]> = await featureDisabledService.getServiceProvidersByPersonId(
-                personId,
-                permissions,
-            );
-
-            expectOkResult(result);
-            expect(result.value).toEqual([serviceProvider]);
-            expect(rollenerweiterungRepo.findManyByOrganisationAndRolle).not.toHaveBeenCalled();
-        });
-
-        it('returns the error when the person is not manageable', async () => {
-            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({
-                ok: false,
-                error: new MissingPermissionsError('Access denied'),
-            });
-
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
-                personId,
-                permissions,
-            );
-
-            expectErrResult(result);
-            expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
-        });
-
-        it('returns a MissingPermissionsError when the person has no manageable Kontext', async () => {
-            dBiamPersonenkontextRepo.hasPersonAnyManageableKontext.mockResolvedValueOnce({ ok: true, value: false });
-
-            const result: Result<ServiceProvider<true>[]> = await service.getServiceProvidersByPersonId(
-                personId,
-                permissions,
-            );
-
-            expectErrResult(result);
-            if (!result.ok) {
-                expect(result.error).toBeInstanceOf(MissingPermissionsError);
-            }
-            expect(dBiamPersonenkontextRepo.findByPerson).not.toHaveBeenCalled();
-        });
     });
 
     describe('getAuthorizedForRollenErweiternWithMerkmalRollenerweiterung', () => {
