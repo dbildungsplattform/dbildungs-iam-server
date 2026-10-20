@@ -188,7 +188,7 @@ describe('UserExternaldataService', () => {
                     expect(result.value.nachname).toBe(person.familienname);
                     expect(result.value.rollenart).toBe(RollenArt.LEHR);
                     expect(result.value.personenkontexte).toEqual([
-                        { dienststellennr: 'permitted-kennung', rolleId: permittedPk.rolleId },
+                        { dstNr: 'permitted-kennung', rolleId: permittedPk.rolleId },
                     ]);
                     expect(result.value.emailAdresse).toBeUndefined();
                     expect(result.value.oxLoginId).toBeUndefined();
