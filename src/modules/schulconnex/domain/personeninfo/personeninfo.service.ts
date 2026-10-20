@@ -19,7 +19,7 @@ import { IPersonPermissions } from '../../../../shared/permissions/person-permis
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { DomainError } from '../../../../shared/error/index.js';
 import { Ok } from '../../../../shared/util/result.js';
-import { PersonInfoResponseV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
 import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
 
 @Injectable()
@@ -122,7 +122,7 @@ export class PersonenInfoService {
         permissions: IPersonPermissions,
         offset: number,
         limit: number,
-    ): Promise<Result<PersonInfoResponseV2[], DomainError>> {
+    ): Promise<Result<PersonInfoDtoV2[], DomainError>> {
         // 1. Ermittle alle Knoten mit PERSONEN_LESEN-Recht
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.PERSONEN_LESEN],
@@ -190,7 +190,7 @@ export class PersonenInfoService {
         }
 
         const emailMap: Map<PersonID, PersonEmailResponse | undefined> = emailsForPersons.value;
-        const responses: PersonInfoResponseV2[] = persons.map((person: Person<true>) => {
+        const responses: PersonInfoDtoV2[] = persons.map((person: Person<true>) => {
             const personId: PersonID = person.id;
             const email: PersonEmailResponse | undefined = emailMap.get(personId);
             const kontexteWithOrgaAndRolle: KontextWithOrgaAndRolle[] = kontexteForPersons.get(personId) ?? [];
