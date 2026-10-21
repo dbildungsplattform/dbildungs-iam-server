@@ -25,6 +25,7 @@ export class SchultraegerSchuleUndTraegerSelberBaum extends CompositeSpecificati
             )
             .map((beziehung: Organisationsbeziehung<boolean>) => beziehung.zielOrganisationId);
         const ziele: Map<string, Organisation<true>> = await this.organisationRepo.findByIds(zielIds);
+        // SchultraegerSchuleHatExaktEinenTraeger checks that there is exactly one TRAEGER, not part of this specification
         const traeger: Organisation<true>[] = [...ziele.values()].filter(
             (orga: Organisation<true>) => orga.typ === OrganisationsTyp.TRAEGER,
         );
