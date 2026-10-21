@@ -1,17 +1,17 @@
-import { type OrganisationRepository } from '../persistence/organisation.repository.js';
-import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
-import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
-import { type OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
-import { NameRequiredForKlasse } from '../specification/name-required-for-klasse.js';
 import { type DomainError } from '../../../shared/error/domain.error.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
+import { type OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
+import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
+import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
-import { OrganisationsTyp, type Traegerschaft } from './organisation.enums.js';
+import { type OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
+import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
+import { NameRequiredForKlasse } from '../specification/name-required-for-klasse.js';
 import { TraegerNameUniqueInSubtree } from '../specification/traeger-name-unique-in-subtree.js';
 import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child.js';
-import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
+import { OrganisationsTyp, type Traegerschaft } from './organisation.enums.js';
 
 export class Organisation<WasPersisted extends boolean> {
     private constructor(
@@ -192,5 +192,13 @@ export class Organisation<WasPersisted extends boolean> {
 
     public setVersionForUpdate(version: number): void {
         this.version = version;
+    }
+
+    public isBehoerde(): boolean {
+        return this.typ === OrganisationsTyp.BEHOERDE;
+    }
+
+    public isLand(): boolean {
+        return this.typ === OrganisationsTyp.LAND;
     }
 }
