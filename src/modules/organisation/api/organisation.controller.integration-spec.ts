@@ -32,7 +32,6 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { DBiamPersonenkontextRepoInternal } from '../../personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { OrganisationsTyp } from '../domain/organisation.enums.js';
@@ -41,6 +40,7 @@ import { OrganisationApiModule } from '../organisation-api.module.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
+import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
 
 describe('Organisation API', () => {
     let app: INestApplication;
@@ -50,7 +50,7 @@ describe('Organisation API', () => {
     let personRepo: PersonRepository;
     let dBiamPersonenkontextRepoInternal: DBiamPersonenkontextRepoInternal;
     let organisationRepo: OrganisationRepository;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
 
     let permissionsMock: DeepMocked<PersonPermissions>;
     let keycloakUserServiceMock: DeepMocked<KeycloakUserService>;
@@ -120,7 +120,7 @@ describe('Organisation API', () => {
         personRepo = module.get(PersonRepository);
         dBiamPersonenkontextRepoInternal = module.get(DBiamPersonenkontextRepoInternal);
         organisationRepo = module.get(OrganisationRepository);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
 
         await DatabaseTestModule.setupDatabase(module.get(MikroORM));
         app = module.createNestApplication();
