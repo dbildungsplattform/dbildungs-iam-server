@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+    title: SPSH Push API
+    version: 0.1.0
+    description: |
+        Push API auf Basis von Schulconnex
+    license:
+        name: EUPL-1.2
+        identifier: EUPL-1.2
+security: []
+servers: []
+tags:
+    - name: Personen
+      description: Endpunkte für die Aktualisierung von Personendaten.
+    - name: Personenkontexte
+      description: Endpunkte für die Aktualisierung von Personenkontextdaten.
+paths:
+    /v1/personen/{personId}:
+        $ref: ./paths/personen.item.yaml
+    /v1/personen/{personId}/personenkontexte/{personenkontextId}:
+        $ref: ./paths/personenkontexte.item.yaml
+components:
+    parameters:
+        PersonId:
+            $ref: ./components/parameters/person-id.yaml
+        PersonenkontextId:
+            $ref: ./components/parameters/personenkontext-id.yaml
+    schemas:
+        PersonPayload:
+            $ref: ./components/schemas/person-payload.yaml
+        PersonDeletePayload:
+            $ref: ./components/schemas/person-delete-payload.yaml
+        PersonName:
+            $ref: ./components/schemas/person-name.yaml
+        PersonenkontextPayload:
+            $ref: ./components/schemas/personenkontext-payload.yaml
+        Erreichbarkeit:
+            $ref: ./components/schemas/erreichbarkeit.yaml
+        Organisation:
+            $ref: ./components/schemas/organisation.yaml
+        ErrorResponse:
+            $ref: ./components/schemas/error-response.yaml
