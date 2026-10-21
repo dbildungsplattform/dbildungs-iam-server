@@ -151,6 +151,8 @@
         "ENDPOINT": "http://localhost:9091/"
     },
     "SCHULCONNEX": {
-        "LIMIT_PERSONENINFO": 2500
+        "LIMIT_PERSONENINFO": 2500,
+        "PUSH_MAX_ATTEMPTS": 5,
+        "PUSH_RETRY_DELAY_MS": 15000
     }
 }

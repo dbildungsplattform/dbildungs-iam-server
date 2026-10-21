@@ -37,19 +37,21 @@ describe('SchulconnexMapperService', () => {
         kontext = {
             personenkontext: DoFactory.createPersonenkontext(true, { id: 'kontext-1' }),
             organisation,
-            rolle: DoFactory.createRolle(true, { rollenart: RollenArt.LERN }),
+            rolle: DoFactory.createRolle(true, { id: 'rolle-1', rollenart: RollenArt.LERN }),
         };
     });
 
     it('should map a name independently', () => {
-        expect(sut.mapName(person)).toEqual({ vorname: 'Anna', familiennamen: 'Test' });
+        expect(sut.mapName(person)).toEqual({ vorname: 'Anna', familiennamen: 'Test', familienname: 'Test' });
     });
 
     it('should map a person independently', () => {
         const result: PersonInfoPersonDtoV2 = sut.mapPerson(person);
 
         expect(result).toBeInstanceOf(PersonInfoPersonDtoV2);
-        expect(JSON.parse(JSON.stringify(result))).toEqual({ name: { familiennamen: 'Test', vorname: 'Anna' } });
+        expect(JSON.parse(JSON.stringify(result))).toEqual({
+            name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' },
+        });
     });
 
     it.each([
@@ -133,6 +135,7 @@ describe('SchulconnexMapperService', () => {
             id: 'kontext-1',
             organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
             rolle: 'Lern',
+            spshRolleId: 'rolle-1',
             erreichbarkeiten: [],
             gruppen: [],
         });
@@ -161,12 +164,13 @@ describe('SchulconnexMapperService', () => {
         expect(result).toBeInstanceOf(PersonInfoDtoV2);
         expect(JSON.parse(JSON.stringify(result))).toEqual({
             pid: 'person-1',
-            person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+            person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
             personenkontexte: [
                 {
                     id: 'kontext-1',
                     organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
                     rolle: 'Lern',
+                    spshRolleId: 'rolle-1',
                     erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna@example.org' }],
                     personenstatus: SchulconnexPersonenstatus.AKTIV,
                     gruppen: [{ id: 'klasse-1', bezeichnung: '5a', typ: 'Klasse' }],
@@ -193,7 +197,7 @@ describe('SchulconnexMapperService', () => {
     it('should map a person without contexts', () => {
         expect(JSON.parse(JSON.stringify(sut.mapPersonInfo(person, [], undefined, [])))).toEqual({
             pid: 'person-1',
-            person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+            person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
             personenkontexte: [],
             beziehungen: [],
         });

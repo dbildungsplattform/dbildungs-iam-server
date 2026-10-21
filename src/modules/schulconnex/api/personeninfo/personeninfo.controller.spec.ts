@@ -132,7 +132,7 @@ describe('PersonenInfoController', () => {
                     .expect([
                         {
                             pid: 'person-1',
-                            person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+                            person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
                             personenkontexte: [],
                             beziehungen: [],
                         },

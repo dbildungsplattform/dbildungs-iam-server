@@ -37,15 +37,13 @@ export class SchulconnexMapperService {
         const klassenKontexte: KontextWithOrgaAndRolle[] = kontexteWithOrgaAndRolle.filter(
             (kontext: KontextWithOrgaAndRolle) => kontext.organisation.typ === OrganisationsTyp.KLASSE,
         );
-        const kontexte: PersonInfoKontextDtoV2[] = primaryKontexte.map(
-            (primaryKontext: KontextWithOrgaAndRolle) => {
-                const associatedKlassenKontexte: KontextWithOrgaAndRolle[] = klassenKontexte.filter(
-                    (klassenKontext: KontextWithOrgaAndRolle) =>
-                        klassenKontext.organisation.administriertVon === primaryKontext.organisation.id,
-                );
-                return this.mapKontext(primaryKontext, associatedKlassenKontexte, userlocks, email ?? undefined);
-            },
-        );
+        const kontexte: PersonInfoKontextDtoV2[] = primaryKontexte.map((primaryKontext: KontextWithOrgaAndRolle) => {
+            const associatedKlassenKontexte: KontextWithOrgaAndRolle[] = klassenKontexte.filter(
+                (klassenKontext: KontextWithOrgaAndRolle) =>
+                    klassenKontext.organisation.administriertVon === primaryKontext.organisation.id,
+            );
+            return this.mapKontext(primaryKontext, associatedKlassenKontexte, userlocks, email ?? undefined);
+        });
         return new PersonInfoDtoV2(person.id, this.mapPerson(person), kontexte);
     }
 
@@ -64,6 +62,7 @@ export class SchulconnexMapperService {
             id: primaryNonKlassenKontext.personenkontext.id,
             organisation: this.mapOrganisation(primaryNonKlassenKontext.organisation),
             rolle: this.mapRolle(primaryNonKlassenKontext.rolle),
+            spshRolleId: primaryNonKlassenKontext.rolle.id,
             erreichbarkeiten: erreichbarkeit ? [erreichbarkeit] : [],
             personenstatus: this.mapPersonenStatus(userlocks),
             gruppen: associatedKlassenKontexte.map((kontext: KontextWithOrgaAndRolle) =>
@@ -76,6 +75,7 @@ export class SchulconnexMapperService {
         return new PersonInfoPersonNameDtoV2({
             vorname: person.vorname,
             familiennamen: person.familienname,
+            familienname: person.familienname,
         });
     }
 

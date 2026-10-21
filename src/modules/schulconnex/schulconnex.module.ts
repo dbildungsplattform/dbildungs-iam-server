@@ -1,3 +1,4 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { LoggerModule } from '../../core/logging/logger.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
@@ -14,9 +15,12 @@ import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.
 import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
 import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js';
+import { SchulconnexPushAdapter } from './adapter/domain/schulconnex-push.adapter.js';
+import { SchulconnexPushApiClient } from './adapter/technical/schulconnex-push-api.client.js';
 
 @Module({
     imports: [
+        HttpModule,
         PersonModule,
         RolleModule,
         OrganisationModule,
@@ -26,7 +30,15 @@ import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js
         EmailPersistenceModule,
         LoggerModule.register(SchulconnexModule.name),
     ],
-    providers: [PersonenInfoService, SchulconnexRepo, EntityAggregateMapper, SchulconnexMapperService, SchulconnexPushRegistryRepo],
+    providers: [
+        PersonenInfoService,
+        SchulconnexRepo,
+        EntityAggregateMapper,
+        SchulconnexMapperService,
+        SchulconnexPushRegistryRepo,
+        SchulconnexPushApiClient,
+        SchulconnexPushAdapter,
+    ],
     exports: [SchulconnexMapperService],
     controllers: [PersonInfoController, PersonenInfoController],
 })

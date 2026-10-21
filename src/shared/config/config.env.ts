@@ -166,5 +166,7 @@ export default (): Config => ({
     },
     SCHULCONNEX: {
         LIMIT_PERSONENINFO: envToOptionalInteger('SCHULCONNEX_LIMIT_PERSONENINFO'),
+        PUSH_MAX_ATTEMPTS: envToOptionalInteger('SCHULCONNEX_PUSH_MAX_ATTEMPTS'),
+        PUSH_RETRY_DELAY_MS: envToOptionalInteger('SCHULCONNEX_PUSH_RETRY_DELAY_MS'),
     },
 });

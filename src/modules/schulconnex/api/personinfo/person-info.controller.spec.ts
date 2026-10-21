@@ -1010,7 +1010,7 @@ describe('PersonInfoController', () => {
             {
                 personenkontext: DoFactory.createPersonenkontext(true, { id: 'kontext-1' }),
                 organisation,
-                rolle: DoFactory.createRolle(true, { rollenart: RollenArt.LEHR }),
+                rolle: DoFactory.createRolle(true, { id: 'rolle-1', rollenart: RollenArt.LEHR }),
             },
         ]);
         userLockRepoMock.findByPersonId.mockResolvedValue([]);
@@ -1026,12 +1026,13 @@ describe('PersonInfoController', () => {
             .expect(200)
             .expect({
                 pid: 'person-1',
-                person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+                person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
                 personenkontexte: [
                     {
                         id: 'kontext-1',
                         organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
                         rolle: 'Lehr',
+                        spshRolleId: 'rolle-1',
                         erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna@example.org' }],
                         personenstatus: 'Aktiv',
                         gruppen: [],
