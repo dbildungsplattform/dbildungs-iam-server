@@ -1,28 +1,29 @@
 import { faker } from '@faker-js/faker';
-import { createPersonPermissionsMock, DoFactory } from '../../../test/utils/index.js';
 import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
+import { createPersonPermissionsMock, DoFactory } from '../../../test/utils/index.js';
 import { ClassLogger } from '../../core/logging/class-logger.js';
 import { type OrganisationID } from '../../shared/types/index.js';
 import { type Organisation } from '../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
 import { type Personenkontext } from '../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { type Rolle } from '../rolle/domain/rolle.js';
 import { RollenMerkmal } from '../rolle/domain/rolle.enums.js';
+import { type Rolle } from '../rolle/domain/rolle.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 import {
     type EscalatedPermissionAtOrga,
     EscalatedPersonPermissions,
     isEscalatedPersonPermissions,
 } from './escalated-person-permissions.js';
+
 import { type Mock } from 'vitest';
-import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 import {
     type PermittedOrgas,
     type PersonenkontextRolleWithOrganisation,
     type PersonFields,
     type PersonPermissions,
 } from '../authentication/domain/person-permissions.js';
+import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 
 describe('EscalatedPersonPermission', () => {
     const organisationRepo: DeepMocked<OrganisationRepository> =
@@ -724,6 +725,46 @@ describe('EscalatedPersonPermission', () => {
             const result: boolean = await escalatedPersonPermission.hasOrgVerwaltenRechtAtOrga(OrganisationsTyp.SCHULE);
             expect(result).toBe(true);
             expect(spy).toHaveBeenCalledWith([RollenSystemRecht.SCHULEN_VERWALTEN]);
+        });
+
+        describe('when BEHOERDEN_VERWALTEN is granted at root', () => {
+            it('should allow managing BEHOERDE organisations', async () => {
+                const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                    { name: 'testInstance' },
+                    [{ orgaId: 'ROOT', systemrechte: [RollenSystemRechtEnum.BEHOERDEN_VERWALTEN] }],
+                    organisationRepo,
+                    personenkontextRepo,
+                    logger,
+                );
+                const spy: Mock = vi.spyOn(escalatedPersonPermission, 'hasSystemrechteAtRootOrganisation');
+
+                const result: boolean = await escalatedPersonPermission.hasOrgVerwaltenRechtAtOrga(
+                    OrganisationsTyp.BEHOERDE,
+                );
+
+                expect(result).toBe(true);
+                expect(spy).toHaveBeenCalledExactlyOnceWith([RollenSystemRecht.BEHOERDEN_VERWALTEN]);
+            });
+        });
+
+        describe('when no rights are granted', () => {
+            it('should deny managing BEHOERDE organisations', async () => {
+                const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                    { name: 'testInstance' },
+                    [],
+                    organisationRepo,
+                    personenkontextRepo,
+                    logger,
+                );
+                const spy: Mock = vi.spyOn(escalatedPersonPermission, 'hasSystemrechteAtRootOrganisation');
+
+                const result: boolean = await escalatedPersonPermission.hasOrgVerwaltenRechtAtOrga(
+                    OrganisationsTyp.BEHOERDE,
+                );
+
+                expect(result).toBe(false);
+                expect(spy).toHaveBeenCalledExactlyOnceWith([RollenSystemRecht.BEHOERDEN_VERWALTEN]);
+            });
         });
 
         it('should check SCHULTRAEGER_VERWALTEN for TRAEGER', async () => {
