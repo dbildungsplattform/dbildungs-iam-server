@@ -136,36 +136,36 @@ export class SchulconnexPushApiClient {
         data?: object,
     ): Promise<Result<void, DomainError>> {
         const url: string = this.buildUrl(registry, path);
-        let lastError: unknown;
 
-        for (let attempt: number = 1; attempt <= this.maxAttempts; attempt++) {
-            try {
-                // eslint-disable-next-line no-await-in-loop
-                await lastValueFrom(this.httpService.request({ method, url, data }));
+        return this.sendWithRetry(method, url, data);
+    }
 
-                return Ok();
-            } catch (err: unknown) {
-                lastError = err;
+    private async sendWithRetry(
+        method: HttpMethod,
+        url: string,
+        data: object | undefined,
+        attempt: number = 1,
+    ): Promise<Result<void, DomainError>> {
+        try {
+            await lastValueFrom(this.httpService.request({ method, url, data }));
 
-                if (!this.isRetryable(err)) {
-                    break;
-                }
+            return Ok();
+        } catch (err: unknown) {
+            if (this.isRetryable(err) && attempt < this.maxAttempts) {
+                this.logger.logUnknownAsWarning(
+                    `Push request ${method} ${url} failed (attempt ${attempt}/${this.maxAttempts}), retrying in ${this.retryDelayMs}ms`,
+                    err,
+                );
 
-                if (attempt < this.maxAttempts) {
-                    this.logger.logUnknownAsWarning(
-                        `Push request ${method} ${url} failed (attempt ${attempt}/${this.maxAttempts}), retrying in ${this.retryDelayMs}ms`,
-                        err,
-                    );
+                await sleep(this.retryDelayMs);
 
-                    // eslint-disable-next-line no-await-in-loop
-                    await sleep(this.retryDelayMs);
-                }
+                return this.sendWithRetry(method, url, data, attempt + 1);
             }
+
+            this.logger.logUnknownAsError(`Push request ${method} ${url} failed, aborting`, err);
+
+            return Err(new SchulconnexPushError(`Push request ${method} ${url} failed`, [err]));
         }
-
-        this.logger.logUnknownAsError(`Push request ${method} ${url} failed, aborting`, lastError);
-
-        return Err(new SchulconnexPushError(`Push request ${method} ${url} failed`, [lastError]));
     }
 
     /** Client errors (4xx) won't succeed by repeating the same request, except for timeouts and rate limiting. */
