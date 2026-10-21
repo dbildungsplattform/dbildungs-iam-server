@@ -2,6 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
+import { type DomainError, SchulconnexPushError } from '../../../../shared/error/index.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { type PersonEmailResponse } from '../../../person/api/person-email-response.js';
@@ -64,7 +65,7 @@ describe('SchulconnexPushAdapter', () => {
 
     describe('deletePerson', () => {
         it('should delegate to the client and return its result', async () => {
-            const error: Result<void, Error> = { ok: false, error: new Error('failed') };
+            const error: Result<void, DomainError> = { ok: false, error: new SchulconnexPushError('failed') };
             clientMock.deletePerson.mockResolvedValueOnce(error);
 
             const result: Result<void, unknown> = await sut.deletePerson(registry, 'person-1');
