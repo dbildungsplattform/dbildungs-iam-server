@@ -309,7 +309,7 @@
             "vidis-test-client": [],
             "account-console": [],
             "spsh-service": [],
-            "${KC_NEXTCLOUD_CLIENT_ID}": [],
+            "nextcloud": [],
             "spsh-test": [],
             "broker": [
                 {
@@ -610,7 +610,7 @@
         },
         {
             "id": "8d129be5-0cde-44e7-b9de-59797f650e4b",
-            "clientId": "${KC_NEXTCLOUD_CLIENT_ID}",
+            "clientId": "nextcloud",
             "name": "NextCloud-Dateiablage",
             "description": "",
             "rootUrl": "https://sh.lumaserv.dev",
@@ -620,7 +620,7 @@
             "enabled": true,
             "alwaysDisplayInConsole": false,
             "clientAuthenticatorType": "client-secret",
-            "secret": "${KC_NEXTCLOUD_CLIENT_SECRET}",
+            "secret": "random-secret",
             "redirectUris": ["/apps/user_oidc/code"],
             "webOrigins": ["/*"],
             "notBefore": 0,
