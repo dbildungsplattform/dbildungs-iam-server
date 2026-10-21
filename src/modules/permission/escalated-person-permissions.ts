@@ -1,22 +1,22 @@
+import { type ClassLogger } from '../../core/logging/class-logger.js';
 import { type IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 import { type OrganisationID, type PersonID } from '../../shared/types/index.js';
-import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
-import { RollenSystemRecht, type RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
-import { type RollenMerkmal } from '../rolle/domain/rolle.enums.js';
-import { RollenmerkmalSystemrechtPaar } from '../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import {
     type PermittedOrgas,
     type PersonenkontextRolleWithOrganisation,
     type PersonFields,
     type PersonPermissions,
 } from '../authentication/domain/person-permissions.js';
-import { type OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
+import { OrganisationsTyp } from '../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
 import {
     type DBiamPersonenkontextRepo,
     type KontextWithOrgaAndRolle,
 } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { type ClassLogger } from '../../core/logging/class-logger.js';
+import { type RollenMerkmal } from '../rolle/domain/rolle.enums.js';
+import { RollenmerkmalSystemrechtPaar } from '../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenSystemRecht, type RollenSystemRechtEnum } from '../rolle/domain/systemrecht.js';
 
 export type EscalatedPermissionAtOrga = {
     orgaId: OrganisationID | 'ROOT';
@@ -342,6 +342,8 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
             );
         } else if (typ === OrganisationsTyp.SCHULE) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULEN_VERWALTEN]);
+        } else if (typ === OrganisationsTyp.BEHOERDE) {
+            return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.BEHOERDEN_VERWALTEN]);
         } else if (typ === OrganisationsTyp.TRAEGER) {
             return this.hasSystemrechteAtRootOrganisation([RollenSystemRecht.SCHULTRAEGER_VERWALTEN]);
         }
