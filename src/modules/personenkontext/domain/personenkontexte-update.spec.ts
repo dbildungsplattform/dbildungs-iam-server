@@ -1,25 +1,6 @@
+import { faker } from '@faker-js/faker';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { faker } from '@faker-js/faker';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
-import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
-import { type PersonID } from '../../../shared/types/index.js';
-import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
-import { type Personenkontext } from './personenkontext.js';
-import { UpdateCountError } from './error/update-count.error.js';
-import { UpdateOutdatedError } from './error/update-outdated.error.js';
-import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { PersonenkontextFactory } from './personenkontext.factory.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
-import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import {
     ConfigTestModule,
     createPersonPermissionsMock,
@@ -27,24 +8,41 @@ import {
     DoFactory,
     PersonPermissionsMock,
 } from '../../../../test/utils/index.js';
-import { type Person } from '../../person/domain/person.js';
-import { type Rolle } from '../../rolle/domain/rolle.js';
-import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
-import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
-import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
-import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { type PersonID } from '../../../shared/types/index.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
+import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
+import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
+import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
+import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
+import { UpdateCountError } from './error/update-count.error.js';
 import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
+import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
 import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-schule-and-klasse.error.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { UpdateOutdatedError } from './error/update-outdated.error.js';
+import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
+import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
+import { PersonenkontextFactory } from './personenkontext.factory.js';
+import { type Personenkontext } from './personenkontext.js';
+import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
 
 function createPKBodyParams(personId: PersonID): DbiamPersonenkontextBodyParams[] {
     const firstCreatePKBodyParams: DbiamPersonenkontextBodyParams = createMock<DbiamPersonenkontextBodyParams>(
@@ -90,12 +88,7 @@ describe('PersonenkontexteUpdate', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [
-                ConfigTestModule,
-                EmailPersistenceModule,
-                EmailMicroserviceModule,
-                DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
-            ],
+            imports: [ConfigTestModule, DatabaseTestModule.forRoot()],
             providers: [
                 {
                     provide: ClassLogger,
