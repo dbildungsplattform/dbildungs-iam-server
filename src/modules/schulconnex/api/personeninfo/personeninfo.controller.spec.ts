@@ -100,7 +100,6 @@ describe('PersonenInfoController', () => {
     });
 
     describe('infoV2', () => {
-
         it('should parse offset and limit as integers', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             service.findPersonsForPersonenInfoV2.mockResolvedValue(Ok([]));
