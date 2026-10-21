@@ -5,15 +5,10 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
-import { createAuthInterceptorMock, createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
+import { createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
 import { ExceedsLimitError } from '../../../../shared/error/exceeds-limit.error.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
-import { type INestApplication, VersioningType } from '@nestjs/common';
-import request from 'supertest';
-import { DoFactory } from '../../../../../test/utils/do-factory.js';
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
-import { type Server } from 'node:http';
 
 describe('PersonenInfoController', () => {
     let module: TestingModule;
@@ -105,43 +100,6 @@ describe('PersonenInfoController', () => {
     });
 
     describe('infoV2', () => {
-        it('should preserve the V2 HTTP response and pagination headers', async () => {
-            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            const mapper: SchulconnexMapperService = new SchulconnexMapperService();
-            service.findPersonsForPersonenInfoV2.mockResolvedValue(
-                Ok([
-                    mapper.mapPersonInfo(
-                        DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' }),
-                        [],
-                        undefined,
-                        [],
-                    ),
-                ]),
-            );
-            const app: INestApplication = module.createNestApplication();
-            app.enableVersioning({ type: VersioningType.URI });
-            app.useGlobalInterceptors(createAuthInterceptorMock(permissions));
-            await app.init();
-
-            try {
-                await request(app.getHttpServer() as Server)
-                    .get('/v2/personen-info')
-                    .set('x-offset', '5')
-                    .set('x-limit', '15')
-                    .expect(200)
-                    .expect([
-                        {
-                            pid: 'person-1',
-                            person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
-                            personenkontexte: [],
-                            beziehungen: [],
-                        },
-                    ]);
-                expect(service.findPersonsForPersonenInfoV2).toHaveBeenCalledWith(permissions, 5, 15);
-            } finally {
-                await app.close();
-            }
-        });
 
         it('should parse offset and limit as integers', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();

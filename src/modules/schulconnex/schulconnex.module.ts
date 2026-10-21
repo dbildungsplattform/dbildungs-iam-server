@@ -26,7 +26,6 @@ import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js
         LoggerModule.register(SchulconnexModule.name),
     ],
     providers: [PersonenInfoService, SchulconnexRepo, EntityAggregateMapper, SchulconnexMapperService],
-    exports: [SchulconnexMapperService],
     controllers: [PersonInfoController, PersonenInfoController],
 })
 export class SchulconnexModule {}
