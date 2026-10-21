@@ -5,6 +5,7 @@ import { AxiosResponse, Method } from 'axios';
 import { lastValueFrom } from 'rxjs';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { SetEmailAddressForSpshPersonBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-address-for-spsh-person.bodyparams.js';
+import { SetEmailAddressesSuspendedBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-addresses-suspended.bodyparams.js';
 import { UpdateOrganisationBodyParams } from '../../../email/modules/core/api/dtos/params/update-organisation.bodyparams.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
@@ -16,11 +17,9 @@ import { EmailMicroserviceCommunicationError } from '../../../shared/error/index
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { SetEmailAddressesSuspendedBodyParams } from '../../../email/modules/core/api/dtos/params/set-email-addresses-suspended.bodyparams.js';
 
 export interface PersonIdWithEmailResponse {
     personId: string;
@@ -36,7 +35,6 @@ export class EmailResolverService {
         private readonly logger: ClassLogger,
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
-        private readonly emailRepo: EmailRepo,
     ) {}
 
     public async findEmailBySpshPerson(personId: string): Promise<Option<PersonEmailResponse>> {
@@ -239,11 +237,11 @@ export class EmailResolverService {
     }
 
     public async getPrimaryActiveEmailForPerson(person: Person<true>): Promise<string | undefined> {
-        const email: Option<PersonEmailResponse> = this.shouldUseEmailMicroservice()
-            ? await this.findEmailBySpshPerson(person.id)
-            : await this.emailRepo.getEmailAddressAndStatusForPerson(person);
+        const email: Option<PersonEmailResponse> = await this.findEmailBySpshPerson(person.id);
+        const primaryActiveEmail: string | undefined =
+            email?.status === EmailAddressStatus.ENABLED ? email.address : undefined;
 
-        return email?.status === EmailAddressStatus.ENABLED ? email.address : undefined;
+        return primaryActiveEmail;
     }
 
     // ==== Helper functions ====
