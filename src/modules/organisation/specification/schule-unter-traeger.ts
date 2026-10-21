@@ -24,7 +24,7 @@ export class SchuleUnterTraeger extends CompositeSpecification<Organisation<true
         if (!parent) {
             return false;
         }
-        return parent.typ === OrganisationsTyp.LAND;
+        return parent.isLand();
     }
 
     // Schools can belong to LAND or TRAEGER
@@ -36,6 +36,6 @@ export class SchuleUnterTraeger extends CompositeSpecification<Organisation<true
         if (!parent) {
             return false;
         }
-        return parent.typ === OrganisationsTyp.TRAEGER || parent.typ === OrganisationsTyp.LAND;
+        return parent.typ === OrganisationsTyp.TRAEGER || parent.isLand();
     }
 }
