@@ -38,6 +38,7 @@ import type {
 } from '../adapter/domain/vidis.types.js';
 import { VidisApiError } from '../error/vidis-api.error.js';
 import { RemoveServiceProviderUnknownError } from '../error/remove-service-provider.error.js';
+import { ServiceProviderID } from '../../../shared/types/index.js';
 
 type VidisSchoolActivatedAngebot = {
     angebot: VidisServiceResponseAngebot;
@@ -325,11 +326,14 @@ export class VidisSyncService {
                     serviceProviderIdsMissingInVidis,
                     permissions,
                 );
+
                 if (deleteRollenerweiterungenResult.ok) {
-                    serviceProviderIdsMissingInVidis.forEach((serviceProviderId: string) => {
+                    serviceProviderIdsMissingInVidis.forEach((serviceProviderId: ServiceProviderID) => {
                         const deleteOperation: Promise<DeleteVidisServiceProviderResult> =
                             this.serviceProviderRepo.deleteByIdAuthorized(permissions, serviceProviderId);
+
                         deleteOperationsByServiceProviderId.set(serviceProviderId, deleteOperation);
+
                         syncOperations.push(deleteOperation);
                     });
                 } else {
