@@ -594,6 +594,74 @@ describe('LdapSyncEventHandler', () => {
                     `Syncing data to LDAP for personId:${personId}, username:${username}`,
                 );
             });
+
+            it('should remove the LDAP person from all groups when the LDAP entry exists', async () => {
+                mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
+                mockPersonenKontextRelatedRepositoryCalls(
+                    [],
+                    new Map<OrganisationID, Organisation<true>>(),
+                    new Map<RolleID, Rolle<true>>(),
+                );
+                const uid: string = faker.internet.username();
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: true,
+                    value: { uid, dn: 'dn' },
+                });
+                const groups: string[] = ['1234567', '7654321'];
+                ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({ ok: true, value: groups });
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(ldapClientAdapterMock.getGroupsForPerson).toHaveBeenCalledExactlyOnceWith(personId, username);
+                expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledTimes(groups.length);
+                for (const group of groups) {
+                    expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledWith(username, group, uid);
+                }
+                expect(ldapClientAdapterMock.getPersonAttributes).not.toHaveBeenCalled();
+                expect(eventServiceMock.publish).not.toHaveBeenCalled();
+            });
+
+            it('should log an error when fetching groups for the LDAP entry fails', async () => {
+                mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
+                mockPersonenKontextRelatedRepositoryCalls(
+                    [],
+                    new Map<OrganisationID, Organisation<true>>(),
+                    new Map<RolleID, Rolle<true>>(),
+                );
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: true,
+                    value: { uid: 'uid', dn: 'dn' },
+                });
+                const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+                ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({ ok: false, error });
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    `Error while fetching groups for personId:${personId} in LDAP, msg:${error.message}`,
+                );
+                expect(ldapClientAdapterMock.removePersonFromGroup).not.toHaveBeenCalled();
+            });
+
+            it('should continue to report no organisations when the LDAP person lookup fails', async () => {
+                mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
+                mockPersonenKontextRelatedRepositoryCalls(
+                    [],
+                    new Map<OrganisationID, Organisation<true>>(),
+                    new Map<RolleID, Rolle<true>>(),
+                );
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: false,
+                    error: new LdapSearchError(LdapEntityType.LEHRER),
+                });
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    `Could NOT fetch domain from organisations, no organisations found for person, ABORTING SYNC, personId:${personId}`,
+                );
+                expect(ldapClientAdapterMock.getGroupsForPerson).not.toHaveBeenCalled();
+            });
         });
 
         describe('when LDAP OU CANNOT be found in organisation tree recursively', () => {

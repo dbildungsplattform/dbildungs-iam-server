@@ -30,6 +30,7 @@ import { LdapEntityType, LdapPersonEntry } from './ldap.types.js';
 
 export type LdapPersonAttributes = {
     entryUUID?: string;
+    uid: string;
     dn: string;
     givenName?: string;
     surName?: string;
@@ -531,59 +532,7 @@ export class LdapAdapter {
                 return this.createMissingPersonEntry(client, personId, username, uemLdapOu);
             }
 
-            const givenName: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.GIVEN_NAME,
-                username,
-                personId,
-            );
-            if (!givenName.ok) {
-                this.logger.warning(`GivenName was undefined, username:${username}, personId:${personId}`);
-            }
-            const surName: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.SUR_NAME,
-                username,
-                personId,
-            );
-            if (!surName.ok) {
-                this.logger.warning(`Surname was undefined, username:${username}, personId:${personId}`);
-            }
-            const cn: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.COMMON_NAME,
-                username,
-                personId,
-            );
-            if (!cn.ok) {
-                this.logger.warning(`CN was undefined, username:${username}, personId:${personId}`);
-            }
-            const mailPrimaryAddress: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.MAIL_PRIMARY_ADDRESS,
-                username,
-                personId,
-            );
-            if (!mailPrimaryAddress.ok) {
-                this.logger.warning(`MailPrimaryAddress was undefined, username:${username}, personId:${personId}`);
-            }
-            const mailAlternativeAddress: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.MAIL_ALTERNATIVE_ADDRESS,
-                username,
-                personId,
-            );
-
-            const personAttributes: LdapPersonAttributes = {
-                dn: searchResult.searchEntries[0].dn,
-                givenName: givenName.ok ? givenName.value : undefined,
-                cn: cn.ok ? cn.value : undefined,
-                surName: surName.ok ? surName.value : undefined,
-                mailPrimaryAddress: mailPrimaryAddress.ok ? mailPrimaryAddress.value : undefined,
-                mailAlternativeAddress: mailAlternativeAddress.ok ? mailAlternativeAddress.value : undefined,
-            };
-
-            return { ok: true, value: personAttributes };
+            return this.mapToPersonAttributes(searchResult.searchEntries[0], username, personId);
         });
 
         return result;
@@ -1421,59 +1370,7 @@ export class LdapAdapter {
                 return Ok(null);
             }
 
-            const givenName: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.GIVEN_NAME,
-                username,
-                personId,
-            );
-            if (!givenName.ok) {
-                this.logger.warning(`GivenName was undefined, username:${username}, personId:${personId}`);
-            }
-            const surName: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.SUR_NAME,
-                username,
-                personId,
-            );
-            if (!surName.ok) {
-                this.logger.warning(`Surname was undefined, username:${username}, personId:${personId}`);
-            }
-            const cn: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.COMMON_NAME,
-                username,
-                personId,
-            );
-            if (!cn.ok) {
-                this.logger.warning(`CN was undefined, username:${username}, personId:${personId}`);
-            }
-            const mailPrimaryAddress: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.MAIL_PRIMARY_ADDRESS,
-                username,
-                personId,
-            );
-            if (!mailPrimaryAddress.ok) {
-                this.logger.warning(`MailPrimaryAddress was undefined, username:${username}, personId:${personId}`);
-            }
-            const mailAlternativeAddress: Result<string> = this.getAttributeAsStringOrError(
-                searchResult.searchEntries[0],
-                LdapAdapter.MAIL_ALTERNATIVE_ADDRESS,
-                username,
-                personId,
-            );
-
-            const personAttributes: LdapPersonAttributes = {
-                dn: searchResult.searchEntries[0].dn,
-                givenName: givenName.ok ? givenName.value : undefined,
-                cn: cn.ok ? cn.value : undefined,
-                surName: surName.ok ? surName.value : undefined,
-                mailPrimaryAddress: mailPrimaryAddress.ok ? mailPrimaryAddress.value : undefined,
-                mailAlternativeAddress: mailAlternativeAddress.ok ? mailAlternativeAddress.value : undefined,
-            };
-
-            return { ok: true, value: personAttributes };
+            return this.mapToPersonAttributes(searchResult.searchEntries[0], username, personId);
         });
 
         return result;
@@ -1517,5 +1414,70 @@ export class LdapAdapter {
     private async sleep(ms: number): Promise<void> {
         // eslint-disable-next-line no-promise-executor-return
         return new Promise<void>((resolve: () => void) => setTimeout(resolve, ms));
+    }
+
+    private mapToPersonAttributes(
+        entry: Entry,
+        username: PersonUsername,
+        personId: PersonID | undefined,
+    ): Result<LdapPersonAttributes> {
+        const givenName: Result<string> = this.getAttributeAsStringOrError(
+            entry,
+            LdapAdapter.GIVEN_NAME,
+            username,
+            personId,
+        );
+        if (!givenName.ok) {
+            this.logger.warning(`GivenName was undefined, username:${username}, personId:${personId}`);
+        }
+        const surName: Result<string> = this.getAttributeAsStringOrError(
+            entry,
+            LdapAdapter.SUR_NAME,
+            username,
+            personId,
+        );
+        if (!surName.ok) {
+            this.logger.warning(`Surname was undefined, username:${username}, personId:${personId}`);
+        }
+        const cn: Result<string> = this.getAttributeAsStringOrError(entry, LdapAdapter.COMMON_NAME, username, personId);
+        if (!cn.ok) {
+            this.logger.warning(`CN was undefined, username:${username}, personId:${personId}`);
+        }
+        const mailPrimaryAddress: Result<string> = this.getAttributeAsStringOrError(
+            entry,
+            LdapAdapter.MAIL_PRIMARY_ADDRESS,
+            username,
+            personId,
+        );
+        if (!mailPrimaryAddress.ok) {
+            this.logger.warning(`MailPrimaryAddress was undefined, username:${username}, personId:${personId}`);
+        }
+        const mailAlternativeAddress: Result<string> = this.getAttributeAsStringOrError(
+            entry,
+            LdapAdapter.MAIL_ALTERNATIVE_ADDRESS,
+            username,
+            personId,
+        );
+        if (!mailAlternativeAddress.ok) {
+            this.logger.warning(`MailAlternativeAddress was undefined, username:${username}, personId:${personId}`);
+        }
+
+        const uid: Result<string> = this.getAttributeAsStringOrError(entry, LdapAdapter.UID, username, personId);
+        if (!uid.ok || !uid.value) {
+            this.logger.warning(`UID was undefined, username:${username}, personId:${personId}`);
+            return Err(new LdapFetchAttributeError(LdapAdapter.UID, username, personId));
+        }
+
+        const personAttributes: LdapPersonAttributes = {
+            dn: entry.dn,
+            uid: uid.value,
+            givenName: givenName.ok ? givenName.value : undefined,
+            cn: cn.ok ? cn.value : undefined,
+            surName: surName.ok ? surName.value : undefined,
+            mailPrimaryAddress: mailPrimaryAddress.ok ? mailPrimaryAddress.value : undefined,
+            mailAlternativeAddress: mailAlternativeAddress.ok ? mailAlternativeAddress.value : undefined,
+        };
+
+        return { ok: true, value: personAttributes };
     }
 }

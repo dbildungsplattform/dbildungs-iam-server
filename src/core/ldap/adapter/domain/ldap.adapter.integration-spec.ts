@@ -27,6 +27,7 @@ import { LdapInstanceConfig } from '../technical/ldap-instance-config.js';
 import { LdapAddPersonToGroupError } from './error/ldap-add-person-to-group.error.js';
 import { LdapCreateLehrerError } from './error/ldap-create-lehrer.error.js';
 import { LdapDeleteOrganisationError } from './error/ldap-delete-organisation.error.js';
+import { LdapFetchAttributeError } from './error/ldap-fetch-attribute.error.js';
 import { LdapFetchGroupsError } from './error/ldap-fetch-groups.error.js';
 import { LdapModifyEmailError } from './error/ldap-modify-email.error.js';
 import { LdapModifyUserPasswordError } from './error/ldap-modify-user-password.error.js';
@@ -76,8 +77,12 @@ describe('LDAP Adapter', () => {
         cn?: string,
         mailPrimaryAddress?: string,
         mailAlternativeAddress?: string,
+        uid?: string,
     ): Entry {
         const entry: Entry = { dn: dn };
+        if (uid !== undefined) {
+            entry['uid'] = uid;
+        }
         if (givenName !== undefined) {
             entry['givenName'] = givenName;
         }
@@ -255,6 +260,7 @@ describe('LDAP Adapter', () => {
             username,
             'primary@example.com',
             'alternative@example.com',
+            username,
         );
 
         it('should find and map a person by username', async () => {
@@ -270,6 +276,7 @@ describe('LDAP Adapter', () => {
             assert(result.ok);
             expect(result.value).toEqual({
                 dn: entry.dn,
+                uid: username,
                 givenName: 'Given',
                 surName: 'Surname',
                 cn: username,
@@ -289,7 +296,11 @@ describe('LDAP Adapter', () => {
             { attribute: 'sn', property: 'surName', warning: 'Surname' },
             { attribute: 'cn', property: 'cn', warning: 'CN' },
             { attribute: 'mailPrimaryAddress', property: 'mailPrimaryAddress', warning: 'MailPrimaryAddress' },
-            { attribute: 'mailAlternativeAddress', property: 'mailAlternativeAddress', warning: undefined },
+            {
+                attribute: 'mailAlternativeAddress',
+                property: 'mailAlternativeAddress',
+                warning: 'MailAlternativeAddress',
+            },
         ])(
             'should return undefined for a missing $attribute and preserve other attributes',
             async ({
@@ -315,6 +326,7 @@ describe('LDAP Adapter', () => {
                 expect(result).toEqual(
                     Ok({
                         dn: entry.dn,
+                        uid: username,
                         givenName: 'Given',
                         surName: 'Surname',
                         cn: username,
@@ -1822,7 +1834,7 @@ describe('LDAP Adapter', () => {
             });
         }
         beforeEach(() => {
-            entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, mailAlternativeAddress);
+            entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, mailAlternativeAddress, username);
         });
 
         describe('when bind returns error', () => {
@@ -2042,7 +2054,7 @@ describe('LDAP Adapter', () => {
 
         describe('when fetching all attributes succeeds', () => {
             it('should return person-attributes', async () => {
-                entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, mailAlternativeAddress);
+                entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, mailAlternativeAddress, username);
                 mockEntryCanBeFound();
 
                 const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
@@ -2056,6 +2068,7 @@ describe('LDAP Adapter', () => {
                     ok: true,
                     value: {
                         dn: dn,
+                        uid: username,
                         givenName: givenName,
                         cn: cn,
                         surName: sn,
@@ -2069,7 +2082,7 @@ describe('LDAP Adapter', () => {
         describe('when fetching a certain attribute fails', () => {
             describe('when fetching givenName fails', () => {
                 it('should log error and return LdapFetchAttributeError', async () => {
-                    entry = getPersonEntry(dn, undefined, sn, cn, mailPrimaryAddress, mailAlternativeAddress);
+                    entry = getPersonEntry(dn, undefined, sn, cn, mailPrimaryAddress, mailAlternativeAddress, username);
                     mockEntryCanBeFound();
 
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
@@ -2094,7 +2107,15 @@ describe('LDAP Adapter', () => {
 
             describe('when fetching surName fails', () => {
                 it('should log error and return LdapFetchAttributeError', async () => {
-                    entry = getPersonEntry(dn, givenName, undefined, cn, mailPrimaryAddress, mailAlternativeAddress);
+                    entry = getPersonEntry(
+                        dn,
+                        givenName,
+                        undefined,
+                        cn,
+                        mailPrimaryAddress,
+                        mailAlternativeAddress,
+                        username,
+                    );
                     mockEntryCanBeFound();
 
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
@@ -2119,7 +2140,15 @@ describe('LDAP Adapter', () => {
 
             describe('when fetching cn fails', () => {
                 it('should log error and return LdapFetchAttributeError', async () => {
-                    entry = getPersonEntry(dn, givenName, sn, undefined, mailPrimaryAddress, mailAlternativeAddress);
+                    entry = getPersonEntry(
+                        dn,
+                        givenName,
+                        sn,
+                        undefined,
+                        mailPrimaryAddress,
+                        mailAlternativeAddress,
+                        username,
+                    );
                     mockEntryCanBeFound();
 
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
@@ -2144,7 +2173,7 @@ describe('LDAP Adapter', () => {
 
             describe('when fetching mailPrimaryAddress fails', () => {
                 it('should log error and return LdapFetchAttributeError', async () => {
-                    entry = getPersonEntry(dn, givenName, sn, cn, undefined, mailAlternativeAddress);
+                    entry = getPersonEntry(dn, givenName, sn, cn, undefined, mailAlternativeAddress, username);
                     mockEntryCanBeFound();
 
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
@@ -2169,7 +2198,7 @@ describe('LDAP Adapter', () => {
 
             describe('when fetching mailAlternativeAddress fails', () => {
                 it('should log error but return person-attributes', async () => {
-                    entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, undefined);
+                    entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, undefined, username);
                     mockEntryCanBeFound();
                     const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
                         personId,
@@ -2185,6 +2214,33 @@ describe('LDAP Adapter', () => {
                             mailAlternativeAddress: undefined,
                         }),
                     });
+                });
+
+                it.each([
+                    { description: 'missing', uid: undefined },
+                    { description: 'empty', uid: '' },
+                ])('should reject a $description uid', async ({ uid }: { uid: string | undefined }) => {
+                    entry = getPersonEntry(dn, givenName, sn, cn, mailPrimaryAddress, mailAlternativeAddress, uid);
+                    mockEntryCanBeFound();
+
+                    const result: Result<LdapPersonAttributes> = await ldapClientAdapter.getPersonAttributes(
+                        personId,
+                        username,
+                        oeffentlicheSchulenDoamin,
+                    );
+
+                    assert(!result.ok);
+                    expect(result.error).toEqual(new LdapFetchAttributeError('uid', username, personId));
+                    expect(loggerMock.warning).toHaveBeenCalledWith(
+                        `UID was undefined, username:${username}, personId:${personId}`,
+                    );
+                    if (uid === undefined) {
+                        expect(loggerMock.error).toHaveBeenCalledWith(
+                            `Could not fetch attribute:uid, personId:${personId}, username:${username}`,
+                        );
+                    } else {
+                        expect(loggerMock.error).not.toHaveBeenCalled();
+                    }
                 });
             });
         });

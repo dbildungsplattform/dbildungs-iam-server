@@ -27,6 +27,7 @@ import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
 import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
 import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 export type LdapSyncData = {
     givenName: string;
@@ -126,7 +127,7 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             this.logger.info(
                 `No relevant person contexts but LDAP entry found for person. Deleting LDAP entry. PersonId:${personId}`,
             );
-            await this.ldapClientAdapter.deleteLehrerByUsername(person.username);
+            await this.removePersonFromAllGroups(personId, person.username, ldapPerson.value.uid);
             return;
         }
 
@@ -296,6 +297,27 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
                     ),
             ),
         ]);
+    }
+
+    private async removePersonFromAllGroups(
+        personId: string,
+        username: string,
+        uid: string,
+    ): Promise<Result<void, Error>> {
+        const groups: Result<string[]> = await this.ldapClientAdapter.getGroupsForPerson(personId, username);
+        if (!groups.ok) {
+            this.logger.error(
+                `Error while fetching groups for personId:${personId} in LDAP, msg:${groups.error.message}`,
+            );
+            return Err(groups.error);
+        }
+        await Promise.all([
+            ...groups.value.map(
+                (kennung: string): Promise<Result<boolean>> =>
+                    this.ldapClientAdapter.removePersonFromGroup(username, kennung, uid),
+            ),
+        ]);
+        return Ok();
     }
 
     private createGroupAdditionList(schulenDstNrList: string[], groupDns: string[]): string[] {
