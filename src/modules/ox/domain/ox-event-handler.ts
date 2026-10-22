@@ -26,26 +26,16 @@ import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kaf
 import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
 import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
 import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
-import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
 import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
-import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
-import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
-import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { KafkaOxAccountDeletedEvent } from '../../../shared/events/ox/kafka-ox-account-deleted.event.js';
 import { OxAccountDeletedEvent } from '../../../shared/events/ox/ox-account-deleted.event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
-import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
-import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
 import { OrganisationKennung, PersonID, PersonUsername } from '../../../shared/types/index.js';
 import { OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
 import { OxNoSuchUserError } from '../adapter/domain/error/ox-no-such-user.error.js';
 import {
@@ -77,15 +67,14 @@ export class OxEventHandler {
     public ENABLED: boolean;
 
     public constructor(
-        protected readonly logger: ClassLogger,
-        protected readonly emailResolverService: EmailResolverService,
-        protected readonly oxService: OxSendService,
-        protected readonly oxAdapter: OxAdapter,
-        protected readonly oxSyncEventHandler: OxSyncEventHandler,
-        protected readonly emailRepo: EmailRepo,
-        protected readonly personRepository: PersonRepository,
-        protected readonly eventService: EventRoutingLegacyKafkaService,
-        protected configService: ConfigService<ServerConfig>,
+        private readonly logger: ClassLogger,
+        private readonly oxService: OxSendService,
+        private readonly oxAdapter: OxAdapter,
+        private readonly oxSyncEventHandler: OxSyncEventHandler,
+        private readonly emailRepo: EmailRepo,
+        private readonly personRepository: PersonRepository,
+        private readonly eventService: EventRoutingLegacyKafkaService,
+        configService: ConfigService<ServerConfig>,
         // @ts-expect-error used by EnsureRequestContext decorator
         // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
         // to create the request-bound EntityManager context. Removing it would break context creation.
@@ -204,50 +193,6 @@ export class OxEventHandler {
         });
     }
 
-    @KafkaEventHandler(KafkaPersonenkontextUpdatedEvent)
-    @EventHandler(PersonenkontextUpdatedEvent)
-    @EnsureRequestContext()
-    public async handlePersonenkontextUpdatedEvent(event: PersonenkontextUpdatedEvent): Promise<void> {
-        this.logger.info(
-            `Received PersonenkontextUpdatedEvent, personId:${event.person.id}, username:${event.person.username}, newPKs:${event.newKontexte.length}, removedPKs:${event.removedKontexte.length}`,
-        );
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.person.id} because email microservice is enabled`);
-            return;
-        }
-        if (!this.ENABLED) {
-            return this.logger.info('Not enabled, ignoring event');
-        }
-        const person: Option<Person<true>> = await this.personRepository.findById(event.person.id);
-        if (!person) {
-            return this.logger.error(`Could Not Find Person For personId:${event.person.id}`);
-        }
-        if (!person.oxUserId) {
-            return this.logger.error(`OxUserId Not Defined For personId:${event.person.id}`);
-        }
-        // For each removed personenkontext and if rollenart === LEHR
-        const rollenArtLehrPKs: PersonenkontextEventKontextData[] = event.removedKontexte.filter(
-            (pk: PersonenkontextEventKontextData) => pk.rolle === RollenArt.LEHR,
-        );
-        // Await the requests to OX explicitly to avoid transaction-exceptions on OX-side regarding concurrent modifications
-        /* eslint-disable no-await-in-loop */
-        for (const pk of rollenArtLehrPKs) {
-            const oxGroupId: OXGroupID | DomainError = await this.oxAdapter.getOxGroupByName(
-                OxAdapter.LEHRER_OX_GROUP_NAME_PREFIX + pk.orgaKennung,
-            );
-            if (oxGroupId instanceof DomainError) {
-                return this.logger.error(
-                    `Could Not Get OxGroupId For oxGroupName:${OxAdapter.LEHRER_OX_GROUP_NAME_PREFIX + pk.orgaKennung}`,
-                );
-            }
-            //Logging is done in removeOxUserFromOxGroup
-            await this.oxAdapter.removeOxUserFromOxGroup(oxGroupId, person.oxUserId, {
-                personId: person.id,
-                username: person.username,
-            });
-        }
-    }
-
     @EventHandler(PersonDeletedAfterDeadlineExceededEvent)
     @KafkaEventHandler(KafkaPersonDeletedAfterDeadlineExceededEvent)
     @EnsureRequestContext()
@@ -282,45 +227,6 @@ export class OxEventHandler {
         return this.logger.info(
             `Successfully Changed OxUsername, personId:${personId}, username:${username}, oxUserId:${oxUserId} After PersonDeletedAfterDeadlineExceededEvent`,
         );
-    }
-
-    // this method cannot make use of handlePerson(personId) method, because personId is already null when event is received
-    @KafkaEventHandler(KafkaPersonDeletedEvent)
-    @EventHandler(PersonDeletedEvent)
-    @EnsureRequestContext()
-    public async handlePersonDeletedEvent(event: PersonDeletedEvent | KafkaPersonDeletedEvent): Promise<void> {
-        this.logger.info(`Received PersonDeletedEvent, personId:${event.personId}`);
-
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is enabled`);
-            return;
-        }
-
-        // Check if the functionality is enabled
-        if (!this.ENABLED) {
-            return this.logger.info('Not enabled, ignoring event');
-        }
-
-        if (!event.emailAddress) {
-            return this.logger.error('Cannot Create OX-delete-user-request, Email-Address Is Not Defined');
-        }
-
-        const emailAddress: Option<EmailAddress<true>> = await this.emailRepo.findByAddress(event.emailAddress);
-        if (!emailAddress) {
-            return this.logger.error(
-                `Cannot Create OX-delete-user-request For address:${event.emailAddress} Could Not Be Found`,
-            );
-        }
-        if (!emailAddress.oxUserID) {
-            return this.logger.error(
-                `Cannot Create OX-delete-user-request For address:${event.emailAddress}, OxUserId Is Not Defined`,
-            );
-        }
-
-        return this.removeOxUserFromAllItsGroupsAndDeleteOxAccount(emailAddress.oxUserID, {
-            personId: event.personId,
-            username: event.username,
-        });
     }
 
     @KafkaEventHandler(KafkaEmailAddressMarkedForDeletionEvent)
@@ -432,32 +338,6 @@ export class OxEventHandler {
             personId: event.personId,
             username: event.username,
         });
-    }
-
-    @KafkaEventHandler(KafkaOrganisationDeletedEvent)
-    @EventHandler(OrganisationDeletedEvent)
-    @EnsureRequestContext()
-    public async handleOrganisationDeletedEvent(event: OrganisationDeletedEvent): Promise<void> {
-        this.logger.info(
-            `Received OrganisationDeletedEvent, organisationId:${event.organisationId}, name:${event.name}, kennung:${event.kennung}, typ:${event.typ}`,
-        );
-
-        // Check if the functionality is enabled
-        if (!this.ENABLED) {
-            return this.logger.info('Not enabled, ignoring event');
-        }
-
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            return this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because email microservice is enabled`,
-            );
-        }
-
-        if (!event.kennung || event?.typ !== OrganisationsTyp.SCHULE) {
-            return this.logger.info('OrganisationDeletedEvent does not apply, ignoring event');
-        }
-
-        await this.oxAdapter.removeOxGroup(event.kennung);
     }
 
     private async removeOxUserFromAllItsGroupsAndDeleteOxAccount(
