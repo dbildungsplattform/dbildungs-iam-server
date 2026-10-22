@@ -4,20 +4,36 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosError, AxiosResponse } from 'axios';
 import { uniq } from 'lodash-es';
 import { catchError, firstValueFrom, lastValueFrom } from 'rxjs';
+import { ClassLogger } from '../../core/logging/class-logger.js';
 import { PrivacyIdeaConfig } from '../../shared/config/privacyidea.config.js';
 import { ServerConfig } from '../../shared/config/server.config.js';
+import { DomainError } from '../../shared/error/domain.error.js';
 import { Personenkontext } from '../personenkontext/domain/personenkontext.js';
 import { PersonenkontextService } from '../personenkontext/domain/personenkontext.service.js';
 import { ServiceProvider } from '../service-provider/domain/service-provider.js';
 import { ServiceProviderService } from '../service-provider/domain/service-provider.service.js';
+import { DeleteUserError } from './api/error/delete-user.error.js';
 import { HardwareTokenServiceError } from './api/error/hardware-token-service.error.js';
 import { OTPnotValidError } from './api/error/otp-not-valid.error.js';
+import { PIUnavailableError } from './api/error/pi-unavailable.error.js';
 import { SerialInUseError } from './api/error/serial-in-use.error.js';
 import { SerialNotFoundError } from './api/error/serial-not-found.error.js';
+import { SoftwareTokenInitializationError } from './api/error/software-token-initialization.error.js';
 import { SoftwareTokenVerificationError } from './api/error/software-token-verification.error.js';
 import { TokenResetError } from './api/error/token-reset.error.js';
+import { TokenStateError } from './api/error/token-state.error.js';
 import { TokenError } from './api/error/token.error.js';
 import { TwoAuthStateError } from './api/error/two-auth-state.error.js';
+import { UserExistsError } from './api/error/user-exists.error.js';
+import { JwtFetchError } from './error/jwt-fetch.error.js';
+import { TokenDeleteError } from './error/token-delete.error.js';
+import { TokenInitError } from './error/token-init.error.js';
+import { TokenUnassignError } from './error/token-unassign.error.js';
+import { TokenVerifyError } from './error/token-verify.error.js';
+import { UserCheckError } from './error/user-check.error.js';
+import { UserCreationError } from './error/user-creation.error.js';
+import { UserTokensError } from './error/user-tokens.error.js';
+import { VeryfyNoTokenError } from './error/verify-no-token.error.js';
 import {
     AssignTokenPayload,
     AssignTokenResponse,
@@ -33,22 +49,6 @@ import {
     UserResponse,
     VerificationResponse,
 } from './privacy-idea-api.types.js';
-import { DomainError } from '../../shared/error/domain.error.js';
-import { DeleteUserError } from './api/error/delete-user.error.js';
-import { UserExistsError } from './api/error/user-exists.error.js';
-import { SoftwareTokenInitializationError } from './api/error/software-token-initialization.error.js';
-import { TokenStateError } from './api/error/token-state.error.js';
-import { PIUnavailableError } from './api/error/pi-unavailable.error.js';
-import { ClassLogger } from '../../core/logging/class-logger.js';
-import { JwtFetchError } from './error/jwt-fetch.error.js';
-import { TokenDeleteError } from './error/token-delete.error.js';
-import { TokenInitError } from './error/token-init.error.js';
-import { TokenUnassignError } from './error/token-unassign.error.js';
-import { TokenVerifyError } from './error/token-verify.error.js';
-import { UserCheckError } from './error/user-check.error.js';
-import { UserCreationError } from './error/user-creation.error.js';
-import { UserTokensError } from './error/user-tokens.error.js';
-import { VeryfyNoTokenError } from './error/verify-no-token.error.js';
 
 @Injectable()
 export class PrivacyIdeaAdministrationService {
@@ -548,7 +548,7 @@ export class PrivacyIdeaAdministrationService {
     }
 
     private handleConnectionError(error: AxiosError): never {
-        if (error.code === 'ECONNREFUSED') {
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
             throw new PIUnavailableError();
         } else {
             throw error;

@@ -26,6 +26,7 @@ import {
 import { ClassLogger } from '../../core/logging/class-logger.js';
 import { EntityCouldNotBeCreated } from '../../shared/error/entity-could-not-be-created.error.js';
 import { EntityCouldNotBeUpdated } from '../../shared/error/entity-could-not-be-updated.error.js';
+import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 import { PersonUsername } from '../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../authentication/api/steup-up.guard.js';
@@ -33,6 +34,7 @@ import { Person } from '../person/domain/person.js';
 import { PersonRepository } from '../person/persistence/person.repository.js';
 import { AssignHardwareTokenBodyParams } from './api/assign-hardware-token.body.params.js';
 import { AssignHardwareTokenResponse } from './api/assign-hardware-token.response.js';
+import { DbiamPrivacyIdeaAdministrationError } from './api/error/dbiam-privacy-idea-administration.error.js';
 import { SoftwareTokenInitializationError } from './api/error/software-token-initialization.error.js';
 import { TokenError } from './api/error/token.error.js';
 import { PrivacyIdeaAdministrationExceptionFilter } from './api/privacy-idea-administration-exception-filter.js';
@@ -42,7 +44,6 @@ import { AssignTokenResponse, PrivacyIdeaToken, ResetTokenResponse } from './pri
 import { TokenInitBodyParams } from './token-init.body.params.js';
 import { TokenStateResponse } from './token-state.response.js';
 import { TokenVerifyBodyParams } from './token-verify.params.js';
-import { IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 
 @UseFilters(new PrivacyIdeaAdministrationExceptionFilter())
 @ApiTags('2FA')
@@ -95,7 +96,10 @@ export class PrivacyIdeaAdministrationController {
     @Get('state')
     @HttpCode(HttpStatus.OK)
     @ApiCreatedResponse({ description: 'The token state was successfully returned.', type: TokenStateResponse })
-    @ApiBadRequestResponse({ description: 'A username was not given or not found.' })
+    @ApiBadRequestResponse({
+        description: 'A username was not given or not found.',
+        type: DbiamPrivacyIdeaAdministrationError,
+    })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get token state.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get token state.' })
     @ApiNotFoundResponse({ description: 'Insufficient permissions to get token state.' })

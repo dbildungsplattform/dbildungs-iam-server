@@ -433,9 +433,7 @@ describe('PersonenkontexteUpdate', () => {
                 const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError = await sut.update();
 
                 expect(updateResult).toBeInstanceOf(Array);
-                expect(personRepoMock.save).toHaveBeenCalledWith(
-                    expect.objectContaining({ id: personId, orgUnassignmentDate: undefined }),
-                );
+                expect(personRepoMock.syncOrgUnassignmentDate).toHaveBeenCalledWith(personId);
             });
         });
 
@@ -780,9 +778,7 @@ describe('PersonenkontexteUpdate', () => {
 
                 const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError = await sut.update();
                 expect(updateResult).toEqual([]);
-                expect(
-                    personRepoMock.save.mock.calls[0] && personRepoMock.save.mock.calls[0][0].orgUnassignmentDate,
-                ).toBeDefined();
+                expect(personRepoMock.syncOrgUnassignmentDate).toHaveBeenCalledWith(personId);
             });
         });
         describe('when there are existing PKs but lastModified is undefined', () => {
