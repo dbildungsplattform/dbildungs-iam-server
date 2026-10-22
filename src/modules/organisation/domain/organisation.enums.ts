@@ -5,6 +5,7 @@ export enum OrganisationsTyp {
     ROOT = 'ROOT',
     LAND = 'LAND',
     TRAEGER = 'TRAEGER',
+    BEHOERDE = 'BEHOERDE',
     SCHULE = 'SCHULE',
     KLASSE = 'KLASSE',
     ANBIETER = 'ANBIETER',

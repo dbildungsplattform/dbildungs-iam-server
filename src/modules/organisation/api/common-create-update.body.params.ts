@@ -18,7 +18,7 @@ export class CommonCreateUpdateOrganisationBodyParams {
 
     @IsOptional()
     @IsString()
-    @ApiPropertyOptional({ description: 'Required, if `typ` is equal to `SCHULE`' })
+    @ApiPropertyOptional({ description: 'Only allowed for SCHULE. Required when creating a SCHULE.' })
     public readonly kennung?: string;
 
     @IsString()

@@ -24,7 +24,7 @@ export class KeycloakConfigTestModule implements OnModuleDestroy {
                             this.keycloak = await new GenericContainer('quay.io/keycloak/keycloak:26.7.2-1')
                                 .withCopyFilesToContainer([
                                     {
-                                        source: './config/dev-realm-spsh.json',
+                                        source: './config/local-spsh.json',
                                         target: '/opt/keycloak/data/import/realm.json',
                                     },
                                 ])
@@ -32,13 +32,6 @@ export class KeycloakConfigTestModule implements OnModuleDestroy {
                                 .withEnvironment({
                                     KEYCLOAK_ADMIN: 'admin',
                                     KEYCLOAK_ADMIN_PASSWORD: 'admin',
-                                    // Referenced as ${...} placeholders by dev-realm-spsh.json; without them the realm import fails validation and Keycloak exits immediately
-                                    VIDIS_CLIENT_SECRET: 'irgendein-secret',
-                                    VIDIS_KEYCLOAK_CLIENT_ID: 'vidis-test',
-                                    VIDIS_REDIRECT_URI: 'https://vidis.example/*',
-                                    VIDIS_LOCAL_BACKCHANNEL_LOGOUT_URL: 'https://vidis.example/auth',
-                                    KC_NEXTCLOUD_CLIENT_ID: 'nextcloud',
-                                    KC_NEXTCLOUD_CLIENT_SECRET: 'irgendein-secret',
                                 })
                                 .withCommand(['start-dev', '--import-realm'])
                                 .withStartupTimeout(240000)
