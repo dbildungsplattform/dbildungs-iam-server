@@ -20,7 +20,7 @@ import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulcon
 import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
-import { PersonInfoResponseV2 } from '../personinfo/v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from '../personinfo/v2/person-info.response.v2.js';
 
 @UseFilters(
     new SchulConnexSharedErrorFilter(),
@@ -103,12 +103,12 @@ export class PersonenInfoController {
         schema: { type: 'integer' },
     })
     @ApiUnauthorizedResponse({ description: 'person is not logged in.' })
-    @ApiOkResponse({ description: 'Liste von Personeninformationen', type: PersonInfoResponseV1 })
+    @ApiOkResponse({ description: 'Liste von Personeninformationen', type: [PersonInfoDtoV2] })
     public async infoV2(
         @Permissions() permissions: IPersonPermissions,
         @Headers('x-offset') offset: string,
         @Headers('x-limit') limit: string,
-    ): Promise<PersonInfoResponseV2[]> {
+    ): Promise<PersonInfoDtoV2[]> {
         const parsedOffset: number = Number.isNaN(parseInt(offset, 10)) ? 0 : parseInt(offset, 10);
         const parsedLimit: number = Number.isNaN(parseInt(limit, 10)) ? this.maxPersonenInfoLimit : parseInt(limit, 10);
 
@@ -116,7 +116,7 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
-        const result: Result<PersonInfoResponseV2[], DomainError> =
+        const result: Result<PersonInfoDtoV2[], DomainError> =
             await this.personInfoService.findPersonsForPersonenInfoV2(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;

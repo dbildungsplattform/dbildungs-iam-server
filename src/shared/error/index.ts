@@ -15,4 +15,5 @@ export * from './missing-attribute.error.js';
 export * from './missing-permissions.error.js';
 export * from './multiple-rollenarten.error.js';
 export * from './person-already-exists.error.js';
+export * from './schulconnex-push.error.js';
 export * from './shared-domain.error.js';

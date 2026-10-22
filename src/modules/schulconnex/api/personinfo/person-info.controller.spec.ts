@@ -36,11 +36,17 @@ import { ConfigTestModule, DatabaseTestModule } from '../../../../../test/utils/
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { type IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
-import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
-import { PersonInfoPersonResponseV2 } from './v2/person-info-person.response.v2.js';
+import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
+import { PersonInfoPersonDtoV2 } from './v2/person-info-person.response.v2.js';
+import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
+import { type INestApplication, VersioningType } from '@nestjs/common';
+import request from 'supertest';
+import { createAuthInterceptorMock, createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
+import { type Server } from 'node:http';
 
 describe('PersonInfoController', () => {
     let module: TestingModule;
+    let app: INestApplication;
     let sut: PersonInfoController;
     let logger: DeepMocked<ClassLogger>;
     let personRepoMock: DeepMocked<PersonRepository>;
@@ -53,8 +59,9 @@ describe('PersonInfoController', () => {
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
+            controllers: [PersonInfoController],
             providers: [
-                PersonInfoController,
+                SchulconnexMapperService,
                 {
                     provide: PersonApiMapper,
                     useValue: createMock(PersonApiMapper),
@@ -97,10 +104,12 @@ describe('PersonInfoController', () => {
         emailResolverService = module.get(EmailResolverService);
         personApiMapper = module.get(PersonApiMapper);
         userLockRepoMock = module.get(UserLockRepository);
+        app = module.createNestApplication();
+        app.enableVersioning({ type: VersioningType.URI });
     });
 
     afterAll(async () => {
-        await module.close();
+        await app.close();
     });
 
     beforeEach(() => {
@@ -709,9 +718,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`using old emailRepo`));
                 expect(result.pid).toEqual(person?.id);
@@ -759,9 +768,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`using new Microservice`));
                 expect(result.pid).toEqual(person?.id);
@@ -810,9 +819,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -861,9 +870,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -948,9 +957,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -980,5 +989,56 @@ describe('PersonInfoController', () => {
                 await expect(() => sut.infoV2(permissions)).rejects.toBeInstanceOf(EntityNotFoundError);
             });
         });
+    });
+
+    it('should preserve the V2 HTTP response', async () => {
+        const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock({ id: 'person-1' });
+        const person: Person<true> = DoFactory.createPerson(true, {
+            id: 'person-1',
+            vorname: 'Anna',
+            familienname: 'Test',
+        });
+        const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+            id: 'schule-1',
+            kennung: '123456',
+            name: 'Testschule',
+            typ: OrganisationsTyp.SCHULE,
+        });
+        emailResolverService.shouldUseEmailMicroservice.mockReturnValue(false);
+        personRepoMock.findById.mockResolvedValue(person);
+        personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([
+            {
+                personenkontext: DoFactory.createPersonenkontext(true, { id: 'kontext-1' }),
+                organisation,
+                rolle: DoFactory.createRolle(true, { id: 'rolle-1', rollenart: RollenArt.LEHR }),
+            },
+        ]);
+        userLockRepoMock.findByPersonId.mockResolvedValue([]);
+        emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValue({
+            address: 'anna@example.org',
+            status: EmailAddressStatus.ENABLED,
+        });
+        app.useGlobalInterceptors(createAuthInterceptorMock(permissions));
+        await app.init();
+
+        await request(app.getHttpServer() as Server)
+            .get('/v2/person-info')
+            .expect(200)
+            .expect({
+                pid: 'person-1',
+                person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
+                personenkontexte: [
+                    {
+                        id: 'kontext-1',
+                        organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
+                        rolle: 'Lehr',
+                        spshRolleId: 'rolle-1',
+                        erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna@example.org' }],
+                        personenstatus: 'Aktiv',
+                        gruppen: [],
+                    },
+                ],
+                beziehungen: [],
+            });
     });
 });

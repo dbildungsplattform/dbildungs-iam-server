@@ -25,7 +25,8 @@ import { createPersonPermissionsMock } from '../../../../../test/utils/auth.mock
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { type DomainError } from '../../../../shared/error/index.js';
 import { expectOkResult } from '../../../../../test/utils/test-types.js';
-import { PersonInfoResponseV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
+import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
 
 describe('PersonInfoService', () => {
     let module: TestingModule;
@@ -43,6 +44,7 @@ describe('PersonInfoService', () => {
         module = await Test.createTestingModule({
             providers: [
                 PersonenInfoService,
+                SchulconnexMapperService,
                 {
                     provide: ClassLogger,
                     useValue: createMock(ClassLogger),
@@ -713,7 +715,7 @@ describe('PersonInfoService', () => {
             });
             dBiamPersonenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([]);
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -800,7 +802,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -828,8 +830,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-            expect(res.value[0]).toBeInstanceOf(PersonInfoResponseV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoResponseV2);
+            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
+            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
         });
 
         it('should return error when email microservice fails', async () => {
@@ -877,7 +879,7 @@ describe('PersonInfoService', () => {
                 error: undefined as unknown as DomainError,
             });
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -920,7 +922,7 @@ describe('PersonInfoService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ]);
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -1009,7 +1011,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -1036,8 +1038,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-            expect(res.value[0]).toBeInstanceOf(PersonInfoResponseV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoResponseV2);
+            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
+            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
         });
 
         it('should return persons with all permissions using old repo', async () => {
@@ -1115,7 +1117,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -1142,8 +1144,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-            expect(res.value[0]).toBeInstanceOf(PersonInfoResponseV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoResponseV2);
+            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
+            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
         });
 
         it('should return persons and default to empty kontext and userlock array', async () => {
@@ -1220,7 +1222,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
@@ -1247,8 +1249,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-            expect(res.value[0]).toBeInstanceOf(PersonInfoResponseV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoResponseV2);
+            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
+            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
         });
 
         it('should return error when email repo returns error', async () => {
@@ -1298,7 +1300,7 @@ describe('PersonInfoService', () => {
                 error: undefined as unknown as DomainError,
             });
 
-            const res: Result<PersonInfoResponseV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
+            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
                 permissions,
                 0,
                 10,
