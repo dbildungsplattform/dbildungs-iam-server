@@ -12,6 +12,9 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updated.event.js';
 import { RolleUpdatedEvent } from '../../../shared/events/rolle-updated.event.js';
 import { PersonID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailAddressStatus } from '../../email/domain/email-address.js';
+import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
@@ -19,18 +22,14 @@ import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbia
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
-import { FailureStatusInfo, MassResult } from '../adapter/technical/actions/base-mass-action.js';
-import { CreateMembershipParams } from '../adapter/technical/actions/create-memberships.action.js';
-import { CreatePersonParams } from '../adapter/technical/actions/create-person.action.js';
 import { ItslearningMembershipAdapter } from '../adapter/domain/itslearning-membership.adapter.js';
 import { ItslearningPersonAdapter } from '../adapter/domain/itslearning-person.adapter.js';
 import { rollenartToIMSESInstitutionRole, rollenartToIMSESRole } from '../adapter/domain/role-utils.js';
 import { IMSESInstitutionRoleType, IMSESRoleType } from '../adapter/domain/role.enum.js';
+import { FailureStatusInfo, MassResult } from '../adapter/technical/actions/base-mass-action.js';
+import { CreateMembershipParams } from '../adapter/technical/actions/create-memberships.action.js';
+import { CreatePersonParams } from '../adapter/technical/actions/create-person.action.js';
 import { StatusInfoHelpers } from '../adapter/technical/utils/status-info.utils.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
 
 type FailedRequests<T> = (readonly [failureDescription: string, T])[];
 
@@ -49,7 +48,6 @@ export class ItsLearningRolleEventHandler {
         private readonly personRepo: PersonRepository,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         private readonly serviceproviderRepo: ServiceProviderRepo,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
         configService: ConfigService<ServerConfig>,
 
@@ -195,11 +193,8 @@ export class ItsLearningRolleEventHandler {
             const emailsForPersons: Result<
                 Map<PersonID, PersonEmailResponse | undefined>,
                 DomainError
-            > = this.emailResolverService.shouldUseEmailMicroservice()
-                ? // eslint-disable-next-line no-await-in-loop
-                  await this.emailResolverService.findEmailsBySpshPersons(personen.map((p: Person<true>) => p.id))
-                : // eslint-disable-next-line no-await-in-loop
-                  await this.emailRepo.getEmailAddressAndStatusForPersonIds(personen.map((p: Person<true>) => p.id));
+                // eslint-disable-next-line no-await-in-loop
+            > = await this.emailResolverService.findEmailsBySpshPersons(personen.map((p: Person<true>) => p.id));
 
             const createParams: CreatePersonParams[] = personen.map((p: Person<true>) => {
                 const emailResp: PersonEmailResponse | undefined = emailsForPersons.ok
