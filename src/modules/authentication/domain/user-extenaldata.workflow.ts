@@ -1,17 +1,10 @@
-import { type ConfigService } from '@nestjs/config';
 import { uniq, uniqBy } from 'lodash-es';
 import { type EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
 import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/email-address-status.entity.js';
-import { type OxServerConfig } from '../../../shared/config/ox-server.config.js';
-import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { type DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MultipleRollenartenError } from '../../../shared/error/index.js';
-import { type OXContextID } from '../../../shared/types/ox-ids.types.js';
 import { type EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { type EmailRepo } from '../../email/persistence/email.repo.js';
-import { type PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { type Person } from '../../person/domain/person.js';
 import { type PersonRepository } from '../../person/persistence/person.repository.js';
 import {
@@ -20,19 +13,12 @@ import {
     type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { type RequiredExternalPkData } from '../api/authentication.controller.js';
-import {
-    type NewOxParams,
-    type OldOxParams,
-    type OxParams,
-} from '../api/externaldata/user-externaldata-ox.response.js';
+import { type NewOxParams, type OxParams } from '../api/externaldata/user-externaldata-ox.response.js';
 
 export const POLYTHEA_SERVICE_PROVIDER_ID: string = 'b2478ade-f0d1-4864-9713-a12c95cde898';
 export class UserExternaldataWorkflowAggregate {
-    public contextID: OXContextID;
-
     public oxLoginId?: string;
 
     public person?: Person<true>;
@@ -58,28 +44,15 @@ export class UserExternaldataWorkflowAggregate {
     private constructor(
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         private readonly personRepo: PersonRepository,
-        configService: ConfigService<ServerConfig>,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
-    ) {
-        const oxConfig: OxServerConfig = configService.getOrThrow<OxServerConfig>('OX');
-        this.contextID = oxConfig.CONTEXT_ID;
-    }
+    ) {}
 
     public static createNew(
         personenkontextRepo: DBiamPersonenkontextRepo,
         personRepo: PersonRepository,
-        configService: ConfigService<ServerConfig>,
-        emailRepo: EmailRepo,
         emailResolverService: EmailResolverService,
     ): UserExternaldataWorkflowAggregate {
-        return new UserExternaldataWorkflowAggregate(
-            personenkontextRepo,
-            personRepo,
-            configService,
-            emailRepo,
-            emailResolverService,
-        );
+        return new UserExternaldataWorkflowAggregate(personenkontextRepo, personRepo, emailResolverService);
     }
 
     public async initialize(personId: string): Promise<Option<DomainError>> {
@@ -92,35 +65,26 @@ export class UserExternaldataWorkflowAggregate {
         }
         this.person = person;
 
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            const personEmailResponse: Result<
-                Option<EmailAddressResponse>,
-                DomainError
-            > = await this.emailResolverService.findEmailBySpshPersonAsEmailAddressResponse(personId);
+        const personEmailResponse: Result<
+            Option<EmailAddressResponse>,
+            DomainError
+        > = await this.emailResolverService.findEmailBySpshPersonAsEmailAddressResponse(personId);
 
-            // Set undefined as default, if microservice is enabled
-            this.email = undefined;
-            this.oxLoginId = undefined;
+        this.email = undefined;
+        this.oxLoginId = undefined;
 
-            if (personEmailResponse.ok) {
-                if (personEmailResponse.value) {
-                    if (personEmailResponse.value.status === EmailAddressStatusEnum.ACTIVE) {
-                        this.email = personEmailResponse.value.address;
-                    }
-
-                    if (personEmailResponse.value.status !== EmailAddressStatusEnum.SUSPENDED) {
-                        this.oxLoginId = personEmailResponse.value.oxLoginId;
-                    }
+        if (personEmailResponse.ok) {
+            if (personEmailResponse.value) {
+                if (personEmailResponse.value.status === EmailAddressStatusEnum.ACTIVE) {
+                    this.email = personEmailResponse.value.address;
                 }
-            } else {
-                return personEmailResponse.error;
+
+                if (personEmailResponse.value.status !== EmailAddressStatusEnum.SUSPENDED) {
+                    this.oxLoginId = personEmailResponse.value.oxLoginId;
+                }
             }
         } else {
-            const emailResp: Option<PersonEmailResponse> =
-                await this.emailRepo.getEmailAddressAndStatusForPerson(person);
-            if (emailResp?.status === EmailAddressStatus.ENABLED) {
-                this.email = emailResp.address;
-            }
+            return personEmailResponse.error;
         }
 
         this.checkedExternalPkData = this.computeCheckedExternalPkData(externalPkData);
@@ -136,7 +100,7 @@ export class UserExternaldataWorkflowAggregate {
 
         this.polytheaDienststellenNummern = this.computePolytheaDienststellenNummern(this.mergedExternalPkData);
 
-        this.oxParams = this.computeOxParams(this.mergedExternalPkData, this.oxLoginId, this.person);
+        this.oxParams = this.computeOxParams(this.oxLoginId);
 
         return undefined;
     }
@@ -218,42 +182,10 @@ export class UserExternaldataWorkflowAggregate {
         return uniq(checkedExternalPkData.map((pk: RequiredExternalPkData) => pk.rollenart));
     }
 
-    private computeOxParams(
-        mergedExternalPkData: RequiredExternalPkData[],
-        oxLoginId: string | undefined,
-        person: Person<true>,
-    ): OxParams | undefined {
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            return this.computeNewOxParams(oxLoginId);
-        }
-        return this.computeOldOxParams(mergedExternalPkData, person);
-    }
-
-    private computeNewOxParams(oxLoginId: string | undefined): NewOxParams | undefined {
+    private computeOxParams(oxLoginId: string | undefined): NewOxParams | undefined {
         if (oxLoginId) {
             return { oxLoginId };
         }
         return undefined;
-    }
-
-    private computeOldOxParams(
-        mergedExternalPkData: RequiredExternalPkData[],
-        person: Person<true>,
-    ): OldOxParams | undefined {
-        if (this.hasEmailServiceProvider(mergedExternalPkData) && person.username) {
-            return {
-                contextId: this.contextID,
-                username: person.username,
-            };
-        }
-        return undefined;
-    }
-
-    private hasEmailServiceProvider(mergedExternalPkData: RequiredExternalPkData[]): boolean {
-        return mergedExternalPkData.some((pkData: RequiredExternalPkData) =>
-            pkData.serviceProvider.some(
-                (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.EMAIL,
-            ),
-        );
     }
 }
