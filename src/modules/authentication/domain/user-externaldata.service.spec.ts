@@ -160,6 +160,11 @@ describe('UserExternaldataService', () => {
                     rollenart: RollenArt.LEHR,
                     serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 });
+                const permittedPkWithoutKennung: ExternalPkData = createExternalPkData({
+                    kennung: undefined,
+                    rollenart: RollenArt.LEHR,
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                });
                 const unrelatedPk: ExternalPkData = createExternalPkData({
                     kennung: 'unrelated-kennung',
                     serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId: 'other-client' })],
@@ -167,7 +172,11 @@ describe('UserExternaldataService', () => {
 
                 personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
                 personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
+                    permittedPk,
+                    permittedPkWithoutKennung,
+                    unrelatedPk,
+                ]);
 
                 return { person, permittedPk };
             };
