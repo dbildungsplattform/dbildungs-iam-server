@@ -1,4 +1,14 @@
-import { Cursor, EntityKey, EntityManager, FilterQuery, Loaded, QueryOrder, raw } from '@mikro-orm/postgresql';
+import { Transactional } from '@mikro-orm/decorators/legacy';
+import {
+    Cursor,
+    EntityKey,
+    EntityManager,
+    FilterQuery,
+    Loaded,
+    LockMode,
+    QueryOrder,
+    raw,
+} from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -52,6 +62,7 @@ import { PersonUpdateOutdatedError } from '../domain/update-outdated.error.js';
 import { UsernameGeneratorService } from '../domain/username-generator.service.js';
 import { VornameForPersonWithTrailingSpaceError } from '../domain/vorname-with-trailing-space.error.js';
 import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
+import { PersonenkontextEntity } from '../../personenkontext/persistence/personenkontext.entity.js';
 import { PersonEntity } from './person.entity.js';
 import { PersonScope } from './person.scope.js';
 
@@ -1056,8 +1067,7 @@ export class PersonRepository {
             }
         }
 
-        const savedPerson: Person<true> | DomainError = await this.save(personFound);
-        return savedPerson;
+        return await this.save(personFound);
     }
 
     private hasNameChanged(
@@ -1138,6 +1148,31 @@ export class PersonRepository {
             limit,
         });
         return { ids: personEntities.map((person: PersonEntity) => person.id), total };
+    }
+
+    /**
+     * Sets orgUnassignmentDate if the person has no personenkontext left, clears it otherwise.
+     * Must be called after every deletion of personenkontexte. An already existing date is kept.
+     * Runs in a transaction and locks the person row, so concurrent calls are serialized.
+     */
+    @Transactional()
+    public async syncOrgUnassignmentDate(personId: PersonID): Promise<void> {
+        const personEntity: Option<PersonEntity> = await this.em.findOne(
+            PersonEntity,
+            { id: personId },
+            { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+        );
+        if (!personEntity) {
+            return;
+        }
+
+        const kontextCount: number = await this.em.count(PersonenkontextEntity, { personId });
+        if (kontextCount === 0) {
+            personEntity.orgUnassignmentDate ??= new Date();
+        } else {
+            personEntity.orgUnassignmentDate = undefined;
+        }
+        await this.em.flush();
     }
 
     public async findOrganisationAdminsByOrganisationId(organisation_id: string): Promise<string[]> {

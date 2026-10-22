@@ -48,7 +48,6 @@ import { RollenerweiterungFactory } from '../../rolle/domain/rollenerweiterung.f
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleServiceProviderEntity } from '../../rolle/entity/rolle-service-provider.entity.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { type ServiceProviderMerkmalEntity } from '../../service-provider/repo/service-provider-merkmal.entity.js';
@@ -67,6 +66,7 @@ import {
 import { DBiamPersonenkontextRepoInternal } from './internal-dbiam-personenkontext.repo.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
 import { PersonenkontextScope } from './personenkontext.scope.js';
+import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
 
 describe('dbiam Personenkontext Repo', () => {
     let module: TestingModule;
@@ -79,7 +79,7 @@ describe('dbiam Personenkontext Repo', () => {
     let personRepo: PersonRepository;
     let organisationRepository: OrganisationRepository;
     let rolleRepo: RolleRepo;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
     let keycloakUserService: DeepMocked<KeycloakUserService>;
 
     let personenkontextFactory: PersonenkontextFactory;
@@ -137,7 +137,7 @@ describe('dbiam Personenkontext Repo', () => {
                 OxUserBlacklistRepo,
                 RolleFactory,
                 RolleRepo,
-                RollenerweiterungRepo,
+                InternalRollenerweiterungRepo,
                 RollenerweiterungFactory,
                 PersonenkontextFactory,
                 EntityAggregateMapper,
@@ -163,7 +163,7 @@ describe('dbiam Personenkontext Repo', () => {
         personRepo = module.get(PersonRepository);
         organisationRepository = module.get(OrganisationRepository);
         rolleRepo = module.get(RolleRepo);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
         personenkontextFactory = module.get(PersonenkontextFactory);
         await DatabaseTestModule.setupDatabase(orm);
     }, 10000000);

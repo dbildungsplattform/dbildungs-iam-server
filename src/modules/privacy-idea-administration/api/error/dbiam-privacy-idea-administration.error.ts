@@ -22,7 +22,7 @@ export type DbiamPersonErrorProps = DbiamErrorProps & {
 };
 
 export class DbiamPrivacyIdeaAdministrationError extends DbiamError {
-    @ApiProperty({ enum: PrivacyIdeaAdministrationErrorI18nTypes })
+    @ApiProperty({ enum: PrivacyIdeaAdministrationErrorI18nTypes, enumName: 'PrivacyIdeaErrorEnum' })
     public override readonly i18nKey: string;
 
     public constructor(props: DbiamPersonErrorProps) {
