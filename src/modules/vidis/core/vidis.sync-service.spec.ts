@@ -126,6 +126,7 @@ describe('VidisSyncService', () => {
             OrganisationsTyp.SCHULE,
             undefined,
             undefined,
+            undefined,
             kennung,
         );
 
@@ -320,6 +321,7 @@ describe('VidisSyncService', () => {
                     1,
                     faker.lorem.word(),
                     OrganisationsTyp.SCHULE,
+                    undefined,
                 ),
             );
 
