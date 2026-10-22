@@ -43,6 +43,8 @@ export class SchulconnexPushApiClient {
 
     private readonly retryDelayMs: number;
 
+    private readonly requestTimeoutMs: number;
+
     public constructor(
         private readonly httpService: HttpService,
         private readonly logger: ClassLogger,
@@ -52,6 +54,7 @@ export class SchulconnexPushApiClient {
 
         this.maxAttempts = config.PUSH_MAX_ATTEMPTS;
         this.retryDelayMs = config.PUSH_RETRY_DELAY_MS;
+        this.requestTimeoutMs = config.PUSH_REQUEST_TIMEOUT_MS;
     }
 
     /** PUT /v1/personen/{personId} */
@@ -147,7 +150,8 @@ export class SchulconnexPushApiClient {
         attempt: number = 1,
     ): Promise<Result<void, DomainError>> {
         try {
-            await lastValueFrom(this.httpService.request({ method, url, data }));
+            // axios has no timeout by default, a server that never responds would block forever
+            await lastValueFrom(this.httpService.request({ method, url, data, timeout: this.requestTimeoutMs }));
 
             return Ok();
         } catch (err: unknown) {

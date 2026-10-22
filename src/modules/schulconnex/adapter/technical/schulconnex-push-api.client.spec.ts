@@ -2,6 +2,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
+import { createServer, type AddressInfo, type Server as NetServer, type Socket } from 'node:net';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { ConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
@@ -232,6 +233,34 @@ describe('SchulconnexPushApiClient', () => {
             expect(requestSpy).toHaveBeenCalledTimes(3);
             expect(warnSpy).toHaveBeenCalledTimes(2);
             expect(errorSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('should time out and retry if the target accepts the connection but never responds', async () => {
+            const sockets: Socket[] = [];
+            const silentServer: NetServer = createServer((socket: Socket) => {
+                sockets.push(socket);
+            });
+            await new Promise<void>((resolve: () => void) => {
+                silentServer.listen(0, '127.0.0.1', resolve);
+            });
+            const { port }: AddressInfo = silentServer.address() as AddressInfo;
+            const requestSpy: MockInstance = vi.spyOn(httpService, 'request');
+
+            try {
+                const result: Result<void, unknown> = await sut.deletePerson(
+                    createRegistry(`http://127.0.0.1:${port}`),
+                    'person-1',
+                );
+
+                expectPushError(result);
+                expect(requestSpy).toHaveBeenCalledTimes(3);
+                expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({ timeout: 200 }));
+            } finally {
+                sockets.forEach((socket: Socket) => socket.destroy());
+                await new Promise<void>((resolve: () => void) => {
+                    silentServer.close(() => resolve());
+                });
+            }
         });
 
         it('should not retry on client errors', async () => {

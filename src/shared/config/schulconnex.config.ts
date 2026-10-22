@@ -12,4 +12,8 @@ export class SchulconnexConfig {
     @IsInt()
     @IsPositive()
     public readonly PUSH_RETRY_DELAY_MS!: number;
+
+    @IsInt()
+    @IsPositive()
+    public readonly PUSH_REQUEST_TIMEOUT_MS!: number;
 }
