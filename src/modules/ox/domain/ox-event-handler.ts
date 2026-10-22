@@ -16,7 +16,6 @@ import { DisabledEmailAddressGeneratedEvent } from '../../../shared/events/email
 import { EmailAddressAlreadyExistsEvent } from '../../../shared/events/email/email-address-already-exists.event.js';
 import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
 import { EmailAddressDisabledEvent } from '../../../shared/events/email/email-address-disabled.event.js';
-import { EmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/email-address-generated-after-ldap-sync-failed.event.js';
 import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
 import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
 import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
@@ -24,7 +23,6 @@ import { KafkaDisabledEmailAddressGeneratedEvent } from '../../../shared/events/
 import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
 import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
 import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kafka-email-address-disabled.event.js';
-import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/kafka-email-address-generated-after-ldap-sync-failed.event.js';
 import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
 import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
 import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
@@ -52,7 +50,6 @@ import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-a
 import { OxNoSuchUserError } from '../adapter/domain/error/ox-no-such-user.error.js';
 import {
     generateDisabledOxUserChangedEvent,
-    generateOxSyncUserCreatedEvent,
     generateOxUserChangedEvent,
     generateOxUserCreatedEvent,
     OxAdapter,
@@ -128,22 +125,6 @@ export class OxEventHandler {
         }
 
         await this.createOxUser(event.personId, event.username, event.orgaKennung, generateOxUserCreatedEvent);
-    }
-
-    @EventHandler(EmailAddressGeneratedAfterLdapSyncFailedEvent)
-    @KafkaEventHandler(KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent)
-    @EnsureRequestContext()
-    public async handleEmailAddressGeneratedAfterLdapSyncFailedEvent(
-        event: EmailAddressGeneratedAfterLdapSyncFailedEvent | KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent,
-    ): Promise<void> {
-        this.logger.info(
-            `Received EmailAddressGeneratedAfterLdapSyncFailedEvent, personId:${event.personId}, username:${event.username}, emailAddressId:${event.emailAddressId}, address:${event.address}`,
-        );
-        if (!this.ENABLED) {
-            return this.logger.info('Not enabled, ignoring event');
-        }
-
-        await this.createOxUser(event.personId, event.username, event.orgaKennung, generateOxSyncUserCreatedEvent);
     }
 
     @KafkaEventHandler(KafkaDisabledEmailAddressGeneratedEvent)

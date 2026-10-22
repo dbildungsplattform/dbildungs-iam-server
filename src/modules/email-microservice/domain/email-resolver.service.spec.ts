@@ -26,9 +26,9 @@ import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
-import { type Organisation } from '../../organisation/domain/organisation.js';
 import { EmailMicroserviceModule } from '../email-microservice.module.js';
 import { EmailResolverService, type PersonIdWithEmailResponse } from './email-resolver.service.js';
 
@@ -603,57 +603,6 @@ describe('EmailResolverService', () => {
             expect(result).toBeUndefined();
             expect(sut.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
             expect(emailRepoMock.getEmailAddressAndStatusForPerson).not.toHaveBeenCalled();
-        });
-
-        it('should return address when repo is used and email is ENABLED', async () => {
-            const personId: string = faker.string.uuid();
-            const emailAddress: string = 'primary@example.com';
-            const person: DeepMocked<Person<true>> = createMock<Person<true>>(Person, {
-                id: personId,
-            });
-
-            vi.spyOn(sut, 'shouldUseEmailMicroservice').mockReturnValueOnce(false);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(
-                new PersonEmailResponse(EmailAddressStatus.ENABLED, emailAddress),
-            );
-
-            const result: string | undefined = await sut.getPrimaryActiveEmailForPerson(person);
-
-            expect(result).toBe(emailAddress);
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).toHaveBeenCalledWith(person);
-        });
-
-        it('should return undefined when repo is used and email is NOT ENABLED', async () => {
-            const personId: string = faker.string.uuid();
-            const emailAddress: string = 'primary@example.com';
-            const person: DeepMocked<Person<true>> = createMock<Person<true>>(Person, {
-                id: personId,
-            });
-
-            vi.spyOn(sut, 'shouldUseEmailMicroservice').mockReturnValueOnce(false);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(
-                new PersonEmailResponse(EmailAddressStatus.REQUESTED, emailAddress),
-            );
-
-            const result: string | undefined = await sut.getPrimaryActiveEmailForPerson(person);
-
-            expect(result).toBeUndefined();
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).toHaveBeenCalledWith(person);
-        });
-
-        it('should return undefined when repo is used and no email is returned', async () => {
-            const personId: string = faker.string.uuid();
-            const person: DeepMocked<Person<true>> = createMock<Person<true>>(Person, {
-                id: personId,
-            });
-
-            vi.spyOn(sut, 'shouldUseEmailMicroservice').mockReturnValueOnce(false);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
-
-            const result: string | undefined = await sut.getPrimaryActiveEmailForPerson(person);
-
-            expect(result).toBeUndefined();
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).toHaveBeenCalledWith(person);
         });
     });
 

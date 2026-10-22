@@ -25,6 +25,10 @@ import { KafkaLdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ka
 import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-person-entry-renamed.event.js';
 import { DisabledOxUserChangedEvent } from '../../../shared/events/ox/disabled-ox-user-changed.event.js';
 import { KafkaDisabledOxUserChangedEvent } from '../../../shared/events/ox/kafka-disabled-ox-user-changed.event.js';
+import { KafkaOxSyncUserCreatedEvent } from '../../../shared/events/ox/kafka-ox-sync-user-created.event.js';
+import { KafkaOxUserChangedEvent } from '../../../shared/events/ox/kafka-ox-user-changed.event.js';
+import { OxSyncUserCreatedEvent } from '../../../shared/events/ox/ox-sync-user-created.event.js';
+import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
 import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
@@ -35,6 +39,7 @@ import {
     PersonID,
     PersonUsername,
 } from '../../../shared/types/index.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonDomainError } from '../../person/domain/person-domain.error.js';
@@ -52,15 +57,6 @@ import { EmailAddressEntity } from '../persistence/email-address.entity.js';
 import { EmailRepo } from '../persistence/email.repo.js';
 import { EmailAddress, EmailAddressStatus } from './email-address.js';
 import { EmailFactory } from './email.factory.js';
-import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
-import { KafkaLdapSyncFailedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-failed.event.js';
-import { EmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/email-address-generated-after-ldap-sync-failed.event.js';
-import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/kafka-email-address-generated-after-ldap-sync-failed.event.js';
-import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.event.js';
-import { KafkaOxUserChangedEvent } from '../../../shared/events/ox/kafka-ox-user-changed.event.js';
-import { KafkaOxSyncUserCreatedEvent } from '../../../shared/events/ox/kafka-ox-sync-user-created.event.js';
-import { OxSyncUserCreatedEvent } from '../../../shared/events/ox/ox-sync-user-created.event.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 
 export type EmailAddressGeneratedCreator = (
     personId: PersonID,
@@ -99,34 +95,6 @@ export const generateEmailAddressGeneratedEvent: EmailAddressGeneratedCreator = 
             enabled,
             orgaKennung,
             alternativeAddress,
-        ),
-    ];
-};
-
-export const generateEmailAddressGeneratedAfterLdapSyncFailedEvent: EmailAddressGeneratedCreator = (
-    personId: PersonID,
-    username: PersonUsername,
-    emailAddressId: EmailAddressID,
-    address: string,
-    enabled: boolean,
-    orgaKennung: string,
-) => {
-    return [
-        new EmailAddressGeneratedAfterLdapSyncFailedEvent(
-            personId,
-            username,
-            emailAddressId,
-            address,
-            enabled,
-            orgaKennung,
-        ),
-        new KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent(
-            personId,
-            username,
-            emailAddressId,
-            address,
-            enabled,
-            orgaKennung,
         ),
     ];
 };
@@ -323,15 +291,6 @@ export class EmailEventHandler {
         return resMap;
     }
 
-    @KafkaEventHandler(KafkaLdapSyncFailedEvent)
-    @EventHandler(LdapSyncFailedEvent)
-    @EnsureRequestContext()
-    public async handleLdapSyncFailedEvent(event: LdapSyncFailedEvent | KafkaLdapSyncFailedEvent): Promise<void> {
-        this.logger.info(`Received LdapSyncFailedEvent, personId:${event.personId}, username:${event.username}`);
-
-        await this.handlePersonDueToLdapSyncFailed(event.personId, event.username);
-    }
-
     @KafkaEventHandler(KafkaPersonenkontextUpdatedEvent)
     @EventHandler(PersonenkontextUpdatedEvent)
     @EnsureRequestContext()
@@ -453,85 +412,6 @@ export class EmailEventHandler {
             ok: true,
             value: person.username,
         };
-    }
-
-    private async handlePersonDueToLdapSyncFailed(personId: PersonID, username: PersonUsername): Promise<void> {
-        // Map to store combinations of rolleId and organisationId as the key
-        const rolleIdPKMap: Map<string, Personenkontext<true>> = new Map<string, Personenkontext<true>>();
-
-        // Retrieve all personenkontexte for the given personId
-        const personenkontexte: Personenkontext<true>[] = await this.dbiamPersonenkontextRepo.findByPerson(personId);
-
-        // Array to hold the role IDs
-        const rollenIds: string[] = [];
-
-        // Process each personenkontext and add it to the map and array
-        personenkontexte.forEach((pk: Personenkontext<true>) => {
-            // Use combination of rolleId and organisationId as the key
-            const key: string = `${pk.rolleId}-${pk.organisationId}`;
-            rolleIdPKMap.set(key, pk);
-            rollenIds.push(pk.rolleId);
-        });
-
-        // Retrieve role details based on the role IDs
-        const rollenMap: Map<string, Rolle<true>> = await this.rolleRepo.findByIds(rollenIds);
-        const rollen: Rolle<true>[] = Array.from(rollenMap.values());
-
-        // Check if any role has a reference to an SP for email service provider
-        const rollenIdWithSPReference: Option<string> = await this.getAnyRolleReferencesEmailServiceProvider(rollen);
-
-        if (rollenIdWithSPReference) {
-            await this.handlePersonWithEmailSPReferenceAfterLdapSyncFailed(
-                personId,
-                username,
-                personenkontexte,
-                rollenIdWithSPReference,
-                rolleIdPKMap,
-                generateEmailAddressGeneratedAfterLdapSyncFailedEvent,
-            );
-        } else {
-            this.logger.warning(
-                `Handling LdapSyncFailedEvent failed, no role has reference to SP for email service provider, personId:${personId}`,
-            );
-        }
-    }
-
-    private async handlePersonWithEmailSPReferenceAfterLdapSyncFailed(
-        personId: PersonID,
-        username: PersonUsername | undefined,
-        personenkontexte: Personenkontext<true>[],
-        rollenIdWithSPReference: string,
-        rolleIdPKMap: Map<string, Personenkontext<true>>,
-        emailAdressGeneratedCreator: EmailAddressGeneratedCreator,
-    ): Promise<void> {
-        // Array to store matching Personenkontext objects for further processing
-        const pkOfRolleWithSPReferenceList: Personenkontext<true>[] = [];
-
-        // Check all combinations of rolleId and organisationId for this role
-        for (const pk of personenkontexte) {
-            if (pk.rolleId === rollenIdWithSPReference) {
-                const key: string = `${pk.rolleId}-${pk.organisationId}`;
-                const pkFromMap: Personenkontext<true> | undefined = rolleIdPKMap.get(key);
-                if (pkFromMap) {
-                    pkOfRolleWithSPReferenceList.push(pkFromMap); // Collect valid matches
-                }
-            }
-        }
-
-        // Only look for the first PK here, because we DO NOT want to create multiple EmailAddresses for a person
-        // just because multiple PKs with Email-SP-reference exist for that person. At the moment the only valid domain is 'schule-sh.de'.
-        // This has to be adjusted in the future when organisations start to define different domains for EmailAddresses.
-        if (pkOfRolleWithSPReferenceList[0]) {
-            this.logger.info(
-                `Person with personId:${personId}, username:${username} needs an email, creating or enabling address`,
-            );
-            const pkOfRolleWithSPReference: Personenkontext<true> = pkOfRolleWithSPReferenceList[0];
-            await this.createNewEmail(personId, pkOfRolleWithSPReference.organisationId, emailAdressGeneratedCreator);
-        } else {
-            this.logger.error(
-                `Rolle with id:${rollenIdWithSPReference} references SP, but no matching Personenkontext was found`,
-            );
-        }
     }
 
     private async handlePerson(

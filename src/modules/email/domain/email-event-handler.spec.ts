@@ -1,9 +1,10 @@
-import { vi } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { type INestApplication } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DatabaseTestModule, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS, DoFactory } from '../../../../test/utils/index.js';
 import { EventModule } from '../../../core/eventbus/index.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
@@ -13,7 +14,13 @@ import { EntityCouldNotBeUpdated } from '../../../shared/error/entity-could-not-
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { LdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/ldap-person-entry-renamed.event.js';
 import { DisabledOxUserChangedEvent } from '../../../shared/events/ox/disabled-ox-user-changed.event.js';
+import { OxSyncUserCreatedEvent } from '../../../shared/events/ox/ox-sync-user-created.event.js';
+import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.event.js';
 import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
+import {
+    type PersonenkontextEventKontextData,
+    type PersonenkontextEventPersonData,
+} from '../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
 import {
     type PersonenkontextID,
@@ -28,6 +35,7 @@ import {
     type OXUserName,
 } from '../../../shared/types/ox-ids.types.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
@@ -43,15 +51,6 @@ import { EmailRepo } from '../persistence/email.repo.js';
 import { EmailAddress, EmailAddressStatus } from './email-address.js';
 import { EmailEventHandler } from './email-event-handler.js';
 import { EmailFactory } from './email.factory.js';
-import { LdapSyncFailedEvent } from '../../../shared/events/ldap/ldap-sync-failed.event.js';
-import { OxUserChangedEvent } from '../../../shared/events/ox/ox-user-changed.event.js';
-import { OxSyncUserCreatedEvent } from '../../../shared/events/ox/ox-sync-user-created.event.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import {
-    type PersonenkontextEventKontextData,
-    type PersonenkontextEventPersonData,
-} from '../../../shared/events/personenkontext-event.types.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 
 function getEmail(address?: string, status?: EmailAddressStatus): EmailAddress<true> {
     const fakePersonId: PersonID = faker.string.uuid();
@@ -627,194 +626,6 @@ describe('EmailEventHandler', () => {
                         `Changed email-address:${fakeEmail} from REQUESTED to ENABLED, personId:${event.personId}, username:${event.keycloakUsername}, oxUserId:${fakeOXUserId}`,
                     );
                 });
-            });
-        });
-    });
-
-    describe('handleLdapSyncFailedEvent', () => {
-        let fakePersonId: PersonID;
-        let fakeUsername: PersonUsername;
-        let fakeRolleId: RolleID;
-        let fakeEmailAddress: string;
-        let event: LdapSyncFailedEvent;
-        let personenkontexte: Personenkontext<true>[];
-        let rolle: Rolle<true>;
-        let rolleMap: Map<string, Rolle<true>>;
-        let sp: ServiceProvider<true>;
-        let spMap: Map<string, ServiceProvider<true>>;
-
-        beforeEach(() => {
-            vi.resetAllMocks();
-            fakePersonId = faker.string.uuid();
-            fakeUsername = faker.internet.username();
-            fakeRolleId = faker.string.uuid();
-            fakeEmailAddress = faker.internet.email();
-            event = new LdapSyncFailedEvent(fakePersonId, fakeUsername);
-            personenkontexte = [DoFactory.createPersonenkontext<true>(true, { rolleId: fakeRolleId })];
-            rolle = DoFactory.createRolle<true>(true, { id: fakeRolleId, serviceProviderIds: [] });
-            rolleMap = new Map<string, Rolle<true>>();
-            rolleMap.set(fakeRolleId, rolle);
-            sp = DoFactory.createServiceProvider<true>(true, {
-                kategorie: ServiceProviderKategorie.EMAIL,
-            });
-            spMap = new Map<string, ServiceProvider<true>>();
-            spMap.set(sp.id, sp);
-            organisationRepositoryMock.findById.mockResolvedValue(DoFactory.createOrganisation<true>(true));
-        });
-
-        describe('when LdapSyncFailedEvent is received', () => {
-            it('should log info and call handlePersonDueToLdapSyncFailed', async () => {
-                mockRepositoryFindMethods(personenkontexte, rolleMap, spMap);
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockImplementationOnce(async (personId: PersonID) => [
-                    new EmailAddress<true>(
-                        faker.string.uuid(),
-                        faker.date.past(),
-                        faker.date.recent(),
-                        personId,
-                        faker.internet.email(),
-                        EmailAddressStatus.ENABLED,
-                    ),
-                ]);
-
-                //mock person with username is found
-                personRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createPerson<true>(true, { username: fakeUsername }),
-                );
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailFactoryMock.createNew.mockImplementationOnce(async (personId: PersonID) => {
-                    const ea: EmailAddress<false> = EmailAddress.createNew(
-                        personId,
-                        fakeEmailAddress,
-                        EmailAddressStatus.ENABLED,
-                    );
-                    return {
-                        ok: true,
-                        value: ea,
-                    };
-                });
-
-                //mock save is successful
-                const persistedEmail: EmailAddress<true> = getEmail();
-                emailRepoMock.save.mockResolvedValueOnce(persistedEmail);
-
-                await emailEventHandler.handleLdapSyncFailedEvent(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Received LdapSyncFailedEvent, personId:${fakePersonId}, username:${fakeUsername}`,
-                );
-            });
-        });
-
-        describe('when LdapSyncFailedEvent is received but no PK references role with reference to SP Email', () => {
-            it('should log warning', async () => {
-                sp = DoFactory.createServiceProvider<true>(true, {
-                    kategorie: ServiceProviderKategorie.HINWEISE, //mock that no EMAIL SP can be found
-                });
-                spMap = new Map<string, ServiceProvider<true>>();
-                spMap.set(sp.id, sp);
-
-                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce(personenkontexte);
-                rolleRepoMock.findByIds.mockResolvedValueOnce(rolleMap);
-                serviceProviderRepoMock.findByIds.mockResolvedValueOnce(spMap);
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockImplementationOnce(async (personId: PersonID) => [
-                    new EmailAddress<true>(
-                        faker.string.uuid(),
-                        faker.date.past(),
-                        faker.date.recent(),
-                        personId,
-                        faker.internet.email(),
-                        EmailAddressStatus.ENABLED,
-                    ),
-                ]);
-
-                //mock person with username is found
-                personRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createPerson<true>(true, { username: fakeUsername }),
-                );
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailFactoryMock.createNew.mockImplementationOnce(async (personId: PersonID) => {
-                    const ea: EmailAddress<false> = EmailAddress.createNew(
-                        personId,
-                        fakeEmailAddress,
-                        EmailAddressStatus.ENABLED,
-                    );
-                    return {
-                        ok: true,
-                        value: ea,
-                    };
-                });
-
-                //mock save is successful
-                const persistedEmail: EmailAddress<true> = getEmail();
-                emailRepoMock.save.mockResolvedValueOnce(persistedEmail);
-
-                await emailEventHandler.handleLdapSyncFailedEvent(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Received LdapSyncFailedEvent, personId:${fakePersonId}, username:${fakeUsername}`,
-                );
-                expect(loggerMock.warning).toHaveBeenCalledWith(
-                    `Handling LdapSyncFailedEvent failed, no role has reference to SP for email service provider, personId:${fakePersonId}`,
-                );
-            });
-        });
-
-        describe('when LdapSyncFailedEvent is received and pkOfRolleWithSPReferenceList is empty in handlePersonWithEmailSPReferenceAfterLdapSyncFailed', () => {
-            it('should log error', async () => {
-                personenkontexte = [DoFactory.createPersonenkontext<true>(true, { rolleId: faker.string.uuid() })];
-
-                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce(personenkontexte);
-                rolleRepoMock.findByIds.mockResolvedValueOnce(rolleMap);
-                serviceProviderRepoMock.findByIds.mockResolvedValueOnce(spMap);
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockImplementationOnce(async (personId: PersonID) => [
-                    new EmailAddress<true>(
-                        faker.string.uuid(),
-                        faker.date.past(),
-                        faker.date.recent(),
-                        personId,
-                        faker.internet.email(),
-                        EmailAddressStatus.ENABLED,
-                    ),
-                ]);
-
-                //mock person with username is found
-                personRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createPerson<true>(true, { username: fakeUsername }),
-                );
-
-                // eslint-disable-next-line @typescript-eslint/require-await
-                emailFactoryMock.createNew.mockImplementationOnce(async (personId: PersonID) => {
-                    const ea: EmailAddress<false> = EmailAddress.createNew(
-                        personId,
-                        fakeEmailAddress,
-                        EmailAddressStatus.ENABLED,
-                    );
-                    return {
-                        ok: true,
-                        value: ea,
-                    };
-                });
-
-                //mock save is successful
-                const persistedEmail: EmailAddress<true> = getEmail();
-                emailRepoMock.save.mockResolvedValueOnce(persistedEmail);
-
-                await emailEventHandler.handleLdapSyncFailedEvent(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Received LdapSyncFailedEvent, personId:${fakePersonId}, username:${fakeUsername}`,
-                );
-                expect(loggerMock.error).toHaveBeenCalledWith(
-                    `Rolle with id:${fakeRolleId} references SP, but no matching Personenkontext was found`,
-                );
             });
         });
     });
