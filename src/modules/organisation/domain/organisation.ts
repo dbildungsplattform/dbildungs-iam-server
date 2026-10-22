@@ -254,4 +254,12 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
     public setVersionForUpdate(version: number): void {
         this.version = version;
     }
+
+    public isBehoerde(): boolean {
+        return this.typ === OrganisationsTyp.BEHOERDE;
+    }
+
+    public isLand(): boolean {
+        return this.typ === OrganisationsTyp.LAND;
+    }
 }

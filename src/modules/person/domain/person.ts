@@ -195,7 +195,7 @@ export class Person<WasPersisted extends boolean> {
         this.stammorganisation = stammorganisation;
         this.revision = newRevision;
         this.personalnummer = personalnummer ?? this.personalnummer;
-        this.orgUnassignmentDate = orgUnassignmentDate;
+        this.orgUnassignmentDate = orgUnassignmentDate ?? this.orgUnassignmentDate;
         this.isLocked = isLocked;
         this.userLock = userLock ?? [];
         if (istTechnisch !== undefined) {

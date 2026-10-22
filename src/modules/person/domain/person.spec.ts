@@ -311,6 +311,29 @@ describe('Person', () => {
                 expect(person.familienname).toEqual('Musterfrau');
             });
         });
+        describe('revision does match and orgUnassignmentDate is not passed', () => {
+            it('should keep the existing orgUnassignmentDate', () => {
+                const orgUnassignmentDate: Date = faker.date.recent();
+                const person: Person<true> = Person.construct(
+                    faker.string.uuid(),
+                    faker.date.past(),
+                    faker.date.recent(),
+                    'Mustermann',
+                    'Max',
+                    '5',
+                    faker.lorem.word(),
+                    faker.string.uuid(),
+                    faker.string.uuid(),
+                    faker.lorem.word(),
+                    orgUnassignmentDate,
+                );
+
+                const result: void | DomainError = person.update('5', undefined, undefined, 'abc');
+
+                expect(result).not.toBeInstanceOf(DomainError);
+                expect(person.orgUnassignmentDate).toEqual(orgUnassignmentDate);
+            });
+        });
         describe('revision does match and no mandatory fields are updated', () => {
             it('should update the person and keep mandatory fields', () => {
                 const person: Person<true> = Person.construct(

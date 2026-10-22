@@ -15,8 +15,13 @@ import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
+import { BehoerdeAdministriertVon } from '../specification/behoerde-administriert-von.js';
+import { BehoerdeNameUnique } from '../specification/behoerde-name-eindeutig.js';
 import { EmailAdressOnOrganisationTyp } from '../specification/email-on-organisation-type.js';
+import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
+import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
+import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { KennungRequiredForSchuleError } from '../specification/error/kennung-required-for-schule.error.js';
 import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
@@ -45,6 +50,18 @@ import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-
 import { OrganisationsTyp } from './organisation.enums.js';
 import { Organisation, Organisationsbeziehung } from './organisation.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
+
+export type UpdateOrganisationData = Pick<
+    Organisation<true>,
+    | 'id'
+    | 'administriertVon'
+    | 'zugehoerigZu'
+    | 'name'
+    | 'namensergaenzung'
+    | 'kuerzel'
+    | 'traegerschaft'
+    | 'emailAdress'
+>;
 
 @Injectable()
 export class OrganisationService {
@@ -133,15 +150,25 @@ export class OrganisationService {
         organisationDo: Organisation<false>,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
+        const kennungError: DomainError | undefined = this.validateKennungForTyp(
+            organisationDo.typ,
+            organisationDo.kennung,
+        );
+        if (kennungError) {
+            return { ok: false, error: kennungError };
+        }
+
         const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
         if (referenceError) {
             await this.logCreation(permissions, organisationDo, referenceError);
+
             return { ok: false, error: referenceError };
         }
 
         const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
         if (validationError) {
             await this.logCreation(permissions, organisationDo, validationError);
+
             return { ok: false, error: validationError };
         }
 
@@ -149,6 +176,7 @@ export class OrganisationService {
             await this.validateSchulSpecifications(organisationDo);
         if (schulSpecificationsError) {
             await this.logCreation(permissions, organisationDo, schulSpecificationsError);
+
             return { ok: false, error: schulSpecificationsError };
         }
 
@@ -156,30 +184,61 @@ export class OrganisationService {
             await this.validateSchultraegerSpecifications(organisationDo);
         if (!schultraegerResult.ok) {
             await this.logCreation(permissions, organisationDo, schultraegerResult.error);
+
             return { ok: false, error: schultraegerResult.error };
+        }
+
+        const behoerdenResult: Result<void, DomainError> = await this.validateBehoerdenSpecifications(organisationDo);
+        if (!behoerdenResult.ok) {
+            await this.logCreation(permissions, organisationDo, behoerdenResult.error);
+
+            return { ok: false, error: behoerdenResult.error };
         }
 
         const organisation: Organisation<true> | OrganisationSpecificationError =
             await this.organisationRepo.save(organisationDo);
         if (organisation instanceof Organisation) {
             await this.logCreation(permissions, organisation);
+
             return { ok: true, value: organisation };
         }
 
         const error: DomainError = new EntityCouldNotBeCreated(`Organization could not be created`);
         await this.logCreation(permissions, organisationDo, error);
+
         return { ok: false, error: error };
     }
 
     public async updateOrganisation(
-        organisationDo: Organisation<true>,
+        updateData: UpdateOrganisationData,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisation<true>, DomainError>> {
-        const storedOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(organisationDo.id);
-        if (!storedOrganisation) {
-            const error: DomainError = new EntityNotFoundError('Organisation', organisationDo.id);
-            await this.logUpdate(permissions, organisationDo, error);
-            return { ok: false, error: error };
+        const permissionErrorResult: Result<never, MissingPermissionsError> = {
+            ok: false,
+            error: new MissingPermissionsError('Not authorized to manage this organisation'),
+        };
+        const organisationDo: Option<Organisation<true>> = await this.organisationRepo.findById(updateData.id);
+        if (!organisationDo) {
+            return { ok: false, error: new EntityNotFoundError('Organisation', updateData.id) };
+        }
+
+        const hasOrgVerwaltenRechtAtSource: boolean = await this.checkSourcePermisson(organisationDo, permissions);
+        if (!hasOrgVerwaltenRechtAtSource) {
+            return permissionErrorResult;
+        }
+
+        this.applyChangesToOrganisation(organisationDo, updateData, organisationDo);
+
+        const cycleError: DomainError | undefined = await this.validateOrganisationCycles(organisationDo);
+        if (cycleError) {
+            await this.logUpdate(permissions, organisationDo, cycleError);
+            return { ok: false, error: cycleError };
+        }
+
+        const referenceError: DomainError | undefined = await this.validateOrganisationReferences(organisationDo);
+        if (referenceError) {
+            await this.logUpdate(permissions, organisationDo, referenceError);
+            return { ok: false, error: referenceError };
         }
 
         const validationError: DomainError | undefined = await this.validateOrganisation(organisationDo);
@@ -193,6 +252,12 @@ export class OrganisationService {
         if (schulSpecificationsError) {
             await this.logUpdate(permissions, organisationDo, schulSpecificationsError);
             return { ok: false, error: schulSpecificationsError };
+        }
+
+        const behoerdenResult: Result<void, DomainError> = await this.validateBehoerdenSpecifications(organisationDo);
+        if (!behoerdenResult.ok) {
+            await this.logUpdate(permissions, organisationDo, behoerdenResult.error);
+            return { ok: false, error: behoerdenResult.error };
         }
 
         const organisation: Organisation<true> | OrganisationSpecificationError =
@@ -210,9 +275,53 @@ export class OrganisationService {
         };
     }
 
-    // Checks referenced parent organisations exist (create-only, since update reuses the stored parent references).
+    private applyChangesToOrganisation(
+        organisation: Organisation<true>,
+        updateData: UpdateOrganisationData,
+        organisationDo: Organisation<true>,
+    ): void {
+        const canUpdateParentReferences: boolean = organisationDo.typ !== OrganisationsTyp.SCHULE;
+
+        if (canUpdateParentReferences) {
+            organisation.administriertVon = updateData.administriertVon;
+            organisation.zugehoerigZu = updateData.zugehoerigZu;
+        }
+        organisation.name = updateData.name;
+        organisation.namensergaenzung = updateData.namensergaenzung;
+        organisation.kuerzel = updateData.kuerzel;
+        organisation.traegerschaft = updateData.traegerschaft;
+        organisation.emailAdress = updateData.emailAdress;
+        organisation.updatedAt = new Date();
+    }
+
+    private validateKennungForTyp(
+        typ: OrganisationsTyp | undefined,
+        kennung: string | undefined,
+    ): DomainError | undefined {
+        if (kennung !== undefined && kennung !== null && typ !== OrganisationsTyp.SCHULE) {
+            return new KennungOnlyForSchuleError();
+        }
+        return undefined;
+    }
+
+    private checkSourcePermisson(organisation: Organisation<true>, permissions: IPersonPermissions): Promise<boolean> {
+        return permissions.hasOrgVerwaltenRechtAtOrga(organisation.typ, organisation.administriertVon);
+    }
+
+    private async validateOrganisationCycles(organisationDo: Organisation<true>): Promise<DomainError | undefined> {
+        if (
+            organisationDo.administriertVon === organisationDo.id ||
+            organisationDo.zugehoerigZu === organisationDo.id ||
+            (await new ZyklusInOrganisationen(this.organisationRepo).isSatisfiedBy(organisationDo))
+        ) {
+            return new ZyklusInOrganisationenError(organisationDo.id);
+        }
+
+        return undefined;
+    }
+
     private async validateOrganisationReferences(
-        organisationDo: Organisation<false>,
+        organisationDo: Organisation<boolean>,
     ): Promise<DomainError | undefined> {
         if (organisationDo.administriertVon && !(await this.organisationRepo.exists(organisationDo.administriertVon))) {
             return new EntityNotFoundError('Organisation', organisationDo.administriertVon);
@@ -455,6 +564,29 @@ export class OrganisationService {
         return { ok: true, value: undefined };
     }
 
+    private async validateBehoerdenSpecifications(
+        organisationDo: Organisation<boolean>,
+    ): Promise<Result<void, DomainError>> {
+        if (!organisationDo.isBehoerde()) {
+            return { ok: true, value: undefined };
+        }
+
+        const behoerdeAdministriertVon: BehoerdeAdministriertVon = new BehoerdeAdministriertVon(this.organisationRepo);
+        const isBehoerdeAdministriertVonSatisfied: boolean =
+            await behoerdeAdministriertVon.isSatisfiedBy(organisationDo);
+        if (!isBehoerdeAdministriertVonSatisfied) {
+            return { ok: false, error: new BehoerdeAdministriertVonError(organisationDo.id ?? undefined) };
+        }
+
+        const behoerdeNameEindeutig: BehoerdeNameUnique = new BehoerdeNameUnique(this.organisationRepo);
+        const isBehoerdeNameEindeutigSatisfied: boolean = await behoerdeNameEindeutig.isSatisfiedBy(organisationDo);
+        if (!isBehoerdeNameEindeutigSatisfied) {
+            return { ok: false, error: new BehoerdeNameEindeutigError(organisationDo.id ?? undefined) };
+        }
+
+        return { ok: true, value: undefined };
+    }
+
     private async validateStructureSpecifications(
         childOrganisation: Organisation<true>,
     ): Promise<Result<boolean, OrganisationSpecificationError>> {
@@ -543,6 +675,7 @@ export class OrganisationService {
                     RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
                     RollenSystemRecht.SCHULEN_VERWALTEN,
                     RollenSystemRecht.KLASSEN_VERWALTEN,
+                    RollenSystemRecht.BEHOERDEN_VERWALTEN,
                 ],
                 { organisationIds: [organisationId], limit: 1, matchAllSystemrechte: false },
             );
@@ -680,6 +813,8 @@ export class OrganisationService {
                 return RollenSystemRecht.SCHULEN_VERWALTEN;
             case OrganisationsTyp.KLASSE:
                 return RollenSystemRecht.KLASSEN_VERWALTEN;
+            case OrganisationsTyp.BEHOERDE:
+                return RollenSystemRecht.BEHOERDEN_VERWALTEN;
             default:
                 return;
         }
