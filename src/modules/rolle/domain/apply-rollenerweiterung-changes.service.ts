@@ -360,7 +360,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -415,7 +415,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 
@@ -484,7 +484,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -525,7 +525,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 
