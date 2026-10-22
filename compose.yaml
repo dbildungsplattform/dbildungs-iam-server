@@ -26,7 +26,7 @@ services:
       - INTERNAL_COMMUNICATION_API_KEY=api-key
     env_file:
       - .env
-    # Lets the "backend:9090" mapper URLs in dev-realm-spsh.json (shared with the k8s feature-branch realm import) also resolve to a locally started backend
+    # Lets the "backend:9090" mapper URLs in local-spsh.json (shared with the k8s feature-branch realm import) also resolve to a locally started backend
     extra_hosts:
       - 'backend:host-gateway'
     entrypoint: '/opt/keycloak/bin/kc.sh start-dev'
@@ -47,7 +47,7 @@ services:
       - 8080:8080
       - 8443:8443
     volumes:
-      - ./config/dev-realm-spsh.json:/opt/keycloak/data/import/realm.json
+      - ./config/local-spsh.json:/opt/keycloak/data/import/realm.json
 
   keycloak-db-microservice:
     image: ghcr.io/dbildungsplattform/dbildungs-iam-server
@@ -323,10 +323,10 @@ services:
     container_name: ldapundi-admin
     profiles:
       - third-party
-    restart: "no"
+    restart: 'no'
     environment:
       PHPLDAPADMIN_LDAP_HOSTS: openldapundi
-      PHPLDAPADMIN_HTTPS: "false"
+      PHPLDAPADMIN_HTTPS: 'false'
     depends_on:
       - openldapundi
     ports:

@@ -1,46 +1,45 @@
 import { faker } from '@faker-js/faker';
-import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
-import { DoFactory, ConfigTestModule, createPersonPermissionsMock } from '../../../../test/utils/index.js';
+import { ConfigTestModule, createPersonPermissionsMock, DoFactory } from '../../../../test/utils/index.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { type Paged } from '../../../shared/paging/paged.js';
+import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp, Traegerschaft } from '../domain/organisation.enums.js';
+import { Organisation, type Organisationsbeziehung } from '../domain/organisation.js';
+import { OrganisationService } from '../domain/organisation.service.js';
+import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
+import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
 import { type FindOrganisationQueryParams } from './find-organisation-query.param.js';
-import { OrganisationByIdParams } from './organisation-by-id.params.js';
-import { OrganisationController } from './organisation.controller.js';
-import { type OrganisationResponseLegacy } from './organisation.response.legacy.js';
-import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
-import { Organisation, type Organisationsbeziehung } from '../domain/organisation.js';
-import { OrganisationResponse } from './organisation.response.js';
-import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
-import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
-import { NameRequiredForKlasseError } from '../specification/error/name-required-for-klasse.error.js';
-import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
-import { OrganisationService } from '../domain/organisation.service.js';
+import { OrganisationController } from './organisation.controller.js';
+import { OrganisationResponse } from './organisation.response.js';
+import { type OrganisationResponseLegacy } from './organisation.response.legacy.js';
+import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 
-import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
-import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { ParentOrganisationenResponse } from './organisation.parents.response.js';
-import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-import { RollenSystemRechtEnum, RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
-import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update.body.params.js';
 import { EntityCouldNotBeCreated } from '../../../shared/error/entity-could-not-be-created.error.js';
-import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
-import { CreateOrganisationsbeziehungBodyParams } from './create-organisationsbeziehung.body.params.js';
-import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { EntityCouldNotBeUpdated } from '../../../shared/error/index.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
+import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
+import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
+import { KennungForOrganisationWithTrailingSpaceError } from '../specification/error/kennung-with-trailing-space.error.js';
+import { CommonCreateUpdateOrganisationBodyParams } from './common-create-update.body.params.js';
+import { CreateOrganisationsbeziehungBodyParams } from './create-organisationsbeziehung.body.params.js';
 import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbeziehung.body.params.js';
+import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { ParentOrganisationenResponse } from './organisation.parents.response.js';
+import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
     const params: OrganisationByIdParams = new OrganisationByIdParams();
@@ -144,13 +143,14 @@ describe('OrganisationController', () => {
                 traegerschaft: undefined,
             });
 
-            const oeffentlich: Organisation<true> = Organisation.construct(
+            const oeffentlich: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 'Öffentliche Schulen Land Schleswig-Holstein',
                 OrganisationsTyp.ROOT,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
@@ -158,13 +158,14 @@ describe('OrganisationController', () => {
                 faker.string.uuid(),
                 undefined,
             );
-            const ersatz: Organisation<true> = Organisation.construct(
+            const ersatz: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 'Ersatzschulen Land Schleswig-Holstein',
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
@@ -190,13 +191,14 @@ describe('OrganisationController', () => {
 
         describe('when usecase returns a OrganisationSpecificationError', () => {
             it('should throw a domain error', async () => {
-                const oeffentlich: Organisation<true> = Organisation.construct(
+                const oeffentlich: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -204,13 +206,14 @@ describe('OrganisationController', () => {
                     faker.string.uuid(),
                     undefined,
                 );
-                const ersatz: Organisation<true> = Organisation.construct(
+                const ersatz: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -237,13 +240,14 @@ describe('OrganisationController', () => {
 
         describe('when usecase returns a domain error', () => {
             it('should throw a domain error', async () => {
-                const oeffentlich: Organisation<true> = Organisation.construct(
+                const oeffentlich: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -251,13 +255,14 @@ describe('OrganisationController', () => {
                     faker.string.uuid(),
                     undefined,
                 );
-                const ersatz: Organisation<true> = Organisation.construct(
+                const ersatz: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -337,24 +342,35 @@ describe('OrganisationController', () => {
                     traegerschaft: Traegerschaft.SONSTIGE,
                     administriertVon: faker.lorem.word(),
                     zugehoerigZu: faker.lorem.word(),
+                    emailAdress: faker.internet.email(),
                 });
                 const returnedValue: Organisation<true> = DoFactory.createOrganisation(true);
 
                 organisationServiceMock.updateOrganisation.mockResolvedValue({ ok: true, value: returnedValue });
-                organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation(true, { id: returnedValue.id }),
-                );
 
-                await expect(
-                    organisationController.updateOrganisation(params, body, permissionsMock),
-                ).resolves.not.toThrow();
-                expect(organisationServiceMock.updateOrganisation).toHaveBeenCalledTimes(1);
+                await expect(organisationController.updateOrganisation(params, body, permissionsMock)).resolves.toEqual(
+                    new OrganisationResponse(returnedValue),
+                );
+                expect(organisationServiceMock.updateOrganisation).toHaveBeenCalledExactlyOnceWith(
+                    {
+                        id: params.organisationId,
+                        administriertVon: body.administriertVon,
+                        zugehoerigZu: body.zugehoerigZu,
+                        name: body.name,
+                        namensergaenzung: body.namensergaenzung,
+                        kuerzel: body.kuerzel,
+                        traegerschaft: body.traegerschaft,
+                        emailAdress: body.emailAdress,
+                    },
+                    permissionsMock,
+                );
+                expect(organisationRepositoryMock.findById).not.toHaveBeenCalled();
+                expect(permissionsMock.hasOrgVerwaltenRechtAtOrga).not.toHaveBeenCalled();
             });
         });
 
         describe('when usecase returns a OrganisationSpecificationError', () => {
             it('should throw a domain error', async () => {
-                organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
                 organisationServiceMock.updateOrganisation.mockResolvedValue({
                     ok: false,
                     error: new OrganisationSpecificationError('error', undefined),
@@ -372,7 +388,6 @@ describe('OrganisationController', () => {
 
         describe('when usecase returns a domain error', () => {
             it('should throw a domain error', async () => {
-                organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
                 organisationServiceMock.updateOrganisation.mockResolvedValue({
                     ok: false,
                     error: new EntityNotFoundError(),
@@ -389,17 +404,18 @@ describe('OrganisationController', () => {
         });
 
         describe('when organisation is not found', () => {
-            it('should throw a NotFoundException', async () => {
+            it('should throw the domain error returned by the service', async () => {
                 const organisationId: string = faker.string.uuid();
-                organisationRepositoryMock.findById.mockResolvedValueOnce(null);
+                const error: EntityNotFoundError = new EntityNotFoundError('Organisation', organisationId);
+                organisationServiceMock.updateOrganisation.mockResolvedValueOnce({ ok: false, error });
                 await expect(
                     organisationController.updateOrganisation(
                         { organisationId: organisationId },
                         new UpdateOrganisationBodyParams(),
                         permissionsMock,
                     ),
-                ).rejects.toThrow(new NotFoundException(`Organisation with ID ${organisationId} not found`));
-                expect(organisationRepositoryMock.findById).toHaveBeenCalledTimes(1);
+                ).rejects.toThrow(error);
+                expect(organisationRepositoryMock.findById).not.toHaveBeenCalled();
             });
         });
 
@@ -419,9 +435,10 @@ describe('OrganisationController', () => {
                 administriertVon: faker.lorem.word(),
                 zugehoerigZu: faker.lorem.word(),
             });
-            organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
-
-            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(false);
+            organisationServiceMock.updateOrganisation.mockResolvedValueOnce({
+                ok: false,
+                error: new MissingPermissionsError('Not authorized to manage this organisation'),
+            });
 
             await expect(
                 organisationController.updateOrganisation(params, body, permissionsMock),
@@ -443,9 +460,10 @@ describe('OrganisationController', () => {
                 administriertVon: faker.lorem.word(),
                 zugehoerigZu: faker.lorem.word(),
             };
-            organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
-
-            permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(false);
+            organisationServiceMock.updateOrganisation.mockResolvedValueOnce({
+                ok: false,
+                error: new MissingPermissionsError('Not authorized to manage this organisation'),
+            });
 
             await expect(
                 organisationController.updateOrganisation(params, body, permissionsMock),
@@ -558,13 +576,14 @@ describe('OrganisationController', () => {
     describe('getRootChildren', () => {
         describe('when both oeffentlich & ersatz could be found', () => {
             it('should return offentliche & ersatz organisation', async () => {
-                const oeffentlich: Organisation<true> = Organisation.construct(
+                const oeffentlich: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -572,13 +591,14 @@ describe('OrganisationController', () => {
                     faker.string.uuid(),
                     undefined,
                 );
-                const ersatz: Organisation<true> = Organisation.construct(
+                const ersatz: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -621,7 +641,7 @@ describe('OrganisationController', () => {
             const ids: Array<string> = [faker.string.uuid(), faker.string.uuid(), faker.string.uuid()];
             const mockBody: ParentOrganisationsByIdsBodyParams = new ParentOrganisationsByIdsBodyParams();
             Object.assign(mockBody, { organisationIds: ids });
-            const mockedRepoResponse: Array<Organisation<true>> = ids.map((id: string) =>
+            const mockedRepoResponse: Array<Organisation<true, false>> = ids.map((id: string) =>
                 Organisation.construct(
                     id,
                     faker.date.past(),
@@ -629,6 +649,7 @@ describe('OrganisationController', () => {
                     faker.number.int(),
                     faker.lorem.word(),
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -812,13 +833,14 @@ describe('OrganisationController', () => {
     describe('updateOrganisationName', () => {
         describe('when usecase succeeds', () => {
             it('should not throw an error', async () => {
-                const oeffentlich: Organisation<true> = Organisation.construct(
+                const oeffentlich: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -907,13 +929,14 @@ describe('OrganisationController', () => {
     describe('updateOrganisationName', () => {
         describe('when usecase succeeds', () => {
             it('should not throw an error', async () => {
-                const oeffentlich: Organisation<true> = Organisation.construct(
+                const oeffentlich: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
@@ -992,13 +1015,14 @@ describe('OrganisationController', () => {
 
         describe('when enabling ITSLearning succeeds for organisation', () => {
             it('should not throw an error', async () => {
-                const schule: Organisation<true> = Organisation.construct(
+                const schule: Organisation<true, false> = Organisation.construct(
                     faker.string.uuid(),
                     faker.date.past(),
                     faker.date.recent(),
                     faker.number.int(),
                     'Schule',
                     OrganisationsTyp.SCHULE,
+                    undefined,
                     faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
