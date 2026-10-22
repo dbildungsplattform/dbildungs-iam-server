@@ -50,8 +50,8 @@ import { type Rolle } from '../domain/rolle.js';
 import { type Rollenerweiterung } from '../domain/rollenerweiterung.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../domain/systemrecht.js';
 import { RolleEntity } from '../entity/rolle.entity.js';
+import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
 import { RolleRepo } from '../repo/rolle.repo.js';
-import { RollenerweiterungRepo } from '../repo/rollenerweiterung.repo.js';
 import { RolleApiModule } from '../rolle-api.module.js';
 import { type CreateRolleBodyParams } from './create-rolle.body.params.js';
 import { type DbiamRolleError } from './dbiam-rolle.error.js';
@@ -74,7 +74,7 @@ describe('Rolle API', () => {
     let orm: MikroORM;
     let em: EntityManager;
     let rolleRepo: RolleRepo;
-    let rollenerweiterungRepo: RollenerweiterungRepo;
+    let rollenerweiterungRepo: InternalRollenerweiterungRepo;
     let personRepo: PersonRepository;
     let organisationRepo: OrganisationRepository;
     let dBiamPersonenkontextRepoInternal: DBiamPersonenkontextRepoInternal;
@@ -140,7 +140,7 @@ describe('Rolle API', () => {
         orm = module.get(MikroORM);
         em = module.get(EntityManager);
         rolleRepo = module.get(RolleRepo);
-        rollenerweiterungRepo = module.get(RollenerweiterungRepo);
+        rollenerweiterungRepo = module.get(InternalRollenerweiterungRepo);
         personRepo = module.get(PersonRepository);
         organisationRepo = module.get(OrganisationRepository);
         personFactory = module.get(PersonFactory);
