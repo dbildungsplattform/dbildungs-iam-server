@@ -327,7 +327,7 @@ export class OrganisationRepository {
         return [oeffentlich && mapOrgaEntityToAggregate(oeffentlich), ersatz && mapOrgaEntityToAggregate(ersatz)];
     }
 
-    public async findById(id: string): Promise<Option<Organisation<true>>> {
+    public async findById(id: string): Promise<Option<Organisation<true, false>>> {
         const organisation: Option<OrganisationEntity> = await this.em.findOne(OrganisationEntity, { id });
         if (organisation) {
             return mapOrgaEntityToAggregate(organisation);
@@ -335,12 +335,12 @@ export class OrganisationRepository {
         return null;
     }
 
-    public async findByIds(ids: string[]): Promise<Map<string, Organisation<true>>> {
+    public async findByIds(ids: string[]): Promise<Map<string, Organisation<true, false>>> {
         const organisationEntities: OrganisationEntity[] = await this.em.find(OrganisationEntity, { id: { $in: ids } });
 
         const organisationMap: Map<string, Organisation<true>> = new Map();
         organisationEntities.forEach((organisationEntity: OrganisationEntity) => {
-            const organisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
+            const organisation: Organisation<true, false> = mapOrgaEntityToAggregate(organisationEntity);
             organisationMap.set(organisationEntity.id, organisation);
         });
 
@@ -822,9 +822,14 @@ export class OrganisationRepository {
     }
 
     public async deleteOrganisationsbeziehung(organisationsbeziehungId: string): Promise<void> {
-        await this.em.nativeDelete(OrganisationsbeziehungEntity, {
+        const entity: OrganisationsbeziehungEntity | null = await this.em.findOne(OrganisationsbeziehungEntity, {
             id: organisationsbeziehungId,
         });
+        if (!entity) {
+            return;
+        }
+
+        await this.em.remove(entity).flush();
     }
 
     public async findOrganisationsbeziehungById(
