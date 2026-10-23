@@ -1,25 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { DomainError } from '../../../../shared/error/index.js';
+import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
+import { PersonID } from '../../../../shared/types/index.js';
+import { Ok } from '../../../../shared/util/result.js';
 import { PermittedOrgas } from '../../../authentication/domain/person-permissions.js';
+import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
+import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
+import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
+import { Person } from '../../../person/domain/person.js';
+import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenSystemRecht } from '../../../rolle/domain/systemrecht.js';
-import { EmailRepo } from '../../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
-import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
-import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
-import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import { Rolle } from '../../../rolle/domain/rolle.js';
-import { Person } from '../../../person/domain/person.js';
+import { RollenSystemRecht } from '../../../rolle/domain/systemrecht.js';
 import { PersonInfoResponseV1 } from '../../api/personinfo/v1/person-info.response.v1.js';
-import { PersonID } from '../../../../shared/types/index.js';
-import { SchulconnexRepo } from '../../persistence/schulconnex.repo.js';
-import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
-import { DomainError } from '../../../../shared/error/index.js';
-import { Ok } from '../../../../shared/util/result.js';
 import { PersonInfoResponseV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
+import { SchulconnexRepo } from '../../persistence/schulconnex.repo.js';
 
 @Injectable()
 export class PersonenInfoService {
@@ -27,7 +26,6 @@ export class PersonenInfoService {
         private readonly personRepo: PersonRepository,
         private readonly schulconnexRepo: SchulconnexRepo,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
-        private readonly emailRepo: EmailRepo,
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
     ) {}
@@ -79,9 +77,7 @@ export class PersonenInfoService {
             .slice(offset, offset + limit);
 
         const emailsForPersonsPromise: Promise<Result<Map<PersonID, PersonEmailResponse | undefined>, DomainError>> =
-            this.emailResolverService.shouldUseEmailMicroservice()
-                ? this.emailResolverService.findEmailsBySpshPersons(personIds)
-                : this.emailRepo.getEmailAddressAndStatusForPersonIds(personIds);
+            this.emailResolverService.findEmailsBySpshPersons(personIds);
 
         const [persons, emailsForPersons, kontexteForPersons, userLocksForPersons]: [
             Person<true>[],
@@ -163,9 +159,7 @@ export class PersonenInfoService {
             .slice(offset, offset + limit);
 
         const emailsForPersonsPromise: Promise<Result<Map<PersonID, PersonEmailResponse | undefined>, DomainError>> =
-            this.emailResolverService.shouldUseEmailMicroservice()
-                ? this.emailResolverService.findEmailsBySpshPersons(personIds)
-                : this.emailRepo.getEmailAddressAndStatusForPersonIds(personIds);
+            this.emailResolverService.findEmailsBySpshPersons(personIds);
 
         const [persons, emailsForPersons, kontexteForPersons, userLocksForPersons]: [
             Person<true>[],
