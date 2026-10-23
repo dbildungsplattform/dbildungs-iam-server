@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { ConfigService } from '@nestjs/config';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { EmailAddressResponse } from '../../../email/modules/core/api/dtos/response/email-address.response.js';
@@ -8,10 +7,7 @@ import { EmailAddressStatusEnum } from '../../../email/modules/core/persistence/
 import { DomainError, MultipleRollenartenError } from '../../../shared/error/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressNotFoundError } from '../../email/error/email-address-not-found.error.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
@@ -20,7 +16,6 @@ import {
     type ExternalPkData,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { type RequiredExternalPkData } from '../api/keycloakinternal.controller.js';
 import { POLYTHEA_SERVICE_PROVIDER_ID, UserExternaldataWorkflowAggregate } from './user-extenaldata.workflow.js';
@@ -39,23 +34,15 @@ describe('UserExternaldataWorkflow', () => {
     let sut: UserExternaldataWorkflowAggregate;
     let dBiamPersonenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let personRepositoryMock: DeepMocked<PersonRepository>;
-    let emailRepoMock: DeepMocked<EmailRepo>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
-    let configServiceMock: DeepMocked<ConfigService>;
 
     beforeEach(() => {
-        configServiceMock = createMock<ConfigService>(ConfigService);
-        configServiceMock.getOrThrow.mockReturnValue({});
-
         dBiamPersonenkontextRepoMock = createMock<DBiamPersonenkontextRepo>(DBiamPersonenkontextRepo);
         personRepositoryMock = createMock<PersonRepository>(PersonRepository);
-        emailRepoMock = createMock<EmailRepo>(EmailRepo);
         emailResolverServiceMock = createMock<EmailResolverService>(EmailResolverService);
         sut = UserExternaldataWorkflowAggregate.createNew(
             dBiamPersonenkontextRepoMock,
             personRepositoryMock,
-            configServiceMock,
-            emailRepoMock,
             emailResolverServiceMock,
         );
     });
@@ -69,20 +56,7 @@ describe('UserExternaldataWorkflow', () => {
     });
 
     describe('initialize', () => {
-        it('should initialize aggregate', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-
-            personRepositoryMock.findById.mockResolvedValueOnce(person);
-            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
-            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
-
-            await sut.initialize(person.id);
-            expect(sut.person).toBeDefined();
-            expect(sut.checkedExternalPkData).toBeDefined();
-        });
-
-        it('should initialize aggregate with contextID using EmailMicroservice', async () => {
+        it('should initialize aggregate with contextID', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             const oxLoginId: string = faker.string.uuid();
             const oxContextId: string = 'test-context-id';
@@ -90,7 +64,6 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
                 spshPersonId: person.id,
                 externalId: oxLoginId,
@@ -111,53 +84,12 @@ describe('UserExternaldataWorkflow', () => {
             expect(sut.email).toBe(emailAddress.address);
         });
 
-        it('should initialize aggregate with contextID using email repo', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-
-            personRepositoryMock.findById.mockResolvedValueOnce(person);
-            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
-            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
-            const emailAddress: string = faker.internet.email();
-
-            const response: PersonEmailResponse = new PersonEmailResponse(EmailAddressStatus.ENABLED, emailAddress);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(response);
-
-            await sut.initialize(person.id);
-            expect(sut.person).toBeDefined();
-            expect(sut.checkedExternalPkData).toBeDefined();
-            expect(sut.email).toBe(emailAddress);
-        });
-
-        it('should initialize aggregate with undefined email when repo email status is DISABLED', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-
-            personRepositoryMock.findById.mockResolvedValueOnce(person);
-            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
-            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(false);
-
-            const response: PersonEmailResponse = new PersonEmailResponse(
-                EmailAddressStatus.DISABLED,
-                faker.internet.email(),
-            );
-
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(response);
-
-            await sut.initialize(person.id);
-
-            expect(sut.person).toBeDefined();
-            expect(sut.checkedExternalPkData).toBeDefined();
-            expect(sut.email).toBeUndefined();
-        });
-
         it('should set email to undefined if user has no email', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
 
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
 
             emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
@@ -174,7 +106,6 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
                 spshPersonId: person.id,
                 externalId: oxLoginId,
@@ -203,7 +134,6 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
                 spshPersonId: person.id,
                 externalId: oxLoginId,
@@ -239,7 +169,6 @@ describe('UserExternaldataWorkflow', () => {
 
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
             emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Err(error));
 
             const response: Option<DomainError> = await sut.initialize(person.id);
@@ -251,7 +180,7 @@ describe('UserExternaldataWorkflow', () => {
     describe('mergedExternalPkData', () => {
         const setup = (): { person: Person<true> } => {
             const person: Person<true> = DoFactory.createPerson(true);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             return { person };
         };
@@ -398,7 +327,7 @@ describe('UserExternaldataWorkflow', () => {
     describe('externalPkDataWithVidisAngebotId', () => {
         const setup = (): { person: Person<true> } => {
             const person: Person<true> = DoFactory.createPerson(true);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             return { person };
         };
@@ -557,7 +486,7 @@ describe('UserExternaldataWorkflow', () => {
     });
 
     describe('oxParams', () => {
-        it('should return oxParams with oxLoginId when using email microservice', async () => {
+        it('should return oxParams with oxLoginId', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             const oxLoginId: string = faker.string.uuid();
             const oxContextId: string = 'test-context-id';
@@ -565,7 +494,6 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
 
             const emailAddress: EmailAddress<true> = DoFactory.createMicroserviceEmailAddress(true, {
                 spshPersonId: person.id,
@@ -584,60 +512,12 @@ describe('UserExternaldataWorkflow', () => {
             expect(sut.oxParams).toEqual({ oxLoginId: `${oxLoginId}@${oxContextId}` });
         });
 
-        it('should return oxParams with contextId and username when using old email system with EMAIL service provider', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            const externalPkData: RequiredExternalPkData[] = [
-                createRequiredExternalPkData({
-                    serviceProvider: [
-                        DoFactory.createServiceProvider(true, {
-                            externalSystem: ServiceProviderSystem.EMAIL,
-                        }),
-                    ],
-                }),
-            ];
-
-            personRepositoryMock.findById.mockResolvedValueOnce(person);
-            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(externalPkData);
-            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-
-            await sut.initialize(person.id);
-
-            expect(sut.oxParams).toEqual({
-                contextId: sut.contextID,
-                username: person.username,
-            });
-        });
-
-        it('should return undefined oxParams when using old email system without EMAIL service provider', async () => {
-            const person: Person<true> = DoFactory.createPerson(true);
-            const externalPkData: RequiredExternalPkData[] = [
-                createRequiredExternalPkData({
-                    serviceProvider: [
-                        DoFactory.createServiceProvider(true, {
-                            externalSystem: ServiceProviderSystem.NONE,
-                        }),
-                    ],
-                }),
-            ];
-
-            personRepositoryMock.findById.mockResolvedValueOnce(person);
-            dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(externalPkData);
-            dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-
-            await sut.initialize(person.id);
-
-            expect(sut.oxParams).toBeUndefined();
-        });
-
-        it('should return undefined oxParams when using email microservice but no email exists', async () => {
+        it('should return undefined oxParams when no email exists', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
 
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             await sut.initialize(person.id);
@@ -657,7 +537,7 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(externalPkData);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             const result: Option<DomainError> = await sut.initialize(person.id);
 
@@ -673,14 +553,14 @@ describe('UserExternaldataWorkflow', () => {
                     pkId: faker.string.uuid(),
                     rolleId: faker.string.uuid(),
                     rollenart: RollenArt.LEHR,
-                    kennung: undefined, // missing kennung
+                    kennung: undefined,
                     serviceProvider: [],
                 },
                 {
                     pkId: faker.string.uuid(),
                     rolleId: faker.string.uuid(),
                     rollenart: RollenArt.LEHR,
-                    kennung: faker.string.alpha(), // valid entry
+                    kennung: faker.string.alpha(),
                     serviceProvider: [],
                 },
             ];
@@ -688,7 +568,7 @@ describe('UserExternaldataWorkflow', () => {
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             dBiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(invalidExternalPkData);
             dBiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             await sut.initialize(person.id);
 
@@ -699,7 +579,7 @@ describe('UserExternaldataWorkflow', () => {
     describe('polytheaDienststellenNummern', () => {
         const setup = (): { person: Person<true> } => {
             const person: Person<true> = DoFactory.createPerson(true);
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
 
             return { person };
         };

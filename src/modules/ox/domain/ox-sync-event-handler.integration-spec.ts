@@ -9,7 +9,6 @@ import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { type PersonIdentifier } from '../../../core/logging/person-identifier.js';
 import { OxError } from '../../../shared/error/ox.error.js';
-import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
 import {
     type OrganisationID,
     type PersonID,
@@ -17,7 +16,6 @@ import {
     type RolleID,
 } from '../../../shared/types/aggregate-ids.types.js';
 import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -48,7 +46,6 @@ describe('OxSyncEventHandler', () => {
     let organisationRepositoryMock: DeepMocked<OrganisationRepository>;
     let dBiamPersonenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let oxServiceMock: DeepMocked<OxSendService>;
-    let emailResolverServiceMock: DeepMocked<EmailResolverService>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -84,10 +81,6 @@ describe('OxSyncEventHandler', () => {
                     provide: OxSendService,
                     useValue: createMock(OxSendService),
                 },
-                {
-                    provide: EmailResolverService,
-                    useValue: createMock<EmailResolverService>(EmailResolverService),
-                },
             ],
         }).compile();
 
@@ -100,11 +93,8 @@ describe('OxSyncEventHandler', () => {
         organisationRepositoryMock = module.get(OrganisationRepository);
         rolleRepoMock = module.get(RolleRepo);
         dBiamPersonenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
-        emailResolverServiceMock = module.get(EmailResolverService);
-
-        emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-
         oxServiceMock = module.get(OxSendService);
+
         orm = module.get(MikroORM);
         await DatabaseTestModule.setupDatabase(orm);
         app = module.createNestApplication();
@@ -268,7 +258,6 @@ describe('OxSyncEventHandler', () => {
         let username: PersonUsername;
         let oxUserId: OXUserID;
         let personIdentifier: PersonIdentifier;
-        let event: LdapSyncCompletedEvent;
         let person: Person<true>;
         let address: string;
 
@@ -281,9 +270,7 @@ describe('OxSyncEventHandler', () => {
                 personId: personId,
                 username: username,
             };
-            event = new LdapSyncCompletedEvent(personId, username);
             person = DoFactory.createPerson(true, {
-                email: faker.internet.email(),
                 username: faker.internet.username(),
                 oxUserId: oxUserId,
             });
@@ -298,18 +285,6 @@ describe('OxSyncEventHandler', () => {
             mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
         });
 
-        describe('when email microservice is enabled', () => {
-            it('should log info and stop execution', async () => {
-                emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
-
-                await sut.ldapSyncCompletedEventHandler(event);
-
-                expect(loggerMock.info).toHaveBeenCalledWith(
-                    `Ignoring Event for personId:${event.personId} because email microservice is enabled`,
-                );
-            });
-        });
-
         describe('when person CANNOT be found', () => {
             it('should log error and return without proceeding', async () => {
                 //mock person CANNOT be found in changeUser
@@ -317,7 +292,7 @@ describe('OxSyncEventHandler', () => {
                 //mock person CANNOT be found in changeUserGroups
                 personRepositoryMock.findById.mockResolvedValueOnce(undefined);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.errorPersonalized).toHaveBeenCalledWith(`Person not found`, personIdentifier);
             });
@@ -331,7 +306,7 @@ describe('OxSyncEventHandler', () => {
                 }) as unknown as Person<true>; //necessary because persisted persons have a username
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.errorPersonalized).toHaveBeenCalledWith(
                     `Person has no username: Cannot Change Email-Address In OX`,
@@ -345,7 +320,7 @@ describe('OxSyncEventHandler', () => {
                 person = DoFactory.createPerson(true, { oxUserId: undefined });
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.errorPersonalized).toHaveBeenCalledWith(`Person has no OxUserId`, personIdentifier);
             });
@@ -367,7 +342,7 @@ describe('OxSyncEventHandler', () => {
                     value: undefined,
                 });
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.warning).toHaveBeenCalledWith(
                     `No ENABLED email-address found for personId:${personId}`,
@@ -386,7 +361,7 @@ describe('OxSyncEventHandler', () => {
                 //mock search for REQUESTED EAs
                 emailRepoMock.findByPersonSortedByUpdatedAtDesc.mockResolvedValueOnce([]);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.error).toHaveBeenCalledWith(
                     `Neither REQUESTED nor ENABLED email-address found for personId:${personId}`,
@@ -423,7 +398,7 @@ describe('OxSyncEventHandler', () => {
                     value: undefined,
                 });
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 const aliases: string[] = [disabledEmailAddressString1, disabledEmailAddressString2, address];
                 expect(loggerMock.info).toHaveBeenCalledWith(
@@ -449,7 +424,7 @@ describe('OxSyncEventHandler', () => {
                     error: oxError,
                 });
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.info).toHaveBeenCalledWith(
                     `Found mostRecentEnabled Email-Address:${JSON.stringify(ea.address)} for personId:${personId}`,
@@ -492,7 +467,7 @@ describe('OxSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.info).toHaveBeenCalledWith(
                     `Found mostRecentEnabled Email-Address:${JSON.stringify(ea.address)} for personId:${personId}`,
@@ -552,7 +527,7 @@ describe('OxSyncEventHandler', () => {
                 ] = getPkArrayOrgaMapAndRolleMap(person);
                 mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-                await sut.ldapSyncCompletedEventHandler(event);
+                await sut.sync(personId, username);
 
                 expect(loggerMock.info).toHaveBeenCalledWith(
                     `Found mostRecentEnabled Email-Address:${JSON.stringify(ea.address)} for personId:${personId}`,
@@ -569,7 +544,6 @@ describe('OxSyncEventHandler', () => {
         let personId: PersonID;
         let username: PersonUsername;
         let oxUserId: OXUserID;
-        let event: LdapSyncCompletedEvent;
         let person: Person<true>;
         let address: string;
 
@@ -578,9 +552,7 @@ describe('OxSyncEventHandler', () => {
             personId = faker.string.uuid();
             username = faker.internet.username();
             oxUserId = faker.string.numeric({ length: 5 });
-            event = new LdapSyncCompletedEvent(personId, username);
             person = DoFactory.createPerson(true, {
-                email: faker.internet.email(),
                 username: faker.internet.username(),
                 oxUserId: oxUserId,
             });
@@ -634,7 +606,7 @@ describe('OxSyncEventHandler', () => {
             });
             mockPersonenKontextRelatedRepositoryCalls(kontexte, mockedMap, rolleMap);
 
-            await sut.ldapSyncCompletedEventHandler(event);
+            await sut.sync(personId, username);
             expect(loggerMock.error).toHaveBeenCalledWith(
                 expect.stringContaining(`Could not find organisation, orgaId:`),
             );
@@ -671,7 +643,7 @@ describe('OxSyncEventHandler', () => {
             orgaWithoutKennung.kennung = undefined;
             mockPersonenKontextRelatedRepositoryCalls(kontexte, orgaMap, rolleMap);
 
-            await sut.ldapSyncCompletedEventHandler(event);
+            await sut.sync(personId, username);
             expect(loggerMock.error).toHaveBeenCalledWith(
                 expect.stringContaining(`Required kennung is missing on organisation, orgaId:`),
             );

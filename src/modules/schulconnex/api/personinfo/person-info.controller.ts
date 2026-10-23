@@ -7,26 +7,25 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { EntityNotFoundError } from '../../../../shared/error/index.js';
-import { Permissions } from '../../../authentication/api/permissions.decorator.js';
-import { Person } from '../../../person/domain/person.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
+import { EntityNotFoundError } from '../../../../shared/error/index.js';
+import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
+import { Permissions } from '../../../authentication/api/permissions.decorator.js';
+import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
+import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
+import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
+import { Person } from '../../../person/domain/person.js';
+import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { PersonRepository } from '../../../person/persistence/person.repository.js';
-import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
-import { PersonInfoResponseV1 } from './v1/person-info.response.v1.js';
-import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
-import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
-import { PersonInfoResponse } from './v0/person-info.response.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
-import { EmailRepo } from '../../../email/persistence/email.repo.js';
-import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
-import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulconnex-authentication-domain-error-filter.js';
+import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
+import { PersonInfoResponse } from './v0/person-info.response.js';
+import { PersonInfoResponseV1 } from './v1/person-info.response.v1.js';
 import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
 
 @UseFilters(
@@ -44,7 +43,6 @@ export class PersonInfoController {
         private readonly personRepo: PersonRepository,
         private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         private readonly userLockRepo: UserLockRepository,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
     ) {
         this.logger.info(`Creating ${PersonInfoController.name}`);
@@ -62,14 +60,9 @@ export class PersonInfoController {
             throw new EntityNotFoundError(Person.name, personId);
         }
 
-        let personEmailResponse: Option<PersonEmailResponse>;
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
-            personEmailResponse = await this.emailResolverService.findEmailBySpshPerson(personId);
-        } else {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using old emailRepo`);
-            personEmailResponse = await this.emailRepo.getEmailAddressAndStatusForPerson(person);
-        }
+        this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
+        const personEmailResponse: Option<PersonEmailResponse> =
+            await this.emailResolverService.findEmailBySpshPerson(personId);
 
         const kontexteWithOrgaAndRolle: Array<KontextWithOrgaAndRolle> = await Promise.resolve(
             this.dBiamPersonenkontextRepo.findByPersonWithOrgaAndRolle(personId),
@@ -91,14 +84,9 @@ export class PersonInfoController {
             throw new EntityNotFoundError(Person.name, personId);
         }
 
-        let personEmailResponse: Option<PersonEmailResponse>;
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
-            personEmailResponse = await this.emailResolverService.findEmailBySpshPerson(personId);
-        } else {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using old emailRepo`);
-            personEmailResponse = await this.emailRepo.getEmailAddressAndStatusForPerson(person);
-        }
+        this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
+        const personEmailResponse: Option<PersonEmailResponse> =
+            await this.emailResolverService.findEmailBySpshPerson(personId);
 
         const [kontexteWithOrgaAndRolle, userLocks]: [Array<KontextWithOrgaAndRolle>, UserLock[]] = await Promise.all([
             this.dBiamPersonenkontextRepo.findByPersonWithOrgaAndRolle(personId),
@@ -124,14 +112,9 @@ export class PersonInfoController {
             throw new EntityNotFoundError(Person.name, personId);
         }
 
-        let personEmailResponse: Option<PersonEmailResponse>;
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
-            personEmailResponse = await this.emailResolverService.findEmailBySpshPerson(personId);
-        } else {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using old emailRepo`);
-            personEmailResponse = await this.emailRepo.getEmailAddressAndStatusForPerson(person);
-        }
+        this.logger.info(`Getting PersonEmailResponse for PersonId ${personId} using new Microservice`);
+        const personEmailResponse: Option<PersonEmailResponse> =
+            await this.emailResolverService.findEmailBySpshPerson(personId);
 
         const [kontexteWithOrgaAndRolle, userLocks]: [Array<KontextWithOrgaAndRolle>, UserLock[]] = await Promise.all([
             this.dBiamPersonenkontextRepo.findByPersonWithOrgaAndRolle(personId),

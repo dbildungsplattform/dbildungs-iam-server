@@ -6,7 +6,6 @@ import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } fr
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
@@ -79,7 +78,6 @@ describe('dbiam Personenkontext Repo', () => {
                 OrganisationModule,
                 LoggingTestModule,
                 ServiceProviderModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [

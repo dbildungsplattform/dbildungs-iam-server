@@ -141,7 +141,6 @@ describe('configloader', () => {
                     EMAIL_ADDRESSES_DELETE_LIMIT: 10,
                 },
                 EMAIL_MICROSERVICE: {
-                    USE_EMAIL_MICROSERVICE: false,
                     ENDPOINT: 'http://localhost:9091/',
                 },
                 SCHULCONNEX: {
@@ -330,7 +329,6 @@ describe('configloader', () => {
                     EMAIL_ADDRESSES_DELETE_LIMIT: 10,
                 },
                 EMAIL_MICROSERVICE: {
-                    USE_EMAIL_MICROSERVICE: false,
                     ENDPOINT: 'http://localhost:9091/',
                 },
                 SCHULCONNEX: {

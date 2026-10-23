@@ -1,31 +1,30 @@
+import { faker } from '@faker-js/faker';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { faker } from '@faker-js/faker';
 
-import { PersonLandesbediensteterSearchService } from './person-landesbediensteter-search.service.js';
-import { PersonRepository } from '../persistence/person.repository.js';
-import {
-    DBiamPersonenkontextRepo,
-    type KontextWithOrgaAndRolle,
-} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
-import { PersonLockOccasion } from '../domain/person.enums.js';
-import { LandesbediensteterSearchNoPersonFoundError } from '../domain/landesbediensteter-search-no-person-found.error.js';
-import { LandesbediensteterSearchMultiplePersonsFoundError } from '../domain/landesbediensteter-search-multiple-persons-found.error.js';
-import { type Person } from '../domain/person.js';
-import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { type PersonEmailResponse } from '../api/person-email-response.js';
-import { type PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
-import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { type Organisation } from '../../organisation/domain/organisation.js';
-import { type Rolle } from '../../rolle/domain/rolle.js';
 import {
     EmailResolverService,
     type PersonIdWithEmailResponse,
 } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailAddressStatus } from '../../email/domain/email-address.js';
+import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import {
+    DBiamPersonenkontextRepo,
+    type KontextWithOrgaAndRolle,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { type PersonEmailResponse } from '../api/person-email-response.js';
+import { type PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
+import { LandesbediensteterSearchMultiplePersonsFoundError } from '../domain/landesbediensteter-search-multiple-persons-found.error.js';
+import { LandesbediensteterSearchNoPersonFoundError } from '../domain/landesbediensteter-search-no-person-found.error.js';
+import { PersonLockOccasion } from '../domain/person.enums.js';
+import { type Person } from '../domain/person.js';
+import { PersonRepository } from '../persistence/person.repository.js';
+import { PersonLandesbediensteterSearchService } from './person-landesbediensteter-search.service.js';
 
 describe('PersonLandesbediensteterSearchService', () => {
     let module: TestingModule;
@@ -33,7 +32,6 @@ describe('PersonLandesbediensteterSearchService', () => {
 
     let personRepositoryMock: DeepMocked<PersonRepository>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
-    let emailRepoMock: DeepMocked<EmailRepo>;
     let userLockRepositoryMock: DeepMocked<UserLockRepository>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
 
@@ -43,7 +41,6 @@ describe('PersonLandesbediensteterSearchService', () => {
                 PersonLandesbediensteterSearchService,
                 { provide: PersonRepository, useValue: createMock(PersonRepository) },
                 { provide: DBiamPersonenkontextRepo, useValue: createMock(DBiamPersonenkontextRepo) },
-                { provide: EmailRepo, useValue: createMock(EmailRepo) },
                 { provide: UserLockRepository, useValue: createMock(UserLockRepository) },
                 { provide: EmailResolverService, useValue: createMock(EmailResolverService) },
             ],
@@ -52,7 +49,6 @@ describe('PersonLandesbediensteterSearchService', () => {
         sut = module.get(PersonLandesbediensteterSearchService);
         personRepositoryMock = module.get(PersonRepository);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
-        emailRepoMock = module.get(EmailRepo);
         userLockRepositoryMock = module.get(UserLockRepository);
         emailResolverServiceMock = module.get(EmailResolverService);
     });
@@ -63,7 +59,6 @@ describe('PersonLandesbediensteterSearchService', () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
-        emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
     });
 
     it('should be defined', () => {
@@ -79,6 +74,54 @@ describe('PersonLandesbediensteterSearchService', () => {
 
         it('should throw if no param is defined', async () => {
             await expect(sut.findLandesbediensteter()).rejects.toThrow(LandesbediensteterSearchNoPersonFoundError);
+        });
+
+        it('should return an empty array without a lookup if username is empty', async () => {
+            const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
+                undefined,
+                undefined,
+                '',
+            );
+
+            expect(result).toEqual([]);
+            expect(personRepositoryMock.findByUsername).not.toHaveBeenCalled();
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
+            expect(personenkontextRepoMock.findByPersonWithOrgaAndRolle).not.toHaveBeenCalled();
+        });
+
+        it('should trim personalnummer before looking up persons', async () => {
+            personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([]);
+
+            const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(' 12345 ');
+
+            expect(result).toEqual([]);
+            expect(personRepositoryMock.findByPersonalnummer).toHaveBeenCalledWith('12345');
+        });
+
+        it('should trim username before looking up persons', async () => {
+            personRepositoryMock.findByUsername.mockResolvedValueOnce([]);
+
+            const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
+                undefined,
+                undefined,
+                ' username ',
+            );
+
+            expect(result).toEqual([]);
+            expect(personRepositoryMock.findByUsername).toHaveBeenCalledWith('username');
+        });
+
+        it('should trim email address before resolving the person', async () => {
+            emailResolverServiceMock.findByPrimaryAddress.mockResolvedValueOnce(undefined);
+
+            const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
+                undefined,
+                ' person@example.com ',
+            );
+
+            expect(result).toEqual([]);
+            expect(emailResolverServiceMock.findByPrimaryAddress).toHaveBeenCalledWith('person@example.com');
+            expect(personRepositoryMock.findById).not.toHaveBeenCalled();
         });
 
         it('should return an empty array if no person found', async () => {
@@ -145,7 +188,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
             await expect(sut.findLandesbediensteter(undefined, undefined, undefined, 'onlyvorname')).rejects.toThrow(
                 LandesbediensteterSearchNoPersonFoundError,
@@ -177,7 +220,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
             await expect(
                 sut.findLandesbediensteter(undefined, undefined, undefined, undefined, 'onlyfamilienname'),
@@ -209,7 +252,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
@@ -245,7 +288,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(undefined);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
@@ -284,7 +327,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
@@ -299,7 +342,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
-        it('should return valid response if person is found and valid by emailaddress when email resolver service is disabled', async () => {
+        it('should return valid response if person is found and valid by emailaddress', async () => {
             const person: Person<true> = DoFactory.createPerson(true);
             person.personalnummer = faker.string.alphanumeric(5);
             const email: PersonEmailResponse = {
@@ -322,9 +365,12 @@ describe('PersonLandesbediensteterSearchService', () => {
                     rolle: rolle,
                 } satisfies KontextWithOrgaAndRolle,
             ];
-            personRepositoryMock.findByPrimaryEmailAddress.mockResolvedValueOnce([person]);
+            emailResolverServiceMock.findByPrimaryAddress.mockResolvedValueOnce({
+                personId: person.id,
+                personEmailResponse: email,
+            } satisfies PersonIdWithEmailResponse);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
@@ -339,13 +385,12 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
-        it('should return valid response if email resolver service is enabled and spshPersonId is found', async () => {
+        it('should reuse the resolved email if spshPersonId is found', async () => {
             const email: PersonEmailResponse = {
                 address: faker.internet.email(),
                 status: faker.helpers.enumValue(EmailAddressStatus),
             };
             const mockedSpshPersonId: string = faker.string.uuid();
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             emailResolverServiceMock.findByPrimaryAddress.mockResolvedValueOnce({
                 personId: mockedSpshPersonId,
                 personEmailResponse: email,
@@ -383,13 +428,13 @@ describe('PersonLandesbediensteterSearchService', () => {
 
             expect(result).toBeDefined();
             expect(emailResolverServiceMock.findByPrimaryAddress).toHaveBeenCalledWith(address);
+            expect(personRepositoryMock.findById).toHaveBeenCalledWith(mockedSpshPersonId);
             expect(result[0]?.primaryEmailAddress).toEqual(email.address);
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).not.toHaveBeenCalled();
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
         it('should return valid response with email from email resolver service if person is found by personalnummer', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             const person: Person<true> = DoFactory.createPerson(true);
             person.personalnummer = faker.string.alphanumeric(5);
             const email: PersonEmailResponse = {
@@ -427,12 +472,10 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result).toBeDefined();
             expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(person.id);
             expect(result[0]?.primaryEmailAddress).toEqual(email.address);
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).not.toHaveBeenCalled();
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
         it('should return valid response with email from email resolver service if person is found by username', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             const person: Person<true> = DoFactory.createPerson(true);
             person.personalnummer = faker.string.alphanumeric(5);
             const email: PersonEmailResponse = {
@@ -471,12 +514,10 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result).toBeDefined();
             expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(person.id);
             expect(result[0]?.primaryEmailAddress).toEqual(email.address);
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).not.toHaveBeenCalled();
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
         it('should return valid response with email from email resolver service if person is found by fullname', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             const person: Person<true> = DoFactory.createPerson(true);
             person.personalnummer = faker.string.alphanumeric(5);
             const email: PersonEmailResponse = {
@@ -515,12 +556,10 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result).toBeDefined();
             expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(person.id);
             expect(result[0]?.primaryEmailAddress).toEqual(email.address);
-            expect(emailRepoMock.getEmailAddressAndStatusForPerson).not.toHaveBeenCalled();
             expect(result[0]?.personenkontexte.length).toEqual(1);
         });
 
-        it('should return an empty array if email resolver service is enabled and spshPersonId is not found for given mail', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+        it('should return an empty array if spshPersonId is not found for given mail', async () => {
             emailResolverServiceMock.findByPrimaryAddress.mockResolvedValueOnce(undefined);
             const person: Person<true> = DoFactory.createPerson(true);
             person.personalnummer = faker.string.alphanumeric(5);
@@ -546,7 +585,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const address: string = faker.internet.email();
@@ -563,9 +602,8 @@ describe('PersonLandesbediensteterSearchService', () => {
             expect(result.length).toEqual(0);
         });
 
-        it('should return an empty array if email resolver service is enabled and spshPersonId is found for given mail but person doesnt exists in spsh anymore', async () => {
+        it('should return an empty array if spshPersonId is found for given mail but person does not exist in spsh anymore', async () => {
             const mockedSpshPersonId: string = faker.string.uuid();
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
             emailResolverServiceMock.findByPrimaryAddress.mockResolvedValueOnce({
                 personId: mockedSpshPersonId,
             } as PersonIdWithEmailResponse);
@@ -593,7 +631,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findById.mockResolvedValueOnce(undefined);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const address: string = faker.internet.email();
@@ -635,7 +673,7 @@ describe('PersonLandesbediensteterSearchService', () => {
             ];
             personRepositoryMock.findByFullName.mockResolvedValueOnce([person]);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
-            emailRepoMock.getEmailAddressAndStatusForPerson.mockResolvedValueOnce(email);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
             const result: PersonLandesbediensteterSearchResponse[] = await sut.findLandesbediensteter(
