@@ -19,7 +19,6 @@ import { ValidationExceptionFilter } from '../../../shared/filter/validation-exc
 import { Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonModule } from '../../person/person.module.js';
@@ -62,7 +61,6 @@ describe('KeycloakInternalController', () => {
                 PersonModule,
                 PersonenKontextModule,
                 RolleModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [
@@ -418,7 +416,6 @@ describe('KeycloakInternalController', () => {
 
     describe('externalDataV2', () => {
         it('should return external data for the Angebot the person is permitted for', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -467,7 +464,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MissingPermissionsError when no Personenkontext grants permission for the Angebot', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -482,7 +478,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MissingPermissionsError when all Personenkontexte belong to a different keycloakClientId', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -499,7 +494,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MultipleRollenartenError when the person has multiple Rollenarten for the permitted Personenkontexte', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -519,7 +513,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should include the email address when includeEmailAddress is true and the email is active', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -552,7 +545,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when includeEmailAddress is false', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -574,7 +566,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when the email account is suspended, even if requested', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -605,7 +596,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when the email account is not active', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
