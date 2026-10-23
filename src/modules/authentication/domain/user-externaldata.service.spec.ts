@@ -152,47 +152,16 @@ describe('UserExternaldataService', () => {
             });
         });
 
-        describe('when Personenkontexte are missing kennung or rollenart', () => {
-            const setup = (): { person: Person<true> } => {
-                const person: Person<true> = DoFactory.createPerson(true);
-
-                personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
-                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
-                    createExternalPkData({
-                        kennung: undefined,
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
-                    createExternalPkData({
-                        rollenart: undefined,
-                        serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
-                    }),
-                ]);
-
-                return { person };
-            };
-
-            it('should ignore them and return MissingPermissionsError', async () => {
-                const { person }: { person: Person<true> } = setup();
-
-                const result: Result<UserExternalData, DomainError> = await sut.getExternalData(
-                    person.keycloakUserId!,
-                    keycloakClientId,
-                    false,
-                );
-
-                expect(result.ok).toBe(false);
-                if (!result.ok) {
-                    expect(result.error).toBeInstanceOf(MissingPermissionsError);
-                }
-            });
-        });
-
         describe('when permission exists via direct service provider assignment', () => {
             const setup = (): { person: Person<true>; permittedPk: ExternalPkData } => {
                 const person: Person<true> = DoFactory.createPerson(true);
                 const permittedPk: ExternalPkData = createExternalPkData({
                     kennung: 'permitted-kennung',
+                    rollenart: RollenArt.LEHR,
+                    serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
+                });
+                const permittedPkWithoutKennung: ExternalPkData = createExternalPkData({
+                    kennung: undefined,
                     rollenart: RollenArt.LEHR,
                     serviceProvider: [DoFactory.createServiceProvider(true, { keycloakClientId })],
                 });
@@ -203,7 +172,11 @@ describe('UserExternaldataService', () => {
 
                 personRepositoryMock.findByKeycloakUserId.mockResolvedValueOnce(person);
                 personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([permittedPk, unrelatedPk]);
+                personenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([
+                    permittedPk,
+                    permittedPkWithoutKennung,
+                    unrelatedPk,
+                ]);
 
                 return { person, permittedPk };
             };
@@ -224,7 +197,7 @@ describe('UserExternaldataService', () => {
                     expect(result.value.nachname).toBe(person.familienname);
                     expect(result.value.rollenart).toBe(RollenArt.LEHR);
                     expect(result.value.personenkontexte).toEqual([
-                        { dienststellennr: 'permitted-kennung', rolleId: permittedPk.rolleId },
+                        { dstNr: 'permitted-kennung', rolleId: permittedPk.rolleId },
                     ]);
                     expect(result.value.emailAdresse).toBeUndefined();
                     expect(result.value.oxLoginId).toBeUndefined();
