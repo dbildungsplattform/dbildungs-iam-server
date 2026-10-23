@@ -40,9 +40,7 @@
     },
     "dependencies": {
         "@confluentinc/kafka-javascript": "^1.9.1",
-        "@faker-js/faker": "^10.3.0",
         "@golevelup/nestjs-discovery": "^6.1.2",
-        "@keycloak/keycloak-admin-client": "^26.6.2",
         "@keyv/redis": "^5.1.6",
         "@mikro-orm/core": "^7.1.0",
         "@mikro-orm/decorators": "^7.1.0",
@@ -85,6 +83,8 @@
         "winston": "^3.19.0"
     },
     "devDependencies": {
+        "@faker-js/faker": "^10.6.0",
+        "@keycloak/keycloak-admin-client": "^26.8.1",
         "@mikro-orm/cli": "^7.0.15",
         "@nestjs/cli": "^11.0.23",
         "@nestjs/testing": "^11.1.27",

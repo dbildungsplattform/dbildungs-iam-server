@@ -5,7 +5,6 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    NotFoundException,
     Param,
     Patch,
     Post,
@@ -40,7 +39,6 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { OrganisationsTyp } from '../domain/organisation.enums.js';
 import { Organisation } from '../domain/organisation.js';
 import { OrganisationService } from '../domain/organisation.service.js';
 import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
@@ -134,38 +132,17 @@ export class OrganisationController {
         @Body() body: UpdateOrganisationBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<OrganisationResponse> {
-        const existingOrganisation: Option<Organisation<true>> = await this.organisationRepository.findById(
-            params.organisationId,
-        );
-
-        if (!existingOrganisation) {
-            throw new NotFoundException(`Organisation with ID ${params.organisationId} not found`);
-        }
-
-        const hasOrgVerwaltenRechtAtOrg: boolean = await permissions.hasOrgVerwaltenRechtAtOrga(
-            body.typ,
-            body.administriertVon,
-        );
-
-        if (!hasOrgVerwaltenRechtAtOrg) {
-            throw new MissingPermissionsError('Not authorized to manage this organisation');
-        }
-
-        existingOrganisation.id = params.organisationId;
-        if (existingOrganisation.typ !== OrganisationsTyp.SCHULE || body.typ !== OrganisationsTyp.SCHULE) {
-            existingOrganisation.administriertVon = body.administriertVon;
-            existingOrganisation.zugehoerigZu = body.zugehoerigZu;
-        }
-        existingOrganisation.name = body.name;
-        existingOrganisation.namensergaenzung = body.namensergaenzung;
-        existingOrganisation.kuerzel = body.kuerzel;
-        existingOrganisation.typ = body.typ;
-        existingOrganisation.traegerschaft = body.traegerschaft;
-        existingOrganisation.emailAdress = body.emailAdress;
-        existingOrganisation.updatedAt = new Date();
-
         const result: Result<Organisation<true>, DomainError> = await this.organisationService.updateOrganisation(
-            existingOrganisation,
+            {
+                id: params.organisationId,
+                administriertVon: body.administriertVon,
+                zugehoerigZu: body.zugehoerigZu,
+                name: body.name,
+                namensergaenzung: body.namensergaenzung,
+                kuerzel: body.kuerzel,
+                traegerschaft: body.traegerschaft,
+                emailAdress: body.emailAdress,
+            },
             permissions,
         );
 
@@ -492,6 +469,7 @@ export class OrganisationController {
 
         const result: DomainError | void = await this.organisationDeleteService.deleteOrganisation(
             params.organisationId,
+            permissions,
         );
         if (result instanceof DomainError) {
             throw result;

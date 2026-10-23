@@ -12,6 +12,7 @@
                 "PERSONEN_VERWALTEN",
                 "SCHULEN_VERWALTEN",
                 "KLASSEN_VERWALTEN",
+                "BEHOERDEN_VERWALTEN",
                 "SCHULTRAEGER_VERWALTEN",
                 "PERSONEN_SOFORT_LOESCHEN",
                 "PERSON_SYNCHRONISIEREN",
