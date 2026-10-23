@@ -1966,6 +1966,7 @@ describe('LDAP Adapter', () => {
                         ok: true,
                         value: {
                             entryUUID: newEntryUUID,
+                            uid: username,
                             dn: lehrerUid,
                         },
                     });
@@ -2010,6 +2011,7 @@ describe('LDAP Adapter', () => {
                         ok: true,
                         value: {
                             dn: lehrerUid,
+                            uid: username,
                         },
                     });
                 });
