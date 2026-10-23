@@ -3274,6 +3274,78 @@ describe('PersonRepository Integration', () => {
                 expect(total).toBe(2);
             });
         });
+        describe('syncOrgUnassignmentDate', () => {
+            async function createPersonWithKontext(orgUnassignmentDate?: Date): Promise<Person<true>> {
+                const person: Person<true> = await savePerson(false);
+                const personEntity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                personEntity.orgUnassignmentDate = orgUnassignmentDate;
+                await em.flush();
+
+                const rolle: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+                if (rolle instanceof DomainError) {
+                    throw Error();
+                }
+                const organisation: Organisation<true> = await organisationRepository.save(
+                    DoFactory.createOrganisation(false),
+                );
+                await dbiamPersonenkontextRepoInternal.save(
+                    DoFactory.createPersonenkontext(false, {
+                        personId: person.id,
+                        rolleId: rolle.id,
+                        organisationId: organisation.id,
+                    }),
+                );
+                return person;
+            }
+
+            it('should set the date if the person has no personenkontext', async () => {
+                const person: Person<true> = await savePerson(false);
+
+                await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
+
+                const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                expect(entity.orgUnassignmentDate).toBeInstanceOf(Date);
+            });
+
+            it('should keep an already existing date if the person has no personenkontext', async () => {
+                const existingDate: Date = new Date('2020-01-01T00:00:00.000Z');
+                const person: Person<true> = await savePerson(false);
+                const personEntity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                personEntity.orgUnassignmentDate = existingDate;
+                await em.flush();
+
+                await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
+
+                const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                expect(entity.orgUnassignmentDate).toEqual(existingDate);
+            });
+
+            it('should clear the date if the person has a personenkontext', async () => {
+                const person: Person<true> = await createPersonWithKontext(new Date());
+
+                await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
+
+                const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                expect(entity.orgUnassignmentDate).toBeFalsy();
+            });
+
+            it('should not change the date if the person has a personenkontext and no date', async () => {
+                const person: Person<true> = await createPersonWithKontext();
+
+                await sut.syncOrgUnassignmentDate(person.id);
+                em.clear();
+
+                const entity: PersonEntity = await em.findOneOrFail(PersonEntity, person.id);
+                expect(entity.orgUnassignmentDate).toBeFalsy();
+            });
+
+            it('should do nothing if the person does not exist', async () => {
+                await expect(sut.syncOrgUnassignmentDate(faker.string.uuid())).resolves.toBeUndefined();
+            });
+        });
         describe('findOrganisationAdminsByOrganisationId', () => {
             it('should return a list of admins', async () => {
                 const personEntity1: PersonEntity = new PersonEntity();

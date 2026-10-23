@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID } from '../../../shared/types/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonenkontextScope } from '../../personenkontext/persistence/personenkontext.scope.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
-import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
@@ -32,12 +32,19 @@ export class OrganisationDeleteService {
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
     ) {}
 
-    public async deleteOrganisation(organisationId: OrganisationID): Promise<void | DomainError> {
-        const hasNoReferences: Result<undefined, DomainError> = await this.hasNoReferences(organisationId);
+    public async deleteOrganisation(
+        organisationId: OrganisationID,
+        permissions: IPersonPermissions,
+    ): Promise<void | DomainError> {
+        const hasNoReferences: Result<undefined, DomainError> = await this.hasNoReferences(organisationId, permissions);
+
         return hasNoReferences.ok ? this.organisationRepo.delete(organisationId) : hasNoReferences.error;
     }
 
-    private async hasNoReferences(organisationId: OrganisationID): Promise<Result<undefined, DomainError>> {
+    private async hasNoReferences(
+        organisationId: OrganisationID,
+        permissions: IPersonPermissions,
+    ): Promise<Result<undefined, DomainError>> {
         const [, childOrganisationCount]: Counted<Organisation<true>> = await this.organisationRepo.findBy(
             new OrganisationScope().findAdministrierteVon(organisationId).paged(0, 1),
         );
@@ -53,7 +60,8 @@ export class OrganisationDeleteService {
         }
 
         const referencedRollen: Rolle<true>[] = await this.rolleRepo.findBySchulstrukturknoten(organisationId);
-        if (referencedRollen.length) {
+
+        if (referencedRollen.length > 0) {
             return Err(new OrganisationHasRollenError());
         }
 
@@ -65,15 +73,21 @@ export class OrganisationDeleteService {
             return Err(new OrganisationHasPersonenkontexteError());
         }
 
-        const referencedServiceProvider: Array<ServiceProvider<true>> =
+        const referencedServiceProviders: ServiceProvider<true>[] =
             await this.serviceProviderRepo.findBySchulstrukturknoten([organisationId]);
-        if (referencedServiceProvider.length) {
+
+        if (referencedServiceProviders.length > 0) {
             return Err(new OrganisationHasServiceProvidersError());
         }
 
-        const referencedRollenerweiterung: Array<Rollenerweiterung<true>> =
-            await this.rollenerweiterungRepo.findManyByOrganisationId(organisationId);
-        if (referencedRollenerweiterung.length) {
+        const hasRollenerweiterungenResult: Result<boolean, DomainError> =
+            await this.rollenerweiterungRepo.existsByOrganisationId(organisationId, permissions);
+
+        if (!hasRollenerweiterungenResult.ok) {
+            return hasRollenerweiterungenResult;
+        }
+
+        if (hasRollenerweiterungenResult.value) {
             return Err(new OrganisationHasRollenerweiterungError());
         }
 
