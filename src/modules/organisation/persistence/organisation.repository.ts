@@ -829,7 +829,8 @@ export class OrganisationRepository {
             return;
         }
 
-        await this.em.remove(entity).flush();
+        this.em.remove(entity);
+        await this.em.flush();
     }
 
     public async findOrganisationsbeziehungById(
