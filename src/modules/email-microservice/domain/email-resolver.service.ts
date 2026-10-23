@@ -229,13 +229,6 @@ export class EmailResolverService {
         }
     }
 
-    public shouldUseEmailMicroservice(): boolean {
-        const emailMicroserviceConfig: EmailMicroserviceConfig =
-            this.configService.getOrThrow<EmailMicroserviceConfig>('EMAIL_MICROSERVICE');
-
-        return emailMicroserviceConfig.USE_EMAIL_MICROSERVICE;
-    }
-
     public async getPrimaryActiveEmailForPerson(person: Person<true>): Promise<string | undefined> {
         const email: Option<PersonEmailResponse> = await this.findEmailBySpshPerson(person.id);
         const primaryActiveEmail: string | undefined =
