@@ -274,6 +274,7 @@ describe('LdapSyncEventHandler', () => {
         mailAlternativeAddress = faker.internet.email();
         personAttributes = {
             entryUUID: undefined, // entryUUID is only set in LdapClientService when an empty PersonEntry had to be created
+            uid: username,
             dn: 'dn',
             givenName: givenName,
             surName: surName,
@@ -483,6 +484,7 @@ describe('LdapSyncEventHandler', () => {
                 );
                 personAttributes = {
                     entryUUID: undefined, // entryUUID is only set in LdapClientService when an empty PersonEntry had to be created
+                    uid: username,
                     dn: 'dn',
                 };
                 ldapClientAdapterMock.getPersonAttributes.mockResolvedValueOnce({
@@ -797,6 +799,7 @@ describe('LdapSyncEventHandler', () => {
             ldapClientAdapterMock.getPersonAttributes.mockResolvedValueOnce({
                 ok: true,
                 value: {
+                    uid: username,
                     dn: 'dn',
                     givenName: vorname,
                     surName: familienname,
