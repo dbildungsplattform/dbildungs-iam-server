@@ -603,22 +603,63 @@ describe('LdapSyncEventHandler', () => {
                     new Map<RolleID, Rolle<true>>(),
                 );
                 const uid: string = faker.internet.username();
+                const dn: string = `uid=${uid},ou=oeffentlicheSchulen,dc=schule-sh,dc=de`;
                 ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
                     ok: true,
-                    value: { uid, dn: 'dn' },
+                    value: { uid, dn },
                 });
-                const groups: string[] = ['1234567', '7654321'];
+                const kennungen: string[] = ['1234567', '7654321'];
+                const groups: string[] = kennungen.map(
+                    (kennung: string) => `cn=lehrer-${kennung},cn=groups,ou=${kennung},dc=schule-sh,dc=de`,
+                );
                 ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({ ok: true, value: groups });
+                ldapClientAdapterMock.removePersonFromGroup.mockResolvedValue({ ok: true, value: true });
 
                 await sut.personExternalSystemSyncEventHandler(event);
 
                 expect(ldapClientAdapterMock.getGroupsForPerson).toHaveBeenCalledExactlyOnceWith(personId, username);
-                expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledTimes(groups.length);
-                for (const group of groups) {
-                    expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledWith(username, group, uid);
+                expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledTimes(kennungen.length);
+                for (const kennung of kennungen) {
+                    expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledWith(username, kennung, dn);
                 }
                 expect(ldapClientAdapterMock.getPersonAttributes).not.toHaveBeenCalled();
                 expect(eventServiceMock.publish).not.toHaveBeenCalled();
+            });
+
+            it('should log errors when a group kennung cannot be extracted or removal fails', async () => {
+                mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();
+                mockPersonenKontextRelatedRepositoryCalls(
+                    [],
+                    new Map<OrganisationID, Organisation<true>>(),
+                    new Map<RolleID, Rolle<true>>(),
+                );
+                const dn: string = 'uid=user,ou=oeffentlicheSchulen,dc=schule-sh,dc=de';
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: true,
+                    value: { uid: 'user', dn },
+                });
+                const corruptGroupDn: string = 'cn=corrupt,cn=groups,ou=1111111,dc=schule-sh,dc=de';
+                const validGroupDn: string = 'cn=lehrer-1234567,cn=groups,ou=1234567,dc=schule-sh,dc=de';
+                ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({
+                    ok: true,
+                    value: [corruptGroupDn, validGroupDn],
+                });
+                const removalError: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+                ldapClientAdapterMock.removePersonFromGroup.mockResolvedValueOnce({ ok: false, error: removalError });
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(ldapClientAdapterMock.removePersonFromGroup).toHaveBeenCalledExactlyOnceWith(
+                    username,
+                    '1234567',
+                    dn,
+                );
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    expect.stringContaining(`Could NOT extract kennung from groupDN:${corruptGroupDn}`),
+                );
+                expect(loggerMock.error).toHaveBeenCalledWith(
+                    `Failed to remove personId:${personId} from group of kennung:1234567, msg:${removalError.message}`,
+                );
             });
 
             it('should log an error when fetching groups for the LDAP entry fails', async () => {

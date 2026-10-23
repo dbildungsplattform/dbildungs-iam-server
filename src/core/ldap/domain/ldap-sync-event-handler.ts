@@ -125,9 +125,9 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
         );
         if (personKontextWithUemRolle.length === 0 && ldapPerson.ok && ldapPerson.value) {
             this.logger.info(
-                `No relevant person contexts but LDAP entry found for person. Deleting LDAP entry. PersonId:${personId}`,
+                `No relevant person contexts but LDAP entry found for person. Removing person from all groups. PersonId:${personId}`,
             );
-            await this.removePersonFromAllGroups(personId, person.username, ldapPerson.value.uid);
+            await this.removePersonFromAllGroups(personId, person.username, ldapPerson.value.dn);
             return;
         }
 
@@ -302,7 +302,7 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
     private async removePersonFromAllGroups(
         personId: string,
         username: string,
-        uid: string,
+        personDn: string,
     ): Promise<Result<void, Error>> {
         const groups: Result<string[]> = await this.ldapClientAdapter.getGroupsForPerson(personId, username);
         if (!groups.ok) {
@@ -311,12 +311,31 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             );
             return Err(groups.error);
         }
-        await Promise.all([
-            ...groups.value.map(
+        const kennungen: string[] = [];
+        for (const groupDn of groups.value) {
+            const kennung: Result<string> = this.getKennungFromGroupDn(groupDn);
+            if (!kennung.ok) {
+                this.logger.error(
+                    `Could NOT extract kennung from groupDN:${groupDn}, CANNOT remove person from group, err:${kennung.error.message}`,
+                );
+            } else {
+                kennungen.push(kennung.value);
+            }
+        }
+
+        const results: Result<boolean>[] = await Promise.all(
+            kennungen.map(
                 (kennung: string): Promise<Result<boolean>> =>
-                    this.ldapClientAdapter.removePersonFromGroup(username, kennung, uid),
+                    this.ldapClientAdapter.removePersonFromGroup(username, kennung, personDn),
             ),
-        ]);
+        );
+        results.forEach((result: Result<boolean>, index: number) => {
+            if (!result.ok) {
+                this.logger.error(
+                    `Failed to remove personId:${personId} from group of kennung:${kennungen[index]}, msg:${result.error.message}`,
+                );
+            }
+        });
         return Ok();
     }
 
