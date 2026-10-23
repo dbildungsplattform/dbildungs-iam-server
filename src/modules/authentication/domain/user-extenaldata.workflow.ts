@@ -15,7 +15,7 @@ import {
 import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { type RequiredExternalPkData } from '../api/authentication.controller.js';
-import { type NewOxParams, type OxParams } from '../api/externaldata/user-externaldata-ox.response.js';
+import { type OxParams } from '../api/externaldata/user-externaldata-ox.response.js';
 
 export const POLYTHEA_SERVICE_PROVIDER_ID: string = 'b2478ade-f0d1-4864-9713-a12c95cde898';
 export class UserExternaldataWorkflowAggregate {
@@ -182,7 +182,7 @@ export class UserExternaldataWorkflowAggregate {
         return uniq(checkedExternalPkData.map((pk: RequiredExternalPkData) => pk.rollenart));
     }
 
-    private computeOxParams(oxLoginId: string | undefined): NewOxParams | undefined {
+    private computeOxParams(oxLoginId: string | undefined): OxParams | undefined {
         if (oxLoginId) {
             return { oxLoginId };
         }

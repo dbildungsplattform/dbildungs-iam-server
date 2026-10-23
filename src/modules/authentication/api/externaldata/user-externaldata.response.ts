@@ -8,7 +8,7 @@ import { UserExeternalDataResponseItslearning } from './user-externaldata-itslea
 import { UserExeternalDataResponseOnlineDateiablage } from './user-externaldata-onlinedateiablage.response.js';
 import { UserExeternalDataResponseOpshPk } from './user-externaldata-opsh-pk.response.js';
 import { UserExeternalDataResponseOpsh } from './user-externaldata-opsh.response.js';
-import { NewOxParams, OldOxParams, UserExternalDataResponseOx } from './user-externaldata-ox.response.js';
+import { OxParams, UserExternalDataResponseOx } from './user-externaldata-ox.response.js';
 import { UserExternalDataResponsePolyteia } from './user-externaldata-polyteia.response.js';
 import { UserExeternalDataResponseVidis } from './user-externaldata-vidis.response.js';
 
@@ -19,7 +19,7 @@ export type ExternalDataWorkflowData = {
     singleRollenart: RollenArt | undefined;
     polytheaDienststellenNummern: string[];
     email?: string;
-    oxParams?: OldOxParams | NewOxParams;
+    oxParams?: OxParams;
 };
 
 export class UserExternalDataResponse {
