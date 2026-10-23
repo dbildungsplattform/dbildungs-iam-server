@@ -1493,23 +1493,6 @@
           "enumItems": [],
           "mappedType": "string"
         },
-        "email_domain": {
-          "name": "email_domain",
-          "type": "varchar(255)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 255,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
         "id": {
           "name": "id",
           "type": "uuid",
@@ -1664,6 +1647,23 @@
           ],
           "mappedType": "enum",
           "nativeEnumName": "organisations_typ_enum"
+        },
+        "uem_ldap_ou": {
+          "name": "uem_ldap_ou",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
         },
         "updated_at": {
           "name": "updated_at",
