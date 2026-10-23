@@ -38,6 +38,7 @@ import { LdapFetchAttributeError } from '../adapter/domain/error/ldap-fetch-attr
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
 import { LdapAdapter, type LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
+import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { LdapModule } from '../ldap.module.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
 
@@ -578,6 +579,50 @@ describe('LdapSyncEventHandler', () => {
     describe('syncDataToLdap', () => {
         beforeEach(() => {
             createDataFetchedByRepositoriesAndLDAP();
+        });
+
+        it('should preserve group memberships without warnings when LDAP is already synchronized', async () => {
+            const rolle: Rolle<true> = getRolle();
+            const schoolKennung: string = '1234567';
+            const ldapConfig: LdapInstanceConfig = app.get(LdapInstanceConfig);
+            const organisation: Organisation<true> = getOrga(schoolKennung);
+            const kontext: Personenkontext<true> = DoFactory.createPersonenkontext<true>(true, {
+                personId: personId,
+                organisationId: organisation.id,
+                rolleId: rolle.id,
+            });
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            mockPersonenKontextRelatedRepositoryCalls([kontext], getOrgaMap(organisation), getRolleMap(rolle));
+            organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(oeffentlicheSchulenDomain);
+            ldapClientAdapterMock.getPersonAttributes.mockResolvedValueOnce({
+                ok: true,
+                value: {
+                    ...personAttributes,
+                    givenName: person.vorname,
+                    surName: person.familienname,
+                    cn: username,
+                },
+            });
+            ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({
+                ok: true,
+                value: [`cn=lehrer-${schoolKennung},cn=groups,ou=${schoolKennung},${ldapConfig.BASE_DN}`],
+            });
+
+            await sut.personExternalSystemSyncEventHandler(event);
+
+            expect(ldapClientAdapterMock.modifyPersonAttributes).toHaveBeenCalledExactlyOnceWith(
+                username,
+                person.vorname,
+                person.familienname,
+                username,
+            );
+            expect(ldapClientAdapterMock.addPersonToGroup).not.toHaveBeenCalled();
+            expect(ldapClientAdapterMock.removePersonFromGroup).not.toHaveBeenCalled();
+            expect(loggerMock.warning).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({ constructor: LdapSyncCompletedEvent, personId, username }),
+                expect.objectContaining({ constructor: KafkaLdapSyncCompletedEvent, personId, username }),
+            );
         });
 
         it('should synchronize person attributes and group memberships and publish completion', async () => {
