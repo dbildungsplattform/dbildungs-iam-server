@@ -564,6 +564,7 @@ export class LdapAdapter {
             value: {
                 entryUUID: entryUUIDResult.ok ? entryUUIDResult.value : undefined,
                 dn: creationResult.value,
+                uid: username,
             },
         };
     }
