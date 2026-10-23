@@ -2516,7 +2516,7 @@ describe('Rolle API', () => {
                 idsWithI18nKeys: [
                     {
                         id: serviceProviderId,
-                        errorIdType: ErrorIdType.ROLLE,
+                        errorIdType: ErrorIdType.ANGEBOT,
                         i18nKey: 'NOT_FOUND',
                     },
                 ],

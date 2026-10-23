@@ -19,6 +19,7 @@ import { Rolle } from './rolle.js';
 import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
 import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 interface RollenerweiterungOperationResult {
     id: string;
@@ -360,7 +361,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -415,7 +416,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 
@@ -427,6 +428,19 @@ export class ApplyRollenerweiterungService {
                     id: rolleId,
                     errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new MissingPermissionsError('Not authorized')),
+                });
+
+                continue;
+            }
+
+            if (
+                serviceProvider.rollenartenWhitelist.length > 0 &&
+                !serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)
+            ) {
+                results.push({
+                    id: serviceProvider.id,
+                    errorIdType: ErrorIdType.ROLLENART_BESCHRAENKUNG,
+                    result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
                 });
 
                 continue;
@@ -484,7 +498,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -525,7 +539,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 
