@@ -11,6 +11,7 @@ import { Ok } from '../../../../shared/util/result.js';
 import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
 
 describe('PersonenInfoController', () => {
+    let module: TestingModule;
     let controller: PersonenInfoController;
     let service: DeepMocked<PersonenInfoService>;
     let configService: DeepMocked<ConfigService>;
@@ -18,7 +19,7 @@ describe('PersonenInfoController', () => {
     beforeEach(async () => {
         configService = createMock(ConfigService);
         configService.getOrThrow.mockReturnValue({ LIMIT_PERSONENINFO: 2500 });
-        const module: TestingModule = await Test.createTestingModule({
+        module = await Test.createTestingModule({
             controllers: [PersonenInfoController],
             providers: [
                 {
