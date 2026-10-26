@@ -20,7 +20,7 @@ import { EmailResolverService } from '../../../email-microservice/domain/email-r
 import { DomainError } from '../../../../shared/error/index.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
-import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
+import { SchulconnexMapper } from '../schulconnex-mapper.js';
 
 @Injectable()
 export class PersonenInfoService {
@@ -195,7 +195,7 @@ export class PersonenInfoService {
             const kontexteWithOrgaAndRolle: KontextWithOrgaAndRolle[] = kontexteForPersons.get(personId) ?? [];
             const userLocks: UserLock[] = userLocksForPersons.get(personId) ?? [];
 
-            return SchulconnexMapperService.mapPersonInfo(person, kontexteWithOrgaAndRolle, email, userLocks);
+            return SchulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, email, userLocks);
         });
 
         return Ok(responses);

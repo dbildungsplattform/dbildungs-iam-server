@@ -16,11 +16,11 @@ import {
     SchulconnexPersonenstatus,
     SchulconnexRolle,
 } from '../api/schulconnex-enums.js';
-import { SchulconnexMapperService } from './schulconnex-mapper.service.js';
+import { SchulconnexMapper } from './schulconnex-mapper.js';
 import { createMock } from '../../../../test/utils/createMock.js';
 
-describe('SchulconnexMapperService', () => {
-    const sut: typeof SchulconnexMapperService = SchulconnexMapperService;
+describe('SchulconnexMapper', () => {
+    const sut: typeof SchulconnexMapper = SchulconnexMapper;
     let person: Person<true>;
     let organisation: Organisation<true>;
     let kontext: KontextWithOrgaAndRolle;

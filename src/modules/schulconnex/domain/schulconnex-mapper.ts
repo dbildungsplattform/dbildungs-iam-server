@@ -22,7 +22,7 @@ import {
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { PersonInfoPersonNameDtoV2 } from '../api/personinfo/v2/person-info-person-name.response.v2.js';
 
-export class SchulconnexMapperService {
+export class SchulconnexMapper {
     public static mapPersonInfo(
         person: Person<true>,
         kontexteWithOrgaAndRolle: KontextWithOrgaAndRolle[],
@@ -40,18 +40,18 @@ export class SchulconnexMapperService {
                 (klassenKontext: KontextWithOrgaAndRolle) =>
                     klassenKontext.organisation.administriertVon === primaryKontext.organisation.id,
             );
-            return SchulconnexMapperService.mapKontext(
+            return SchulconnexMapper.mapKontext(
                 primaryKontext,
                 associatedKlassenKontexte,
                 userlocks,
                 email ?? undefined,
             );
         });
-        return new PersonInfoDtoV2(person.id, SchulconnexMapperService.mapPerson(person), kontexte);
+        return new PersonInfoDtoV2(person.id, SchulconnexMapper.mapPerson(person), kontexte);
     }
 
     public static mapPerson(person: Person<true>): PersonInfoPersonDtoV2 {
-        return new PersonInfoPersonDtoV2(SchulconnexMapperService.mapName(person));
+        return new PersonInfoPersonDtoV2(SchulconnexMapper.mapName(person));
     }
 
     public static mapKontext(
@@ -60,16 +60,15 @@ export class SchulconnexMapperService {
         userlocks: UserLock[],
         email?: PersonEmailResponse,
     ): PersonInfoKontextDtoV2 {
-        const erreichbarkeit: PersonInfoKontextErreichbarkeitDtoV2 | null =
-            SchulconnexMapperService.mapErreichbarkeit(email);
+        const erreichbarkeit: PersonInfoKontextErreichbarkeitDtoV2 | null = SchulconnexMapper.mapErreichbarkeit(email);
         return new PersonInfoKontextDtoV2({
             id: primaryNonKlassenKontext.personenkontext.id,
-            organisation: SchulconnexMapperService.mapOrganisation(primaryNonKlassenKontext.organisation),
-            rolle: SchulconnexMapperService.mapRolle(primaryNonKlassenKontext.rolle),
+            organisation: SchulconnexMapper.mapOrganisation(primaryNonKlassenKontext.organisation),
+            rolle: SchulconnexMapper.mapRolle(primaryNonKlassenKontext.rolle),
             erreichbarkeiten: erreichbarkeit ? [erreichbarkeit] : [],
-            personenstatus: SchulconnexMapperService.mapPersonenStatus(userlocks),
+            personenstatus: SchulconnexMapper.mapPersonenStatus(userlocks),
             gruppen: associatedKlassenKontexte.map((kontext: KontextWithOrgaAndRolle) =>
-                SchulconnexMapperService.mapGruppe(kontext.organisation),
+                SchulconnexMapper.mapGruppe(kontext.organisation),
             ),
         });
     }
