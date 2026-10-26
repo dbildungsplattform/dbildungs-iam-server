@@ -40,16 +40,16 @@ export class UserExternalDataV2Response {
         this.oxLoginId = userExternalData.oxLoginId;
     }
 
-    private mapToDienststellenNummern(personenkontexte: { dienststellennr: string; rolleId: string }[]): string[] {
-        return uniq(personenkontexte.map((pk: { dienststellennr: string; rolleId: string }) => pk.dienststellennr));
+    private mapToDienststellenNummern(personenkontexte: { dstNr: string; rolleId: string }[]): string[] {
+        return uniq(personenkontexte.map((pk: { dstNr: string; rolleId: string }) => pk.dstNr));
     }
 
     private mapToPersonenkontexte(
-        personenkontexte: { dienststellennr: string; rolleId: string }[],
+        personenkontexte: { dstNr: string; rolleId: string }[],
     ): UserExternalDataV2PersonenkontextResponse[] {
         return personenkontexte.map(
-            (pk: { dienststellennr: string; rolleId: string }) =>
-                new UserExternalDataV2PersonenkontextResponse(pk.dienststellennr, pk.rolleId),
+            (pk: { dstNr: string; rolleId: string }) =>
+                new UserExternalDataV2PersonenkontextResponse(pk.dstNr, pk.rolleId),
         );
     }
 
