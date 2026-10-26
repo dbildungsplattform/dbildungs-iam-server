@@ -23,7 +23,7 @@ describe('PersonenInfoController', () => {
     let service: DeepMocked<PersonenInfoService>;
     let configService: DeepMocked<ConfigService>;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         configService = createMock(ConfigService);
         configService.getOrThrow.mockReturnValue({ LIMIT_PERSONENINFO: 2500 });
         module = await Test.createTestingModule({
@@ -46,8 +46,12 @@ describe('PersonenInfoController', () => {
         configService = module.get<DeepMocked<ConfigService>>(ConfigService);
     });
 
+    afterAll(async () => {
+        await module.close();
+    });
+
     afterEach(() => {
-        vi.clearAllMocks();
+        vi.resetAllMocks();
     });
 
     it.each([
