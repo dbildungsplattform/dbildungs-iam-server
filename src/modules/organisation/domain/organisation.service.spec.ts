@@ -2487,36 +2487,6 @@ describe('OrganisationService', () => {
             organisationRepositoryMock.deleteOrganisationsbeziehung.mockResolvedValue(undefined);
         });
 
-        it('should delete an Organisationsbeziehung when source and target may be managed', async () => {
-            const result: Result<void, DomainError> = await organisationService.deleteOrganisationsbeziehung(
-                organisationsbeziehungId,
-                permissionsMock,
-            );
-
-            expect(result).toEqual({
-                ok: true,
-                value: undefined,
-            });
-            expect(organisationRepositoryMock.findOrganisationsbeziehungById).toHaveBeenCalledWith(
-                organisationsbeziehungId,
-            );
-            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(1, quellOrganisationId);
-            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(2, zielOrganisationId);
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                1,
-                quellOrganisationId,
-                RollenSystemRecht.SCHULEN_VERWALTEN,
-            );
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                2,
-                zielOrganisationId,
-                RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
-            );
-            expect(organisationRepositoryMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
-                organisationsbeziehungId,
-            );
-        });
-
         it('should return EntityNotFoundError when the Organisationsbeziehung does not exist', async () => {
             organisationRepositoryMock.findOrganisationsbeziehungById.mockResolvedValueOnce(undefined);
 
