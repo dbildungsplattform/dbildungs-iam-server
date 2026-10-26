@@ -25,6 +25,7 @@
         "test:watch": "vitest --watch",
         "test:unit": "vitest --project unit",
         "test:integration": "vitest --project integration",
+        "type-check": "tsc --noEmit -p tsconfig.test.json",
         "lint": "eslint --max-warnings=0",
         "lint:fix": "eslint --fix",
         "start:console": "nest start console --",

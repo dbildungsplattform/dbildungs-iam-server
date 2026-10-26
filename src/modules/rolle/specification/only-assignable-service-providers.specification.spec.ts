@@ -21,12 +21,11 @@ function getUnassignableServiceProviders(n: number): ServiceProvider<true>[] {
 }
 
 function getAssignableServiceProviders(n: number): ServiceProvider<true>[] {
-    return getUnassignableServiceProviders(n).map((sp: ServiceProvider<true>) => {
-        return {
-            ...sp,
+    return Array.from({ length: n }, () =>
+        DoFactory.createServiceProvider(true, {
             merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
-        };
-    });
+        }),
+    );
 }
 
 function buildRolleWithServiceProviders(sps: ServiceProvider<true>[], baseRolle?: Partial<Rolle<true>>): Rolle<true> {
