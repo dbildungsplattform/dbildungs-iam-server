@@ -26,12 +26,12 @@ interface EmailAddressInfo {
 }
 
 type PermittedPersonenkontext = {
-    dienststellennr: string;
+    dstNr?: string;
     rolleId: RolleID;
     rollenart: RollenArt;
 };
 
-type ExternalPkDataWithRequiredFields = ExternalPkData & { kennung: string; rollenart: RollenArt };
+type PermittedPersonenkontextRequiredFields = Required<PermittedPersonenkontext>;
 
 type OptionalEmailData = {
     emailAdresse?: string;
@@ -43,7 +43,7 @@ export type UserExternalData = OptionalEmailData & {
     vorname: string;
     nachname: string;
     rollenart?: RollenArt;
-    personenkontexte: Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[];
+    personenkontexte: Pick<PermittedPersonenkontextRequiredFields, 'dstNr' | 'rolleId'>[];
 };
 
 @Injectable()
@@ -96,7 +96,7 @@ export class UserExternaldataService {
             vorname: person.vorname,
             nachname: person.familienname,
             rollenart: rollenartResult.value,
-            personenkontexte: this.mapToPersonenkontexte(permittedPersonenkontexte),
+            personenkontexte: this.filterAndMapToPersonenkontexte(permittedPersonenkontexte),
             ...emailDataResult.value,
         };
 
@@ -182,15 +182,18 @@ export class UserExternaldataService {
         });
     }
 
-    private mapToPersonenkontexte(
+    private filterAndMapToPersonenkontexte(
         permittedPersonenkontexte: PermittedPersonenkontext[],
-    ): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'>[] {
-        return permittedPersonenkontexte.map(
-            (pk: PermittedPersonenkontext): Pick<PermittedPersonenkontext, 'dienststellennr' | 'rolleId'> => ({
-                dienststellennr: pk.dienststellennr,
-                rolleId: pk.rolleId,
-            }),
-        );
+    ): Pick<PermittedPersonenkontextRequiredFields, 'dstNr' | 'rolleId'>[] {
+        const result: Pick<PermittedPersonenkontextRequiredFields, 'dstNr' | 'rolleId'>[] = [];
+
+        for (const pk of permittedPersonenkontexte) {
+            if (pk.dstNr) {
+                result.push({ dstNr: pk.dstNr, rolleId: pk.rolleId });
+            }
+        }
+
+        return result;
     }
 
     // ----
@@ -200,18 +203,13 @@ export class UserExternaldataService {
         erweiterungenByPkId: Map<string, ServiceProvider<true>[]>,
         keycloakClientId: string,
     ): PermittedPersonenkontext[] {
-        const pkDataWithRequiredFields: ExternalPkDataWithRequiredFields[] = externalPkData.filter(
-            (pk: ExternalPkData): pk is ExternalPkDataWithRequiredFields => Boolean(pk.kennung && pk.rollenart),
-        );
-
-        const permittedPkData: ExternalPkDataWithRequiredFields[] = pkDataWithRequiredFields.filter(
-            (pk: ExternalPkDataWithRequiredFields) =>
-                this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
+        const permittedPkData: ExternalPkData[] = externalPkData.filter((pk: ExternalPkData) =>
+            this.isPermittedForAngebot(pk, erweiterungenByPkId.get(pk.pkId) ?? [], keycloakClientId),
         );
 
         const permittedPersonenkontexte: PermittedPersonenkontext[] = permittedPkData.map(
-            (pk: ExternalPkDataWithRequiredFields): PermittedPersonenkontext => ({
-                dienststellennr: pk.kennung,
+            (pk: ExternalPkData): PermittedPersonenkontext => ({
+                dstNr: pk.kennung,
                 rolleId: pk.rolleId,
                 rollenart: pk.rollenart,
             }),
