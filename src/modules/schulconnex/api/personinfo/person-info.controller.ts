@@ -27,7 +27,7 @@ import { IPersonPermissions } from '../../../../shared/permissions/person-permis
 import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulconnex-authentication-domain-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
-import { SchulconnexMapper } from '../../domain/schulconnex-mapper.js';
+import { SchulconnexMapper } from '../schulconnex-mapper.js';
 import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
 
 @UseFilters(

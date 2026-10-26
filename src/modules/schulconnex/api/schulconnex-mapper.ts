@@ -5,12 +5,12 @@ import { type Organisation } from '../../organisation/domain/organisation.js';
 import { type PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { type Person } from '../../person/domain/person.js';
 import { type KontextWithOrgaAndRolle } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { PersonInfoKontextErreichbarkeitDtoV2 } from '../api/personinfo/v2/person-info-kontext-erreichbarkeit.response.v2.js';
-import { PersonenInfoKontextGruppeDtoV2 } from '../api/personinfo/v2/person-info-kontext-gruppe.response.v2.js';
-import { PersonenInfoKontextOrganisationDtoV2 } from '../api/personinfo/v2/person-info-kontext-organisation.response.v2.js';
-import { PersonInfoKontextDtoV2 } from '../api/personinfo/v2/person-info-kontext.response.v2.js';
-import { PersonInfoPersonDtoV2 } from '../api/personinfo/v2/person-info-person.response.v2.js';
-import { PersonInfoDtoV2 } from '../api/personinfo/v2/person-info.response.v2.js';
+import { PersonInfoKontextErreichbarkeitDtoV2 } from './personinfo/v2/person-info-kontext-erreichbarkeit.response.v2.js';
+import { PersonenInfoKontextGruppeDtoV2 } from './personinfo/v2/person-info-kontext-gruppe.response.v2.js';
+import { PersonenInfoKontextOrganisationDtoV2 } from './personinfo/v2/person-info-kontext-organisation.response.v2.js';
+import { PersonInfoKontextDtoV2 } from './personinfo/v2/person-info-kontext.response.v2.js';
+import { PersonInfoPersonDtoV2 } from './personinfo/v2/person-info-person.response.v2.js';
+import { PersonInfoDtoV2 } from './personinfo/v2/person-info.response.v2.js';
 import {
     convertSPSHRollenartToSchulconnexRolle,
     SchulconnexErreichbarkeitTyp,
@@ -18,9 +18,9 @@ import {
     SchulconnexOrganisationTyp,
     SchulconnexPersonenstatus,
     type SchulconnexRolle,
-} from '../api/schulconnex-enums.js';
+} from './schulconnex-enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
-import { PersonInfoPersonNameDtoV2 } from '../api/personinfo/v2/person-info-person-name.response.v2.js';
+import { PersonInfoPersonNameDtoV2 } from './personinfo/v2/person-info-person-name.response.v2.js';
 
 export class SchulconnexMapper {
     public static mapPersonInfo(

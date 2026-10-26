@@ -7,15 +7,15 @@ import { type PersonEmailResponse } from '../../person/api/person-email-response
 import { type Person } from '../../person/domain/person.js';
 import { type KontextWithOrgaAndRolle } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { PersonInfoDtoV2 } from '../api/personinfo/v2/person-info.response.v2.js';
-import { PersonInfoPersonDtoV2 } from '../api/personinfo/v2/person-info-person.response.v2.js';
+import { PersonInfoDtoV2 } from './personinfo/v2/person-info.response.v2.js';
+import { PersonInfoPersonDtoV2 } from './personinfo/v2/person-info-person.response.v2.js';
 import {
     SchulconnexErreichbarkeitTyp,
     SchulconnexGruppeTyp,
     SchulconnexOrganisationTyp,
     SchulconnexPersonenstatus,
     SchulconnexRolle,
-} from '../api/schulconnex-enums.js';
+} from './schulconnex-enums.js';
 import { SchulconnexMapper } from './schulconnex-mapper.js';
 import { createMock } from '../../../../test/utils/createMock.js';
 
@@ -24,7 +24,7 @@ describe('SchulconnexMapper', () => {
     let person: Person<true>;
     let organisation: Organisation<true>;
     let kontext: KontextWithOrgaAndRolle;
-    const email: PersonEmailResponse = { address: 'anna@example.org', status: EmailAddressStatus.ENABLED };
+    const email: PersonEmailResponse = { address: 'anna.test@schule-sh.de', status: EmailAddressStatus.ENABLED };
 
     beforeEach(() => {
         person = DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' });
@@ -114,7 +114,7 @@ describe('SchulconnexMapper', () => {
     it('should map an enabled email independently', () => {
         expect(sut.mapErreichbarkeit(email)).toEqual({
             typ: SchulconnexErreichbarkeitTyp.EMAIL,
-            kennung: 'anna@example.org',
+            kennung: 'anna.test@schule-sh.de',
         });
     });
 
@@ -189,7 +189,7 @@ describe('SchulconnexMapper', () => {
                     id: 'kontext-1',
                     organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
                     rolle: 'Lern',
-                    erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna@example.org' }],
+                    erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna.test@schule-sh.de' }],
                     personenstatus: SchulconnexPersonenstatus.AKTIV,
                     gruppen: [{ id: 'klasse-1', bezeichnung: '5a', typ: 'Klasse' }],
                 },
