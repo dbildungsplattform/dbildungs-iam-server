@@ -6,7 +6,6 @@ import { SchulconnexModule } from './schulconnex.module.js';
 import { PersonInfoController } from './api/personinfo/person-info.controller.js';
 import { PersonenInfoController } from './api/personeninfo/personeninfo.controller.js';
 import { CommonTestModule } from '../../../test/utils/common-test.module.js';
-import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js';
 
 describe('SchulconnexModule', () => {
     let module: TestingModule;
@@ -26,9 +25,6 @@ describe('SchulconnexModule', () => {
     });
 
     describe('when module is initialized', () => {
-        it('should resolve SchulconnexMapperService', () => {
-            expect(module.get(SchulconnexMapperService)).toBeInstanceOf(SchulconnexMapperService);
-        });
         it('should resolve PersonenInfoService', () => {
             expect(module.get(PersonenInfoService)).toBeInstanceOf(PersonenInfoService);
         });

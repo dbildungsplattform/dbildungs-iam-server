@@ -47,7 +47,6 @@ export class PersonInfoController {
         private readonly userLockRepo: UserLockRepository,
         private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
-        private readonly schulconnexMapper: SchulconnexMapperService,
     ) {
         this.logger.info(`Creating ${PersonInfoController.name}`);
     }
@@ -140,6 +139,6 @@ export class PersonInfoController {
             this.userLockRepo.findByPersonId(personId),
         ]);
 
-        return this.schulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
+        return SchulconnexMapperService.mapPersonInfo(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
     }
 }

@@ -31,7 +31,6 @@ export class PersonenInfoService {
         private readonly emailRepo: EmailRepo,
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
-        private readonly schulconnexMapper: SchulconnexMapperService,
     ) {}
 
     public async findPersonsForPersonenInfoV1(
@@ -196,7 +195,7 @@ export class PersonenInfoService {
             const kontexteWithOrgaAndRolle: KontextWithOrgaAndRolle[] = kontexteForPersons.get(personId) ?? [];
             const userLocks: UserLock[] = userLocksForPersons.get(personId) ?? [];
 
-            return this.schulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, email, userLocks);
+            return SchulconnexMapperService.mapPersonInfo(person, kontexteWithOrgaAndRolle, email, userLocks);
         });
 
         return Ok(responses);

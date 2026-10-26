@@ -38,7 +38,6 @@ import { type IPersonPermissions } from '../../../../shared/permissions/person-p
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
 import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
 import { PersonInfoPersonDtoV2 } from './v2/person-info-person.response.v2.js';
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 
 describe('PersonInfoController', () => {
     let module: TestingModule;
@@ -56,7 +55,6 @@ describe('PersonInfoController', () => {
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
             controllers: [PersonInfoController],
             providers: [
-                SchulconnexMapperService,
                 {
                     provide: PersonApiMapper,
                     useValue: createMock(PersonApiMapper),

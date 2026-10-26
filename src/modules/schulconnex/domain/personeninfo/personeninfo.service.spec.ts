@@ -26,7 +26,6 @@ import { EmailResolverService } from '../../../email-microservice/domain/email-r
 import { type DomainError } from '../../../../shared/error/index.js';
 import { expectOkResult } from '../../../../../test/utils/test-types.js';
 import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
-import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
 
 describe('PersonInfoService', () => {
     let module: TestingModule;
@@ -44,7 +43,6 @@ describe('PersonInfoService', () => {
         module = await Test.createTestingModule({
             providers: [
                 PersonenInfoService,
-                SchulconnexMapperService,
                 {
                     provide: ClassLogger,
                     useValue: createMock(ClassLogger),

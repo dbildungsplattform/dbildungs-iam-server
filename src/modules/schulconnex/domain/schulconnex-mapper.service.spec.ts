@@ -20,7 +20,7 @@ import { SchulconnexMapperService } from './schulconnex-mapper.service.js';
 import { createMock } from '../../../../test/utils/createMock.js';
 
 describe('SchulconnexMapperService', () => {
-    const sut: SchulconnexMapperService = new SchulconnexMapperService();
+    const sut: typeof SchulconnexMapperService = SchulconnexMapperService;
     let person: Person<true>;
     let organisation: Organisation<true>;
     let kontext: KontextWithOrgaAndRolle;
@@ -50,6 +50,28 @@ describe('SchulconnexMapperService', () => {
 
         expect(result).toBeInstanceOf(PersonInfoPersonDtoV2);
         expect(JSON.parse(JSON.stringify(result))).toEqual({ name: { familiennamen: 'Test', vorname: 'Anna' } });
+    });
+
+    it('should map a role independently', () => {
+        kontext.rolle = DoFactory.createRolle(true, { rollenart: RollenArt.LEHR });
+
+        const result: SchulconnexRolle = sut.mapRolle(kontext.rolle);
+
+        expect(result).toBe(SchulconnexRolle.LEHR);
+    });
+
+    it('should map the active status for a person without locks independently', () => {
+        const result: SchulconnexPersonenstatus | undefined = sut.mapPersonenStatus([]);
+
+        expect(result).toBe(SchulconnexPersonenstatus.AKTIV);
+    });
+
+    it('should omit the status for a locked person independently', () => {
+        const userlocks: UserLock[] = [createMock(UserLock)];
+
+        const result: SchulconnexPersonenstatus | undefined = sut.mapPersonenStatus(userlocks);
+
+        expect(result).toBeUndefined();
     });
 
     it.each([
