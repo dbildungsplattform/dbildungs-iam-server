@@ -7,7 +7,6 @@ declare global {
             accessTokenJWT?: string;
             passportUser?: PassportUser;
         }
-
     }
 }
 

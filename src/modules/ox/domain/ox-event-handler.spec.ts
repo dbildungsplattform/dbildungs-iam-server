@@ -2102,7 +2102,6 @@ describe('OxEventHandler', () => {
         describe('when oxUserId is NOT defined', () => {
             it('should log error about that', async () => {
                 person = DoFactory.createPerson(true, {
-
                     username: username,
                     oxUserId: undefined,
                 });
