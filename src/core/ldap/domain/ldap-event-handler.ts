@@ -15,11 +15,9 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
 import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
-import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
 import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
 import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
 import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
-import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
 import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
 import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
 import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
@@ -342,26 +340,6 @@ export class LdapEventHandler {
             }
             return acc;
         }, []);
-    }
-
-    @KafkaEventHandler(KafkaEmailAddressGeneratedEvent)
-    @EventHandler(EmailAddressGeneratedEvent)
-    @EnsureRequestContext()
-    public async handleEmailAddressGeneratedEvent(
-        event: EmailAddressGeneratedEvent | KafkaEmailAddressGeneratedEvent,
-    ): Promise<Result<unknown>> {
-        this.logger.info(
-            `Received EmailAddressGeneratedEvent, personId:${event.personId}, username:${event.username}, emailAddress:${event.address}`,
-        );
-
-        const result: Result<PersonID> = await this.ldapClientAdapter.changeEmailAddressByPersonId(
-            event.personId,
-            event.username,
-            event.address,
-            event.alternativeAddress,
-        );
-
-        return result;
     }
 
     @KafkaEventHandler(KafkaEmailAddressChangedEvent)
