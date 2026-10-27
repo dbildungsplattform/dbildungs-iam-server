@@ -1,6 +1,6 @@
+import { xorBy } from 'lodash-es';
 import { vi } from 'vitest';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { xorBy } from 'lodash-es';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
@@ -9,39 +9,43 @@ import { type Rolle } from '../domain/rolle.js';
 import { NurNachtraeglichZuweisbareServiceProvider } from './only-assignable-service-providers.specification.js';
 
 function getUnassignableServiceProviders(n: number): ServiceProvider<true>[] {
-    const result: ServiceProvider<true>[] = [];
-    for (let i: number = 0; i < n; i++) {
-        result.push(
-            DoFactory.createServiceProvider(true, {
-                merkmale: [],
-            }),
-        );
-    }
+    const result: ServiceProvider<true>[] = Array.from({ length: n }, () =>
+        DoFactory.createServiceProvider(true, {
+            merkmale: [],
+        }),
+    );
+
     return result;
 }
 
 function getAssignableServiceProviders(n: number): ServiceProvider<true>[] {
-    return Array.from({ length: n }, () =>
+    const result: ServiceProvider<true>[] = Array.from({ length: n }, () =>
         DoFactory.createServiceProvider(true, {
             merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
         }),
     );
+
+    return result;
 }
 
 function buildRolleWithServiceProviders(sps: ServiceProvider<true>[], baseRolle?: Partial<Rolle<true>>): Rolle<true> {
-    return DoFactory.createRolle(true, {
+    const result: Rolle<true> = DoFactory.createRolle(true, {
         ...baseRolle,
         serviceProviderIds: sps.map((sp: ServiceProvider<true>) => sp.id),
         serviceProviderData: sps,
     });
+
+    return result;
 }
 
 function buildServiceProviderDifferenceMap(a: Rolle<boolean>, b: Rolle<boolean>): Map<string, ServiceProvider<true>> {
-    return new Map(
+    const result: Map<string, ServiceProvider<true>> = new Map(
         xorBy(a.serviceProviderData, b.serviceProviderData, (sp: ServiceProvider<true>) => sp.id).map(
             (sp: ServiceProvider<true>) => [sp.id, sp],
         ),
     );
+
+    return result;
 }
 
 type TestData = {
