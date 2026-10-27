@@ -150,7 +150,6 @@ export class SchulconnexPushApiClient {
         attempt: number = 1,
     ): Promise<Result<void, DomainError>> {
         try {
-            // axios has no timeout by default, a server that never responds would block forever
             await lastValueFrom(this.httpService.request({ method, url, data, timeout: this.requestTimeoutMs }));
 
             return Ok();
