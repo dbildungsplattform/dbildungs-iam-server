@@ -1,14 +1,14 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 
-import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
-import { DoFactory } from '../../../../../test/utils/do-factory.js';
-import { type DomainError, SchulconnexPushError } from '../../../../shared/error/index.js';
-import { EmailAddressStatus } from '../../../email/domain/email-address.js';
-import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
-import { type PersonEmailResponse } from '../../../person/api/person-email-response.js';
-import { type Person } from '../../../person/domain/person.js';
-import { type KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
+import { createMock, type DeepMocked } from '../../../../../../test/utils/createMock.js';
+import { DoFactory } from '../../../../../../test/utils/do-factory.js';
+import { type DomainError, SchulconnexPushError } from '../../../../../shared/error/index.js';
+import { EmailAddressStatus } from '../../../../email/domain/email-address.js';
+import { UserLock } from '../../../../keycloak-administration/domain/user-lock.js';
+import { type PersonEmailResponse } from '../../../../person/api/person-email-response.js';
+import { type Person } from '../../../../person/domain/person.js';
+import { type KontextWithOrgaAndRolle } from '../../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenArt } from '../../../../rolle/domain/rolle.enums.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import { SchulconnexPushApiClient } from '../technical/schulconnex-push-api.client.js';
 import { SchulconnexPushAdapter } from './schulconnex-push.adapter.js';

@@ -5,10 +5,10 @@ import {
     ConfigTestModule,
     DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
-} from '../../../../test/utils/index.js';
-import { createAndPersistServiceProvider } from '../../../../test/utils/service-provider-test-helper.js';
-import type { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
+} from '../../../../../test/utils/index.js';
+import { createAndPersistServiceProvider } from '../../../../../test/utils/service-provider-test-helper.js';
+import type { ServiceProvider } from '../../../service-provider/domain/service-provider.js';
+import { ServiceProviderEntity } from '../../../service-provider/repo/service-provider.entity.js';
 import type { SchulconnexPushRegistry } from '../domain/schulconnex-push-registry.js';
 import { SchulconnexPushRegistryEntity } from './schulconnex-push-registry.entity.js';
 import { SchulconnexPushRegistryRepo } from './schulconnex-push-registry.repo.js';

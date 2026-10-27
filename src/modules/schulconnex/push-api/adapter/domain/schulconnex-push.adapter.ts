@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
-import { DomainError } from '../../../../shared/error/index.js';
-import { PersonID, PersonenkontextID } from '../../../../shared/types/aggregate-ids.types.js';
-import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
-import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
-import { Person } from '../../../person/domain/person.js';
-import { KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { PersonInfoKontextDtoV2 } from '../../api/personinfo/v2/person-info-kontext.response.v2.js';
-import { PersonInfoPersonDtoV2 } from '../../api/personinfo/v2/person-info-person.response.v2.js';
-import { SchulconnexMapper } from '../../api/schulconnex-mapper.js';
+import { DomainError } from '../../../../../shared/error/index.js';
+import { PersonID, PersonenkontextID } from '../../../../../shared/types/aggregate-ids.types.js';
+import { UserLock } from '../../../../keycloak-administration/domain/user-lock.js';
+import { PersonEmailResponse } from '../../../../person/api/person-email-response.js';
+import { Person } from '../../../../person/domain/person.js';
+import { KontextWithOrgaAndRolle } from '../../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { PersonInfoKontextDtoV2 } from '../../../api/personinfo/v2/person-info-kontext.response.v2.js';
+import { PersonInfoPersonDtoV2 } from '../../../api/personinfo/v2/person-info-person.response.v2.js';
+import { SchulconnexMapper } from '../../../api/schulconnex-mapper.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import { SchulconnexPushApiClient } from '../technical/schulconnex-push-api.client.js';
 

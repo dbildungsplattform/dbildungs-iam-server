@@ -1,4 +1,4 @@
-import type { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
+import type { ServiceProviderID } from '../../../../shared/types/aggregate-ids.types.js';
 
 export class SchulconnexPushRegistry<WasPersisted extends boolean> {
     private constructor(

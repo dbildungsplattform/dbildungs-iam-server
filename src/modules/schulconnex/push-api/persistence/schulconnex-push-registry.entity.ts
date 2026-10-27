@@ -1,7 +1,7 @@
 import { Rel } from '@mikro-orm/core';
 import { Entity, ManyToOne, Property } from '@mikro-orm/decorators/legacy';
-import { TimestampedEntity } from '../../../persistence/timestamped.entity.js';
-import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
+import { TimestampedEntity } from '../../../../persistence/timestamped.entity.js';
+import { ServiceProviderEntity } from '../../../service-provider/repo/service-provider.entity.js';
 
 @Entity({ tableName: 'schulconnex_push_registry' })
 export class SchulconnexPushRegistryEntity extends TimestampedEntity {

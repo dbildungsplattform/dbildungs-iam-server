@@ -5,14 +5,14 @@ import { isAxiosError } from 'axios';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { lastValueFrom } from 'rxjs';
 
-import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { ServerConfig } from '../../../../shared/config/index.js';
-import { SchulconnexConfig } from '../../../../shared/config/schulconnex.config.js';
-import { DomainError, SchulconnexPushError } from '../../../../shared/error/index.js';
-import { PersonID, PersonenkontextID } from '../../../../shared/types/aggregate-ids.types.js';
-import { Err, Ok } from '../../../../shared/util/result.js';
-import { PersonInfoKontextDtoV2 } from '../../api/personinfo/v2/person-info-kontext.response.v2.js';
-import { PersonInfoPersonDtoV2 } from '../../api/personinfo/v2/person-info-person.response.v2.js';
+import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { ServerConfig } from '../../../../../shared/config/index.js';
+import { SchulconnexConfig } from '../../../../../shared/config/schulconnex.config.js';
+import { DomainError, SchulconnexPushError } from '../../../../../shared/error/index.js';
+import { PersonID, PersonenkontextID } from '../../../../../shared/types/aggregate-ids.types.js';
+import { Err, Ok } from '../../../../../shared/util/result.js';
+import { PersonInfoKontextDtoV2 } from '../../../api/personinfo/v2/person-info-kontext.response.v2.js';
+import { PersonInfoPersonDtoV2 } from '../../../api/personinfo/v2/person-info-person.response.v2.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 
 /** Payloads as defined in push-api/spec/components/schemas */

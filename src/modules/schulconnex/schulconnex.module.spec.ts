@@ -6,8 +6,8 @@ import { SchulconnexModule } from './schulconnex.module.js';
 import { PersonInfoController } from './api/personinfo/person-info.controller.js';
 import { PersonenInfoController } from './api/personeninfo/personeninfo.controller.js';
 import { CommonTestModule } from '../../../test/utils/common-test.module.js';
-import { SchulconnexPushAdapter } from './adapter/domain/schulconnex-push.adapter.js';
-import { SchulconnexPushApiClient } from './adapter/technical/schulconnex-push-api.client.js';
+import { SchulconnexPushAdapter } from './push-api/adapter/domain/schulconnex-push.adapter.js';
+import { SchulconnexPushApiClient } from './push-api/adapter/technical/schulconnex-push-api.client.js';
 
 describe('SchulconnexModule', () => {
     let module: TestingModule;

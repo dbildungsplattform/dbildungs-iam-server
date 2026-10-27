@@ -5,23 +5,23 @@ import { of, throwError } from 'rxjs';
 import { createServer, type AddressInfo, type Server as NetServer, type Socket } from 'node:net';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
-import { ConfigTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
-import { ClassLogger } from '../../../../core/logging/class-logger.js';
-import { SchulconnexPushError } from '../../../../shared/error/index.js';
-import { PersonenInfoKontextOrganisationDtoV2 } from '../../api/personinfo/v2/person-info-kontext-organisation.response.v2.js';
-import { PersonInfoKontextDtoV2 } from '../../api/personinfo/v2/person-info-kontext.response.v2.js';
-import { PersonInfoPersonDtoV2 } from '../../api/personinfo/v2/person-info-person.response.v2.js';
+import { ConfigTestModule, LoggingTestModule } from '../../../../../../test/utils/index.js';
+import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { SchulconnexPushError } from '../../../../../shared/error/index.js';
+import { PersonenInfoKontextOrganisationDtoV2 } from '../../../api/personinfo/v2/person-info-kontext-organisation.response.v2.js';
+import { PersonInfoKontextDtoV2 } from '../../../api/personinfo/v2/person-info-kontext.response.v2.js';
+import { PersonInfoPersonDtoV2 } from '../../../api/personinfo/v2/person-info-person.response.v2.js';
 import {
     SchulconnexErreichbarkeitTyp,
     SchulconnexOrganisationTyp,
     SchulconnexPersonenstatus,
     SchulconnexRolle,
-} from '../../api/schulconnex-enums.js';
+} from '../../../api/schulconnex-enums.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import {
     SchulconnexPushApiTestServer,
     type RecordedPushApiRequest,
-} from '../../push-api/testing/schulconnex-push-api-test-server.js';
+} from '../../testing/schulconnex-push-api-test-server.js';
 import { SchulconnexPushApiClient } from './schulconnex-push-api.client.js';
 
 function createRegistry(baseUrl: string): SchulconnexPushRegistry<true> {
