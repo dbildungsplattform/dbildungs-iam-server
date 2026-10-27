@@ -21,6 +21,11 @@ import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-err
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
 import { PersonInfoDtoV2 } from '../personinfo/v2/person-info.response.v2.js';
+<<<<<<< HEAD
+=======
+import { type PersonenInfoData } from '../../domain/personeninfo/personeninfo-data.js';
+import { SchulconnexMapper } from '../schulconnex-mapper.js';
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 @UseFilters(
     new SchulConnexSharedErrorFilter(),
@@ -75,12 +80,14 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
-        const result: Result<PersonInfoResponseV1[], DomainError> =
+        const result: Result<PersonenInfoData[], DomainError> =
             await this.personInfoService.findPersonsForPersonenInfoV1(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;
         }
-        return result.value;
+        return result.value.map((data: PersonenInfoData) =>
+            PersonInfoResponseV1.createNew(data.person, data.kontexteWithOrgaAndRolle, data.email, data.userLocks),
+        );
     }
 
     @Version('2')
@@ -116,11 +123,17 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
+<<<<<<< HEAD
         const result: Result<PersonInfoDtoV2[], DomainError> =
+=======
+        const result: Result<PersonenInfoData[], DomainError> =
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
             await this.personInfoService.findPersonsForPersonenInfoV2(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;
         }
-        return result.value;
+        return result.value.map((data: PersonenInfoData) =>
+            SchulconnexMapper.mapPersonInfo(data.person, data.kontexteWithOrgaAndRolle, data.email, data.userLocks),
+        );
     }
 }

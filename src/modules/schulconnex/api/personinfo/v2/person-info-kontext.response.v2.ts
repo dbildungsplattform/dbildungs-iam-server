@@ -14,9 +14,12 @@ export class PersonInfoKontextDtoV2 {
     @ApiProperty({ enum: SchulconnexRolle })
     public rolle: SchulconnexRolle;
 
+<<<<<<< HEAD
     @ApiProperty()
     public spshRolleId: string;
 
+=======
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
     @ApiProperty({ type: [PersonInfoKontextErreichbarkeitDtoV2] })
     public erreichbarkeiten: PersonInfoKontextErreichbarkeitDtoV2[];
 

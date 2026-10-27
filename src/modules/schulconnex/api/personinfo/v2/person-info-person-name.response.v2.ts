@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ApiProperty } from '@nestjs/swagger';
 
 export class PersonInfoPersonNameDtoV2 {
@@ -16,3 +17,8 @@ export class PersonInfoPersonNameDtoV2 {
         this.vorname = props.vorname;
     }
 }
+=======
+import { PersonInfoPersonNameResponseV1 } from '../v1/person-info-person-name.response.v1.js';
+
+export class PersonInfoPersonNameDtoV2 extends PersonInfoPersonNameResponseV1 {}
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))

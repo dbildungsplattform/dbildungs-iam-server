@@ -38,11 +38,14 @@ import { type IPersonPermissions } from '../../../../shared/permissions/person-p
 import { EntityNotFoundError } from '../../../../shared/error/entity-not-found.error.js';
 import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
 import { PersonInfoPersonDtoV2 } from './v2/person-info-person.response.v2.js';
+<<<<<<< HEAD
 import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 import { type INestApplication, VersioningType } from '@nestjs/common';
 import request from 'supertest';
 import { createAuthInterceptorMock, createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
 import { type Server } from 'node:http';
+=======
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 describe('PersonInfoController', () => {
     let module: TestingModule;
@@ -61,7 +64,10 @@ describe('PersonInfoController', () => {
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
             controllers: [PersonInfoController],
             providers: [
+<<<<<<< HEAD
                 SchulconnexMapperService,
+=======
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 {
                     provide: PersonApiMapper,
                     useValue: createMock(PersonApiMapper),

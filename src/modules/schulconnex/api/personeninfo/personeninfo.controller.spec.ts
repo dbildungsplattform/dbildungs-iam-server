@@ -9,11 +9,21 @@ import { createAuthInterceptorMock, createPersonPermissionsMock } from '../../..
 import { ExceedsLimitError } from '../../../../shared/error/exceeds-limit.error.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
+<<<<<<< HEAD
 import { type INestApplication, VersioningType } from '@nestjs/common';
 import request from 'supertest';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 import { type Server } from 'node:http';
+=======
+import { DoFactory } from '../../../../../test/utils/do-factory.js';
+import { type PersonenInfoData } from '../../domain/personeninfo/personeninfo-data.js';
+import { type KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
+import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
+import { EmailAddressStatus } from '../../../email/domain/email-address.js';
+import { SchulconnexPersonenstatus } from '../schulconnex-enums.js';
+>>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 describe('PersonenInfoController', () => {
     let module: TestingModule;
@@ -21,7 +31,7 @@ describe('PersonenInfoController', () => {
     let service: DeepMocked<PersonenInfoService>;
     let configService: DeepMocked<ConfigService>;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         configService = createMock(ConfigService);
         configService.getOrThrow.mockReturnValue({ LIMIT_PERSONENINFO: 2500 });
         module = await Test.createTestingModule({
@@ -44,9 +54,75 @@ describe('PersonenInfoController', () => {
         configService = module.get<DeepMocked<ConfigService>>(ConfigService);
     });
 
-    afterEach(() => {
-        vi.clearAllMocks();
+    afterAll(async () => {
+        await module.close();
     });
+
+    afterEach(() => {
+        vi.resetAllMocks();
+    });
+
+    it.each([
+        ['infoV1', 'findPersonsForPersonenInfoV1', 'Extern'],
+        ['infoV2', 'findPersonsForPersonenInfoV2', 'SorgBer'],
+    ] as const)(
+        'should map domain data to the unchanged %s JSON response',
+        async (
+            method: 'infoV1' | 'infoV2',
+            serviceMethod: 'findPersonsForPersonenInfoV1' | 'findPersonsForPersonenInfoV2',
+            expectedRolle: string,
+        ) => {
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            const kontext: KontextWithOrgaAndRolle = {
+                personenkontext: DoFactory.createPersonenkontext(true, { id: 'kontext-1' }),
+                organisation: DoFactory.createOrganisation(true, {
+                    id: 'schule-1',
+                    kennung: '123456',
+                    name: 'Testschule',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+                rolle: DoFactory.createRolle(true, { rollenart: RollenArt.SORGBER }),
+            };
+            const data: PersonenInfoData = {
+                person: DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' }),
+                kontexteWithOrgaAndRolle: [
+                    kontext,
+                    {
+                        ...kontext,
+                        organisation: DoFactory.createOrganisation(true, {
+                            id: 'klasse-1',
+                            name: '5a',
+                            typ: OrganisationsTyp.KLASSE,
+                            administriertVon: kontext.organisation.id,
+                        }),
+                    },
+                ],
+                email: { address: 'anna.test@schule-sh.de', status: EmailAddressStatus.ENABLED },
+                userLocks: [],
+            };
+            service[serviceMethod].mockResolvedValue(Ok([data]));
+
+            const result: object = await controller[method](permissions, '0', '10');
+
+            expect(JSON.parse(JSON.stringify(result))).toEqual([
+                {
+                    pid: 'person-1',
+                    person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+                    personenkontexte: [
+                        {
+                            id: 'kontext-1',
+                            organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
+                            rolle: expectedRolle,
+                            erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna.test@schule-sh.de' }],
+                            personenstatus: SchulconnexPersonenstatus.AKTIV,
+                            gruppen: [{ id: 'klasse-1', bezeichnung: '5a', typ: 'Klasse' }],
+                        },
+                    ],
+                    beziehungen: [],
+                },
+            ]);
+        },
+    );
 
     describe('infoV1', () => {
         it('should parse offset and limit as integers', async () => {
