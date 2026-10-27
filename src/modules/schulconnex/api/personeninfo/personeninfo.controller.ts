@@ -21,11 +21,8 @@ import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-err
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
 import { PersonInfoDtoV2 } from '../personinfo/v2/person-info.response.v2.js';
-<<<<<<< HEAD
-=======
 import { type PersonenInfoData } from '../../domain/personeninfo/personeninfo-data.js';
 import { SchulconnexMapper } from '../schulconnex-mapper.js';
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 @UseFilters(
     new SchulConnexSharedErrorFilter(),
@@ -123,11 +120,7 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
-<<<<<<< HEAD
-        const result: Result<PersonInfoDtoV2[], DomainError> =
-=======
         const result: Result<PersonenInfoData[], DomainError> =
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
             await this.personInfoService.findPersonsForPersonenInfoV2(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;

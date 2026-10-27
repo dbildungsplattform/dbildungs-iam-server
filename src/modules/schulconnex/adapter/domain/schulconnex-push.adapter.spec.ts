@@ -9,7 +9,6 @@ import { type PersonEmailResponse } from '../../../person/api/person-email-respo
 import { type Person } from '../../../person/domain/person.js';
 import { type KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import { SchulconnexPushApiClient } from '../technical/schulconnex-push-api.client.js';
 import { SchulconnexPushAdapter } from './schulconnex-push.adapter.js';
@@ -31,7 +30,6 @@ describe('SchulconnexPushAdapter', () => {
         module = await Test.createTestingModule({
             providers: [
                 SchulconnexPushAdapter,
-                SchulconnexMapperService,
                 { provide: SchulconnexPushApiClient, useValue: createMock(SchulconnexPushApiClient) },
             ],
         }).compile();

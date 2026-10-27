@@ -27,11 +27,7 @@ import { IPersonPermissions } from '../../../../shared/permissions/person-permis
 import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulconnex-authentication-domain-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
-<<<<<<< HEAD
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
-=======
 import { SchulconnexMapper } from '../schulconnex-mapper.js';
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
 
 @UseFilters(
@@ -51,7 +47,6 @@ export class PersonInfoController {
         private readonly userLockRepo: UserLockRepository,
         private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
-        private readonly schulconnexMapper: SchulconnexMapperService,
     ) {
         this.logger.info(`Creating ${PersonInfoController.name}`);
     }
@@ -144,10 +139,6 @@ export class PersonInfoController {
             this.userLockRepo.findByPersonId(personId),
         ]);
 
-<<<<<<< HEAD
-        return this.schulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
-=======
         return SchulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, personEmailResponse, userLocks);
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
     }
 }

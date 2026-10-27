@@ -5,17 +5,10 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
-import { createAuthInterceptorMock, createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
+import { createPersonPermissionsMock } from '../../../../../test/utils/auth.mock.js';
 import { ExceedsLimitError } from '../../../../shared/error/exceeds-limit.error.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { DomainError, EntityNotFoundError } from '../../../../shared/error/index.js';
-<<<<<<< HEAD
-import { type INestApplication, VersioningType } from '@nestjs/common';
-import request from 'supertest';
-import { DoFactory } from '../../../../../test/utils/do-factory.js';
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
-import { type Server } from 'node:http';
-=======
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { type PersonenInfoData } from '../../domain/personeninfo/personeninfo-data.js';
 import { type KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
@@ -23,7 +16,6 @@ import { OrganisationsTyp } from '../../../organisation/domain/organisation.enum
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { SchulconnexPersonenstatus } from '../schulconnex-enums.js';
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 describe('PersonenInfoController', () => {
     let module: TestingModule;
@@ -63,14 +55,22 @@ describe('PersonenInfoController', () => {
     });
 
     it.each([
-        ['infoV1', 'findPersonsForPersonenInfoV1', 'Extern'],
-        ['infoV2', 'findPersonsForPersonenInfoV2', 'SorgBer'],
+        ['infoV1', 'findPersonsForPersonenInfoV1', 'Extern', { familiennamen: 'Test', vorname: 'Anna' }, {}],
+        [
+            'infoV2',
+            'findPersonsForPersonenInfoV2',
+            'SorgBer',
+            { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' },
+            { spshRolleId: 'rolle-1' },
+        ],
     ] as const)(
         'should map domain data to the unchanged %s JSON response',
         async (
             method: 'infoV1' | 'infoV2',
             serviceMethod: 'findPersonsForPersonenInfoV1' | 'findPersonsForPersonenInfoV2',
             expectedRolle: string,
+            expectedName: object,
+            expectedKontextExtras: object,
         ) => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             const kontext: KontextWithOrgaAndRolle = {
@@ -81,7 +81,7 @@ describe('PersonenInfoController', () => {
                     name: 'Testschule',
                     typ: OrganisationsTyp.SCHULE,
                 }),
-                rolle: DoFactory.createRolle(true, { rollenart: RollenArt.SORGBER }),
+                rolle: DoFactory.createRolle(true, { id: 'rolle-1', rollenart: RollenArt.SORGBER }),
             };
             const data: PersonenInfoData = {
                 person: DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' }),
@@ -107,12 +107,13 @@ describe('PersonenInfoController', () => {
             expect(JSON.parse(JSON.stringify(result))).toEqual([
                 {
                     pid: 'person-1',
-                    person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+                    person: { name: expectedName },
                     personenkontexte: [
                         {
                             id: 'kontext-1',
                             organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
                             rolle: expectedRolle,
+                            ...expectedKontextExtras,
                             erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna.test@schule-sh.de' }],
                             personenstatus: SchulconnexPersonenstatus.AKTIV,
                             gruppen: [{ id: 'klasse-1', bezeichnung: '5a', typ: 'Klasse' }],
@@ -181,44 +182,6 @@ describe('PersonenInfoController', () => {
     });
 
     describe('infoV2', () => {
-        it('should preserve the V2 HTTP response and pagination headers', async () => {
-            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            const mapper: SchulconnexMapperService = new SchulconnexMapperService();
-            service.findPersonsForPersonenInfoV2.mockResolvedValue(
-                Ok([
-                    mapper.mapPersonInfo(
-                        DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' }),
-                        [],
-                        undefined,
-                        [],
-                    ),
-                ]),
-            );
-            const app: INestApplication = module.createNestApplication();
-            app.enableVersioning({ type: VersioningType.URI });
-            app.useGlobalInterceptors(createAuthInterceptorMock(permissions));
-            await app.init();
-
-            try {
-                await request(app.getHttpServer() as Server)
-                    .get('/v2/personen-info')
-                    .set('x-offset', '5')
-                    .set('x-limit', '15')
-                    .expect(200)
-                    .expect([
-                        {
-                            pid: 'person-1',
-                            person: { name: { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' } },
-                            personenkontexte: [],
-                            beziehungen: [],
-                        },
-                    ]);
-                expect(service.findPersonsForPersonenInfoV2).toHaveBeenCalledWith(permissions, 5, 15);
-            } finally {
-                await app.close();
-            }
-        });
-
         it('should parse offset and limit as integers', async () => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             service.findPersonsForPersonenInfoV2.mockResolvedValue(Ok([]));

@@ -17,12 +17,7 @@ import { IPersonPermissions } from '../../../../shared/permissions/person-permis
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { DomainError } from '../../../../shared/error/index.js';
 import { Ok } from '../../../../shared/util/result.js';
-<<<<<<< HEAD
-import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
-import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
-=======
 import { type PersonenInfoData } from './personeninfo-data.js';
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 @Injectable()
 export class PersonenInfoService {
@@ -33,7 +28,6 @@ export class PersonenInfoService {
         private readonly emailRepo: EmailRepo,
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
-        private readonly schulconnexMapper: SchulconnexMapperService,
     ) {}
 
     public async findPersonsForPersonenInfoV1(
@@ -48,9 +42,6 @@ export class PersonenInfoService {
         permissions: IPersonPermissions,
         offset: number,
         limit: number,
-<<<<<<< HEAD
-    ): Promise<Result<PersonInfoDtoV2[], DomainError>> {
-=======
     ): Promise<Result<PersonenInfoData[], DomainError>> {
         return this.findPersonenInfos(permissions, offset, limit);
     }
@@ -60,7 +51,6 @@ export class PersonenInfoService {
         offset: number,
         limit: number,
     ): Promise<Result<PersonenInfoData[], DomainError>> {
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         // 1. Ermittle alle Knoten mit PERSONEN_LESEN-Recht
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.PERSONEN_LESEN],
@@ -127,23 +117,14 @@ export class PersonenInfoService {
             return emailsForPersons;
         }
 
-<<<<<<< HEAD
-        const emailMap: Map<PersonID, PersonEmailResponse | undefined> = emailsForPersons.value;
-        const responses: PersonInfoDtoV2[] = persons.map((person: Person<true>) => {
-=======
         const emailMap: Map<PersonID, PersonenInfoData['email']> = emailsForPersons.value;
         const personenInfos: PersonenInfoData[] = persons.map((person: Person<true>) => {
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
             const personId: PersonID = person.id;
             const email: PersonenInfoData['email'] = emailMap.get(personId);
             const kontexteWithOrgaAndRolle: KontextWithOrgaAndRolle[] = kontexteForPersons.get(personId) ?? [];
             const userLocks: UserLock[] = userLocksForPersons.get(personId) ?? [];
 
-<<<<<<< HEAD
-            return this.schulconnexMapper.mapPersonInfo(person, kontexteWithOrgaAndRolle, email, userLocks);
-=======
             return { person, kontexteWithOrgaAndRolle, email, userLocks };
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         });
 
         return Ok(personenInfos);

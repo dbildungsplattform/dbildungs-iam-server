@@ -14,7 +14,6 @@ import { SchulconnexPushRegistryRepo } from './persistence/schulconnex-push-regi
 import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.js';
 import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
-import { SchulconnexMapperService } from './domain/schulconnex-mapper.service.js';
 import { SchulconnexPushAdapter } from './adapter/domain/schulconnex-push.adapter.js';
 import { SchulconnexPushApiClient } from './adapter/technical/schulconnex-push-api.client.js';
 
@@ -34,12 +33,10 @@ import { SchulconnexPushApiClient } from './adapter/technical/schulconnex-push-a
         PersonenInfoService,
         SchulconnexRepo,
         EntityAggregateMapper,
-        SchulconnexMapperService,
         SchulconnexPushRegistryRepo,
         SchulconnexPushApiClient,
         SchulconnexPushAdapter,
     ],
-    exports: [SchulconnexMapperService],
     controllers: [PersonInfoController, PersonenInfoController],
 })
 export class SchulconnexModule {}

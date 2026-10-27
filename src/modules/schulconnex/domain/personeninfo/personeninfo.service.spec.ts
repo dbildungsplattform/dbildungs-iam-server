@@ -24,14 +24,9 @@ import { createPersonPermissionsMock } from '../../../../../test/utils/auth.mock
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { type DomainError } from '../../../../shared/error/index.js';
 import { expectOkResult } from '../../../../../test/utils/test-types.js';
-<<<<<<< HEAD
-import { PersonInfoDtoV2 } from '../../api/personinfo/v2/person-info.response.v2.js';
-import { SchulconnexMapperService } from '../schulconnex-mapper.service.js';
-=======
 import { type PersonenInfoData } from './personeninfo-data.js';
 import { type Person } from '../../../person/domain/person.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
 
 describe('PersonInfoService', () => {
     let module: TestingModule;
@@ -53,7 +48,6 @@ describe('PersonInfoService', () => {
         module = await Test.createTestingModule({
             providers: [
                 PersonenInfoService,
-                SchulconnexMapperService,
                 {
                     provide: ClassLogger,
                     useValue: createMock(ClassLogger),
@@ -760,11 +754,7 @@ describe('PersonInfoService', () => {
             });
             dBiamPersonenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([]);
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -851,11 +841,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -883,13 +869,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-<<<<<<< HEAD
-            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
-=======
             expect(res.value[0]?.person.id).toBe(personId1);
             expect(res.value[1]?.person.id).toBe(personId2);
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         });
 
         it('should return error when email microservice fails', async () => {
@@ -937,11 +918,7 @@ describe('PersonInfoService', () => {
                 error: undefined as unknown as DomainError,
             });
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -984,11 +961,7 @@ describe('PersonInfoService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ]);
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -1077,11 +1050,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -1108,13 +1077,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-<<<<<<< HEAD
-            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
-=======
             expect(res.value[0]?.person.id).toBe(personId1);
             expect(res.value[1]?.person.id).toBe(personId2);
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         });
 
         it('should return persons with all permissions using old repo', async () => {
@@ -1192,11 +1156,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -1223,13 +1183,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-<<<<<<< HEAD
-            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
-=======
             expect(res.value[0]?.person.id).toBe(personId1);
             expect(res.value[1]?.person.id).toBe(personId2);
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         });
 
         it('should return persons and default to empty kontext and userlock array', async () => {
@@ -1306,11 +1261,7 @@ describe('PersonInfoService', () => {
                 ]),
             );
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,
@@ -1337,13 +1288,8 @@ describe('PersonInfoService', () => {
             );
             expectOkResult(res);
             expect(res.value.length).toEqual(2);
-<<<<<<< HEAD
-            expect(res.value[0]).toBeInstanceOf(PersonInfoDtoV2);
-            expect(res.value[1]).toBeInstanceOf(PersonInfoDtoV2);
-=======
             expect(res.value[0]?.person.id).toBe(personId1);
             expect(res.value[1]?.person.id).toBe(personId2);
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
         });
 
         it('should return error when email repo returns error', async () => {
@@ -1393,11 +1339,7 @@ describe('PersonInfoService', () => {
                 error: undefined as unknown as DomainError,
             });
 
-<<<<<<< HEAD
-            const res: Result<PersonInfoDtoV2[], DomainError> = await sut.findPersonsForPersonenInfoV2(
-=======
             const res: Result<PersonenInfoData[], DomainError> = await sut.findPersonsForPersonenInfoV2(
->>>>>>> cb240b12 (SPSH-4394 - Extract Schulconnex Mapping(#1346))
                 permissions,
                 0,
                 10,

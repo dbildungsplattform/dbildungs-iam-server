@@ -8,22 +8,19 @@ import { Person } from '../../../person/domain/person.js';
 import { KontextWithOrgaAndRolle } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonInfoKontextDtoV2 } from '../../api/personinfo/v2/person-info-kontext.response.v2.js';
 import { PersonInfoPersonDtoV2 } from '../../api/personinfo/v2/person-info-person.response.v2.js';
-import { SchulconnexMapperService } from '../../domain/schulconnex-mapper.service.js';
+import { SchulconnexMapper } from '../../api/schulconnex-mapper.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import { SchulconnexPushApiClient } from '../technical/schulconnex-push-api.client.js';
 
 @Injectable()
 export class SchulconnexPushAdapter {
-    public constructor(
-        private readonly mapper: SchulconnexMapperService,
-        private readonly client: SchulconnexPushApiClient,
-    ) {}
+    public constructor(private readonly client: SchulconnexPushApiClient) {}
 
     public async upsertPerson(
         registry: SchulconnexPushRegistry<true>,
         person: Person<true>,
     ): Promise<Result<void, DomainError>> {
-        const personDto: PersonInfoPersonDtoV2 = this.mapper.mapPerson(person);
+        const personDto: PersonInfoPersonDtoV2 = SchulconnexMapper.mapPerson(person);
 
         return this.client.upsertPerson(registry, person.id, personDto);
     }
@@ -44,7 +41,12 @@ export class SchulconnexPushAdapter {
         userlocks: UserLock[],
         email: Option<PersonEmailResponse>,
     ): Promise<Result<void, DomainError>> {
-        const kontextDto: PersonInfoKontextDtoV2 = this.mapper.mapKontext(kontext, [], userlocks, email ?? undefined);
+        const kontextDto: PersonInfoKontextDtoV2 = SchulconnexMapper.mapKontext(
+            kontext,
+            [],
+            userlocks,
+            email ?? undefined,
+        );
 
         return this.client.upsertPersonenkontext(registry, kontext.personenkontext.personId, kontextDto);
     }
