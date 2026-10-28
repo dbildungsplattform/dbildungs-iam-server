@@ -15,20 +15,6 @@ export abstract class AbstractLdapEventHandler {
         protected readonly rolleRepo: RolleRepo,
     ) {}
 
-    protected async findUemLdapOuForPersonId(personId: PersonID): Promise<Result<string>> {
-        const personKontextWithUemRolle: Personenkontext<true>[] = await this.findUemKontexts(personId);
-        if (!personKontextWithUemRolle[0]) {
-            this.logger.warning(
-                `Failed to find UEM LDAP OU for personId:${personId}, but person has no kontext with UEM rolle. Skipping LDAP update.`,
-            );
-            return { ok: false, error: new UemLdapOuError() };
-        }
-        const uemLdapOuResult: Result<string> = await this.getUemLdapOuForOrganisation(
-            personKontextWithUemRolle[0].organisationId,
-        );
-        return uemLdapOuResult;
-    }
-
     protected async findUemKontexts(personId: PersonID): Promise<Personenkontext<true>[]> {
         const personKontexts: Option<Personenkontext<true>[]> =
             await this.dbiamPersonenkontextRepo.findByPerson(personId);
