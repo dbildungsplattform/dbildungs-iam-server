@@ -49,7 +49,6 @@ export type PersonData = {
 
 @Injectable()
 export class LdapAdapter {
-
     public static readonly DN: string = 'dn';
 
     public static readonly UID: string = 'uid';

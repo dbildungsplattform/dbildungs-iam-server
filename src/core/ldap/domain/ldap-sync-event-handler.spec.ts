@@ -743,7 +743,7 @@ describe('LdapSyncEventHandler', () => {
                 expect(eventServiceMock.publish).not.toHaveBeenCalled();
             });
 
-            it.each([undefined, 'old@example.org'])(
+            it.each([undefined, 'old@schule-sh.de'])(
                 'should synchronize the enabled email when the LDAP email is %s',
                 async (ldapEmail: string | undefined) => {
                     personAttributes.mailPrimaryAddress = ldapEmail;
@@ -829,7 +829,7 @@ describe('LdapSyncEventHandler', () => {
             createDataFetchedByRepositoriesAndLDAP();
         });
 
-        it.each([undefined, 'old@example.org'])(
+        it.each([undefined, 'old@schule-sh.de'])(
             'should update the enabled email when the LDAP email is %s',
             async (ldapEmail: string | undefined) => {
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
