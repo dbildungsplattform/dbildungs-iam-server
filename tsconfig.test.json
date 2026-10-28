@@ -1,0 +1,20 @@
+{
+    "extends": "./tsconfig.json",
+    "include": [
+        "src/**/*.d.ts",
+        "src/**/*.spec.ts",
+        "src/**/*.integration-spec.ts",
+        "test/**/*.ts"
+    ],
+    "exclude": ["node_modules", "dist"],
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "files": [
+        "src/global.d.ts",
+        "src/modules/authentication/types/request.d.ts",
+        "src/modules/authentication/types/session.d.ts",
+        "src/modules/authentication/types/user.d.ts",
+        "src/shared/types/do-base.d.ts"
+    ]
+}

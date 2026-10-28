@@ -152,8 +152,9 @@ describe('ImportWorkflow', () => {
 
         it('should return EntityNotFoundError if the rolle can not be assigned to organisation', async () => {
             organisationRepoMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation(true));
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new EntityNotFoundError()));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
             const result: DomainError | ImportUploadResultFields = await sut.validateImport(
@@ -170,8 +171,9 @@ describe('ImportWorkflow', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
             );
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LEHR;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LEHR }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
             const result: DomainError | ImportUploadResultFields = await sut.validateImport(
@@ -189,8 +191,9 @@ describe('ImportWorkflow', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND }),
             );
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new OrganisationMatchesRollenartError()));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
             const result: DomainError | ImportUploadResultFields = await sut.validateImport(
@@ -208,8 +211,9 @@ describe('ImportWorkflow', () => {
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
             );
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
 
@@ -227,8 +231,9 @@ describe('ImportWorkflow', () => {
         it('should return ImportCSVFileEmptyError if the csv file is empty', async () => {
             const file: Express.Multer.File = createFileMock();
 
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
@@ -252,8 +257,9 @@ describe('ImportWorkflow', () => {
                 buffer: Buffer.from('Nachname;Vorname;Klasse\r\nTest;Hans;1A\r\nTest;Marie;1B\r\n'),
             });
 
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
@@ -277,8 +283,9 @@ describe('ImportWorkflow', () => {
                 buffer: Buffer.from('Nachname;Vorname;Klasse'),
             });
 
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
@@ -301,8 +308,9 @@ describe('ImportWorkflow', () => {
             const file: Express.Multer.File = createFileMock({
                 buffer: Buffer.from('Nachname;Vorname;Klasse'),
             });
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
@@ -329,8 +337,9 @@ describe('ImportWorkflow', () => {
             const file: Express.Multer.File = createFileMock({
                 buffer: Buffer.from('asdfe'),
             });
-            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(DoFactory.createRolle<true>(true));
-            rolleMock.rollenart = RollenArt.LERN;
+            const rolleMock: DeepMocked<Rolle<true>> = vi.mockObject(
+                DoFactory.createRolle<true>(true, { rollenart: RollenArt.LERN }),
+            );
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
             organisationRepoMock.findById.mockResolvedValueOnce(
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }),
