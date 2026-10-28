@@ -35,8 +35,8 @@ import { PersonInfoController } from './person-info.controller.js';
 import { PersonInfoResponse, PersonNestedInPersonInfoResponse } from './v0/person-info.response.js';
 import { PersonInfoPersonResponseV1 } from './v1/person-info-person.response.v1.js';
 import { PersonInfoResponseV1 } from './v1/person-info.response.v1.js';
-import { PersonInfoPersonResponseV2 } from './v2/person-info-person.response.v2.js';
-import { PersonInfoResponseV2 } from './v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from './v2/person-info.response.v2.js';
+import { PersonInfoPersonDtoV2 } from './v2/person-info-person.response.v2.js';
 
 describe('PersonInfoController', () => {
     let module: TestingModule;
@@ -51,8 +51,8 @@ describe('PersonInfoController', () => {
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
+            controllers: [PersonInfoController],
             providers: [
-                PersonInfoController,
                 {
                     provide: PersonApiMapper,
                     useValue: createMock(PersonApiMapper),
@@ -643,9 +643,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(emailResolverService.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(
                     permissions.personFields.id,
@@ -697,9 +697,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -748,9 +748,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(email);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
@@ -835,9 +835,9 @@ describe('PersonInfoController', () => {
                 ]);
                 emailResolverService.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
 
-                const result: PersonInfoResponseV2 = await sut.infoV2(permissions);
-                expect(result).toBeInstanceOf(PersonInfoResponseV2);
-                expect(result.person).toBeInstanceOf(PersonInfoPersonResponseV2);
+                const result: PersonInfoDtoV2 = await sut.infoV2(permissions);
+                expect(result).toBeInstanceOf(PersonInfoDtoV2);
+                expect(result.person).toBeInstanceOf(PersonInfoPersonDtoV2);
 
                 expect(result.pid).toEqual(person?.id);
                 expect(result.person.name.vorname).toEqual(person?.vorname);
