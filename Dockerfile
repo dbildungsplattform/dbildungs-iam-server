@@ -23,7 +23,8 @@ FROM $BASE_IMAGE_BUILDER AS prod-dependencies
 WORKDIR /app
 COPY package*.json ./
 
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm rebuild @confluentinc/kafka-javascript
 
 # Deployment Stage
 FROM $BASE_IMAGE_BUILDER AS deployment
