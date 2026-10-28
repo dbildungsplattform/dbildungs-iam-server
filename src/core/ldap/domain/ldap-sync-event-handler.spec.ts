@@ -743,12 +743,20 @@ describe('LdapSyncEventHandler', () => {
                 expect(eventServiceMock.publish).not.toHaveBeenCalled();
             });
 
-            it.each([undefined, 'old@schule-sh.de'])(
-                'should synchronize the enabled email when the LDAP email is %s',
-                async (ldapEmail: string | undefined) => {
+            it.each<[EmailAddressStatus, string | undefined]>([
+                [EmailAddressStatus.ENABLED, undefined],
+                [EmailAddressStatus.ENABLED, 'old@schule-sh.de'],
+                [EmailAddressStatus.DISABLED, 'old@schule-sh.de'],
+                [EmailAddressStatus.REQUESTED, 'old@schule-sh.de'],
+                [EmailAddressStatus.DELETED_LDAP, 'old@schule-sh.de'],
+                [EmailAddressStatus.DELETED_OX, 'old@schule-sh.de'],
+                [EmailAddressStatus.DELETED, 'old@schule-sh.de'],
+            ])(
+                'should synchronize the %s email when the LDAP email is %s',
+                async (status: EmailAddressStatus, ldapEmail: string | undefined) => {
                     personAttributes.mailPrimaryAddress = ldapEmail;
                     emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
-                        new PersonEmailResponse(EmailAddressStatus.ENABLED, email),
+                        new PersonEmailResponse(status, email),
                     );
 
                     await sut.personExternalSystemSyncEventHandler(event);
@@ -762,7 +770,7 @@ describe('LdapSyncEventHandler', () => {
                 },
             );
 
-            it.each([undefined, EmailAddressStatus.FAILED, EmailAddressStatus.DISABLED])(
+            it.each([undefined, EmailAddressStatus.FAILED])(
                 'should preserve the LDAP email when the resolved email status is %s',
                 async (status: EmailAddressStatus | undefined) => {
                     emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
