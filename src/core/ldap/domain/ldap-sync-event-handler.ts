@@ -130,7 +130,7 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
             await this.removePersonFromAllGroups(personId, person.username, ldapPerson.value.dn);
             const emailRetrieved: Option<PersonEmailResponse> = await this.emailResolverService.findEmailBySpshPerson(
                 person.id,
-            )
+            );
             await this.syncDataToLdap(
                 {
                     personId: person.id,
@@ -139,7 +139,9 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
                     surName: person.familienname,
                     cn: person.username,
                     enabledEmailAddress:
-                        emailRetrieved && emailRetrieved.status !== EmailAddressStatus.FAILED ? emailRetrieved.address : null,
+                        emailRetrieved && emailRetrieved.status !== EmailAddressStatus.FAILED
+                            ? emailRetrieved.address
+                            : null,
                     disabledEmailAddresses: [],
                     groupsToAdd: [],
                     groupsToRemove: [],
