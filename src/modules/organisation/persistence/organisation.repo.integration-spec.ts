@@ -2902,7 +2902,9 @@ describe('OrganisationRepository', () => {
         });
 
         it('should return false if the organisation has no relationships', async () => {
-            const organisation: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
 
             await expect(sut.hasOrganisationsbeziehung(organisation.id)).resolves.toBe(false);
         });
