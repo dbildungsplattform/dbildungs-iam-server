@@ -821,6 +821,14 @@ export class OrganisationRepository {
         return mapOrganisationsbeziehungEntityToAggregate(entity);
     }
 
+    public async hasOrganisationsbeziehung(organisationId: OrganisationID): Promise<boolean> {
+        const count: number = await this.em.count(OrganisationsbeziehungEntity, {
+            $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }],
+        });
+
+        return count > 0;
+    }
+
     public async deleteOrganisationsbeziehung(organisationsbeziehungId: string): Promise<void> {
         const entity: OrganisationsbeziehungEntity | null = await this.em.findOne(OrganisationsbeziehungEntity, {
             id: organisationsbeziehungId,
