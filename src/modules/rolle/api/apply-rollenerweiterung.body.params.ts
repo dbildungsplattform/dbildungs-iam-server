@@ -17,7 +17,7 @@ export class ApplyRollenerweiterungBodyParams {
     @IsUUID(undefined, { each: true })
     @IsString({ each: true })
     @ApiProperty({
-        description: 'List of rolleIds to apply.',
+        description: 'List of rolleIds to remove.',
         type: [String],
         required: true,
         example: ['rolleId1', 'rolleId2'],
