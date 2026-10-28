@@ -1796,6 +1796,7 @@ describe('VidisSyncService', () => {
                 1,
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
+                undefined,
             );
 
             expect(mapOrganisationIdsByKennung([schoolWithoutKennung, createSchool(orga.id, orga.kennung)])).toEqual({
