@@ -99,7 +99,7 @@
         "@types/passport": "^1.0.17",
         "@types/passport-jwt": "^4.0.1",
         "@types/supertest": "^7.2.0",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.12",
         "eslint": "^9.35.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-import": "^2.32.0",
@@ -109,6 +109,13 @@
         "testcontainers": "^12.0.1",
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.59.2",
-        "vitest": "^4.1.5"
+        "vitest": "^4.1.12"
+    },
+    "overrides": {
+        "body-parser": "^2.4.0",
+        "multer": "^2.5.0",
+        "@nestjs/swagger": {
+            "js-yaml": "^5.5.0"
+        }
     }
 }
