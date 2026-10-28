@@ -4,15 +4,11 @@ import { Injectable } from '@nestjs/common';
 import { inspect } from 'util';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/escalated-person-permissions.factory.js';
-import { EscalatedPersonPermissions } from '../../../modules/permission/escalated-person-permissions.js';
 import { Person } from '../../../modules/person/domain/person.js';
 import { PersonRepository } from '../../../modules/person/persistence/person.repository.js';
 import { DBiamPersonenkontextRepo } from '../../../modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
-import { RollenSystemRechtEnum } from '../../../modules/rolle/domain/systemrecht.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
 import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
@@ -38,11 +34,10 @@ import { KafkaEventHandler } from '../../eventbus/decorators/kafka-event-handler
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
-import { LdapAdapter, PersonData } from '../adapter/domain/ldap.adapter.js';
+import { LdapAdapter, LdapPersonAttributes, PersonData } from '../adapter/domain/ldap.adapter.js';
 import { LdapEventAccumulatedFailuresError } from './error/ldap-event-accumulated-failures.error.js';
 import { LdapEventOrganisationWithoutKennungError } from './error/ldap-event-organisation-without-kennung.error.js';
 import { LdapEventInvalidUemLdapOuError } from './error/ldap-event-invalid-uem-ldap-ou.error.js';
-import { Personenkontext } from '../../../modules/personenkontext/domain/personenkontext.js';
 
 @Injectable()
 export class LdapEventHandler extends AbstractLdapEventHandler {
@@ -53,7 +48,6 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
         organisationRepository: OrganisationRepository,
         private readonly ldapClientAdapter: LdapAdapter,
         private readonly personRepo: PersonRepository,
-        private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
         private readonly eventService: EventRoutingLegacyKafkaService,
         // @ts-expect-error used by EnsureRequestContext decorator
         // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
@@ -105,11 +99,6 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
     @EventHandler(EmailMicroserviceAddressChangedEvent)
     @EnsureRequestContext()
     public async microserviceEmailChangedEventHandler(event: EmailMicroserviceAddressChangedEvent): Promise<void> {
-        const permissions: EscalatedPersonPermissions = this.escalatedPersonPermissionsFactory.createNew([
-            { orgaId: 'ROOT', systemrechte: [RollenSystemRechtEnum.PERSONEN_LESEN] },
-        ]);
-        const hasAnyReadableKontexts: Result<boolean, DomainError> =
-            await this.dbiamPersonenkontextRepo.hasPersonAnyReadableKontext(event.personId, permissions);
         const person: Option<Person<true>> = await this.personRepo.findById(event.personId);
 
         if (!person || !person.username) {
@@ -125,28 +114,33 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
             return;
         }
 
-        if (!hasAnyReadableKontexts.ok || !hasAnyReadableKontexts.value) {
-            this.logger.error(
-                `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, but failed to check kontexts. Skipping LDAP update.`,
-            );
+        const ldapPerson: Result<LdapPersonAttributes | null> = await this.ldapClientAdapter.findPersonByUsername(
+            event.personId,
+            person.username,
+        );
+        if (!ldapPerson.ok) {
+            this.logger.error(ldapPerson.error.message);
             return;
         }
-
-        const uemLdapOuResult: Result<string> = await this.findUemLdapOuForPersonId(event.personId);
-        if (!uemLdapOuResult.ok) {
-            this.logger.error(`Failed to resolve UEM LDAP OU for personId:${event.personId}. Skipping LDAP update.`);
+        if (!ldapPerson.value) {
+            this.logger.info(
+                `No LDAP entry found for personId:${event.personId}, username:${person.username}. Skipping LDAP email update.`,
+            );
             return;
         }
 
         this.logger.info(
             `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, updating LDAP primary email address.`,
         );
-        await this.ldapClientAdapter.changeEmailAddressByPersonId(
+        const emailChangeResult: Result<PersonID> = await this.ldapClientAdapter.changeEmailAddressByPersonId(
             event.personId,
             person.username,
             event.newPrimaryAddress,
             undefined,
         );
+        if (!emailChangeResult.ok) {
+            this.logger.error(emailChangeResult.error.message);
+        }
     }
 
     @KafkaEventHandler(KafkaPersonRenamedEvent)
@@ -158,9 +152,18 @@ export class LdapEventHandler extends AbstractLdapEventHandler {
         this.logger.info(
             `Received PersonRenamedEvent, personId:${event.personId}, username:${event.username}, oldUsername:${event.oldUsername}`,
         );
-        const uemKontextsResult: Personenkontext<true>[] = await this.findUemKontexts(event.personId);
-        if (uemKontextsResult.length === 0) {
-            // no uem kontexts found for this person, skipping LDAP update
+        const ldapPerson: Result<LdapPersonAttributes | null> = await this.ldapClientAdapter.findPersonByUsername(
+            event.personId,
+            event.oldUsername,
+        );
+        if (!ldapPerson.ok) {
+            this.logger.error(ldapPerson.error.message);
+            return ldapPerson;
+        }
+        if (!ldapPerson.value) {
+            this.logger.info(
+                `No LDAP entry found for personId:${event.personId}, username:${event.oldUsername}. Skipping LDAP rename.`,
+            );
             return Ok();
         }
 

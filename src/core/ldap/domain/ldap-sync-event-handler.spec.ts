@@ -707,6 +707,88 @@ describe('LdapSyncEventHandler', () => {
             });
         });
 
+        describe('when person has no UEM contexts and an LDAP entry exists', () => {
+            beforeEach(() => {
+                createDataFetchedByRepositoriesAndLDAP();
+                personRepositoryMock.findById.mockResolvedValueOnce(person);
+                mockPersonenKontextRelatedRepositoryCalls(
+                    [],
+                    new Map<OrganisationID, Organisation<true>>(),
+                    new Map<RolleID, Rolle<true>>(),
+                );
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({
+                    ok: true,
+                    value: personAttributes,
+                });
+                ldapClientAdapterMock.getGroupsForPerson.mockResolvedValueOnce({ ok: true, value: [] });
+                ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce({ ok: true, value: username });
+                ldapClientAdapterMock.changeEmailAddressByPersonId.mockResolvedValueOnce({
+                    ok: true,
+                    value: personId,
+                });
+            });
+
+            it('should synchronize names without requiring a UEM LDAP OU or creating an entry', async () => {
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(ldapClientAdapterMock.modifyPersonAttributes).toHaveBeenCalledExactlyOnceWith(
+                    username,
+                    person.vorname,
+                    person.familienname,
+                    username,
+                );
+                expect(organisationRepositoryMock.findUemLdapOuForOrganisation).not.toHaveBeenCalled();
+                expect(ldapClientAdapterMock.getPersonAttributes).not.toHaveBeenCalled();
+                expect(ldapClientAdapterMock.addPersonToGroup).not.toHaveBeenCalled();
+                expect(eventServiceMock.publish).not.toHaveBeenCalled();
+            });
+
+            it.each([undefined, 'old@example.org'])(
+                'should synchronize the enabled email when the LDAP email is %s',
+                async (ldapEmail: string | undefined) => {
+                    personAttributes.mailPrimaryAddress = ldapEmail;
+                    emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                        new PersonEmailResponse(EmailAddressStatus.ENABLED, email),
+                    );
+
+                    await sut.personExternalSystemSyncEventHandler(event);
+
+                    expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(personId);
+                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledExactlyOnceWith(
+                        personId,
+                        username,
+                        email,
+                    );
+                },
+            );
+
+            it.each([undefined, EmailAddressStatus.FAILED, EmailAddressStatus.DISABLED])(
+                'should preserve the LDAP email when the resolved email status is %s',
+                async (status: EmailAddressStatus | undefined) => {
+                    emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                        status === undefined ? undefined : new PersonEmailResponse(status, email),
+                    );
+
+                    await sut.personExternalSystemSyncEventHandler(event);
+
+                    expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(personId);
+                    expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+                },
+            );
+
+            it('should not rewrite an unchanged enabled email', async () => {
+                personAttributes.mailPrimaryAddress = email;
+                emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(
+                    new PersonEmailResponse(EmailAddressStatus.ENABLED, email),
+                );
+
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(personId);
+                expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+            });
+        });
+
         describe('when LDAP OU CANNOT be found in organisation tree recursively', () => {
             it('should log error and return without syncing', async () => {
                 mockPersonFoundEnabledAddressFoundDisabledAddressNotFound();

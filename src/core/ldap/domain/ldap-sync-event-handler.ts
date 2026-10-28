@@ -128,6 +128,24 @@ export class LdapSyncEventHandler extends AbstractLdapEventHandler {
                 `No relevant person contexts but LDAP entry found for person. Removing person from all groups. PersonId:${personId}`,
             );
             await this.removePersonFromAllGroups(personId, person.username, ldapPerson.value.dn);
+            const emailRetrieved: Option<PersonEmailResponse> = await this.emailResolverService.findEmailBySpshPerson(
+                person.id,
+            );
+            await this.syncDataToLdap(
+                {
+                    personId: person.id,
+                    username: person.username,
+                    givenName: person.vorname,
+                    surName: person.familienname,
+                    cn: person.username,
+                    enabledEmailAddress:
+                        emailRetrieved?.status === EmailAddressStatus.ENABLED ? emailRetrieved.address : null,
+                    disabledEmailAddresses: [],
+                    groupsToAdd: [],
+                    groupsToRemove: [],
+                },
+                ldapPerson.value,
+            );
             return;
         }
 

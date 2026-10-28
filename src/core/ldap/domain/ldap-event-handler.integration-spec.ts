@@ -402,18 +402,6 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
         expect((await search(`(uid=${person.username})`))[0]?.['mailPrimaryAddress']).toBe(entry['mailPrimaryAddress']);
     });
 
-    it('does not change email for a person without readable database contexts', async () => {
-        const entry: Entry = await createTeacher();
-        await personenkontextRepo.delete(personenkontext);
-        orm.em.clear();
-
-        await sut.microserviceEmailChangedEventHandler(
-            new EmailMicroserviceAddressChangedEvent(person.id, 'teacher@example.org', undefined, undefined, undefined),
-        );
-
-        expect((await search(`(uid=${person.username})`))[0]?.['mailPrimaryAddress']).toBe(entry['mailPrimaryAddress']);
-    });
-
     it('renames the LDAP entry and updates its names and group member DN', async () => {
         const entry: Entry = await createTeacher();
         assert(person.username);
@@ -438,6 +426,59 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
         expect(entries[0]?.['sn']).toBe('Teachername');
         expect(entries[0]?.['entryUUID']).toBe(entry['entryUUID']);
         expect((await getTeacherGroup())[0]?.['member']).toBe(entries[0]?.dn);
+    });
+
+    it('renames the retained LDAP entry after the last UEM context is removed', async () => {
+        const entry: Entry = await createTeacher();
+        const removalResult: Result<unknown> = await sut.handlePersonenkontextUpdatedEvent(
+            new PersonenkontextUpdatedEvent(person, [], [kontext], []),
+        );
+        assert(removalResult.ok);
+        await personenkontextRepo.delete(personenkontext);
+        orm.em.clear();
+        assert(person.username);
+        const event: PersonRenamedEvent = new PersonRenamedEvent(
+            person.id,
+            'Renamed',
+            'Teachername',
+            'ldap-renamed-teacher',
+            person.vorname,
+            person.familienname,
+            person.username,
+        );
+
+        const result: Result<unknown> = await sut.personRenamedEventHandler(event);
+
+        expect(result.ok).toBe(true);
+        expect(await search(`(uid=${person.username})`)).toEqual([]);
+        const entries: Entry[] = await search('(uid=ldap-renamed-teacher)');
+        expect(entries).toHaveLength(1);
+        expect(entries[0]?.['cn']).toBe('ldap-renamed-teacher');
+        expect(entries[0]?.['givenName']).toBe('Renamed');
+        expect(entries[0]?.['sn']).toBe('Teachername');
+        expect(entries[0]?.['entryUUID']).toBe(entry['entryUUID']);
+        expect(await getTeacherGroup()).toEqual([]);
+    });
+
+    it('does not create an LDAP entry on rename when the person is absent from LDAP', async () => {
+        assert(person.username);
+        const event: PersonRenamedEvent = new PersonRenamedEvent(
+            person.id,
+            'Renamed',
+            'Teachername',
+            'ldap-renamed-teacher',
+            person.vorname,
+            person.familienname,
+            person.username,
+        );
+
+        const result: Result<unknown> = await sut.personRenamedEventHandler(event);
+
+        expect(result.ok).toBe(true);
+        expect(await search(`(uid=${person.username})`)).toEqual([]);
+        expect(await search('(uid=ldap-renamed-teacher)')).toEqual([]);
+        expect(logger.error).not.toHaveBeenCalled();
+        expect(logger.logUnknownAsError).not.toHaveBeenCalled();
     });
 
     it('deletes the LDAP teacher after a person-deleted event', async () => {

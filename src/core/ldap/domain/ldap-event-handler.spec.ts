@@ -19,7 +19,6 @@ import { RollenArt } from '../../../modules/rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../../modules/rolle/domain/rolle.js';
 import { RolleRepo } from '../../../modules/rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../../modules/service-provider/domain/service-provider.enum.js';
-import { type DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
 import { PersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/person-deleted-after-deadline-exceeded.event.js';
@@ -31,11 +30,11 @@ import { Ok } from '../../../shared/util/result.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { EventRoutingLegacyKafkaService } from '../../eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../logging/class-logger.js';
+import { LdapModifyEmailError } from '../adapter/domain/error/ldap-modify-email.error.js';
 import { LdapSearchError } from '../adapter/domain/error/ldap-search.error.js';
-import { LdapAdapter, type PersonData } from '../adapter/domain/ldap.adapter.js';
+import { LdapAdapter, type LdapPersonAttributes, type PersonData } from '../adapter/domain/ldap.adapter.js';
 import { LdapEntityType } from '../adapter/domain/ldap.types.js';
 import { LdapEventHandler } from './ldap-event-handler.js';
-import { EscalatedPersonPermissionsFactory } from '../../../modules/permission/escalated-person-permissions.factory.js';
 
 describe('LdapEventHandler', () => {
     let app: INestApplication;
@@ -55,7 +54,6 @@ describe('LdapEventHandler', () => {
             providers: [
                 LdapEventHandler,
                 PersonenkontextFactory,
-                EscalatedPersonPermissionsFactory,
                 {
                     provide: APP_PIPE,
                     useClass: GlobalValidationPipe,
@@ -181,6 +179,7 @@ describe('LdapEventHandler', () => {
         let person: Person<true>;
 
         beforeEach(() => {
+            const username: PersonUsername = 'email-teacher';
             event = new EmailMicroserviceAddressChangedEvent(
                 faker.string.uuid(),
                 faker.internet.email(),
@@ -188,15 +187,15 @@ describe('LdapEventHandler', () => {
                 faker.internet.email(),
                 faker.internet.email(),
             );
-            person = DoFactory.createPerson(true, { id: event.personId });
+            person = DoFactory.createPerson(true, { id: event.personId, username });
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValue(
+                Ok({ uid: username, dn: `uid=${username},dc=schule-sh,dc=de` }),
+            );
+            ldapClientAdapterMock.changeEmailAddressByPersonId.mockResolvedValue(Ok(event.personId));
         });
 
         describe('when person can not be found', () => {
             it('should log warning and skip LDAP update', async () => {
-                dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
-                    ok: true,
-                    value: true,
-                });
                 personRepositoryMock.findById.mockResolvedValueOnce(undefined);
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
@@ -204,16 +203,13 @@ describe('LdapEventHandler', () => {
                 expect(loggerMock.warning).toHaveBeenCalledWith(
                     `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, but person not found or has no username. Skipping LDAP update.`,
                 );
+                expect(ldapClientAdapterMock.findPersonByUsername).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
             });
         });
 
         describe('when person has no username', () => {
             it('should log warning and skip LDAP update', async () => {
-                dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
-                    ok: true,
-                    value: true,
-                });
                 personRepositoryMock.findById.mockResolvedValueOnce(
                     DoFactory.createPerson(true, { id: event.personId, username: undefined }),
                 );
@@ -223,45 +219,35 @@ describe('LdapEventHandler', () => {
                 expect(loggerMock.warning).toHaveBeenCalledWith(
                     `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, but person not found or has no username. Skipping LDAP update.`,
                 );
+                expect(ldapClientAdapterMock.findPersonByUsername).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
             });
         });
 
-        describe('when checking kontexts is not successful', () => {
+        describe('when the LDAP lookup is not successful', () => {
             it('should log error and skip LDAP update', async () => {
-                const error: MissingPermissionsError = new MissingPermissionsError('Access denied');
-                const hasAnyKontextsResult: Result<boolean, DomainError> = {
-                    ok: false,
-                    error: error,
-                };
-
-                dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce(hasAnyKontextsResult);
+                const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+                ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce({ ok: false, error });
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-                expect(loggerMock.error).toHaveBeenCalledWith(
-                    `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, but failed to check kontexts. Skipping LDAP update.`,
-                );
+                expect(loggerMock.error).toHaveBeenCalledWith(error.message);
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
             });
         });
 
-        describe('when newPrimaryAddress is UNDEFINED', () => {
+        describe.each([undefined, ''])('when newPrimaryAddress is %s', (newPrimaryAddress: string | undefined) => {
             it('should log error and skip LDAP update', async () => {
                 event = new EmailMicroserviceAddressChangedEvent(
                     event.personId,
-                    undefined,
+                    newPrimaryAddress,
                     event.newAlternativeAddress,
                     event.previousPrimaryAddress,
                     event.previousAlternativeAddress,
                 );
                 person = DoFactory.createPerson(true, { id: event.personId });
 
-                dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
-                    ok: true,
-                    value: true,
-                });
                 personRepositoryMock.findById.mockResolvedValueOnce(person);
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
@@ -269,6 +255,7 @@ describe('LdapEventHandler', () => {
                 expect(loggerMock.error).toHaveBeenCalledWith(
                     `Received EmailMicroserviceAddressChangedEvent with empty newPrimaryAddress for personId:${event.personId}, username:${person.username}. Skipping LDAP update.`,
                 );
+                expect(ldapClientAdapterMock.findPersonByUsername).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
             });
         });
@@ -295,10 +282,11 @@ describe('LdapEventHandler', () => {
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-                expect(dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext).toHaveBeenCalledWith(
+                expect(ldapClientAdapterMock.findPersonByUsername).toHaveBeenCalledWith(
                     event.personId,
-                    expect.anything(),
+                    person.username,
                 );
+                expect(dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext).not.toHaveBeenCalled();
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(1);
                 expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
                     event.personId,
@@ -310,7 +298,7 @@ describe('LdapEventHandler', () => {
         });
 
         describe('when person has no kontext', () => {
-            it('should log error and skip LDAP update', async () => {
+            it('should update the email if the person exists in LDAP', async () => {
                 dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce({
                     ok: true,
                     value: false,
@@ -319,14 +307,23 @@ describe('LdapEventHandler', () => {
 
                 await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-                expect(loggerMock.error).toHaveBeenCalledWith(
-                    `Received EmailMicroserviceAddressChangedEvent for personId:${event.personId}, username:${person.username}, but failed to check kontexts. Skipping LDAP update.`,
+                expect(ldapClientAdapterMock.findPersonByUsername).toHaveBeenCalledWith(
+                    event.personId,
+                    person.username,
                 );
-                expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(0);
+                expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
+                    event.personId,
+                    person.username,
+                    event.newPrimaryAddress,
+                    undefined,
+                );
+                expect(dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext).not.toHaveBeenCalled();
+                expect(dbiamPersonenkontextRepoMock.findByPerson).not.toHaveBeenCalled();
+                expect(loggerMock.error).not.toHaveBeenCalled();
             });
         });
 
-        it('should skip LDAP update when readable contexts have no UEM role', async () => {
+        it('should update the email when the LDAP person has no UEM role', async () => {
             dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce(Ok(true));
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderData: [] });
@@ -336,14 +333,18 @@ describe('LdapEventHandler', () => {
 
             await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-            expect(loggerMock.warning).toHaveBeenCalledWith(
-                `Failed to find UEM LDAP OU for personId:${event.personId}, but person has no kontext with UEM rolle. Skipping LDAP update.`,
+            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
+                event.personId,
+                person.username,
+                event.newPrimaryAddress,
+                undefined,
             );
-            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+            expect(dbiamPersonenkontextRepoMock.findByPerson).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
             expect(organisationRepositoryMock.findUemLdapOuForOrganisation).not.toHaveBeenCalled();
         });
 
-        it('should skip LDAP update when the UEM organisation has no LDAP OU', async () => {
+        it('should update the email when the LDAP person has no configured UEM LDAP OU', async () => {
             dbiamPersonenkontextRepoMock.hasPersonAnyReadableKontext.mockResolvedValueOnce(Ok(true));
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             const rolle: Rolle<true> = DoFactory.createRolle(true, {
@@ -358,65 +359,112 @@ describe('LdapEventHandler', () => {
 
             await ldapEventHandler.microserviceEmailChangedEventHandler(event);
 
-            expect(loggerMock.error).toHaveBeenCalledWith(
-                `Failed to resolve UEM LDAP OU for personId:${event.personId}. Skipping LDAP update.`,
+            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledWith(
+                event.personId,
+                person.username,
+                event.newPrimaryAddress,
+                undefined,
+            );
+            expect(organisationRepositoryMock.findUemLdapOuForOrganisation).not.toHaveBeenCalled();
+        });
+
+        it('should skip the email update when the person is not in LDAP', async () => {
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce(Ok(null));
+
+            await ldapEventHandler.microserviceEmailChangedEventHandler(event);
+
+            expect(ldapClientAdapterMock.findPersonByUsername).toHaveBeenCalledWith(event.personId, person.username);
+            expect(loggerMock.info).toHaveBeenCalledWith(
+                `No LDAP entry found for personId:${event.personId}, username:${person.username}. Skipping LDAP email update.`,
             );
             expect(ldapClientAdapterMock.changeEmailAddressByPersonId).not.toHaveBeenCalled();
+        });
+
+        it('should log email update errors', async () => {
+            const error: LdapModifyEmailError = new LdapModifyEmailError();
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
+            ldapClientAdapterMock.changeEmailAddressByPersonId.mockResolvedValueOnce({ ok: false, error });
+
+            await ldapEventHandler.microserviceEmailChangedEventHandler(event);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(error.message);
         });
     });
 
     describe('handlePersonRenamedEvent', () => {
-        it('should skip LDAP update when the person has no UEM kontexts', async () => {
-            const event: PersonRenamedEvent = createMock(PersonRenamedEvent);
-            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]);
-            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+        const event: PersonRenamedEvent = new PersonRenamedEvent(
+            'person-id',
+            'Renamed',
+            'Teachername',
+            'renamed-teacher',
+            'Original',
+            'Teacher',
+            'original-teacher',
+        );
+        const ldapPerson: LdapPersonAttributes = {
+            uid: event.oldUsername,
+            dn: `uid=${event.oldUsername},dc=schule-sh,dc=de`,
+        };
+
+        it('should skip LDAP update when the person is not in LDAP', async () => {
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce(Ok(null));
 
             const result: Result<unknown> = await ldapEventHandler.personRenamedEventHandler(event);
 
-            expect(result.ok).toBe(true);
+            expect(result).toEqual(Ok());
+            expect(ldapClientAdapterMock.findPersonByUsername).toHaveBeenCalledWith(event.personId, event.oldUsername);
             expect(ldapClientAdapterMock.modifyPersonAttributes).not.toHaveBeenCalled();
             expect(eventServiceMock.publish).not.toHaveBeenCalled();
         });
 
-        describe('when calling LdapClientService.modifyPersonAttributes is successful', () => {
-            it('should NOT log errors', async () => {
-                const modifyResult: Result<PersonUsername> = {
-                    ok: true,
-                    value: faker.internet.username(),
-                };
-                const rolle: Rolle<true> = DoFactory.createRolle(true, {
-                    serviceProviderData: [
-                        DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
-                    ],
-                });
-                const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
-                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
-                ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
-                await ldapEventHandler.personRenamedEventHandler(createMock(PersonRenamedEvent));
-                expect(loggerMock.error).toHaveBeenCalledTimes(0);
-                expect(eventServiceMock.publish).toHaveBeenCalledTimes(1);
-            });
+        it('should log and return LDAP lookup errors without renaming or publishing', async () => {
+            const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+            const lookupResult: Result<LdapPersonAttributes | null> = { ok: false, error };
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce(lookupResult);
+
+            const result: Result<unknown> = await ldapEventHandler.personRenamedEventHandler(event);
+
+            expect(result).toEqual(lookupResult);
+            expect(loggerMock.error).toHaveBeenCalledWith(error.message);
+            expect(ldapClientAdapterMock.modifyPersonAttributes).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
         });
-        describe('when calling LdapClientService.modifyPersonAttributes is not successful', () => {
-            it('should log errors', async () => {
-                const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
-                const modifyResult: Result<PersonID> = {
-                    ok: false,
-                    error: error,
-                };
-                const rolle: Rolle<true> = DoFactory.createRolle(true, {
-                    serviceProviderData: [
-                        DoFactory.createServiceProvider(true, { externalSystem: ServiceProviderSystem.UEM }),
-                    ],
-                });
-                const kontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, { rolleId: rolle.id });
-                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([kontext]);
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
-                ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
-                await ldapEventHandler.personRenamedEventHandler(createMock(PersonRenamedEvent));
-                expect(loggerMock.error).toHaveBeenCalledWith(error.message);
-            });
+
+        it('should rename an existing LDAP person without UEM kontexts', async () => {
+            const modifyResult: Result<PersonUsername> = Ok('renamed-teacher');
+            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce([]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce(Ok(ldapPerson));
+            ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
+
+            const result: Result<unknown> = await ldapEventHandler.personRenamedEventHandler(event);
+
+            expect(result).toEqual(modifyResult);
+            expect(ldapClientAdapterMock.findPersonByUsername).toHaveBeenCalledWith(event.personId, event.oldUsername);
+            expect(ldapClientAdapterMock.modifyPersonAttributes).toHaveBeenCalledWith(
+                event.oldUsername,
+                event.vorname,
+                event.familienname,
+                event.username,
+            );
+            expect(dbiamPersonenkontextRepoMock.findByPerson).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
+            expect(loggerMock.error).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).toHaveBeenCalledTimes(1);
+        });
+
+        it('should log and return rename errors without publishing', async () => {
+            const error: LdapSearchError = new LdapSearchError(LdapEntityType.LEHRER);
+            const modifyResult: Result<PersonUsername> = { ok: false, error };
+            ldapClientAdapterMock.findPersonByUsername.mockResolvedValueOnce(Ok(ldapPerson));
+            ldapClientAdapterMock.modifyPersonAttributes.mockResolvedValueOnce(modifyResult);
+
+            const result: Result<unknown> = await ldapEventHandler.personRenamedEventHandler(event);
+
+            expect(result).toEqual(modifyResult);
+            expect(loggerMock.error).toHaveBeenCalledWith(error.message);
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
         });
     });
 
