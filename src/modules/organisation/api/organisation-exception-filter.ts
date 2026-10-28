@@ -4,6 +4,7 @@ import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.
 import { OrganisationIstBereitsZugewiesenError } from '../domain/organisation-ist-bereits-zugewiesen.error.js';
 import { OrganisationZuordnungVerschiebenError } from '../domain/organisation-zuordnung-verschieben.error.js';
 import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
+import { OrganisationHasOrganisationsbeziehungenError } from '../organisation-delete/errors/organisation-has-organisationsbeziehungen.error.js';
 import { OrganisationHasPersonenkontexteError } from '../organisation-delete/errors/organisation-has-personenkontexte.error.js';
 import { OrganisationHasRollenError } from '../organisation-delete/errors/organisation-has-rollen.error.js';
 import { OrganisationHasRollenerweiterungError } from '../organisation-delete/errors/organisation-has-rollenerweiterung.error.js';
@@ -228,6 +229,13 @@ export class OrganisationExceptionFilter implements ExceptionFilter<Organisation
             new DbiamOrganisationError({
                 code: 400,
                 i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_HAT_ROLLENERWEITERUNGEN,
+            }),
+        ],
+        [
+            OrganisationHasOrganisationsbeziehungenError.name,
+            new DbiamOrganisationError({
+                code: 400,
+                i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_HAT_ORGANISATIONSBEZIEHUNGEN,
             }),
         ],
     ]);

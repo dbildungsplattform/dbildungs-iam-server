@@ -20,7 +20,9 @@ import { SchulConnexAuthenticationDomainErrorFilter } from '../../error/schulcon
 import { SchulConnexSharedErrorFilter } from '../../error/schulconnex-shared-error-filter.js';
 import { SchulConnexValidationErrorFilter } from '../../error/schulconnex-validation-error.filter.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
-import { PersonInfoResponseV2 } from '../personinfo/v2/person-info.response.v2.js';
+import { PersonInfoDtoV2 } from '../personinfo/v2/person-info.response.v2.js';
+import { type PersonenInfoData } from '../../domain/personeninfo/personeninfo-data.js';
+import { SchulconnexMapper } from '../schulconnex-mapper.js';
 
 @UseFilters(
     new SchulConnexSharedErrorFilter(),
@@ -75,12 +77,14 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
-        const result: Result<PersonInfoResponseV1[], DomainError> =
+        const result: Result<PersonenInfoData[], DomainError> =
             await this.personInfoService.findPersonsForPersonenInfoV1(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;
         }
-        return result.value;
+        return result.value.map((data: PersonenInfoData) =>
+            PersonInfoResponseV1.createNew(data.person, data.kontexteWithOrgaAndRolle, data.email, data.userLocks),
+        );
     }
 
     @Version('2')
@@ -108,7 +112,7 @@ export class PersonenInfoController {
         @Permissions() permissions: IPersonPermissions,
         @Headers('x-offset') offset: string,
         @Headers('x-limit') limit: string,
-    ): Promise<PersonInfoResponseV2[]> {
+    ): Promise<PersonInfoDtoV2[]> {
         const parsedOffset: number = Number.isNaN(parseInt(offset, 10)) ? 0 : parseInt(offset, 10);
         const parsedLimit: number = Number.isNaN(parseInt(limit, 10)) ? this.maxPersonenInfoLimit : parseInt(limit, 10);
 
@@ -116,11 +120,13 @@ export class PersonenInfoController {
             throw new ExceedsLimitError(`Limit darf maximal ${this.maxPersonenInfoLimit} sein.`);
         }
 
-        const result: Result<PersonInfoResponseV2[], DomainError> =
+        const result: Result<PersonenInfoData[], DomainError> =
             await this.personInfoService.findPersonsForPersonenInfoV2(permissions, parsedOffset, parsedLimit);
         if (!result.ok) {
             throw result.error;
         }
-        return result.value;
+        return result.value.map((data: PersonenInfoData) =>
+            SchulconnexMapper.mapPersonInfo(data.person, data.kontexteWithOrgaAndRolle, data.email, data.userLocks),
+        );
     }
 }

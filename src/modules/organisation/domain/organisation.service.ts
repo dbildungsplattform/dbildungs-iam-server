@@ -785,6 +785,25 @@ export class OrganisationService {
             return zielOrganisationResult;
         }
 
+        const quellOrganisation: Option<Organisation<true, true>> =
+            await this.organisationRepo.findByIdWithRelationships(organisationsbeziehung.quellOrganisationId);
+
+        if (!quellOrganisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', organisationsbeziehung.quellOrganisationId),
+            };
+        }
+
+        const removedOrganisationsbeziehung: Organisationsbeziehung<boolean> | undefined =
+            quellOrganisation.removeOrganisationsbeziehung(organisationsbeziehungId);
+        if (!removedOrganisationsbeziehung) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisationsbeziehung', organisationsbeziehungId),
+            };
+        }
+
         try {
             await this.organisationRepo.deleteOrganisationsbeziehung(organisationsbeziehungId);
 

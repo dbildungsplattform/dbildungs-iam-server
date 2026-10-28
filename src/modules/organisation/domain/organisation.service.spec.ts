@@ -35,18 +35,37 @@ import { TraegerUnterRootChildError } from '../specification/error/traeger-unter
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, Traegerschaft } from './organisation.enums.js';
-import { type Organisation, type Organisationsbeziehung } from './organisation.js';
+import { type Organisationsbeziehungen, Organisation, type Organisationsbeziehung } from './organisation.js';
 import { OrganisationService, type UpdateOrganisationData } from './organisation.service.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 
-function createOrganisation<WasPersisted extends boolean>(
+function createOrganisation<WasPersisted extends boolean, RelationshipsLoaded extends boolean = false>(
     withId: WasPersisted,
-    props?: Partial<Organisation<WasPersisted, false>>,
-): Organisation<WasPersisted, false> {
-    return DoFactory.createOrganisation(withId, {
-        kennung: props?.typ === OrganisationsTyp.SCHULE ? '1234567' : undefined,
-        ...props,
-    });
+    props?: Partial<Organisation<WasPersisted, RelationshipsLoaded>>,
+    organisationsbeziehungen: RelationshipsLoaded extends true
+        ? Organisationsbeziehungen
+        : undefined = undefined as RelationshipsLoaded extends true ? Organisationsbeziehungen : undefined,
+): Organisation<WasPersisted, RelationshipsLoaded> {
+    const typ: OrganisationsTyp = props?.typ ?? OrganisationsTyp.SONSTIGE;
+
+    return Organisation.construct<WasPersisted, RelationshipsLoaded>(
+        (withId ? (props?.id ?? faker.string.uuid()) : undefined) as Persisted<string, WasPersisted>,
+        (withId ? (props?.createdAt ?? faker.date.past()) : undefined) as Persisted<Date, WasPersisted>,
+        (withId ? (props?.updatedAt ?? faker.date.recent()) : undefined) as Persisted<Date, WasPersisted>,
+        props?.version ?? faker.number.int(),
+        props?.name ?? faker.lorem.word(),
+        typ,
+        organisationsbeziehungen,
+        props?.administriertVon,
+        props?.zugehoerigZu,
+        typ === OrganisationsTyp.SCHULE ? (props?.kennung ?? '1234567') : props?.kennung,
+        props?.namensergaenzung,
+        props?.kuerzel,
+        props?.traegerschaft,
+        props?.emailDomain,
+        props?.emailAdress,
+        props?.itslearningEnabled,
+    );
 }
 
 describe('OrganisationService', () => {
@@ -2426,6 +2445,7 @@ describe('OrganisationService', () => {
         let organisationsbeziehung: Organisationsbeziehung<true>;
         let quellOrganisation: Organisation<true, false>;
         let zielOrganisation: Organisation<true, false>;
+        let quellOrganisationWithRelationships: Organisation<true, true>;
 
         beforeEach(() => {
             organisationsbeziehung = {
@@ -2445,45 +2465,26 @@ describe('OrganisationService', () => {
             zielOrganisation.id = zielOrganisationId;
             zielOrganisation.typ = OrganisationsTyp.TRAEGER;
 
+            quellOrganisationWithRelationships = createOrganisation<true, true>(
+                true,
+                {
+                    id: quellOrganisationId,
+                    typ: OrganisationsTyp.SCHULE,
+                },
+                [organisationsbeziehung],
+            );
+
             organisationRepositoryMock.findOrganisationsbeziehungById.mockResolvedValue(organisationsbeziehung);
 
             organisationRepositoryMock.findById
                 .mockResolvedValueOnce(quellOrganisation)
                 .mockResolvedValueOnce(zielOrganisation);
 
+            organisationRepositoryMock.findByIdWithRelationships.mockResolvedValue(quellOrganisationWithRelationships);
+
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
 
             organisationRepositoryMock.deleteOrganisationsbeziehung.mockResolvedValue(undefined);
-        });
-
-        it('should delete an Organisationsbeziehung when source and target may be managed', async () => {
-            const result: Result<void, DomainError> = await organisationService.deleteOrganisationsbeziehung(
-                organisationsbeziehungId,
-                permissionsMock,
-            );
-
-            expect(result).toEqual({
-                ok: true,
-                value: undefined,
-            });
-            expect(organisationRepositoryMock.findOrganisationsbeziehungById).toHaveBeenCalledWith(
-                organisationsbeziehungId,
-            );
-            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(1, quellOrganisationId);
-            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(2, zielOrganisationId);
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                1,
-                quellOrganisationId,
-                RollenSystemRecht.SCHULEN_VERWALTEN,
-            );
-            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
-                2,
-                zielOrganisationId,
-                RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
-            );
-            expect(organisationRepositoryMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
-                organisationsbeziehungId,
-            );
         });
 
         it('should return EntityNotFoundError when the Organisationsbeziehung does not exist', async () => {
@@ -2590,9 +2591,85 @@ describe('OrganisationService', () => {
             if (!result.ok) {
                 expect(result.error).toBeInstanceOf(EntityCouldNotBeUpdated);
             }
+            expect(organisationRepositoryMock.findByIdWithRelationships).toHaveBeenCalledWith(quellOrganisationId);
             expect(organisationRepositoryMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
                 organisationsbeziehungId,
             );
+        });
+
+        it('should delete an Organisationsbeziehung when source and target may be managed', async () => {
+            const result: Result<void, DomainError> = await organisationService.deleteOrganisationsbeziehung(
+                organisationsbeziehungId,
+                permissionsMock,
+            );
+
+            expect(result).toEqual({
+                ok: true,
+                value: undefined,
+            });
+            expect(organisationRepositoryMock.findOrganisationsbeziehungById).toHaveBeenCalledWith(
+                organisationsbeziehungId,
+            );
+            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(1, quellOrganisationId);
+            expect(organisationRepositoryMock.findById).toHaveBeenNthCalledWith(2, zielOrganisationId);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
+                1,
+                quellOrganisationId,
+                RollenSystemRecht.SCHULEN_VERWALTEN,
+            );
+            expect(permissionsMock.hasSystemrechtAtOrganisation).toHaveBeenNthCalledWith(
+                2,
+                zielOrganisationId,
+                RollenSystemRecht.SCHULTRAEGER_VERWALTEN,
+            );
+            expect(organisationRepositoryMock.findByIdWithRelationships).toHaveBeenCalledWith(quellOrganisationId);
+            expect(organisationRepositoryMock.deleteOrganisationsbeziehung).toHaveBeenCalledWith(
+                organisationsbeziehungId,
+            );
+            expect(quellOrganisationWithRelationships.organisationsbeziehungen).not.toContainEqual(
+                organisationsbeziehung,
+            );
+        });
+
+        it('should return EntityNotFoundError when the source organisation with relationships does not exist', async () => {
+            organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(undefined);
+
+            const result: Result<void, DomainError> = await organisationService.deleteOrganisationsbeziehung(
+                organisationsbeziehungId,
+                permissionsMock,
+            );
+
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error).toBeInstanceOf(EntityNotFoundError);
+            }
+            expect(organisationRepositoryMock.findByIdWithRelationships).toHaveBeenCalledWith(quellOrganisationId);
+            expect(organisationRepositoryMock.deleteOrganisationsbeziehung).not.toHaveBeenCalled();
+        });
+
+        it('should return EntityNotFoundError when the Organisationsbeziehung is not part of the source organisation', async () => {
+            const sourceWithoutRelationship: Organisation<true, true> = createOrganisation<true, true>(
+                true,
+                {
+                    id: quellOrganisationId,
+                    typ: OrganisationsTyp.SCHULE,
+                },
+                [],
+            );
+
+            organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(sourceWithoutRelationship);
+
+            const result: Result<void, DomainError> = await organisationService.deleteOrganisationsbeziehung(
+                organisationsbeziehungId,
+                permissionsMock,
+            );
+
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(result.error).toBeInstanceOf(EntityNotFoundError);
+            }
+            expect(organisationRepositoryMock.findByIdWithRelationships).toHaveBeenCalledWith(quellOrganisationId);
+            expect(organisationRepositoryMock.deleteOrganisationsbeziehung).not.toHaveBeenCalled();
         });
     });
 });

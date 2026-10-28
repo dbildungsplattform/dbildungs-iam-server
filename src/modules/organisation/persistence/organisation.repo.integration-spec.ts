@@ -2862,8 +2862,54 @@ describe('OrganisationRepository', () => {
         });
     });
 
+    describe('hasOrganisationsbeziehung', () => {
+        it('should return true if the organisation is the source of a relationship', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            await expect(sut.hasOrganisationsbeziehung(quellOrganisation.id)).resolves.toBe(true);
+        });
+
+        it('should return true if the organisation is the target of a relationship', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            await expect(sut.hasOrganisationsbeziehung(zielOrganisation.id)).resolves.toBe(true);
+        });
+
+        it('should return false if the organisation has no relationships', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+
+            await expect(sut.hasOrganisationsbeziehung(organisation.id)).resolves.toBe(false);
+        });
+    });
+
     describe('deleteOrganisationsbeziehung', () => {
-        it('should delete an Organisationsbeziehung', async () => {
+        it('should delete the Organisationsbeziehung with the specified ID', async () => {
             const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
                 OrganisationsTyp.SONSTIGE,
             );
@@ -2888,7 +2934,7 @@ describe('OrganisationRepository', () => {
             expect(result).toBeUndefined();
         });
 
-        it('should not delete other Organisationsbeziehungen', async () => {
+        it('should only delete the Organisationsbeziehung with the specified ID', async () => {
             const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
                 OrganisationsTyp.SONSTIGE,
             );
@@ -2933,7 +2979,7 @@ describe('OrganisationRepository', () => {
             expect(remaining).toEqual(relationshipToKeep);
         });
 
-        it('should not throw if the Organisationsbeziehung does not exist', async () => {
+        it('should resolve without an error if the Organisationsbeziehung does not exist', async () => {
             await expect(sut.deleteOrganisationsbeziehung(faker.string.uuid())).resolves.toBeUndefined();
         });
     });
