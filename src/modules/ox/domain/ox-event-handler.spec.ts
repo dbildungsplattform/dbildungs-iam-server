@@ -313,9 +313,7 @@ describe('OxEventHandler', () => {
                 true,
                 fakeDstNr,
             );
-            person = DoFactory.createPerson(true, {
-                email: faker.internet.email(),
-            });
+            person = DoFactory.createPerson(true);
         });
 
         describe('when creating group fails', () => {
@@ -370,7 +368,7 @@ describe('OxEventHandler', () => {
                 true,
                 fakeDstNr,
             );
-            person = DoFactory.createPerson(true, { email: faker.internet.email() });
+            person = DoFactory.createPerson(true);
         });
 
         describe('when existing group is found', () => {
@@ -574,7 +572,7 @@ describe('OxEventHandler', () => {
                 true,
                 fakeDstNr,
             );
-            person = DoFactory.createPerson(true, { email: faker.internet.email() });
+            person = DoFactory.createPerson(true);
         });
 
         describe('when adding user as member to group fails because member is already in group', () => {
@@ -687,7 +685,7 @@ describe('OxEventHandler', () => {
                 true,
                 faker.string.numeric(),
             );
-            person = DoFactory.createPerson(true, { email: faker.internet.email(), username: username });
+            person = DoFactory.createPerson(true, { username: username });
         });
 
         it('should skip event, if not enabled', async () => {
@@ -978,7 +976,7 @@ describe('OxEventHandler', () => {
                 true,
                 faker.string.numeric(),
             );
-            person = DoFactory.createPerson(true, { email: faker.internet.email(), username: username });
+            person = DoFactory.createPerson(true, { username: username });
         });
 
         it('should skip event, if not enabled', async () => {
@@ -1078,7 +1076,7 @@ describe('OxEventHandler', () => {
                 faker.internet.email(),
                 faker.string.numeric(),
             );
-            person = DoFactory.createPerson(true, { email: email, username: username, oxUserId: oxUserId });
+            person = DoFactory.createPerson(true, { username: username, oxUserId: oxUserId });
         });
 
         it('should skip event, if not enabled', async () => {
@@ -1270,7 +1268,7 @@ describe('OxEventHandler', () => {
             contextId = '10';
             contextName = 'testContext';
             event = new DisabledEmailAddressGeneratedEvent(personId, username, email, emailId, domain);
-            person = DoFactory.createPerson(true, { email: email, username: username, oxUserId: oxUserId });
+            person = DoFactory.createPerson(true, { username: username, oxUserId: oxUserId });
         });
 
         it('should skip event, if not enabled', async () => {
@@ -1342,7 +1340,6 @@ describe('OxEventHandler', () => {
             event = new EmailAddressAlreadyExistsEvent(personId, faker.string.uuid());
             person = DoFactory.createPerson(true, {
                 id: personId,
-                email: faker.internet.email(),
                 username: faker.internet.username(),
                 oxUserId: faker.string.uuid(),
             });
@@ -1970,7 +1967,7 @@ describe('OxEventHandler', () => {
             event = new EmailAddressDisabledEvent(personId, username);
             person = DoFactory.createPerson(true, {
                 id: personId,
-                email: faker.internet.email(),
+
                 username: username,
                 oxUserId: oxUserId,
             });
@@ -2105,7 +2102,6 @@ describe('OxEventHandler', () => {
         describe('when oxUserId is NOT defined', () => {
             it('should log error about that', async () => {
                 person = DoFactory.createPerson(true, {
-                    email: faker.internet.email(),
                     username: username,
                     oxUserId: undefined,
                 });
@@ -2271,7 +2267,7 @@ describe('OxEventHandler', () => {
                 expect(loggerMock.info).toHaveBeenLastCalledWith(MESSAGE);
             });
             it('should log and skip processing when typ is missing', async () => {
-                event = OrganisationDeletedEvent.fromOrganisation({ ...organisation, typ: undefined });
+                event = new OrganisationDeletedEvent(organisation.id, organisation.name, organisation.kennung);
                 await sut.handleOrganisationDeletedEvent(event);
                 expect(loggerMock.info).toHaveBeenLastCalledWith(MESSAGE);
             });
