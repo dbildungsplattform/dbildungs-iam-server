@@ -94,6 +94,7 @@ describe('ItsLearning Persons Event Handler', () => {
 
     beforeEach(() => {
         sut.ENABLED = true;
+        personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -307,6 +308,80 @@ describe('ItsLearning Persons Event Handler', () => {
 
                 expect(loggerMock.error).toHaveBeenCalledWith(
                     `[EventID: ${event.eventID}] Could not delete person with ID ${person.id} from itslearning!`,
+                );
+            });
+        });
+
+        describe('when itslearning is only given through a Rollenerweiterung', () => {
+            const erweiterterPk: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                rolleId: rolleWithoutItslearning.id,
+                organisationId: schuleWithItslearning.id,
+            });
+
+            beforeEach(() => {
+                personRepoMock.findById.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPerson.mockResolvedValueOnce([erweiterterPk]);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([
+                    {
+                        personenkontext: erweiterterPk,
+                        serviceProvider: itslearningProvider,
+                    },
+                ]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolleWithoutItslearning.id, rolleWithoutItslearning]]),
+                );
+                orgaRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[schuleWithItslearning.id, schuleWithItslearning]]),
+                );
+            });
+
+            it('should create the person and set memberships for the extended kontext', async () => {
+                itslearningPersonAdapterMock.createOrUpdatePerson.mockResolvedValueOnce(Ok(undefined));
+                itslearningMembershipAdapterMock.setMemberships.mockResolvedValueOnce({
+                    ok: true,
+                    value: { deleted: 0, updated: 1 },
+                } satisfies Result<SetMembershipsResult, DomainError>);
+
+                const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(person.id);
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(itslearningPersonAdapterMock.createOrUpdatePerson).toHaveBeenCalled();
+                expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                    person.id,
+                    [{ organisationId: schuleWithItslearning.id, role: rolleWithoutItslearning.rollenart }],
+                    `${event.eventID}-SYNC-PERSON-MEMBERSHIPS`,
+                );
+                expect(itslearningPersonAdapterMock.deletePerson).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('when the parent school of a class is not one of the persons organisations', () => {
+            beforeEach(() => {
+                personRepoMock.findById.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPerson.mockResolvedValueOnce([personenkontextAtKlasseWithItslearning]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolleWithItslearning.id, rolleWithItslearning]]),
+                );
+                orgaRepoMock.findByIds
+                    .mockResolvedValueOnce(new Map([[klasseWithItslearning.id, klasseWithItslearning]]))
+                    .mockResolvedValueOnce(new Map([[schuleWithItslearning.id, schuleWithItslearning]]));
+            });
+
+            it('should load the parent school and set memberships for the class', async () => {
+                itslearningPersonAdapterMock.createOrUpdatePerson.mockResolvedValueOnce(Ok(undefined));
+                itslearningMembershipAdapterMock.setMemberships.mockResolvedValueOnce({
+                    ok: true,
+                    value: { deleted: 0, updated: 1 },
+                } satisfies Result<SetMembershipsResult, DomainError>);
+
+                const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(person.id);
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(orgaRepoMock.findByIds).toHaveBeenLastCalledWith([schuleWithItslearning.id]);
+                expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                    person.id,
+                    [{ organisationId: klasseWithItslearning.id, role: rolleWithItslearning.rollenart }],
+                    `${event.eventID}-SYNC-PERSON-MEMBERSHIPS`,
                 );
             });
         });

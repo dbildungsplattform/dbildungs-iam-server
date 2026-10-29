@@ -29,6 +29,10 @@ import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { KafkaOxUserChangedEvent } from '../../../shared/events/ox/kafka-ox-user-changed.event.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
+import {
+    DBiamPersonenkontextRepo,
+    type ErweiterterServiceProviderForPK,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 
 @Injectable()
 export class ItsLearningPersonsEventHandler {
@@ -41,6 +45,7 @@ export class ItsLearningPersonsEventHandler {
         private readonly logger: ClassLogger,
         private readonly itslearningPersonAdapter: ItslearningPersonAdapter,
         private readonly itslearningMembershipAdapter: ItslearningMembershipAdapter,
+        private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         configService: ConfigService<ServerConfig>,
         // @ts-expect-error used by EnsureRequestContext decorator
         // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
@@ -197,11 +202,29 @@ export class ItsLearningPersonsEventHandler {
 
                 // Synchronize memberships
                 await this.updateMemberships(event.person.id, currentKontexte, `${event.eventID}-UPDATE-MEMBERSHIPS`);
+            } else if (await this.hasItslearningErweiterung(event.person.id)) {
+                // Access through a school-specific Rollenerweiterung is still valid, do not delete
+                this.logger.info(
+                    `[EventID: ${event.eventID}] Person with ID ${event.person.id} still has itslearning through a Rollenerweiterung, not deleting.`,
+                );
             } else {
                 // Delete person
                 await this.deletePerson(event.person.id, `${event.eventID}-DELETE-PERSON`);
             }
         });
+    }
+
+    /**
+     * Checks whether the person receives itslearning through a school-specific Rollenerweiterung
+     */
+    private async hasItslearningErweiterung(personId: PersonID): Promise<boolean> {
+        const erweiterteSPs: ErweiterterServiceProviderForPK[] =
+            await this.personenkontextRepo.findErweiterteSPByPersonId(personId);
+
+        return erweiterteSPs.some(
+            (erweiterterSP: ErweiterterServiceProviderForPK) =>
+                erweiterterSP.serviceProvider.externalSystem === ServiceProviderSystem.ITSLEARNING,
+        );
     }
 
     public async updateMemberships(

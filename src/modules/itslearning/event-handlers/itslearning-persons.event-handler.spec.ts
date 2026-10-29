@@ -16,6 +16,10 @@ import {
 } from '../../../shared/events/personenkontext-updated.event.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Person } from '../../person/domain/person.js';
+import {
+    DBiamPersonenkontextRepo,
+    type ErweiterterServiceProviderForPK,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type PersonResponse } from '../adapter/technical/actions/read-person.action.js';
@@ -48,6 +52,7 @@ describe('ItsLearning Persons Event Handler', () => {
     let sut: ItsLearningPersonsEventHandler;
     let itslearningPersonAdapterMock: DeepMocked<ItslearningPersonAdapter>;
     let itslearningMembershipAdapterMock: DeepMocked<ItslearningMembershipAdapter>;
+    let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let loggerMock: DeepMocked<ClassLogger>;
 
     beforeAll(async () => {
@@ -63,12 +68,17 @@ describe('ItsLearning Persons Event Handler', () => {
                     provide: ItslearningMembershipAdapter,
                     useValue: createMock(ItslearningMembershipAdapter),
                 },
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: createMock(DBiamPersonenkontextRepo),
+                },
             ],
         }).compile();
 
         sut = module.get(ItsLearningPersonsEventHandler);
         itslearningPersonAdapterMock = module.get(ItslearningPersonAdapter);
         itslearningMembershipAdapterMock = module.get(ItslearningMembershipAdapter);
+        personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         loggerMock = module.get(ClassLogger);
     });
 
@@ -78,6 +88,7 @@ describe('ItsLearning Persons Event Handler', () => {
 
     beforeEach(() => {
         sut.ENABLED = true;
+        personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -526,6 +537,44 @@ describe('ItsLearning Persons Event Handler', () => {
             await sut.updatePersonenkontexteEventHandler(event);
 
             expect(updatePersonSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it('should delete person, if no relevant kontext and no itslearning Rollenerweiterung exists', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [],
+            );
+
+            const deletePersonSpy: Mock = vi.spyOn(sut, 'deletePerson').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(deletePersonSpy).toHaveBeenCalledWith(event.person.id, `${event.eventID}-DELETE-PERSON`);
+        });
+
+        it('should not delete person, if itslearning is still given through a Rollenerweiterung', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [],
+            );
+
+            const erweiterterSP: ErweiterterServiceProviderForPK = {
+                personenkontext: DoFactory.createPersonenkontext(true, { personId: event.person.id }),
+                serviceProvider: DoFactory.createServiceProvider(true, {
+                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                }),
+            };
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([erweiterterSP]);
+
+            const deletePersonSpy: Mock = vi.spyOn(sut, 'deletePerson').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(deletePersonSpy).not.toHaveBeenCalled();
         });
 
         it('should skip event, if not enabled', async () => {
