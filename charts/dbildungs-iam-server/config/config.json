@@ -114,7 +114,6 @@
         "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
     },
     "EMAIL_MICROSERVICE": {
-        "USE_EMAIL_MICROSERVICE": false,
         "ENDPOINT": "http://dbildungs-iam-server-email-backend:80/"
     },
     "SCHULCONNEX": {

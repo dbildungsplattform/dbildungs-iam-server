@@ -4,17 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { EventRoutingLegacyKafkaService } from '../../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { PersonIdentifier } from '../../../../core/logging/person-identifier.js';
+import { OxServerConfig } from '../../../../shared/config/ox-server.config.js';
 import { ServerConfig } from '../../../../shared/config/server.config.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
 import { DisabledOxUserChangedEvent } from '../../../../shared/events/ox/disabled-ox-user-changed.event.js';
 import { KafkaDisabledOxUserChangedEvent } from '../../../../shared/events/ox/kafka-disabled-ox-user-changed.event.js';
 import { KafkaOxEmailAddressDeletedEvent } from '../../../../shared/events/ox/kafka-ox-email-address-deleted.event.js';
-import { KafkaOxSyncUserCreatedEvent } from '../../../../shared/events/ox/kafka-ox-sync-user-created.event.js';
 import { KafkaOxUserChangedEvent } from '../../../../shared/events/ox/kafka-ox-user-changed.event.js';
 import { OxEmailAddressDeletedEvent } from '../../../../shared/events/ox/ox-email-address-deleted.event.js';
-import { OxSyncUserCreatedEvent } from '../../../../shared/events/ox/ox-sync-user-created.event.js';
 import { OxUserChangedEvent } from '../../../../shared/events/ox/ox-user-changed.event.js';
-import { OrganisationKennung, PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
+import { PersonID, PersonUsername } from '../../../../shared/types/aggregate-ids.types.js';
 import {
     OXContextID,
     OXContextName,
@@ -23,7 +22,6 @@ import {
     OXUserID,
     OXUserName,
 } from '../../../../shared/types/ox-ids.types.js';
-import { Err, Ok } from '../../../../shared/util/result.js';
 import { EmailAddress, EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { EmailRepo } from '../../../email/persistence/email.repo.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
@@ -33,7 +31,6 @@ import {
     CreateGroupParams,
     CreateGroupResponse,
 } from '../technical/actions/group/create-group.action.js';
-import { DeleteGroupAction, DeleteGroupResponse } from '../technical/actions/group/delete-group.action.js';
 import {
     ListGroupsForUserAction,
     ListGroupsForUserParams,
@@ -59,10 +56,9 @@ import { DeleteUserAction } from '../technical/actions/user/delete-user.action.j
 import { ExistsUserAction } from '../technical/actions/user/exists-user.action.js';
 import { GetDataForUserAction } from '../technical/actions/user/get-data-user.action.js';
 import { UserIdParams, UserNameParams } from '../technical/actions/user/ox-user.types.js';
+import { OxSendService } from '../technical/ox.send-service.js';
 import { OxGroupNameAmbiguousError } from './error/ox-group-name-ambiguous.error.js';
 import { OxGroupNotFoundError } from './error/ox-group-not-found.error.js';
-import { OxSendService } from '../technical/ox.send-service.js';
-import { OxServerConfig } from '../../../../shared/config/ox-server.config.js';
 
 export type OxUserCreatedEventCreator = (
     personId: PersonID,
@@ -94,37 +90,6 @@ export const generateOxUserCreatedEvent: OxUserCreatedEventCreator = (
             emailAddress,
         ),
         new KafkaOxUserChangedEvent(
-            personId,
-            username,
-            oxUserId,
-            oxUserName, //strictEquals the new OxUsername
-            oxContextId,
-            oxContextName,
-            emailAddress,
-        ),
-    ];
-};
-
-export const generateOxSyncUserCreatedEvent: OxUserCreatedEventCreator = (
-    personId: PersonID,
-    username: PersonUsername,
-    oxUserId: OXUserID,
-    oxUserName: OXUserName,
-    oxContextId: OXContextID,
-    oxContextName: OXContextName,
-    emailAddress: string,
-) => {
-    return [
-        new OxSyncUserCreatedEvent(
-            personId,
-            username,
-            oxUserId,
-            oxUserName, //strictEquals the new OxUsername
-            oxContextId,
-            oxContextName,
-            emailAddress,
-        ),
-        new KafkaOxSyncUserCreatedEvent(
             personId,
             username,
             oxUserId,
@@ -415,30 +380,6 @@ export class OxAdapter {
         }
     }
 
-    public async removeOxGroup(kennung: OrganisationKennung): Promise<Result<DeleteGroupResponse, DomainError>> {
-        const oxGroupName: string = this.getOxLehrerGroupName(kennung);
-        const oxGroupId: OXGroupID | DomainError = await this.getOxGroupByName(oxGroupName);
-        if (oxGroupId instanceof DomainError) {
-            this.logger.logUnknownAsError(`Could Not Find OxGroup ${oxGroupName} for Deletion`, oxGroupId);
-            if (oxGroupId instanceof OxGroupNotFoundError) {
-                return Ok({});
-            }
-            return Err(oxGroupId);
-        }
-
-        const action: DeleteGroupAction = this.createDeleteGroupAction(oxGroupId);
-        const result: Result<DeleteGroupResponse, DomainError> = await this.oxService.send(action);
-        if (!result.ok) {
-            this.logger.logUnknownAsError(
-                `Could Not Delete OxGroup ${oxGroupName}, oxGroupId:${oxGroupId}`,
-                result.error,
-            );
-        } else {
-            this.logger.info(`Successfully Deleted OxGroup ${oxGroupName}, oxGroupId:${oxGroupId}`);
-        }
-        return result;
-    }
-
     public publishOxEmailAddressDeletedEvent(
         personId: PersonID | undefined,
         username: PersonUsername | undefined,
@@ -608,18 +549,5 @@ export class OxAdapter {
             changeByModuleAccessParams,
         );
         return changeByModuleAccessAction;
-    }
-
-    public createDeleteGroupAction(oxGroupId: string): DeleteGroupAction {
-        return new DeleteGroupAction({
-            contextId: this.contextID,
-            id: oxGroupId,
-            login: this.authUser,
-            password: this.authPassword,
-        });
-    }
-
-    private getOxLehrerGroupName(kennung: OrganisationKennung): string {
-        return OxAdapter.LEHRER_OX_GROUP_NAME_PREFIX + kennung;
     }
 }

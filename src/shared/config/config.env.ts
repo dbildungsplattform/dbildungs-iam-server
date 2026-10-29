@@ -161,7 +161,6 @@ export default (): Config => ({
         EMAIL_ADDRESSES_DELETE_LIMIT: envToOptionalInteger('CRON_EMAIL_ADDRESSES_DELETE_LIMIT'),
     },
     EMAIL_MICROSERVICE: {
-        USE_EMAIL_MICROSERVICE: envToOptionalBoolean('EMAIL_MICROSERVICE__USE_EMAIL_MICROSERVICE'),
         ENDPOINT: process.env['EMAIL_MICROSERVICE__ENDPOINT'],
     },
     SCHULCONNEX: {

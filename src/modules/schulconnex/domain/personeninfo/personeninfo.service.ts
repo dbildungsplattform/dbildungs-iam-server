@@ -4,12 +4,11 @@ import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { Rolle } from '../../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../../rolle/domain/systemrecht.js';
-import { EmailRepo } from '../../../email/persistence/email.repo.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
-import { Rolle } from '../../../rolle/domain/rolle.js';
 import { Person } from '../../../person/domain/person.js';
 import { PersonID } from '../../../../shared/types/index.js';
 import { SchulconnexRepo } from '../../persistence/schulconnex.repo.js';
@@ -25,7 +24,6 @@ export class PersonenInfoService {
         private readonly personRepo: PersonRepository,
         private readonly schulconnexRepo: SchulconnexRepo,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
-        private readonly emailRepo: EmailRepo,
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
     ) {}
@@ -93,9 +91,7 @@ export class PersonenInfoService {
             .slice(offset, offset + limit);
 
         const emailsForPersonsPromise: Promise<Result<Map<PersonID, PersonenInfoData['email']>, DomainError>> =
-            this.emailResolverService.shouldUseEmailMicroservice()
-                ? this.emailResolverService.findEmailsBySpshPersons(personIds)
-                : this.emailRepo.getEmailAddressAndStatusForPersonIds(personIds);
+            this.emailResolverService.findEmailsBySpshPersons(personIds);
 
         const [persons, emailsForPersons, kontexteForPersons, userLocksForPersons]: [
             Person<true>[],

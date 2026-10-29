@@ -19,7 +19,6 @@ import { ValidationExceptionFilter } from '../../../shared/filter/validation-exc
 import { Ok } from '../../../shared/util/result.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonModule } from '../../person/person.module.js';
@@ -32,7 +31,6 @@ import {
 import { PersonenKontextModule } from '../../personenkontext/personenkontext.module.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
-import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
@@ -63,7 +61,6 @@ describe('KeycloakInternalController', () => {
                 PersonModule,
                 PersonenKontextModule,
                 RolleModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [
@@ -110,135 +107,7 @@ describe('KeycloakInternalController', () => {
     });
 
     describe('externalData', () => {
-        it('should return user external data old way', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-            const keycloakSub: string = faker.string.uuid();
-            const person: Person<true> = Person.construct(
-                faker.string.uuid(),
-                faker.date.past(),
-                faker.date.recent(),
-                faker.person.lastName(),
-                faker.person.firstName(),
-                '1',
-                faker.lorem.word(),
-                keycloakSub,
-                faker.string.uuid(),
-            );
-
-            const pkExternalData: ExternalPkData[] = [
-                {
-                    pkId: faker.string.uuid(),
-                    rolleId: faker.string.uuid(),
-                    rollenart: RollenArt.LEHR,
-                    kennung: faker.lorem.word(),
-                    serviceProvider: [
-                        createMock<ServiceProvider<true>>(ServiceProvider<true>, {
-                            vidisAngebotId: faker.string.uuid(),
-                        }),
-                    ],
-                },
-                {
-                    pkId: faker.string.uuid(),
-                    rolleId: faker.string.uuid(),
-                    rollenart: RollenArt.LEHR,
-                    kennung: faker.lorem.word(),
-                    serviceProvider: [
-                        createMock<ServiceProvider<true>>(ServiceProvider<true>, {
-                            vidisAngebotId: faker.string.uuid(),
-                        }),
-                    ],
-                },
-                {
-                    pkId: faker.string.uuid(),
-                    rolleId: faker.string.uuid(),
-                    rollenart: RollenArt.LEHR,
-                    kennung: faker.lorem.word(),
-                    serviceProvider: [
-                        createMock<ServiceProvider<true>>(ServiceProvider<true>, {
-                            externalSystem: ServiceProviderSystem.EMAIL,
-                            vidisAngebotId: undefined,
-                        }),
-                    ],
-                },
-                {
-                    pkId: faker.string.uuid(),
-                    rolleId: faker.string.uuid(),
-                    rollenart: RollenArt.LEHR,
-                    kennung: undefined, //To Be Filtered Out
-                    serviceProvider: [],
-                },
-            ];
-            const sp: ServiceProvider<true> = await createAndPersistServiceProvider(em);
-
-            const pk: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
-                personId: person.id,
-                rolleId: faker.string.uuid(),
-                organisationId: faker.string.uuid(),
-            });
-
-            const personenKontextErweiterungen: ErweiterterServiceProviderForPK[] = [
-                {
-                    personenkontext: pk,
-                    serviceProvider: sp,
-                },
-            ];
-
-            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
-            personRepoMock.findById.mockResolvedValueOnce(person);
-            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce(pkExternalData);
-            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce(personenKontextErweiterungen);
-
-            const result: UserExternalDataResponse = await keycloakinternalController.getExternalData({
-                sub: keycloakSub,
-            });
-            expect(result).toBeInstanceOf(UserExternalDataResponse);
-            expect(result.ox?.id).toContain(`${person.username}@`);
-            expect(result.itslearning.personId).toEqual(person.id);
-            expect(result.vidis.personId).toEqual(person.id);
-            expect(result.vidis.vorname).toEqual(person.vorname);
-            expect(result.vidis.nachname).toEqual(person.familienname);
-            expect(result.vidis.rollenart).toEqual(pkExternalData[0]?.rollenart);
-            expect(result.vidis.dienststellenNummern.length).toEqual(2);
-            expect(result.opsh.vorname).toEqual(person.vorname);
-            expect(result.opsh.nachname).toEqual(person.familienname);
-            expect(result.opsh.personenkontexte.length).toEqual(3);
-            expect(result.onlineDateiablage.personId).toEqual(person.id);
-            expect(result.iqshHelpdesk.vorname).toEqual(person.vorname);
-            expect(result.iqshHelpdesk.nachname).toEqual(person.familienname);
-            expect(result.polyteia.dienststellenNummern.length).toEqual(0);
-            expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
-        });
-
-        it('should omit ox response if user has no email', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-            const keycloakSub: string = faker.string.uuid();
-            const person: Person<true> = Person.construct(
-                faker.string.uuid(),
-                faker.date.past(),
-                faker.date.recent(),
-                faker.person.lastName(),
-                faker.person.firstName(),
-                '1',
-                faker.lorem.word(),
-                keycloakSub,
-                faker.string.uuid(),
-            );
-
-            personRepoMock.findByKeycloakUserId.mockResolvedValueOnce(person);
-            personRepoMock.findById.mockResolvedValueOnce(person);
-            dbiamPersonenkontextRepoMock.findExternalPkData.mockResolvedValueOnce([]);
-            dbiamPersonenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([]);
-
-            const result: UserExternalDataResponse = await keycloakinternalController.getExternalData({
-                sub: keycloakSub,
-            });
-
-            expect(result).toBeInstanceOf(UserExternalDataResponse);
-            expect(result.ox).toBeUndefined();
-        });
-
-        it('should return user external data new Microservice', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+        it('should return user external data', async () => {
             const keycloakSub: string = faker.string.uuid();
             const person: Person<true> = Person.construct(
                 faker.string.uuid(),
@@ -333,8 +202,7 @@ describe('KeycloakInternalController', () => {
             expect(result.polyteia.rollenart).toEqual(RollenArt.LEHR);
         });
 
-        it('should return user external data new Microservice without ox params', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(true);
+        it('should return user external data without ox params', async () => {
             const keycloakSub: string = faker.string.uuid();
             const person: Person<true> = Person.construct(
                 faker.string.uuid(),
@@ -436,7 +304,7 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw error if multiple unique Rollenarten are present', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
+            emailResolverServiceMock.findEmailBySpshPersonAsEmailAddressResponse.mockResolvedValueOnce(Ok(undefined));
             const keycloakSub: string = faker.string.uuid();
             const person: Person<true> = Person.construct(
                 faker.string.uuid(),
@@ -548,7 +416,6 @@ describe('KeycloakInternalController', () => {
 
     describe('externalDataV2', () => {
         it('should return external data for the Angebot the person is permitted for', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -597,7 +464,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MissingPermissionsError when no Personenkontext grants permission for the Angebot', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -612,7 +478,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MissingPermissionsError when all Personenkontexte belong to a different keycloakClientId', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -629,7 +494,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should throw MultipleRollenartenError when the person has multiple Rollenarten for the permitted Personenkontexte', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -649,7 +513,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should include the email address when includeEmailAddress is true and the email is active', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -682,7 +545,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when includeEmailAddress is false', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -704,7 +566,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when the email account is suspended, even if requested', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });
@@ -735,7 +596,6 @@ describe('KeycloakInternalController', () => {
         });
 
         it('should not include the email address when the email account is not active', async () => {
-            emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
             const keycloakSub: string = faker.string.uuid();
             const keycloakClientId: string = faker.string.alphanumeric(10);
             const person: Person<true> = DoFactory.createPerson(true, { keycloakUserId: keycloakSub });

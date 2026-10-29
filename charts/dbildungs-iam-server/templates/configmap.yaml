@@ -69,5 +69,4 @@ data:
   FEATURE_FLAG_ROLLE_ERWEITERN: '{{ .Values.featureFlags.rolleErweitern }}'
   FEATURE_FLAG_SET_UEM_PASSWORD: '{{ .Values.featureFlags.setUemPassword }}'
   FEATURE_FLAG_SCHULISCHE_ANGEBOTE_ERSTELLEN: '{{ .Values.featureFlags.schulischeAngeboteErstellen }}'
-  EMAIL_MICROSERVICE__USE_EMAIL_MICROSERVICE: '{{ .Values.emailMicroservice.useService }}'
   EMAIL_MICROSERVICE__ENDPOINT: '{{ .Values.emailMicroservice.endpoint | replace "spsh-xxx" .Release.Namespace }}'

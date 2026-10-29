@@ -16,7 +16,6 @@ import { createMock, type DeepMocked } from '../../../../test/utils/createMock.j
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
@@ -76,7 +75,6 @@ describe('PersonenkontextSpecifications Integration', () => {
                 DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
                 KeycloakAdministrationModule,
                 LoggingTestModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [

@@ -22,7 +22,6 @@ import { ServiceProviderSystem } from '../../../modules/service-provider/domain/
 import { type DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { EmailAddressChangedEvent } from '../../../shared/events/email/email-address-changed.event.js';
-import { EmailAddressGeneratedEvent } from '../../../shared/events/email/email-address-generated.event.js';
 import { EmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/email-address-marked-for-deletion.event.js';
 import { EmailAddressesPurgedEvent } from '../../../shared/events/email/email-addresses-purged.event.js';
 import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
@@ -1105,26 +1104,6 @@ describe('LdapEventHandler', () => {
             await ldapEventHandler.handlePersonenkontextUpdatedEvent(event);
 
             expect(personRepositoryMock.save).toHaveBeenCalledTimes(0);
-        });
-    });
-
-    describe('handleEmailAddressGeneratedEvent', () => {
-        it('should call ldap client changeEmailAddressByPersonId', async () => {
-            const event: EmailAddressGeneratedEvent = new EmailAddressGeneratedEvent(
-                faker.string.uuid(),
-                faker.internet.username(),
-                faker.string.uuid(),
-                faker.internet.email(),
-                true,
-                faker.string.numeric(),
-            );
-
-            await ldapEventHandler.handleEmailAddressGeneratedEvent(event);
-
-            expect(loggerMock.info).toHaveBeenLastCalledWith(
-                `Received EmailAddressGeneratedEvent, personId:${event.personId}, username:${event.username}, emailAddress:${event.address}`,
-            );
-            expect(ldapClientAdapterMock.changeEmailAddressByPersonId).toHaveBeenCalledTimes(1);
         });
     });
 
