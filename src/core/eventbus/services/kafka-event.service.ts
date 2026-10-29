@@ -191,6 +191,21 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
+    public async sendOutboxMessage(
+        eventKey: KafkaEventKey,
+        kafkaKey: string | undefined,
+        value: string,
+    ): Promise<void> {
+        if (!this.producer) {
+            throw new Error('Kafka producer is not connected');
+        }
+        const topic: string = this.kafkaConfig.TOPIC_PREFIX + KafkaEventMapping[eventKey].topic;
+        await this.producer.send({
+            topic,
+            messages: [{ key: kafkaKey, value, headers: { eventKey } }],
+        });
+    }
+
     private async sendEvent(
         event: KafkaEvent,
         eventKey: string,

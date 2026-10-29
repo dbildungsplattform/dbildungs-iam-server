@@ -19,6 +19,7 @@ import { type SchulconnexConfig } from './schulconnex.config.js';
 import { type SystemConfig } from './system.config.js';
 import { envToEnumArray, envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 import { type VidisConfig } from './vidis.config.js';
+import { type EventOutboxConfig } from './event-outbox.config.js';
 
 export type Config = {
     DB: Partial<DbConfig>;
@@ -36,6 +37,7 @@ export type Config = {
     IMPORT: Partial<ImportConfig>;
     HEADER_API_KEY: Partial<HeaderApiKeyConfig>;
     KAFKA: Partial<KafkaConfig>;
+    EVENT_OUTBOX: Partial<EventOutboxConfig>;
     PORTAL: Partial<PortalConfig>;
     CRON: Partial<CronConfig>;
     EMAIL_MICROSERVICE: Partial<EmailMicroserviceConfig>;
@@ -152,6 +154,10 @@ export default (): Config => ({
         SSL_CA_PATH: process.env['KAFKA_SSL_CA_PATH'],
         SSL_CERT_PATH: process.env['KAFKA_SSL_CERT_PATH'],
         SSL_KEY_PATH: process.env['KAFKA_SSL_KEY_PATH'],
+    },
+    EVENT_OUTBOX: {
+        POLL_INTERVAL_MS: envToOptionalInteger('EVENT_OUTBOX_POLL_INTERVAL_MS'),
+        BATCH_SIZE: envToOptionalInteger('EVENT_OUTBOX_BATCH_SIZE'),
     },
     PORTAL: {
         LIMITED_ROLLENART_ALLOWLIST: envToEnumArray('PORTAL_LIMITED_ROLLENART_ALLOWLIST', RollenArt),

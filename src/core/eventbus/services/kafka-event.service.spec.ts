@@ -10,6 +10,7 @@ import { type KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { type KafkaJS } from '@confluentinc/kafka-javascript';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
+import { KafkaEventMapping } from '../types/kafka-event-mapping.js';
 import { inspect } from 'util';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
@@ -404,6 +405,30 @@ describe('KafkaEventService', () => {
         expect(logger.info).toHaveBeenCalledWith('Kafka is disabled');
         expect(consumer.connect).not.toHaveBeenCalled();
         expect(producer.connect).not.toHaveBeenCalled();
+    });
+
+    it('should send outbox message with event key header and kafka key', async () => {
+        await sut.onModuleInit();
+
+        await sut.sendOutboxMessage('user.deleted', 'key-1', '{"a":1}');
+
+        expect(producer.send).toHaveBeenCalledWith({
+            topic: 'prefix.' + KafkaEventMapping['user.deleted'].topic,
+            messages: [{ key: 'key-1', value: '{"a":1}', headers: { eventKey: 'user.deleted' } }],
+        });
+    });
+
+    it('should throw from sendOutboxMessage if producer is not connected', async () => {
+        const configServiceKafkaDisabled: DeepMocked<ConfigService> = createMock(ConfigService);
+        configServiceKafkaDisabled.getOrThrow.mockReturnValue({
+            ...defaultKafkaConfig,
+            ENABLED: false,
+        } satisfies KafkaConfig);
+        const service: KafkaEventService = new KafkaEventService(logger, kafka, configServiceKafkaDisabled);
+
+        await expect(service.sendOutboxMessage('user.deleted', undefined, '{}')).rejects.toThrow(
+            'Kafka producer is not connected',
+        );
     });
 
     it('should call logger.info when keepAlive is invoked in handler', async () => {

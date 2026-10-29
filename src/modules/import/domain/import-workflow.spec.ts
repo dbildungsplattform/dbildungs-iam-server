@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import { Readable } from 'stream';
 import { type Mock } from 'vitest';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { ConfigTestModule, DatabaseTestModule } from '../../../../test/utils/index.js';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../../test/utils/logging-test.module.js';
@@ -74,7 +74,7 @@ describe('ImportWorkflow', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [LoggingTestModule, EventModule, ConfigTestModule],
+            imports: [LoggingTestModule, EventModule, ConfigTestModule, DatabaseTestModule.forRoot()],
             providers: [
                 ImportWorkflowFactory,
                 {
