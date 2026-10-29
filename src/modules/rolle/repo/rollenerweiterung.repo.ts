@@ -257,6 +257,13 @@ export class RollenerweiterungRepo {
         );
     }
 
+    public async findByServiceProviderIdAndRollenarten(
+        serviceProviderId: ServiceProviderID,
+        rollenarten?: RollenArt[],
+    ): Promise<Rollenerweiterung<true>[]> {
+        return this.internalRollenerweiterungRepo.findByServiceProviderIdAndRollenarten(serviceProviderId, rollenarten);
+    }
+
     /**
      * Removes Rollenerweiterungen that became invalid because an authorized
      * ServiceProvider update changed its availability or Rollenarten whitelist.

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { difference, isEqual } from 'lodash-es';
 
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
+import { RollenerweiterungDeletedEvent } from '../../../shared/events/rollenerweiterung-deleted.event.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
@@ -8,6 +11,7 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { Rollenerweiterung } from '../../rolle/domain/rollenerweiterung.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { RollenerweiterungRepo } from '../../rolle/repo/rollenerweiterung.repo.js';
 import { ServiceProviderInternalRepo } from '../repo/service-provider.internal.repo.js';
@@ -48,6 +52,7 @@ export class ServiceProviderModificationService {
         private readonly serviceProviderInternalRepo: ServiceProviderInternalRepo,
         private readonly rolleRepo: RolleRepo,
         private readonly rollenerweiterungRepo: RollenerweiterungRepo,
+        private readonly eventRouting: EventRoutingLegacyKafkaService,
     ) {}
 
     public async create(
@@ -138,17 +143,17 @@ export class ServiceProviderModificationService {
             existingProvider.merkmale.includes(ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG);
 
         if (hasVerfuegbarFuerRollenerweiterungMerkmalBeenRemoved) {
-            const deleteResult: Result<null, DomainError> =
-                await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(serviceProvider.id);
+            const deleteResult: Result<null, DomainError> = await this.deleteRollenerweiterungenAndPublish(
+                serviceProvider.id,
+            );
             if (!deleteResult.ok) {
                 return deleteResult;
             }
         } else if (hasRollenartenWhitelistChanged && forbiddenRollenarten.length > 0) {
-            const deleteResult: Result<null, DomainError> =
-                await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
-                    serviceProvider.id,
-                    forbiddenRollenarten,
-                );
+            const deleteResult: Result<null, DomainError> = await this.deleteRollenerweiterungenAndPublish(
+                serviceProvider.id,
+                forbiddenRollenarten,
+            );
             if (!deleteResult.ok) {
                 return deleteResult;
             }
@@ -158,6 +163,48 @@ export class ServiceProviderModificationService {
             await this.serviceProviderInternalRepo.persistAndFlush(serviceProvider);
 
         return Ok(persistedServiceProvider);
+    }
+
+    /**
+     * Mass deletion bypasses the UnitOfWork and ORM hooks, so the affected tuples are read beforehand.
+     * A RollenerweiterungDeletedEvent is published per tuple only after the delete succeeded.
+     */
+    private async deleteRollenerweiterungenAndPublish(
+        serviceProviderId: ServiceProviderID,
+        rollenarten?: RollenArt[],
+    ): Promise<Result<null, DomainError>> {
+        return this.eventRouting.persistAndPublish(async () => {
+            const affected: Rollenerweiterung<true>[] =
+                await this.rollenerweiterungRepo.findByServiceProviderIdAndRollenarten(serviceProviderId, rollenarten);
+
+            const deleteResult: Result<null, DomainError> =
+                rollenarten === undefined
+                    ? await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
+                        serviceProviderId,
+                    )
+                    : await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
+                        serviceProviderId,
+                        rollenarten,
+                    );
+
+            return {
+                result: deleteResult,
+                events: deleteResult.ok
+                    ? affected.map((rollenerweiterung: Rollenerweiterung<true>) => ({
+                        legacyEvent: new RollenerweiterungDeletedEvent(
+                            rollenerweiterung.organisationId,
+                            rollenerweiterung.rolleId,
+                            rollenerweiterung.serviceProviderId,
+                        ),
+                        kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
+                            rollenerweiterung.organisationId,
+                            rollenerweiterung.rolleId,
+                            rollenerweiterung.serviceProviderId,
+                        ),
+                    }))
+                    : [],
+            };
+        });
     }
 
     public async deleteByIdAuthorized(
