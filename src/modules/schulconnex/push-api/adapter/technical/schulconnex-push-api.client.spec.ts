@@ -123,7 +123,7 @@ describe('SchulconnexPushApiClient', () => {
 
         it('should ignore trailing slashes of the registry base url', async () => {
             const result: Result<void, unknown> = await sut.upsertPerson(
-                createRegistry(`${server.url}//`),
+                createRegistry(`${server.url}/`),
                 'person-1',
                 new PersonInfoPersonDtoV2({ familienname: 'Test', vorname: 'Anna', familiennamen: 'Test' }),
             );

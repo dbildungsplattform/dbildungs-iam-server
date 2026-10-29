@@ -129,7 +129,7 @@ export class SchulconnexPushApiClient {
     }
 
     private buildUrl(registry: SchulconnexPushRegistry<true>, path: string): string {
-        return `${registry.baseUrl.replace(/\/+$/, '')}${path}`;
+        return `${registry.baseUrl.replace(/\/$/, '')}${path}`;
     }
 
     private async send(
