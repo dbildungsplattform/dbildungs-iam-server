@@ -147,6 +147,9 @@ describe('configloader', () => {
                 },
                 SCHULCONNEX: {
                     LIMIT_PERSONENINFO: 2500,
+                    PUSH_MAX_ATTEMPTS: 5,
+                    PUSH_RETRY_DELAY_MS: 15000,
+                    PUSH_REQUEST_TIMEOUT_MS: 30000,
                 },
             };
 
@@ -336,6 +339,9 @@ describe('configloader', () => {
                 },
                 SCHULCONNEX: {
                     LIMIT_PERSONENINFO: 2500,
+                    PUSH_MAX_ATTEMPTS: 5,
+                    PUSH_RETRY_DELAY_MS: 15000,
+                    PUSH_REQUEST_TIMEOUT_MS: 30000,
                 },
             };
 
