@@ -3,9 +3,6 @@ ARG BASE_IMAGE_BUILDER=node:24.22.1-alpine3.24
 # Build Stage
 FROM $BASE_IMAGE_BUILDER AS build
 
-# CVE-2026-45447
-RUN apk upgrade -U libcrypto3>=3.5.7-r0 libssl3>=3.5.7-r0
-
 WORKDIR /app
 COPY tsconfig*.json ./
 COPY package*.json ./
@@ -29,10 +26,8 @@ RUN npm ci --omit=dev --ignore-scripts && \
 # Deployment Stage
 FROM $BASE_IMAGE_BUILDER AS deployment
 
-# CVE-2026-45447
-RUN apk upgrade -U libcrypto3>=3.5.7-r0 libssl3>=3.5.7-r0 && \
-    # npm/npx are not needed at runtime; removing them drops the vulnerable packages bundled with the npm CLI
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# npm/npx are not needed at runtime; removing them drops the vulnerable packages bundled with the npm CLI
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER node
 ENV NODE_ENV=prod
