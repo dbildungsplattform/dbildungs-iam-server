@@ -361,8 +361,9 @@ describe('ServiceProviderService', () => {
                     ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
                     ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
                 ],
-                undefined,
-                undefined,
+                rollenArten: undefined,
+                limit: undefined,
+                offset: undefined,
             });
             expect(rollenerweiterungRepo.findByServiceProviderIds).toHaveBeenCalledWith(
                 [serviceProvider.id],

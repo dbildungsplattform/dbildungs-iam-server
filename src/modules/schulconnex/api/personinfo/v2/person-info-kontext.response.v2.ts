@@ -14,6 +14,9 @@ export class PersonInfoKontextDtoV2 {
     @ApiProperty({ enum: SchulconnexRolle })
     public rolle: SchulconnexRolle;
 
+    @ApiProperty()
+    public spshRolleId: string;
+
     @ApiProperty({ type: [PersonInfoKontextErreichbarkeitDtoV2] })
     public erreichbarkeiten: PersonInfoKontextErreichbarkeitDtoV2[];
 
@@ -27,6 +30,7 @@ export class PersonInfoKontextDtoV2 {
         this.id = props.id;
         this.organisation = props.organisation;
         this.rolle = props.rolle;
+        this.spshRolleId = props.spshRolleId;
         this.erreichbarkeiten = props.erreichbarkeiten;
         this.personenstatus = props.personenstatus;
         this.gruppen = props.gruppen;
