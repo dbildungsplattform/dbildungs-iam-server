@@ -32,6 +32,7 @@ import { SchuleKennungEindeutigError } from '../specification/error/schule-kennu
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
+import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, Traegerschaft } from './organisation.enums.js';
@@ -206,6 +207,34 @@ describe('OrganisationService', () => {
             expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new KlasseNurVonSchuleAdministriertError(),
+            });
+        });
+
+        it('should fail to create a Klasse if another Klasse of the Schule has the same name', async () => {
+            const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const sibling: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.KLASSE,
+                name: '1a',
+            });
+            const klasse: Organisation<false> = createOrganisation(false, {
+                typ: OrganisationsTyp.KLASSE,
+                name: '1a',
+                kennung: undefined,
+                zugehoerigZu: schule.id,
+                administriertVon: schule.id,
+            });
+            organisationRepositoryMock.findById.mockResolvedValue(schule);
+            organisationRepositoryMock.exists.mockResolvedValue(true);
+            organisationRepositoryMock.findChildOrgasForIds.mockResolvedValue([sibling]);
+
+            const result: Result<Organisation<true>> = await organisationService.createOrganisation(
+                klasse,
+                permissionsMock,
+            );
+
+            expect(result).toEqual<Result<Organisation<true>>>({
+                ok: false,
+                error: new KlassenNameAnSchuleEindeutigError(undefined),
             });
         });
 
@@ -814,6 +843,81 @@ describe('OrganisationService', () => {
                     kennung: 'stored-kennung',
                 });
                 expect(organisation.updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdate);
+            });
+        });
+
+        describe('when updating a Klasse', () => {
+            function setup(schuleName: string | undefined): {
+                schule: Organisation<true>;
+                klasse: Organisation<true>;
+                updateData: UpdateOrganisationData;
+            } {
+                const schule: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.SCHULE,
+                    name: schuleName,
+                });
+                const klasse: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.KLASSE,
+                    name: '1a',
+                    administriertVon: schule.id,
+                    zugehoerigZu: schule.id,
+                });
+                const updateData: UpdateOrganisationData = {
+                    id: klasse.id,
+                    name: '1a',
+                    administriertVon: schule.id,
+                    zugehoerigZu: schule.id,
+                };
+                organisationRepositoryMock.findById.mockImplementation((id: string) =>
+                    Promise.resolve(id === klasse.id ? klasse : schule),
+                );
+                permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+                organisationRepositoryMock.exists.mockResolvedValue(true);
+                return { schule, klasse, updateData };
+            }
+
+            it('should update the Klasse when its Schule has a name', async () => {
+                const { klasse, updateData }: ReturnType<typeof setup> = setup('Schule');
+                organisationRepositoryMock.findChildOrgasForIds.mockResolvedValueOnce([]);
+                organisationRepositoryMock.save.mockResolvedValueOnce(klasse);
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({ ok: true, value: klasse });
+            });
+
+            it('should update the Klasse when its Schule has no name', async () => {
+                const { klasse, updateData }: ReturnType<typeof setup> = setup(undefined);
+                organisationRepositoryMock.findChildOrgasForIds.mockResolvedValueOnce([]);
+                organisationRepositoryMock.save.mockResolvedValueOnce(klasse);
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result).toEqual({ ok: true, value: klasse });
+            });
+
+            it('should return KlassenNameAnSchuleEindeutigError if another Klasse has the same name', async () => {
+                const { schule, updateData }: ReturnType<typeof setup> = setup('Schule');
+                const sibling: Organisation<true> = DoFactory.createOrganisation(true, {
+                    typ: OrganisationsTyp.KLASSE,
+                    name: '1a',
+                    administriertVon: schule.id,
+                });
+                organisationRepositoryMock.findChildOrgasForIds.mockResolvedValue([sibling]);
+
+                const result: Result<Organisation<true>> = await organisationService.updateOrganisation(
+                    updateData,
+                    permissionsMock,
+                );
+
+                expect(result.ok).toBe(false);
+                expect(!result.ok && result.error).toBeInstanceOf(KlassenNameAnSchuleEindeutigError);
             });
         });
 
@@ -1844,6 +1948,63 @@ describe('OrganisationService', () => {
         });
     });
 
+    describe('setZugehoerigZu (additional)', () => {
+        function setup(): { school: Organisation<true>; traeger: Organisation<true>; oeffentlich: Organisation<true> } {
+            const oeffentlich: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.LAND });
+            const school: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.SCHULE,
+                administriertVon: faker.string.uuid(),
+                zugehoerigZu: faker.string.uuid(),
+            });
+            const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.TRAEGER,
+                zugehoerigZu: faker.string.uuid(),
+            });
+            organisationRepositoryMock.findByIds.mockResolvedValueOnce(
+                new Map([
+                    [school.id, school],
+                    [traeger.id, traeger],
+                ]),
+            );
+            organisationRepositoryMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValue(
+                RootDirectChildrenType.OEFFENTLICH,
+            );
+            organisationRepositoryMock.findById.mockResolvedValueOnce(oeffentlich);
+            organisationRepositoryMock.findById.mockResolvedValueOnce(oeffentlich);
+            return { school, traeger, oeffentlich };
+        }
+
+        it('should save the new zugehoerigZu', async () => {
+            const { school, traeger }: ReturnType<typeof setup> = setup();
+            organisationRepositoryMock.findById.mockResolvedValue(undefined);
+            organisationRepositoryMock.save.mockResolvedValueOnce(school);
+
+            const result: Result<void> = await organisationService.setZugehoerigZu(
+                traeger.id,
+                school.id,
+                new PersonPermissionsMock(),
+            );
+
+            expect(result).toEqual<Result<void>>({ ok: true, value: undefined });
+            expect(organisationRepositoryMock.save).toHaveBeenCalledWith(
+                expect.objectContaining({ zugehoerigZu: traeger.id }),
+            );
+        });
+
+        it('should return ZyklusInOrganisationenError if the change creates a cycle', async () => {
+            const { school, traeger }: ReturnType<typeof setup> = setup();
+            organisationRepositoryMock.findById.mockResolvedValue(school);
+
+            const result: Result<void> = await organisationService.setZugehoerigZu(
+                traeger.id,
+                school.id,
+                new PersonPermissionsMock(),
+            );
+
+            expect(result).toEqual<Result<void>>({ ok: false, error: new ZyklusInOrganisationenError(school.id) });
+        });
+    });
+
     describe('findAllAdministriertVon', () => {
         describe('when organizations are found', () => {
             it('should return all organizations', async () => {
@@ -2282,6 +2443,25 @@ describe('OrganisationService', () => {
             expect(organisationRepositoryMock.createOrganisationsbeziehung).toHaveBeenCalledWith(
                 newOrganisationsbeziehung,
             );
+        });
+
+        it('should return MissingPermissionsError when the organisation type has no manage permission', async () => {
+            quellOrganisationWithoutRelationships.typ = OrganisationsTyp.LAND;
+            permissionsMock.hasSystemrechtAtOrganisation.mockReset();
+
+            const result: Result<
+                Organisationsbeziehung<true>,
+                DomainError
+            > = await organisationService.createOrganisationsbeziehung(
+                quellOrganisationId,
+                zielOrganisationId,
+                typ,
+                permissionsMock,
+            );
+
+            expect(result.ok).toBe(false);
+            expect(!result.ok && result.error).toBeInstanceOf(MissingPermissionsError);
+            expect(permissionsMock.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
         });
 
         it('should return EntityNotFoundError when the source organisation does not exist', async () => {

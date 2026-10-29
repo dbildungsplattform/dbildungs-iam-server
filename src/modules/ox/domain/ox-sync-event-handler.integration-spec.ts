@@ -283,7 +283,6 @@ describe('OxSyncEventHandler', () => {
             };
             event = new LdapSyncCompletedEvent(personId, username);
             person = DoFactory.createPerson(true, {
-                email: faker.internet.email(),
                 username: faker.internet.username(),
                 oxUserId: oxUserId,
             });
@@ -580,7 +579,6 @@ describe('OxSyncEventHandler', () => {
             oxUserId = faker.string.numeric({ length: 5 });
             event = new LdapSyncCompletedEvent(personId, username);
             person = DoFactory.createPerson(true, {
-                email: faker.internet.email(),
                 username: faker.internet.username(),
                 oxUserId: oxUserId,
             });

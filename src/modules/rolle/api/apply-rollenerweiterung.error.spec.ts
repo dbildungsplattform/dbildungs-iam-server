@@ -1,6 +1,7 @@
-import { ApplyRollenerweiterungError } from './apply-rollenerweiterung.error.js';
+import { ApplyRollenerweiterungError, type ApplyRollenerweiterungErrorEntry } from './apply-rollenerweiterung.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { faker } from '@faker-js/faker';
+import { ErrorIdType } from './ErrorIdType.enum.js';
 
 describe('ApplyRollenerweiterungError', () => {
     it('should set errors, ids, message and code', () => {
@@ -9,12 +10,9 @@ describe('ApplyRollenerweiterungError', () => {
 
         const error1: EntityNotFoundError = new EntityNotFoundError('Error 1');
         const error2: EntityNotFoundError = new EntityNotFoundError('Error 2');
-        const errors: {
-            id: string;
-            error: EntityNotFoundError;
-        }[] = [
-            { id: rolle1Id, error: error1 },
-            { id: rolle2Id, error: error2 },
+        const errors: ApplyRollenerweiterungErrorEntry[] = [
+            { id: rolle1Id, errorIdType: ErrorIdType.ROLLE, error: error1 },
+            { id: rolle2Id, errorIdType: ErrorIdType.ROLLE, error: error2 },
         ];
         const applyError: ApplyRollenerweiterungError = new ApplyRollenerweiterungError(errors);
 
