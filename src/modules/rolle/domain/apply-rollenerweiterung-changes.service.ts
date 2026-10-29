@@ -1,6 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { Injectable } from '@nestjs/common';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
+import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
+import { RollenerweiterungCreatedEvent } from '../../../shared/events/rollenerweiterung-created.event.js';
+import { RollenerweiterungDeletedEvent } from '../../../shared/events/rollenerweiterung-deleted.event.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
@@ -77,6 +82,7 @@ export class ApplyRollenerweiterungService {
         private readonly organisationRepo: OrganisationRepository,
         private readonly rolleRepo: RolleRepo,
         private readonly rollenerweiterungRepo: InternalRollenerweiterungRepo,
+        private readonly eventService: EventRoutingLegacyKafkaService,
     ) {}
 
     public async applyRollenerweiterungChangesForRolle(
@@ -325,8 +331,20 @@ export class ApplyRollenerweiterungService {
             return createResult;
         }
 
-        const persistedRollenerweiterung: Rollenerweiterung<true> = await this.rollenerweiterungRepo.create(
-            createResult.value,
+        const persistedRollenerweiterung: Rollenerweiterung<true> = await this.eventService.persistAndPublish(
+            async () => ({
+                result: await this.rollenerweiterungRepo.create(createResult.value),
+                events: [
+                    {
+                        legacyEvent: new RollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
+                        kafkaEvent: new KafkaRollenerweiterungCreatedEvent(
+                            organisation.id,
+                            rolle.id,
+                            serviceProvider.id,
+                        ),
+                    },
+                ],
+            }),
         );
 
         return Ok(persistedRollenerweiterung);
@@ -569,17 +587,37 @@ export class ApplyRollenerweiterungService {
         errorId,
         errorIdType,
     }: RemoveRollenerweiterungParams): Promise<RollenerweiterungOperationResult> {
-        const result: Result<null, DomainError> = await this.rollenerweiterungRepo.deleteByComposedId({
-            organisationId,
-            rolleId,
-            serviceProviderId,
-        });
+        return this.eventService.persistAndPublish(async () => {
+            const result: Result<null, DomainError> = await this.rollenerweiterungRepo.deleteByComposedId({
+                organisationId,
+                rolleId,
+                serviceProviderId,
+            });
 
-        return {
-            id: errorId,
-            errorIdType,
-            result,
-        };
+            return {
+                result: {
+                    id: errorId,
+                    errorIdType,
+                    result,
+                },
+                events: result.ok
+                    ? [
+                        {
+                            legacyEvent: new RollenerweiterungDeletedEvent(
+                                organisationId,
+                                rolleId,
+                                serviceProviderId,
+                            ),
+                            kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
+                                organisationId,
+                                rolleId,
+                                serviceProviderId,
+                            ),
+                        },
+                    ]
+                    : [],
+            };
+        });
     }
 
     private async checkBasePermission(
