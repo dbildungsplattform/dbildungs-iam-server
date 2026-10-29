@@ -42,9 +42,7 @@ describe('EventOutboxPublisher', () => {
 
     beforeEach(() => {
         emMock = createMock(EntityManager);
-        emMock.transactional.mockImplementation((cb: (tx: EntityManager) => Promise<unknown>) =>
-            Promise.resolve(cb(emMock)),
-        );
+        emMock.transactional.mockImplementation((cb: (tx: EntityManager) => unknown) => Promise.resolve(cb(emMock)));
         emMock.execute.mockResolvedValue([]);
         kafkaEventServiceMock = createMock(KafkaEventService);
         kafkaEventServiceMock.sendOutboxMessage.mockResolvedValue(undefined);

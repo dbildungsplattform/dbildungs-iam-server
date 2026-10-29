@@ -59,9 +59,7 @@ describe('EventRoutingLegacyKafkaService', () => {
         kafkaEventServiceMock = module.get(KafkaEventService);
         eventOutboxServiceMock = module.get(EventOutboxService);
         emMock = module.get(EntityManager);
-        emMock.transactional.mockImplementation((cb: (tx: EntityManager) => Promise<unknown>) =>
-            Promise.resolve(cb(emMock)),
-        );
+        emMock.transactional.mockImplementation((cb: (tx: EntityManager) => unknown) => Promise.resolve(cb(emMock)));
         logger = module.get(ClassLogger);
     }
 

@@ -602,19 +602,19 @@ export class ApplyRollenerweiterungService {
                 },
                 events: result.ok
                     ? [
-                        {
-                            legacyEvent: new RollenerweiterungDeletedEvent(
-                                organisationId,
-                                rolleId,
-                                serviceProviderId,
-                            ),
-                            kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
-                                organisationId,
-                                rolleId,
-                                serviceProviderId,
-                            ),
-                        },
-                    ]
+                          {
+                              legacyEvent: new RollenerweiterungDeletedEvent(
+                                  organisationId,
+                                  rolleId,
+                                  serviceProviderId,
+                              ),
+                              kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
+                                  organisationId,
+                                  rolleId,
+                                  serviceProviderId,
+                              ),
+                          },
+                      ]
                     : [],
             };
         });

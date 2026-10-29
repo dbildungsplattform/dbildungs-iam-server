@@ -180,28 +180,28 @@ export class ServiceProviderModificationService {
             const deleteResult: Result<null, DomainError> =
                 rollenarten === undefined
                     ? await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
-                        serviceProviderId,
-                    )
+                          serviceProviderId,
+                      )
                     : await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
-                        serviceProviderId,
-                        rollenarten,
-                    );
+                          serviceProviderId,
+                          rollenarten,
+                      );
 
             return {
                 result: deleteResult,
                 events: deleteResult.ok
                     ? affected.map((rollenerweiterung: Rollenerweiterung<true>) => ({
-                        legacyEvent: new RollenerweiterungDeletedEvent(
-                            rollenerweiterung.organisationId,
-                            rollenerweiterung.rolleId,
-                            rollenerweiterung.serviceProviderId,
-                        ),
-                        kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
-                            rollenerweiterung.organisationId,
-                            rollenerweiterung.rolleId,
-                            rollenerweiterung.serviceProviderId,
-                        ),
-                    }))
+                          legacyEvent: new RollenerweiterungDeletedEvent(
+                              rollenerweiterung.organisationId,
+                              rollenerweiterung.rolleId,
+                              rollenerweiterung.serviceProviderId,
+                          ),
+                          kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
+                              rollenerweiterung.organisationId,
+                              rollenerweiterung.rolleId,
+                              rollenerweiterung.serviceProviderId,
+                          ),
+                      }))
                     : [],
             };
         });
