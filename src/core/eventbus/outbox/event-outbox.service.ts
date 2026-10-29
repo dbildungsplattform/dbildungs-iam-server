@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
+import { EventMappingNotFoundError } from '../error/event-mapping-not-found.error.js';
 import { getKafkaEventKeyForEvent } from '../types/kafka-event-mapping.js';
 import { EventOutboxEntity } from './event-outbox.entity.js';
 
@@ -13,7 +14,7 @@ export class EventOutboxService {
         for (const event of events) {
             const eventKey: string | undefined = getKafkaEventKeyForEvent(event);
             if (!eventKey) {
-                throw new Error(`No Kafka mapping found for event: ${event.constructor.name}`);
+                throw new EventMappingNotFoundError(event.constructor.name);
             }
 
             this.em.persist(

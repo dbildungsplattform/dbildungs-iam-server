@@ -6,6 +6,7 @@ import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { EventOutboxConfig } from '../../../shared/config/event-outbox.config.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { ClassLogger } from '../../logging/class-logger.js';
+import { UnknownOutboxEventKeyError } from '../error/unknown-outbox-event-key.error.js';
 import { KafkaEventService } from '../services/kafka-event.service.js';
 import { isKafkaEventKey } from '../types/kafka-event-mapping.js';
 
@@ -92,7 +93,7 @@ export class EventOutboxPublisher implements OnModuleInit, OnModuleDestroy {
     private async publishRow(tx: EntityManager, row: OutboxRow): Promise<void> {
         try {
             if (!isKafkaEventKey(row.event_key)) {
-                throw new Error(`Unknown event key in outbox: ${row.event_key}`);
+                throw new UnknownOutboxEventKeyError(row.event_key);
             }
             await this.kafkaEventService.sendOutboxMessage(row.event_key, row.kafka_key ?? undefined, row.payload);
             await tx.execute('update event_outbox set published_at = now(), attempts = attempts + 1 where id = ?', [
