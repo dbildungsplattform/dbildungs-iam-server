@@ -67,8 +67,11 @@ export class SchulconnexPushApiClient {
             referrer: personId,
             name: { familienname: person.name.familienname, vorname: person.name.vorname },
         };
+        const personPath: string = this.personPath(personId)
 
-        return this.send(registry, 'PUT', this.personPath(personId), payload);
+        const result: Result<void, DomainError> = await this.send(registry, 'PUT', personPath, payload);
+
+        return result
     }
 
     /** DELETE /v1/personen/{personId} */
@@ -77,8 +80,11 @@ export class SchulconnexPushApiClient {
         personId: PersonID,
     ): Promise<Result<void, DomainError>> {
         const payload: PushPersonDeletePayload = {};
+        const personPath: string = this.personPath(personId)
 
-        return this.send(registry, 'DELETE', this.personPath(personId), payload);
+        const result: Result<void, DomainError> = await this.send(registry, 'DELETE', personPath, payload);
+
+        return result
     }
 
     /** PUT /v1/personen/{personId}/personenkontexte/{personenkontextId} */
@@ -95,7 +101,6 @@ export class SchulconnexPushApiClient {
                 ),
             );
         }
-
         const payload: PushPersonenkontextPayload = {
             referrer: kontext.id,
             rolle: kontext.rolle,
@@ -107,8 +112,11 @@ export class SchulconnexPushApiClient {
             personenstatus: kontext.personenstatus ?? null,
             organisation: { id: organisation.id, kennung: organisation.kennung, name: organisation.name },
         };
+        const personenkontextPath: string = this.personenkontextPath(personId, kontext.id)
 
-        return this.send(registry, 'PUT', this.personenkontextPath(personId, kontext.id), payload);
+        const result: Result<void, DomainError> = await this.send(registry, 'PUT', personenkontextPath, payload);
+
+        return result
     }
 
     /** DELETE /v1/personen/{personId}/personenkontexte/{personenkontextId} */
@@ -140,7 +148,9 @@ export class SchulconnexPushApiClient {
     ): Promise<Result<void, DomainError>> {
         const url: string = this.buildUrl(registry, path);
 
-        return this.sendWithRetry(method, url, data);
+        const result: Result<void, DomainError> = await this.sendWithRetry(method, url, data);
+
+        return result
     }
 
     private async sendWithRetry(
