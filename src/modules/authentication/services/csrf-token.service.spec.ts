@@ -3,7 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { type Request } from 'express';
 import { vi } from 'vitest';
 import { CsrfTokenService } from './csrf-token.service.js';
-import { type DeepMocked, createMock } from '../../../../test/utils/createMock.js';
+import { createMock } from '../../../../test/utils/createMock.js';
 
 describe('CsrfTokenService', () => {
     let module: TestingModule;
@@ -30,8 +30,8 @@ describe('CsrfTokenService', () => {
     });
 
     describe('generateToken', () => {
-        function setupRequest(hasSession: boolean = true): DeepMocked<Request> {
-            const requestMock: DeepMocked<Request> = createMock<Request>({
+        function setupRequest(hasSession: boolean = true): Request {
+            const requestMock: Request = createMock<Request>({
                 prototype: {} as Request,
             });
             if (hasSession) {
@@ -47,7 +47,7 @@ describe('CsrfTokenService', () => {
 
         describe('when session is initialized', () => {
             it('should return a token string', () => {
-                const requestMock: DeepMocked<Request> = setupRequest();
+                const requestMock: Request = setupRequest();
 
                 const token: string = csrfTokenService.generateToken(requestMock);
 
@@ -56,7 +56,7 @@ describe('CsrfTokenService', () => {
             });
 
             it('should save token to session', () => {
-                const requestMock: DeepMocked<Request> = setupRequest();
+                const requestMock: Request = setupRequest();
 
                 const token: string = csrfTokenService.generateToken(requestMock);
 
@@ -64,7 +64,7 @@ describe('CsrfTokenService', () => {
             });
 
             it('should call session.touch', () => {
-                const requestMock: DeepMocked<Request> = setupRequest();
+                const requestMock: Request = setupRequest();
 
                 csrfTokenService.generateToken(requestMock);
 
@@ -72,7 +72,7 @@ describe('CsrfTokenService', () => {
             });
 
             it('should generate unique tokens on each call', () => {
-                const requestMock: DeepMocked<Request> = setupRequest();
+                const requestMock: Request = setupRequest();
 
                 const token1: string = csrfTokenService.generateToken(requestMock);
                 const token2: string = csrfTokenService.generateToken(requestMock);
@@ -83,7 +83,7 @@ describe('CsrfTokenService', () => {
 
         describe('when session is not initialized', () => {
             it('should throw BadRequestException', () => {
-                const requestMock: DeepMocked<Request> = setupRequest(false);
+                const requestMock: Request = setupRequest(false);
 
                 expect(() => csrfTokenService.generateToken(requestMock)).toThrow(BadRequestException);
             });
@@ -91,8 +91,8 @@ describe('CsrfTokenService', () => {
     });
 
     describe('validateToken', () => {
-        function setupRequest(sessionToken?: string, headerToken?: string, queryToken?: string): DeepMocked<Request> {
-            const requestMock: DeepMocked<Request> = createMock<Request>({
+        function setupRequest(sessionToken?: string, headerToken?: string, queryToken?: string): Request {
+            const requestMock: Request = createMock<Request>({
                 prototype: {} as Request,
             });
             requestMock.session = { csrfToken: sessionToken } as unknown as Request['session'];
@@ -104,13 +104,13 @@ describe('CsrfTokenService', () => {
         describe('when token is passed directly', () => {
             it('should return true when token matches session', () => {
                 const token: string = 'valid-token';
-                const requestMock: DeepMocked<Request> = setupRequest(token);
+                const requestMock: Request = setupRequest(token);
 
                 expect(csrfTokenService.validateToken(requestMock, token)).toBe(true);
             });
 
             it('should return false when token does not match session', () => {
-                const requestMock: DeepMocked<Request> = setupRequest('session-token');
+                const requestMock: Request = setupRequest('session-token');
 
                 expect(csrfTokenService.validateToken(requestMock, 'wrong-token')).toBe(false);
             });
@@ -119,13 +119,13 @@ describe('CsrfTokenService', () => {
         describe('when token is extracted from header', () => {
             it('should return true when header token matches session', () => {
                 const token: string = 'valid-token';
-                const requestMock: DeepMocked<Request> = setupRequest(token, token);
+                const requestMock: Request = setupRequest(token, token);
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(true);
             });
 
             it('should return false when header token does not match session', () => {
-                const requestMock: DeepMocked<Request> = setupRequest('session-token', 'wrong-token');
+                const requestMock: Request = setupRequest('session-token', 'wrong-token');
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(false);
             });
@@ -134,13 +134,13 @@ describe('CsrfTokenService', () => {
         describe('when token is extracted from query', () => {
             it('should return true when query token matches session', () => {
                 const token: string = 'valid-token';
-                const requestMock: DeepMocked<Request> = setupRequest(token, undefined, token);
+                const requestMock: Request = setupRequest(token, undefined, token);
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(true);
             });
 
             it('should return false when query token does not match session', () => {
-                const requestMock: DeepMocked<Request> = setupRequest('session-token', undefined, 'wrong-token');
+                const requestMock: Request = setupRequest('session-token', undefined, 'wrong-token');
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(false);
             });
@@ -148,19 +148,19 @@ describe('CsrfTokenService', () => {
 
         describe('when tokens are missing', () => {
             it('should return false when session token is missing', () => {
-                const requestMock: DeepMocked<Request> = setupRequest(undefined, 'some-token');
+                const requestMock: Request = setupRequest(undefined, 'some-token');
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(false);
             });
 
             it('should return false when request token is missing', () => {
-                const requestMock: DeepMocked<Request> = setupRequest('session-token');
+                const requestMock: Request = setupRequest('session-token');
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(false);
             });
 
             it('should return false when both tokens are missing', () => {
-                const requestMock: DeepMocked<Request> = setupRequest();
+                const requestMock: Request = setupRequest();
 
                 expect(csrfTokenService.validateToken(requestMock)).toBe(false);
             });
@@ -168,7 +168,7 @@ describe('CsrfTokenService', () => {
 
         describe('when tokens have different lengths', () => {
             it('should return false without throwing', () => {
-                const requestMock: DeepMocked<Request> = setupRequest('short', 'a-much-longer-token-that-differs');
+                const requestMock: Request = setupRequest('short', 'a-much-longer-token-that-differs');
 
                 expect(csrfTokenService.validateToken(requestMock, 'a-much-longer-token-that-differs')).toBe(false);
             });
