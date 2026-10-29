@@ -107,7 +107,7 @@ export class PersonenInfoController {
         schema: { type: 'integer' },
     })
     @ApiUnauthorizedResponse({ description: 'person is not logged in.' })
-    @ApiOkResponse({ description: 'Liste von Personeninformationen', type: PersonInfoResponseV1 })
+    @ApiOkResponse({ description: 'Liste von Personeninformationen', type: [PersonInfoDtoV2] })
     public async infoV2(
         @Permissions() permissions: IPersonPermissions,
         @Headers('x-offset') offset: string,
