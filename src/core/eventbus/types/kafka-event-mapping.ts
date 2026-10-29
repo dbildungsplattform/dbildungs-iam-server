@@ -14,6 +14,8 @@ import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ld
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
 import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updated.event.js';
+import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
+import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
 import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
@@ -74,6 +76,8 @@ export type KafkaEventKey =
     | 'klasse.created'
     | 'klasse.updated'
     | 'rolle.updated'
+    | 'rollenerweiterung.created'
+    | 'rollenerweiterung.deleted'
     | 'schule.created'
     | 'schule.updated'
     | 'schule.itslearning_enabled'
@@ -161,6 +165,18 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
 
     'rolle.updated': {
         eventClass: KafkaRolleUpdatedEvent,
+        topic: 'rolle-topic',
+        topicDlq: 'rolle-dlq-topic',
+    },
+
+    'rollenerweiterung.created': {
+        eventClass: KafkaRollenerweiterungCreatedEvent,
+        topic: 'rolle-topic',
+        topicDlq: 'rolle-dlq-topic',
+    },
+
+    'rollenerweiterung.deleted': {
+        eventClass: KafkaRollenerweiterungDeletedEvent,
         topic: 'rolle-topic',
         topicDlq: 'rolle-dlq-topic',
     },
@@ -288,4 +304,11 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
 
 export function isKafkaEventKey(value: unknown): value is KafkaEventKey {
     return typeof value === 'string' && value in KafkaEventMapping;
+}
+
+export function getKafkaEventKeyForEvent(event: object): KafkaEventKey | undefined {
+    return Object.keys(KafkaEventMapping).find(
+        (key: string): key is KafkaEventKey =>
+            isKafkaEventKey(key) && KafkaEventMapping[key]?.eventClass === event.constructor,
+    );
 }
