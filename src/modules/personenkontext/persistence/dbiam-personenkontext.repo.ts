@@ -17,6 +17,7 @@ import { Err, Ok } from '../../../shared/util/result.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
+import { ITSLEARNING_ORGANISATION_SUBTREE_SQL } from '../../organisation/persistence/itslearning-organisation-subtree.js';
 import { EntityAggregateMapper } from '../../person/mapper/entity-aggregate.mapper.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
@@ -27,6 +28,7 @@ import { ServiceProviderSystem } from '../../service-provider/domain/service-pro
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { mapEntityToAggregate as mapSPEntityToAggregate } from '../../service-provider/repo/service-provider-entity-mapper.js';
 import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { PersonenkontextFactory } from '../domain/personenkontext.factory.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { PersonenkontextErweitertVirtualEntity } from './personenkontext-erweitert.virtual.entity.js';
@@ -382,7 +384,7 @@ export class DBiamPersonenkontextRepo {
 
     /**
      * Find all Personenkontexte with the specified Rolle, if
-     * - they are at an organisation where itslearning is enabled
+     * - they are at an organisation where itslearning is enabled or below it (e.g. classes)
      * - there is no other Personenkontext_
      *   - for the same person
      *   - at the same organisation
@@ -397,12 +399,9 @@ export class DBiamPersonenkontextRepo {
         const personenkontextCursor: Cursor<PersonenkontextEntity> = await this.em.findByCursor(PersonenkontextEntity, {
             where: {
                 rolleId,
-                organisationId: {
-                    itslearningEnabled: true,
-                },
                 [raw(
                     (alias: string) =>
-                        `NOT EXISTS (${this.em
+                        `${alias}.organisation_id IN (${ITSLEARNING_ORGANISATION_SUBTREE_SQL}) AND NOT EXISTS (${this.em
                             .createQueryBuilder(PersonenkontextEntity, 'sq')
                             .select('id')
                             .where({
@@ -688,5 +687,40 @@ export class DBiamPersonenkontextRepo {
         });
 
         return result;
+    }
+
+    /**
+     * Person IDs that hold the rolle at the organisation or at any organisation below it (administriert_von).
+     * Keyset pagination over person IDs; pass the last returned ID as afterPersonId to get the next batch.
+     */
+    public async findPersonIdsWithRolleInOrganisationSubtree(
+        organisationId: OrganisationID,
+        rolleId: RolleID,
+        count: number,
+        afterPersonId?: PersonID,
+    ): Promise<PersonID[]> {
+        const cursorClause: string = afterPersonId ? 'AND pk.person_id > ?' : '';
+        const query: string = `
+            WITH RECURSIVE subtree AS (
+                SELECT o.id FROM public.organisation o WHERE o.id = ?
+                UNION
+                SELECT c.id FROM public.organisation c INNER JOIN subtree s ON c.administriert_von = s.id
+                WHERE c.typ = '${OrganisationsTyp.KLASSE}'
+            )
+            SELECT DISTINCT pk.person_id AS person_id
+            FROM public.personenkontext pk
+            WHERE pk.rolle_id = ?
+                AND pk.organisation_id IN (SELECT id FROM subtree)
+                ${cursorClause}
+            ORDER BY pk.person_id
+            LIMIT ?
+        `;
+
+        const params: (string | number)[] = afterPersonId
+            ? [organisationId, rolleId, afterPersonId, count]
+            : [organisationId, rolleId, count];
+
+        const rows: { person_id: PersonID }[] = await this.em.execute(query, params);
+        return rows.map((row: { person_id: PersonID }) => row.person_id);
     }
 }
