@@ -321,6 +321,20 @@ describe('Organisation', () => {
 
                     expect(result).toBeInstanceOf(TraegerUnterRootChildError);
                 });
+
+                it('should not return an error if the traeger has no id', async () => {
+                    const traeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
+                        name: 'Schultraeger without id',
+                        zugehoerigZu: faker.string.uuid(),
+                        typ: OrganisationsTyp.TRAEGER,
+                    });
+                    organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
+
+                    const result: OrganisationSpecificationError | undefined =
+                        await traeger.checkSchultraegerSpecifications(organisationRepositoryMock);
+
+                    expect(result).toBeUndefined();
+                });
             });
         });
         describe('TraegerNameUniqueInSubtree', () => {
@@ -375,6 +389,22 @@ describe('Organisation', () => {
                     await traegerWithoutName.checkSchultraegerSpecifications(organisationRepositoryMock);
 
                 expect(result).toBeInstanceOf(SchultraegerNameEindeutigError);
+            });
+
+            it('should not return an error if Schultraeger without name has no id', async () => {
+                const traegerWithoutNameAndId: Organisation<false, false> = DoFactory.createOrganisationAggregate(
+                    false,
+                    {
+                        zugehoerigZu: oeffentlich.id,
+                        typ: OrganisationsTyp.TRAEGER,
+                        name: undefined,
+                    },
+                );
+
+                const result: OrganisationSpecificationError | undefined =
+                    await traegerWithoutNameAndId.checkSchultraegerSpecifications(organisationRepositoryMock);
+
+                expect(result).toBeUndefined();
             });
         });
     });
