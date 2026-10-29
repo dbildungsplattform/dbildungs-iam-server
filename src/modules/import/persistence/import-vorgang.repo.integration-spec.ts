@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { EntityManager, MikroORM, type RequiredEntityData } from '@mikro-orm/core';
+import { type EntityData, EntityManager, MikroORM, type RequiredEntityData } from '@mikro-orm/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
@@ -166,7 +166,7 @@ describe('ImportVorgangRepository', () => {
     });
 
     describe('mapAggregateToData', () => {
-        it('should return ImportVorgang RequiredEntityData', () => {
+        it('should return ImportVorgang EntityData for a persisted aggregate', () => {
             const importVorgang: ImportVorgang<true> = ImportVorgang.construct(
                 faker.string.uuid(),
                 faker.date.past(),
@@ -192,7 +192,7 @@ describe('ImportVorgangRepository', () => {
                 'organisationId',
             ];
 
-            const result: RequiredEntityData<ImportVorgangEntity> = mapAggregateToData(importVorgang);
+            const result: EntityData<ImportVorgangEntity> = mapAggregateToData(importVorgang);
 
             expectedProperties.forEach((prop: string) => {
                 expect(result).toHaveProperty(prop);
@@ -204,7 +204,7 @@ describe('ImportVorgangRepository', () => {
         it('should return New Aggregate', () => {
             const entiity: ImportVorgangEntity = em.create(
                 ImportVorgangEntity,
-                mapAggregateToData(DoFactory.createImportVorgang(true)),
+                mapAggregateToData(DoFactory.createImportVorgang(false)),
             );
             const importVorgang: ImportVorgang<true> = mapEntityToAggregate(entiity);
 
@@ -293,7 +293,7 @@ describe('ImportVorgangRepository', () => {
         describe('should import history data', () => {
             let importVorgang1: ImportVorgang<false>;
             let importVorgang2: ImportVorgang<false>;
-            let importVorgang3: ImportVorgang<true>;
+            let importVorgang3: ImportVorgang<false>;
             let entity1: ImportVorgangEntity;
             let entity2: ImportVorgangEntity;
             let entity3: ImportVorgangEntity;
@@ -327,7 +327,7 @@ describe('ImportVorgangRepository', () => {
                     rolleId: rolleId,
                     organisationId: orgaId2,
                 });
-                importVorgang3 = DoFactory.createImportVorgang(true, {
+                importVorgang3 = DoFactory.createImportVorgang(false, {
                     importByPersonId: personB.id,
                     rolleId: rolleId,
                     organisationId: orgaId3,

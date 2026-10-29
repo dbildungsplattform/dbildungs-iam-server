@@ -4,6 +4,7 @@ import { type CallHandler, type ExecutionContext } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type Request } from 'express';
 import { sign } from 'jsonwebtoken';
+import { type MockedObject } from 'vitest';
 
 import { PersonPermissionsRepo } from '../domain/person-permission.repo.js';
 import { PermissionsInterceptor } from './permissions.interceptor.js';
@@ -45,12 +46,12 @@ describe('Permission Interceptor', () => {
     describe('when request contains passportUser', () => {
         it('should attach personPermissions function', async () => {
             const subjectId: string = faker.string.uuid();
-            const request: DeepMocked<Request> = createRequestMock({
+            const request: MockedObject<Request> = createRequestMock({
                 passportUser: {
                     access_token: sign({ sub: subjectId }, 'secret'),
                 },
             });
-            const context: DeepMocked<ExecutionContext> = createExecutionContextMock({ request });
+            const context: MockedObject<ExecutionContext> = createExecutionContextMock({ request });
             permissionRepoMock.loadPersonPermissions.mockResolvedValueOnce(createPersonPermissionsMock());
 
             sut.intercept(context, nextMock);
@@ -63,42 +64,42 @@ describe('Permission Interceptor', () => {
 
     describe('when request is missing data', () => {
         it('should not fail when missing access-token', () => {
-            const request: DeepMocked<Request> = createRequestMock({
+            const request: MockedObject<Request> = createRequestMock({
                 passportUser: {
                     access_token: undefined,
                 },
             });
-            const context: DeepMocked<ExecutionContext> = createExecutionContextMock({ request });
+            const context: MockedObject<ExecutionContext> = createExecutionContextMock({ request });
 
             expect(() => sut.intercept(context, nextMock)).not.toThrow();
             expect(request.passportUser?.personPermissions).toBeUndefined();
         });
 
         it('should not fail when missing passportUser', () => {
-            const request: DeepMocked<Request> = createRequestMock({
+            const request: MockedObject<Request> = createRequestMock({
                 passportUser: undefined,
             });
-            const context: DeepMocked<ExecutionContext> = createExecutionContextMock({ request });
+            const context: MockedObject<ExecutionContext> = createExecutionContextMock({ request });
 
             expect(() => sut.intercept(context, nextMock)).not.toThrow();
             expect(request.passportUser?.personPermissions).toBeUndefined();
         });
 
         it('should not fail when access-token is missing subject', () => {
-            const request: DeepMocked<Request> = createRequestMock({
+            const request: MockedObject<Request> = createRequestMock({
                 passportUser: { access_token: sign({}, 'secret') },
             });
-            const context: DeepMocked<ExecutionContext> = createExecutionContextMock({ request });
+            const context: MockedObject<ExecutionContext> = createExecutionContextMock({ request });
 
             expect(() => sut.intercept(context, nextMock)).not.toThrow();
             expect(request.passportUser?.personPermissions).toBeUndefined();
         });
 
         it('should not fail when access-token is malformed', () => {
-            const request: DeepMocked<Request> = createRequestMock({
+            const request: MockedObject<Request> = createRequestMock({
                 passportUser: { access_token: 'malformed' },
             });
-            const context: DeepMocked<ExecutionContext> = createExecutionContextMock({ request });
+            const context: MockedObject<ExecutionContext> = createExecutionContextMock({ request });
 
             expect(() => sut.intercept(context, nextMock)).not.toThrow();
             expect(request.passportUser?.personPermissions).toBeUndefined();

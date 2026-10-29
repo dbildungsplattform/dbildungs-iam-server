@@ -333,7 +333,7 @@ describe('dbiam Personenkontext Repo', () => {
                 createMock<RolleServiceProviderEntity>(RolleServiceProviderEntity);
             mockRolleServiceProviderEntity.serviceProvider = mockServiceProvider;
 
-            const findSpy: Mock = vi.spyOn(sut['em'], 'find').mockImplementation(<T>(entityClass: EntityName<T>) => {
+            const findSpy: Mock = vi.spyOn(sut['em'], 'find').mockImplementation((entityClass: EntityName<object>) => {
                 if (entityClass === PersonenkontextEntity) {
                     return Promise.resolve([
                         {

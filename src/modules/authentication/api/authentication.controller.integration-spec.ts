@@ -248,7 +248,7 @@ describe('AuthenticationController', () => {
 
     describe('info', () => {
         function setupRequest(passportUser?: PassportUser): Request {
-            const requestMock: DeepMocked<Request> = createRequestMock({
+            const requestMock: MockedObject<Request> = createRequestMock({
                 passportUser,
             });
             return requestMock;
@@ -302,8 +302,8 @@ describe('AuthenticationController', () => {
 
     describe('getCsrfToken', () => {
         function setupRequest(isAuthenticated: boolean, csrfToken?: string): Request {
-            const requestMock: DeepMocked<Request> = createRequestMock();
-            (requestMock.isAuthenticated as unknown as Mock).mockReturnValue(isAuthenticated);
+            const requestMock: MockedObject<Request> = createRequestMock();
+            requestMock.isAuthenticated.mockReturnValue(isAuthenticated);
             if (csrfToken) {
                 requestMock.session.csrfToken = csrfToken;
             }
