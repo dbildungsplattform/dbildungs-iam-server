@@ -67,11 +67,11 @@ export class SchulconnexPushApiClient {
             referrer: personId,
             name: { familienname: person.name.familienname, vorname: person.name.vorname },
         };
-        const personPath: string = this.personPath(personId)
+        const personPath: string = this.personPath(personId);
 
         const result: Result<void, DomainError> = await this.send(registry, 'PUT', personPath, payload);
 
-        return result
+        return result;
     }
 
     /** DELETE /v1/personen/{personId} */
@@ -80,11 +80,11 @@ export class SchulconnexPushApiClient {
         personId: PersonID,
     ): Promise<Result<void, DomainError>> {
         const payload: PushPersonDeletePayload = {};
-        const personPath: string = this.personPath(personId)
+        const personPath: string = this.personPath(personId);
 
         const result: Result<void, DomainError> = await this.send(registry, 'DELETE', personPath, payload);
 
-        return result
+        return result;
     }
 
     /** PUT /v1/personen/{personId}/personenkontexte/{personenkontextId} */
@@ -112,11 +112,11 @@ export class SchulconnexPushApiClient {
             personenstatus: kontext.personenstatus ?? null,
             organisation: { id: organisation.id, kennung: organisation.kennung, name: organisation.name },
         };
-        const personenkontextPath: string = this.personenkontextPath(personId, kontext.id)
+        const personenkontextPath: string = this.personenkontextPath(personId, kontext.id);
 
         const result: Result<void, DomainError> = await this.send(registry, 'PUT', personenkontextPath, payload);
 
-        return result
+        return result;
     }
 
     /** DELETE /v1/personen/{personId}/personenkontexte/{personenkontextId} */
@@ -150,7 +150,7 @@ export class SchulconnexPushApiClient {
 
         const result: Result<void, DomainError> = await this.sendWithRetry(method, url, data);
 
-        return result
+        return result;
     }
 
     private async sendWithRetry(
