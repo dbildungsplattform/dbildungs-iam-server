@@ -592,7 +592,7 @@ export class OrganisationRepository {
                     );
                     return specificationError;
                 }
-            } else if (organisationFound.typ === OrganisationsTyp.TRAEGER) {
+            } else {
                 specificationError = await organisationFound.checkSchultraegerSpecifications(this);
                 if (specificationError) {
                     this.logger.error(

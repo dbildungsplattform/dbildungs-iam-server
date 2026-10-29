@@ -26,6 +26,7 @@ import { type OrganisationID } from '../../../shared/types/index.js';
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
+import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
 import { Organisation, type Organisationsbeziehung, type Organisationsbeziehungen } from '../domain/organisation.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
@@ -1027,6 +1028,29 @@ describe('OrganisationRepository', () => {
                 );
 
                 expect(result).toBeInstanceOf(OrganisationSpecificationError);
+            });
+        });
+
+        describe('when Klasse has no administriertVon', () => {
+            it('should return KlassenNameAnSchuleEindeutigError', async () => {
+                const klasse: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    typ: OrganisationsTyp.KLASSE,
+                    name: 'name',
+                    administriertVon: undefined,
+                    version: 1,
+                });
+                const klasseEntity: OrganisationEntity = em.create(OrganisationEntity, mapOrgaAggregateToData(klasse));
+                await em.persist(klasseEntity).flush();
+                em.clear();
+
+                const result: DomainError | Organisation<true> = await sut.updateOrganisationName(
+                    klasseEntity.id,
+                    'newName',
+                    1,
+                    permissionsMock,
+                );
+
+                expect(result).toBeInstanceOf(KlassenNameAnSchuleEindeutigError);
             });
         });
 
@@ -2637,6 +2661,37 @@ describe('OrganisationRepository', () => {
                 expect(result.some((org: Organisation<true>) => org.id === organisations[0]?.id)).toBeTruthy();
                 expect(result.some((org: Organisation<true>) => org.id === organisations[2]?.id)).toBeTruthy();
             }
+        });
+    });
+
+    describe('findByNameOrKennungAndExcludeByOrganisationType without permitted IDs', () => {
+        it('should return organisations of all other types', async () => {
+            const schule: Organisation<true> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                    name: 'OrganisationFindbar',
+                }),
+            );
+
+            const result: Organisation<true>[] = await sut.findByNameOrKennungAndExcludeByOrganisationType(
+                OrganisationsTyp.KLASSE,
+                'OrganisationFindbar',
+                undefined,
+                25,
+            );
+
+            expect(result.map((o: Organisation<true>) => o.id)).toContain(schule.id);
+        });
+    });
+
+    describe('saveSeedData', () => {
+        it('should persist the organisation', async () => {
+            const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false);
+
+            const result: Organisation<true> = await sut.saveSeedData(organisation);
+
+            expect(result.id).toBeDefined();
+            await expect(sut.findById(result.id)).resolves.toBeDefined();
         });
     });
 
