@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 try {
@@ -14,12 +15,20 @@ try {
 } catch {}
 
 export default defineConfig({
-    oxc: {
-        decorator: {
-            legacy: true,
-            emitDecoratorMetadata: true,
-        },
-    },
+    // SWC instead of oxc: oxc's emitDecoratorMetadata output adds `typeof X === "undefined" ? Object : X` branches that are never covered
+    oxc: false,
+    plugins: [
+        swc.vite({
+            jsc: {
+                target: 'es2022',
+                transform: {
+                    legacyDecorator: true,
+                    decoratorMetadata: true,
+                    useDefineForClassFields: true,
+                },
+            },
+        }),
+    ],
     test: {
         globals: true,
         environment: 'node',
@@ -48,7 +57,7 @@ export default defineConfig({
             ],
             thresholds: {
                 statements: 100,
-                branches: -85, // Absolute count to avoid regressions
+                branches: -78, // Absolute count to avoid regressions
                 functions: 100,
                 lines: 100,
                 autoUpdate: true, // automatically update coverage to stay up to date
