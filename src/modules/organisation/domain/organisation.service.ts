@@ -708,12 +708,21 @@ export class OrganisationService {
         typ: OrganisationsbeziehungsTyp,
         permissions: IPersonPermissions,
     ): Promise<Result<Organisationsbeziehung<true>, DomainError>> {
-        const quellOrganisationResult: Result<
-            Organisation<true, false>,
-            EntityNotFoundError | MissingPermissionsError
-        > = await this.findOrganisationWithManagePermission(permissions, quellOrganisationId);
-        if (!quellOrganisationResult.ok) {
-            return quellOrganisationResult;
+        const quellOrganisation: Option<Organisation<true, true>> =
+            await this.organisationRepo.findByIdWithRelationships(quellOrganisationId);
+        if (!quellOrganisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', quellOrganisationId),
+            };
+        }
+
+        const quellPermissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            quellOrganisation,
+        );
+        if (!quellPermissionResult.ok) {
+            return quellPermissionResult;
         }
 
         const zielOrganisationResult: Result<
@@ -722,15 +731,6 @@ export class OrganisationService {
         > = await this.findOrganisationWithManagePermission(permissions, zielOrganisationId);
         if (!zielOrganisationResult.ok) {
             return zielOrganisationResult;
-        }
-
-        const quellOrganisation: Option<Organisation<true, true>> =
-            await this.organisationRepo.findByIdWithRelationships(quellOrganisationId);
-        if (!quellOrganisation) {
-            return {
-                ok: false,
-                error: new EntityNotFoundError('Organisation', quellOrganisationId),
-            };
         }
 
         const organisationsbeziehung: Organisationsbeziehung<false> = quellOrganisation.addOrganisationsbeziehung(
@@ -769,12 +769,21 @@ export class OrganisationService {
             };
         }
 
-        const quellOrganisationResult: Result<
-            Organisation<true, false>,
-            EntityNotFoundError | MissingPermissionsError
-        > = await this.findOrganisationWithManagePermission(permissions, organisationsbeziehung.quellOrganisationId);
-        if (!quellOrganisationResult.ok) {
-            return quellOrganisationResult;
+        const quellOrganisation: Option<Organisation<true, true>> =
+            await this.organisationRepo.findByIdWithRelationships(organisationsbeziehung.quellOrganisationId);
+        if (!quellOrganisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', organisationsbeziehung.quellOrganisationId),
+            };
+        }
+
+        const quellPermissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            quellOrganisation,
+        );
+        if (!quellPermissionResult.ok) {
+            return quellPermissionResult;
         }
 
         const zielOrganisationResult: Result<
@@ -783,16 +792,6 @@ export class OrganisationService {
         > = await this.findOrganisationWithManagePermission(permissions, organisationsbeziehung.zielOrganisationId);
         if (!zielOrganisationResult.ok) {
             return zielOrganisationResult;
-        }
-
-        const quellOrganisation: Option<Organisation<true, true>> =
-            await this.organisationRepo.findByIdWithRelationships(organisationsbeziehung.quellOrganisationId);
-
-        if (!quellOrganisation) {
-            return {
-                ok: false,
-                error: new EntityNotFoundError('Organisation', organisationsbeziehung.quellOrganisationId),
-            };
         }
 
         const removedOrganisationsbeziehung: Organisationsbeziehung<boolean> | undefined =
@@ -851,6 +850,24 @@ export class OrganisationService {
             };
         }
 
+        const permissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            organisation,
+        );
+        if (!permissionResult.ok) {
+            return permissionResult;
+        }
+
+        return {
+            ok: true,
+            value: organisation,
+        };
+    }
+
+    private async checkManagePermission(
+        permissions: IPersonPermissions,
+        organisation: Organisation<true, boolean>,
+    ): Promise<Result<void, MissingPermissionsError>> {
         const requiredSystemrecht: Option<RollenSystemRecht> = this.findSystemRechtForOrganisationsTyp(
             organisation.typ,
         );
@@ -862,7 +879,7 @@ export class OrganisationService {
         }
 
         const hasPermission: boolean = await permissions.hasSystemrechtAtOrganisation(
-            organisationId,
+            organisation.id,
             requiredSystemrecht,
         );
         if (!hasPermission) {
@@ -874,7 +891,7 @@ export class OrganisationService {
 
         return {
             ok: true,
-            value: organisation,
+            value: undefined,
         };
     }
 }

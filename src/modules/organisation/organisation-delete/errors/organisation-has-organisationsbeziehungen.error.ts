@@ -2,6 +2,10 @@ import { OrganisationSpecificationError } from '../../specification/error/organi
 
 export class OrganisationHasOrganisationsbeziehungenError extends OrganisationSpecificationError {
     public constructor(details?: unknown[] | Record<string, undefined>) {
-        super(`Organisation Entity could not be deleted because it has organisationsbeziehungen`, undefined, details);
+        super(
+            `Organisation Entity could not be deleted because it has organisational relationships`,
+            undefined,
+            details,
+        );
     }
 }

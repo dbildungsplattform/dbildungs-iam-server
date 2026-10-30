@@ -108,7 +108,7 @@ describe('OrganisationScope', () => {
             });
 
             it('should not filter organisations', async () => {
-                const scope: OrganisationScope = new OrganisationScope().excludeTyp(undefined);
+                const scope: OrganisationScope = new OrganisationScope().excludeTyp();
 
                 const [organisations]: Counted<OrganisationEntity> = await scope.executeQuery(em);
 
