@@ -48,7 +48,8 @@ import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child
 import { ZyklusInOrganisationen } from '../specification/zyklus-in-organisationen.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
-import { Organisation } from './organisation.js';
+import { Organisation, Organisationsbeziehung } from './organisation.js';
+import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 
 export type UpdateOrganisationData = Pick<
     Organisation<true>,
@@ -533,23 +534,31 @@ export class OrganisationService {
     }
 
     private async validateSchultraegerSpecifications(
-        organisationDo: Organisation<false>,
+        organisationDo: Organisation<false, false>,
     ): Promise<Result<void, DomainError>> {
         // Only validate for Schulträger
         if (organisationDo.typ !== OrganisationsTyp.TRAEGER) {
             return { ok: true, value: undefined };
         }
 
-        const traegerUnterRootChild: TraegerUnterRootChild<false> = new TraegerUnterRootChild(this.organisationRepo);
+        const traegerUnterRootChild: TraegerUnterRootChild<false, false> = new TraegerUnterRootChild(
+            this.organisationRepo,
+        );
         if (!(await traegerUnterRootChild.isSatisfiedBy(organisationDo))) {
-            return { ok: false, error: new TraegerUnterRootChildError(organisationDo.id ?? undefined) };
+            return {
+                ok: false,
+                error: new TraegerUnterRootChildError(organisationDo.id ?? undefined),
+            };
         }
 
-        const traegerNameUniqueInSubtree: TraegerNameUniqueInSubtree<false> = new TraegerNameUniqueInSubtree(
+        const traegerNameUniqueInSubtree: TraegerNameUniqueInSubtree<false, false> = new TraegerNameUniqueInSubtree(
             this.organisationRepo,
         );
         if (!(await traegerNameUniqueInSubtree.isSatisfiedBy(organisationDo))) {
-            return { ok: false, error: new SchultraegerNameEindeutigError(organisationDo.id ?? undefined) };
+            return {
+                ok: false,
+                error: new SchultraegerNameEindeutigError(organisationDo.id ?? undefined),
+            };
         }
 
         return { ok: true, value: undefined };
@@ -693,6 +702,127 @@ export class OrganisationService {
         }
     }
 
+    public async createOrganisationsbeziehung(
+        quellOrganisationId: OrganisationID,
+        zielOrganisationId: OrganisationID,
+        typ: OrganisationsbeziehungsTyp,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Organisationsbeziehung<true>, DomainError>> {
+        const quellOrganisation: Option<Organisation<true, true>> =
+            await this.organisationRepo.findByIdWithRelationships(quellOrganisationId);
+        if (!quellOrganisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', quellOrganisationId),
+            };
+        }
+
+        const quellPermissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            quellOrganisation,
+        );
+        if (!quellPermissionResult.ok) {
+            return quellPermissionResult;
+        }
+
+        const zielOrganisationResult: Result<
+            Organisation<true, false>,
+            EntityNotFoundError | MissingPermissionsError
+        > = await this.findOrganisationWithManagePermission(permissions, zielOrganisationId);
+        if (!zielOrganisationResult.ok) {
+            return zielOrganisationResult;
+        }
+
+        const organisationsbeziehung: Organisationsbeziehung<false> = quellOrganisation.addOrganisationsbeziehung(
+            zielOrganisationId,
+            typ,
+        );
+
+        try {
+            const persistedOrganisationsbeziehung: Organisationsbeziehung<true> =
+                await this.organisationRepo.createOrganisationsbeziehung(organisationsbeziehung);
+
+            return {
+                ok: true,
+                value: persistedOrganisationsbeziehung,
+            };
+        } catch (error: unknown) {
+            this.logger.logUnknownAsError('Could not create Organisationsbeziehung', error);
+
+            return {
+                ok: false,
+                error: new EntityCouldNotBeCreated('Organisationsbeziehung could not be created'),
+            };
+        }
+    }
+
+    public async deleteOrganisationsbeziehung(
+        organisationsbeziehungId: string,
+        permissions: IPersonPermissions,
+    ): Promise<Result<void, DomainError>> {
+        const organisationsbeziehung: Option<Organisationsbeziehung<true>> =
+            await this.organisationRepo.findOrganisationsbeziehungById(organisationsbeziehungId);
+        if (!organisationsbeziehung) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisationsbeziehung', organisationsbeziehungId),
+            };
+        }
+
+        const quellOrganisation: Option<Organisation<true, true>> =
+            await this.organisationRepo.findByIdWithRelationships(organisationsbeziehung.quellOrganisationId);
+        if (!quellOrganisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', organisationsbeziehung.quellOrganisationId),
+            };
+        }
+
+        const quellPermissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            quellOrganisation,
+        );
+        if (!quellPermissionResult.ok) {
+            return quellPermissionResult;
+        }
+
+        const zielOrganisationResult: Result<
+            Organisation<true, false>,
+            EntityNotFoundError | MissingPermissionsError
+        > = await this.findOrganisationWithManagePermission(permissions, organisationsbeziehung.zielOrganisationId);
+        if (!zielOrganisationResult.ok) {
+            return zielOrganisationResult;
+        }
+
+        const removedOrganisationsbeziehung: Organisationsbeziehung<boolean> | undefined =
+            quellOrganisation.removeOrganisationsbeziehung(organisationsbeziehungId);
+        if (!removedOrganisationsbeziehung) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisationsbeziehung', organisationsbeziehungId),
+            };
+        }
+
+        try {
+            await this.organisationRepo.deleteOrganisationsbeziehung(organisationsbeziehungId);
+
+            return {
+                ok: true,
+                value: undefined,
+            };
+        } catch (error: unknown) {
+            this.logger.logUnknownAsError('Could not delete Organisationsbeziehung', error);
+
+            return {
+                ok: false,
+                error: new EntityCouldNotBeUpdated(
+                    'Organisationsbeziehung could not be deleted',
+                    organisationsbeziehungId,
+                ),
+            };
+        }
+    }
+
     private findSystemRechtForOrganisationsTyp(typ?: OrganisationsTyp): Option<RollenSystemRecht> {
         switch (typ) {
             case OrganisationsTyp.TRAEGER:
@@ -706,5 +836,62 @@ export class OrganisationService {
             default:
                 return;
         }
+    }
+
+    private async findOrganisationWithManagePermission(
+        permissions: IPersonPermissions,
+        organisationId: OrganisationID,
+    ): Promise<Result<Organisation<true, false>, EntityNotFoundError | MissingPermissionsError>> {
+        const organisation: Option<Organisation<true, false>> = await this.organisationRepo.findById(organisationId);
+        if (!organisation) {
+            return {
+                ok: false,
+                error: new EntityNotFoundError('Organisation', organisationId),
+            };
+        }
+
+        const permissionResult: Result<void, MissingPermissionsError> = await this.checkManagePermission(
+            permissions,
+            organisation,
+        );
+        if (!permissionResult.ok) {
+            return permissionResult;
+        }
+
+        return {
+            ok: true,
+            value: organisation,
+        };
+    }
+
+    private async checkManagePermission(
+        permissions: IPersonPermissions,
+        organisation: Organisation<true, boolean>,
+    ): Promise<Result<void, MissingPermissionsError>> {
+        const requiredSystemrecht: Option<RollenSystemRecht> = this.findSystemRechtForOrganisationsTyp(
+            organisation.typ,
+        );
+        if (!requiredSystemrecht) {
+            return {
+                ok: false,
+                error: new MissingPermissionsError('Permission to manage organisation does not exist'),
+            };
+        }
+
+        const hasPermission: boolean = await permissions.hasSystemrechtAtOrganisation(
+            organisation.id,
+            requiredSystemrecht,
+        );
+        if (!hasPermission) {
+            return {
+                ok: false,
+                error: new MissingPermissionsError('Not permitted to manage organisation'),
+            };
+        }
+
+        return {
+            ok: true,
+            value: undefined,
+        };
     }
 }

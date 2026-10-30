@@ -71,21 +71,29 @@ export class DoFactory {
     public static createOrganisation<WasPersisted extends boolean>(
         this: void,
         withId: WasPersisted,
-        props?: Partial<Organisation<false>>,
-    ): Organisation<WasPersisted> {
-        const organisation: Partial<Organisation<WasPersisted>> = {
+        props: Partial<Organisation<WasPersisted, false>> = {},
+    ): Organisation<WasPersisted, false> {
+        const organisation: Partial<Organisation<WasPersisted, false>> = {
             id: withId ? faker.string.uuid() : undefined,
+            createdAt: withId ? faker.date.past() : undefined,
+            updatedAt: withId ? faker.date.recent() : undefined,
+            version: withId ? 1 : undefined,
+            itslearningEnabled: false,
             kennung: faker.lorem.word(),
             name: faker.company.name(),
             namensergaenzung: faker.company.name(),
             kuerzel: faker.lorem.word(),
             typ: OrganisationsTyp.SONSTIGE,
             traegerschaft: Traegerschaft.SONSTIGE,
-            emailDomain: faker.internet.email(),
-            createdAt: withId ? faker.date.past() : undefined,
-            updatedAt: withId ? faker.date.recent() : undefined,
+            emailDomain: faker.internet.domainName(),
+            organisationsbeziehungen: undefined,
         };
-        return Object.assign(Object.create(Organisation.prototype) as Organisation<boolean>, organisation, props);
+
+        return Object.assign(
+            Object.create(Organisation.prototype) as Organisation<WasPersisted, false>,
+            organisation,
+            props,
+        );
     }
 
     public static createUser<WasPersisted extends boolean>(
@@ -219,15 +227,16 @@ export class DoFactory {
     public static createOrganisationAggregate<WasPersisted extends boolean>(
         this: void,
         withId: WasPersisted,
-        params: Partial<Organisation<boolean>> = {},
-    ): Organisation<WasPersisted> {
-        const organisation: Organisation<WasPersisted> = Organisation.construct<boolean>(
+        params: Partial<Organisation<boolean, false>> = {},
+    ): Organisation<WasPersisted, false> {
+        const organisation: Organisation<WasPersisted, false> = Organisation.construct<boolean, false>(
             withId ? faker.string.uuid() : undefined,
             withId ? faker.date.past() : undefined,
             withId ? faker.date.recent() : undefined,
             params.version ?? 1,
             faker.lorem.word(),
             faker.helpers.enumValue(OrganisationsTyp),
+            undefined,
             faker.string.uuid(),
             faker.string.uuid(),
             faker.lorem.word(),

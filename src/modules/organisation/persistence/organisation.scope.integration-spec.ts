@@ -102,6 +102,19 @@ describe('OrganisationScope', () => {
                 expect(organisations).toHaveLength(6);
             });
         });
+        describe('when no types are given', () => {
+            beforeEach(async () => {
+                await organisationRepo.save(DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }));
+            });
+
+            it('should not filter organisations', async () => {
+                const scope: OrganisationScope = new OrganisationScope().excludeTyp();
+
+                const [organisations]: Counted<OrganisationEntity> = await scope.executeQuery(em);
+
+                expect(organisations).toHaveLength(1);
+            });
+        });
     });
 
     describe('findBySearchString', () => {
@@ -130,6 +143,20 @@ describe('OrganisationScope', () => {
     });
 
     describe('filterByIds', () => {
+        describe('when no IDs are given', () => {
+            beforeEach(async () => {
+                await organisationRepo.save(DoFactory.createOrganisation(false));
+            });
+
+            it('should not filter organisations', async () => {
+                const scope: OrganisationScope = new OrganisationScope().filterByIds([]);
+
+                const [organisations]: Counted<OrganisationEntity> = await scope.executeQuery(em);
+
+                expect(organisations).toHaveLength(1);
+            });
+        });
+
         describe('when filtering organizations by specific IDs', () => {
             let organisations: Organisation<true>[] = [];
 
