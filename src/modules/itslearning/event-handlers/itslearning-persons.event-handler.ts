@@ -33,6 +33,9 @@ import {
     DBiamPersonenkontextRepo,
     type ErweiterterServiceProviderForPK,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
+import { ItsLearningSyncEventHandler } from './itslearning-sync.event-handler.js';
 
 @Injectable()
 export class ItsLearningPersonsEventHandler {
@@ -46,6 +49,7 @@ export class ItsLearningPersonsEventHandler {
         private readonly itslearningPersonAdapter: ItslearningPersonAdapter,
         private readonly itslearningMembershipAdapter: ItslearningMembershipAdapter,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
+        private readonly syncEventHandler: ItsLearningSyncEventHandler,
         configService: ConfigService<ServerConfig>,
         // @ts-expect-error used by EnsureRequestContext decorator
         // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
@@ -183,6 +187,19 @@ export class ItsLearningPersonsEventHandler {
                 return this.logger.info(`[EventID: ${event.eventID}] Not enabled, ignoring event.`);
             }
 
+            const hasExtendableRolle: boolean = event.currentKontexte.some((pk: PersonenkontextUpdatedData) =>
+                [RollenArt.LEHR, RollenArt.LERN, RollenArt.LEIT].includes(pk.rolle),
+            );
+
+            if (hasExtendableRolle && (await this.hasItslearningErweiterung(event.person.id))) {
+                // The sync handler is the single source of truth for memberships. Updating them here from
+                // currentKontexte alone would remove the memberships granted by the Rollenerweiterung.
+                await this.syncEventHandler.personExternalSystemSyncEventHandler(
+                    new PersonExternalSystemsSyncEvent(event.person.id),
+                );
+                return;
+            }
+
             // Collect all itslearning-orgas
             const schoolsWithItslearning: Set<OrganisationID> = new Set(
                 event.currentKontexte
@@ -202,11 +219,6 @@ export class ItsLearningPersonsEventHandler {
 
                 // Synchronize memberships
                 await this.updateMemberships(event.person.id, currentKontexte, `${event.eventID}-UPDATE-MEMBERSHIPS`);
-            } else if (await this.hasItslearningErweiterung(event.person.id)) {
-                // Access through a school-specific Rollenerweiterung is still valid, do not delete
-                this.logger.info(
-                    `[EventID: ${event.eventID}] Person with ID ${event.person.id} still has itslearning through a Rollenerweiterung, not deleting.`,
-                );
             } else {
                 // Delete person
                 await this.deletePerson(event.person.id, `${event.eventID}-DELETE-PERSON`);
