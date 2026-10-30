@@ -104,13 +104,9 @@ describe('EmailFactory', () => {
                     },
                 );
 
-                organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, {
-                        emailDomain: undefined,
-                    }),
-                );
+                organisationRepositoryMock.findById.mockResolvedValueOnce(DoFactory.createOrganisation<true>(true, {}));
 
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce('@schule-sh.de');
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce('@schule-sh.de');
 
                 const creationResult: Result<EmailAddress<false>> = await sut.createNew(person.id, faker.string.uuid());
 
@@ -155,15 +151,15 @@ describe('EmailFactory', () => {
             it('should return EmailDomainNotFoundError', async () => {
                 personRepositoryMock.findById.mockResolvedValueOnce(getPerson());
                 organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 );
                 organisationRepositoryMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 ]);
                 organisationRepositoryMock.findParentOrgasForIdSortedByDepthAsc.mockResolvedValueOnce([
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 ]);
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(undefined);
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(undefined);
 
                 const creationResult: Result<EmailAddress<false>> = await sut.createNew(
                     faker.string.uuid(),
@@ -179,9 +175,9 @@ describe('EmailFactory', () => {
             it('should return error', async () => {
                 personRepositoryMock.findById.mockResolvedValueOnce(getPerson());
                 organisationRepositoryMock.findById.mockResolvedValueOnce(
-                    DoFactory.createOrganisation<true>(true, { emailDomain: undefined }),
+                    DoFactory.createOrganisation<true>(true, { uemLdapOu: undefined }),
                 );
-                organisationRepositoryMock.findEmailDomainForOrganisation.mockResolvedValueOnce(faker.internet.email());
+                organisationRepositoryMock.findUemLdapOuForOrganisation.mockResolvedValueOnce(faker.internet.email());
 
                 vi.spyOn(EmailGenerator.prototype, 'generateAvailableAddress').mockImplementationOnce(
                     async (vorname: string, familienname: string) => {

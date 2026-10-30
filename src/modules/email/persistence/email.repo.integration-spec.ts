@@ -125,12 +125,14 @@ describe('EmailRepo', () => {
 
     async function createOrganisation(): Promise<Organisation<true>> {
         const parent: Organisation<false> = DoFactory.createOrganisation(false, {
-            emailDomain: 'fake@schule-sh.de',
+            emailAdress: 'fake@schule-sh.de',
+            uemLdapOu: 'oeffentlicheSchulen',
         });
         const parentPersisted: Organisation<true> = await organisationRepository.save(parent);
         const organisation: Organisation<false> = DoFactory.createOrganisation(false, {
             administriertVon: parentPersisted.id,
-            emailDomain: 'fake@fake-schule.de',
+            emailAdress: 'fake@fake-schule.de',
+            uemLdapOu: 'oeffentlicheSchulen',
         });
         return organisationRepository.save(organisation);
     }
@@ -142,7 +144,7 @@ describe('EmailRepo', () => {
     ): Promise<EmailAddress<true>> {
         const email: Result<EmailAddress<false>> = await emailFactory.createNew(personId, organisationId);
         if (!email.ok) {
-            throw new Error();
+            throw email.error;
         }
 
         switch (status) {

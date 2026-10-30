@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
 
 export class LdapServerConfig {
     @IsString()
@@ -12,14 +12,6 @@ export class LdapServerConfig {
     @IsString()
     @IsNotEmpty()
     public readonly ADMIN_PASSWORD!: string;
-
-    @IsString()
-    @IsOptional()
-    public readonly OEFFENTLICHE_SCHULEN_DOMAIN?: string;
-
-    @IsString()
-    @IsOptional()
-    public readonly ERSATZSCHULEN_DOMAIN?: string;
 
     @IsString()
     @IsNotEmpty()
