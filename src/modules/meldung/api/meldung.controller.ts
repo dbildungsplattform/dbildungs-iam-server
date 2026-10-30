@@ -9,16 +9,16 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Permissions } from '../../authentication/api/permissions.decorator.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { MeldungResponse } from './meldung.response.js';
-import { MeldungRepo } from '../persistence/meldung.repo.js';
-import { Meldung } from '../domain/meldung.js';
-import { CreateOrUpdateMeldungBodyParams } from './create-or-update-meldung.body.params.js';
-import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
-import { MeldungExceptionFilter } from './meldung.exception-filter.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { Permissions } from '../../authentication/api/permissions.decorator.js';
+import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { Meldung } from '../domain/meldung.js';
+import { MeldungRepo } from '../persistence/meldung.repo.js';
+import { CreateOrUpdateMeldungBodyParams } from './create-or-update-meldung.body.params.js';
+import { MeldungExceptionFilter } from './meldung.exception-filter.js';
+import { MeldungResponse } from './meldung.response.js';
 
 @UseFilters(new MeldungExceptionFilter())
 @ApiTags('meldung')
