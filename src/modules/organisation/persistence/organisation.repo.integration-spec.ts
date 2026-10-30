@@ -26,14 +26,23 @@ import { type OrganisationID } from '../../../shared/types/index.js';
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
+import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation } from '../domain/organisation.js';
+import { Organisation, type Organisationsbeziehung, type Organisationsbeziehungen } from '../domain/organisation.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
-import { mapOrgaAggregateToData, mapOrgaEntityToAggregate, OrganisationRepository } from './organisation.repository.js';
+import {
+    mapOrgaAggregateToData,
+    mapOrgaEntityToAggregate,
+    mapOrgaEntityToAggregateWithRelationships,
+    mapOrganisationsbeziehungEntityToAggregate,
+    OrganisationRepository,
+} from './organisation.repository.js';
 import { OrganisationScope } from './organisation.scope.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
+import { OrganisationsbeziehungEntity } from './organisationsbeziehung.entity.js';
 
 describe('OrganisationRepository', () => {
     let module: TestingModule;
@@ -81,6 +90,18 @@ describe('OrganisationRepository', () => {
         expect(sut).toBeDefined();
     });
 
+    async function createPersistedOrganisation(typ: OrganisationsTyp): Promise<Organisation<true, false>> {
+        const organisation: Organisation<false, false> | DomainError = Organisation.createNew(
+            faker.company.name(),
+            typ,
+        );
+        if (organisation instanceof DomainError) {
+            throw organisation;
+        }
+
+        return sut.save(organisation);
+    }
+
     describe('findById', () => {
         it('should return one organisation by id', async () => {
             const orga: Organisation<false> | DomainError = Organisation.createNew(
@@ -105,14 +126,15 @@ describe('OrganisationRepository', () => {
     });
 
     describe('mapAggregateToData', () => {
-        it('should return Person RequiredEntityData', () => {
-            const organisation: Organisation<true> = Organisation.construct(
+        it('should return Organisation RequiredEntityData', () => {
+            const organisation: Organisation<true, false> = Organisation.construct<true, false>(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.lorem.word(),
@@ -130,6 +152,9 @@ describe('OrganisationRepository', () => {
                 'kuerzel',
                 'typ',
                 'traegerschaft',
+                'emailDomain',
+                'emailAddress',
+                'itslearningEnabled',
             ];
 
             const result: RequiredEntityData<OrganisationEntity> = mapOrgaAggregateToData(organisation);
@@ -141,22 +166,107 @@ describe('OrganisationRepository', () => {
     });
 
     describe('mapEntityToAggregate', () => {
-        it('should return New Aggregate', () => {
+        it('should return an Organisation without loaded relationships', () => {
             const organisationEntity: OrganisationEntity = em.create(
                 OrganisationEntity,
                 mapOrgaAggregateToData(DoFactory.createOrganisation(true)),
             );
-            const organisation: Organisation<true> = mapOrgaEntityToAggregate(organisationEntity);
+
+            const organisation: Organisation<true, false> = mapOrgaEntityToAggregate(organisationEntity);
 
             expect(organisation).toBeInstanceOf(Organisation);
+            expect(organisation.organisationsbeziehungen).toBeUndefined();
+        });
+    });
+
+    describe('mapOrganisationsbeziehungEntityToAggregate', () => {
+        it('should map the entity to a persisted Organisationsbeziehung', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const entity: OrganisationsbeziehungEntity = em.create(OrganisationsbeziehungEntity, {
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            await em.persist(entity).flush();
+
+            const result: Organisationsbeziehung<true> = mapOrganisationsbeziehungEntityToAggregate(entity);
+
+            expect(result).toEqual({
+                id: entity.id,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+        });
+    });
+
+    describe('mapOrgaEntityToAggregateWithRelationships', () => {
+        it('should map an OrganisationEntity with relationships to an Organisation aggregate', () => {
+            const organisationEntity: OrganisationEntity = em.create(
+                OrganisationEntity,
+                mapOrgaAggregateToData(DoFactory.createOrganisation(true)),
+            );
+
+            const organisationsbeziehung: Organisationsbeziehung<true> = {
+                id: faker.string.uuid(),
+                createdAt: faker.date.past(),
+                updatedAt: faker.date.recent(),
+                quellOrganisationId: organisationEntity.id,
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            };
+
+            const organisationsbeziehungen: Organisationsbeziehungen = [organisationsbeziehung];
+
+            const result: Organisation<true, true> = mapOrgaEntityToAggregateWithRelationships(
+                organisationEntity,
+                organisationsbeziehungen,
+            );
+
+            expect(result).toBeInstanceOf(Organisation);
+            expect(result.id).toBe(organisationEntity.id);
+            expect(result.createdAt).toBe(organisationEntity.createdAt);
+            expect(result.updatedAt).toBe(organisationEntity.updatedAt);
+            expect(result.version).toBe(organisationEntity.version);
+            expect(result.name).toBe(organisationEntity.name);
+            expect(result.typ).toBe(organisationEntity.typ);
+            expect(result.organisationsbeziehungen).toEqual(organisationsbeziehungen);
+        });
+
+        it('should map an OrganisationEntity with an empty relationship collection', () => {
+            const organisationEntity: OrganisationEntity = em.create(
+                OrganisationEntity,
+                mapOrgaAggregateToData(DoFactory.createOrganisation(true)),
+            );
+
+            const organisationsbeziehungen: Organisationsbeziehungen = [];
+
+            const result: Organisation<true, true> = mapOrgaEntityToAggregateWithRelationships(
+                organisationEntity,
+                organisationsbeziehungen,
+            );
+
+            expect(result).toBeInstanceOf(Organisation);
+            expect(result.organisationsbeziehungen).toEqual([]);
         });
     });
 
     describe('exists', () => {
         it('should return true if the orga exists', async () => {
-            const orga: Organisation<false> | DomainError = Organisation.createNew(
+            const orga: Organisation<false, false> | DomainError = Organisation.createNew(
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
+                undefined,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
@@ -180,9 +290,10 @@ describe('OrganisationRepository', () => {
 
     describe('findById', () => {
         it('should return the organisation if it exists', async () => {
-            const orga: Organisation<false> | DomainError = Organisation.createNew(
+            const orga: Organisation<false, false> | DomainError = Organisation.createNew(
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
+                undefined,
                 sut.ROOT_ORGANISATION_ID,
                 sut.ROOT_ORGANISATION_ID,
                 faker.string.numeric(6),
@@ -205,9 +316,9 @@ describe('OrganisationRepository', () => {
     });
 
     describe('findBy', () => {
-        let organisation1: Organisation<false>;
-        let organisation2: Organisation<false>;
-        let organisation3: Organisation<false>;
+        let organisation1: Organisation<false, false>;
+        let organisation2: Organisation<false, false>;
+        let organisation3: Organisation<false, false>;
         let organisationEntity1: OrganisationEntity;
         let organisationEntity2: OrganisationEntity;
         let organisationEntity3: OrganisationEntity;
@@ -220,6 +331,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'Name1',
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '05674',
@@ -234,6 +346,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'Name2',
                 OrganisationsTyp.ROOT,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '44123',
@@ -248,6 +361,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'TestSchule',
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 '75693',
@@ -354,7 +468,7 @@ describe('OrganisationRepository', () => {
 
     describe('findChildOrgasByIds', () => {
         async function createOrgaTree(): Promise<[root: string, traeger: string, schule: string]> {
-            const root: Organisation<true> = Organisation.construct(
+            const root: Organisation<true, false> = Organisation.construct(
                 sut.ROOT_ORGANISATION_ID,
                 faker.date.past(),
                 faker.date.recent(),
@@ -363,19 +477,21 @@ describe('OrganisationRepository', () => {
                 OrganisationsTyp.ROOT,
                 undefined,
                 undefined,
+                undefined,
                 faker.string.numeric(6),
                 faker.lorem.word(),
                 faker.string.uuid(),
                 undefined,
             );
 
-            const traeger: Organisation<true> = Organisation.construct(
+            const traeger: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
@@ -384,13 +500,14 @@ describe('OrganisationRepository', () => {
                 undefined,
             );
 
-            const schule: Organisation<true> = Organisation.construct(
+            const schule: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
@@ -453,9 +570,9 @@ describe('OrganisationRepository', () => {
 
     describe('findEmailDomainForOrganisation', () => {
         type CreateOrgaTreeResult = {
-            root: Organisation<true>;
-            traeger: Organisation<true>;
-            schule: Organisation<true>;
+            root: Organisation<true, false>;
+            traeger: Organisation<true, false>;
+            schule: Organisation<true, false>;
         };
         async function createOrgaTreeWithDomains(
             rootDomain?: string,
@@ -469,6 +586,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 undefined,
                 undefined,
                 faker.string.numeric(6),
@@ -485,6 +603,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
@@ -501,6 +620,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
@@ -588,12 +708,12 @@ describe('OrganisationRepository', () => {
 
     describe('findParentOrgas-Methods', () => {
         type CreateOrgaTreeResult = {
-            root: Organisation<true>;
-            traeger: Organisation<true>;
-            schule: Organisation<true>;
+            root: Organisation<true, false>;
+            traeger: Organisation<true, false>;
+            schule: Organisation<true, false>;
         };
         async function createOrgaTree(): Promise<CreateOrgaTreeResult> {
-            const root: Organisation<true> = Organisation.construct(
+            const root: Organisation<true, false> = Organisation.construct(
                 sut.ROOT_ORGANISATION_ID,
                 faker.date.past(),
                 faker.date.recent(),
@@ -602,18 +722,20 @@ describe('OrganisationRepository', () => {
                 OrganisationsTyp.ROOT,
                 undefined,
                 undefined,
+                undefined,
                 faker.string.numeric(6),
                 faker.lorem.word(),
                 faker.string.uuid(),
             );
 
-            const traeger: Organisation<true> = Organisation.construct(
+            const traeger: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
@@ -621,13 +743,14 @@ describe('OrganisationRepository', () => {
                 faker.string.uuid(),
             );
 
-            const schule: Organisation<true> = Organisation.construct(
+            const schule: Organisation<true, false> = Organisation.construct(
                 faker.string.uuid(),
                 faker.date.past(),
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
                 OrganisationsTyp.ROOT,
+                undefined,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
@@ -733,9 +856,9 @@ describe('OrganisationRepository', () => {
     });
 
     describe('findRootDirectChildren', () => {
-        let root: Organisation<false>;
-        let oeffentlich: Organisation<false>;
-        let ersatz: Organisation<false>;
+        let root: Organisation<false, false>;
+        let oeffentlich: Organisation<false, false>;
+        let ersatz: Organisation<false, false>;
         let organisationEntity1: OrganisationEntity;
         let organisationEntity2: OrganisationEntity;
         let organisationEntity3: OrganisationEntity;
@@ -748,6 +871,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.numeric(),
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 'Root',
@@ -762,6 +886,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.numeric(),
                 OrganisationsTyp.ROOT,
+                undefined,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 'Öffentliche Schulen Land Schleswig-Holstein',
@@ -776,6 +901,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 faker.string.numeric(),
                 OrganisationsTyp.SCHULE,
+                undefined,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 'Ersatzschulen Land Schleswig-Holstein',
@@ -818,7 +944,7 @@ describe('OrganisationRepository', () => {
 
         describe('when parent organisation does not exist in database', () => {
             it('should return EntityNotFoundError', async () => {
-                const parentOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+                const parentOrganisation: Organisation<false, false> = DoFactory.createOrganisation(false);
                 parentOrganisation.id = faker.string.uuid();
                 const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
                     typ: OrganisationsTyp.KLASSE,
@@ -838,7 +964,7 @@ describe('OrganisationRepository', () => {
 
         describe('when parent organisation does exist in database but its name is undefined', () => {
             it('should return EntityCouldNotBeUpdated error', async () => {
-                const parentOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+                const parentOrganisation: Organisation<false, false> = DoFactory.createOrganisation(false);
                 parentOrganisation.name = '';
                 const savedParentOrganisation: Organisation<true> = await sut.save(parentOrganisation);
                 const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
@@ -864,7 +990,7 @@ describe('OrganisationRepository', () => {
 
         describe('when organisation is not a Klasse', () => {
             it('should return EntityCouldNotBeUpdated', async () => {
-                const parentOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+                const parentOrganisation: Organisation<false, false> = DoFactory.createOrganisation(false);
                 const savedParentOrganisation: Organisation<true> = await sut.save(parentOrganisation);
                 const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
                     typ: OrganisationsTyp.SONSTIGE,
@@ -886,7 +1012,7 @@ describe('OrganisationRepository', () => {
 
         describe('when name of organisation is empty', () => {
             it('should return OrganisationSpecificationError', async () => {
-                const parentOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
+                const parentOrganisation: Organisation<false, false> = DoFactory.createOrganisation(false);
                 const savedParentOrganisation: Organisation<true> = await sut.save(parentOrganisation);
                 const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
                     typ: OrganisationsTyp.KLASSE,
@@ -902,6 +1028,29 @@ describe('OrganisationRepository', () => {
                 );
 
                 expect(result).toBeInstanceOf(OrganisationSpecificationError);
+            });
+        });
+
+        describe('when Klasse has no administriertVon', () => {
+            it('should return KlassenNameAnSchuleEindeutigError', async () => {
+                const klasse: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    typ: OrganisationsTyp.KLASSE,
+                    name: 'name',
+                    administriertVon: undefined,
+                    version: 1,
+                });
+                const klasseEntity: OrganisationEntity = em.create(OrganisationEntity, mapOrgaAggregateToData(klasse));
+                await em.persist(klasseEntity).flush();
+                em.clear();
+
+                const result: DomainError | Organisation<true> = await sut.updateOrganisationName(
+                    klasseEntity.id,
+                    'newName',
+                    1,
+                    permissionsMock,
+                );
+
+                expect(result).toBeInstanceOf(KlassenNameAnSchuleEindeutigError);
             });
         });
 
@@ -1033,26 +1182,46 @@ describe('OrganisationRepository', () => {
             let savedOeffentlich: OrganisationEntity;
 
             beforeEach(async () => {
-                const oeffentlich: Organisation<false> | DomainError = Organisation.createNew(
-                    'Öffentliche',
-                    OrganisationsTyp.SONSTIGE,
+                const root: Organisation<true, false> = Organisation.construct<true, false>(
+                    sut.ROOT_ORGANISATION_ID,
+                    faker.date.past(),
+                    faker.date.recent(),
+                    1,
+                    'Root',
+                    OrganisationsTyp.ROOT,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                );
+
+                const oeffentlich: Organisation<false, false> | DomainError = Organisation.createNew(
+                    'Öffentliche Schulen Land Schleswig-Holstein',
+                    OrganisationsTyp.ROOT,
                     sut.ROOT_ORGANISATION_ID,
                     sut.ROOT_ORGANISATION_ID,
-                    '',
+                    undefined,
+                    undefined,
                 );
 
                 if (oeffentlich instanceof DomainError) {
                     throw oeffentlich;
                 }
 
+                const rootEntity: OrganisationEntity = em.create(OrganisationEntity, mapOrgaAggregateToData(root));
+
                 savedOeffentlich = em.create(OrganisationEntity, mapOrgaAggregateToData(oeffentlich));
 
-                await em.persist(savedOeffentlich).flush();
+                await em.persist([rootEntity, savedOeffentlich]).flush();
+                em.clear();
             });
 
             describe('when Schulträger is not a direct child of oeffentlich or ersatz', () => {
                 it('should return EntityCouldNotBeUpdated error', async () => {
-                    const invalidParent: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    const invalidParent: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                         typ: OrganisationsTyp.SCHULE,
                     });
                     const savedParent: Organisation<true> = await sut.save(invalidParent);
@@ -1078,15 +1247,18 @@ describe('OrganisationRepository', () => {
             describe('when Schulträger name is not unique', () => {
                 it('should return SchultraegerNameEindeutigError', async () => {
                     const name: string = 'Existing Traeger';
-                    const existingSchultraeger: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
-                        typ: OrganisationsTyp.TRAEGER,
-                        administriertVon: savedOeffentlich.id,
-                        zugehoerigZu: savedOeffentlich.id,
-                        name,
-                    });
+                    const existingSchultraeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(
+                        false,
+                        {
+                            typ: OrganisationsTyp.TRAEGER,
+                            administriertVon: savedOeffentlich.id,
+                            zugehoerigZu: savedOeffentlich.id,
+                            name,
+                        },
+                    );
                     await sut.save(existingSchultraeger);
 
-                    const schultraeger: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    const schultraeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                         typ: OrganisationsTyp.TRAEGER,
                         administriertVon: savedOeffentlich.id,
                         zugehoerigZu: savedOeffentlich.id,
@@ -1106,7 +1278,7 @@ describe('OrganisationRepository', () => {
 
             describe('when all validations are passed', () => {
                 it('should update Schulträger under Öffentlich name and return void', async () => {
-                    const schultraeger: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    const schultraeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                         typ: OrganisationsTyp.TRAEGER,
                         administriertVon: savedOeffentlich.id,
                         zugehoerigZu: savedOeffentlich.id,
@@ -1128,7 +1300,7 @@ describe('OrganisationRepository', () => {
 
             describe('when name did not change', () => {
                 it('should not check specifications and return void', async () => {
-                    const schultraeger: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                    const schultraeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                         typ: OrganisationsTyp.TRAEGER,
                         administriertVon: savedOeffentlich.id,
                         name: 'SameName',
@@ -1242,7 +1414,7 @@ describe('OrganisationRepository', () => {
     });
 
     describe('findByNameOrKennung', () => {
-        let organisations: Organisation<false>[];
+        let organisations: Organisation<false, false>[];
 
         beforeEach(async () => {
             organisations = [
@@ -1286,9 +1458,9 @@ describe('OrganisationRepository', () => {
     });
 
     describe('Save', () => {
-        let root: Organisation<false>;
-        let oeffentlich: Organisation<false>;
-        let ersatz: Organisation<false>;
+        let root: Organisation<false, false>;
+        let oeffentlich: Organisation<false, false>;
+        let ersatz: Organisation<false, false>;
         let organisationEntity1: OrganisationEntity;
         let organisationEntity2: OrganisationEntity;
         let organisationEntity3: OrganisationEntity;
@@ -1301,6 +1473,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'Root',
                 OrganisationsTyp.SCHULE,
+                undefined,
                 faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
@@ -1316,6 +1489,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'Öffentliche Schulen Land Schleswig-Holstein',
                 OrganisationsTyp.ROOT,
+                undefined,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 faker.string.numeric(),
@@ -1331,6 +1505,7 @@ describe('OrganisationRepository', () => {
                 faker.number.int(),
                 'Ersatzschulen Land Schleswig-Holstein',
                 OrganisationsTyp.SCHULE,
+                undefined,
                 ROOT_ORGANISATION_ID,
                 faker.string.uuid(),
                 faker.string.numeric(),
@@ -1348,7 +1523,7 @@ describe('OrganisationRepository', () => {
 
         describe('When create is called', () => {
             it('should set oeffentlich as OrganisationsBaumZuordnung successfully', async () => {
-                const schule: Organisation<false> = DoFactory.createOrganisationAggregate(false, {
+                const schule: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                     administriertVon: organisationEntity2.id,
                     typ: OrganisationsTyp.SCHULE,
                 });
@@ -1372,7 +1547,7 @@ describe('OrganisationRepository', () => {
             });
 
             it('should set ersatz as OrganisationsBaumZuordnung successfully', async () => {
-                const traeger: Organisation<true> = await sut.save(
+                const traeger: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisationAggregate(false, {
                         administriertVon: organisationEntity3.id,
                         typ: OrganisationsTyp.TRAEGER,
@@ -1402,7 +1577,7 @@ describe('OrganisationRepository', () => {
             });
 
             it('should set oeffentlich as OrganisationsBaumZuordnung per default successfully', async () => {
-                const result: Organisation<true> = await sut.save(
+                const result: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisationAggregate(false, {
                         administriertVon: undefined,
                         typ: OrganisationsTyp.SCHULE,
@@ -1429,7 +1604,7 @@ describe('OrganisationRepository', () => {
 
         describe('When update is called for a Schule', () => {
             it('should publish SchuleUpdatedEvent successfully', async () => {
-                const savedSchule: Organisation<true> = await sut.save(
+                const savedSchule: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisationAggregate(false, {
                         administriertVon: organisationEntity2.id,
                         zugehoerigZu: organisationEntity2.id,
@@ -2029,7 +2204,7 @@ describe('OrganisationRepository', () => {
 
         it('should return all authorized organisations with correct type and parent under administriertVon with Recursion', async () => {
             const orgas: Organisation<true>[] = [];
-            const orgaLand: Organisation<true> = await sut.save(
+            const orgaLand: Organisation<true, false> = await sut.save(
                 DoFactory.createOrganisation(false, {
                     administriertVon: sut.ROOT_ORGANISATION_ID,
                     typ: OrganisationsTyp.LAND,
@@ -2038,7 +2213,7 @@ describe('OrganisationRepository', () => {
             orgas.push(orgaLand);
 
             for (let i: number = 0; i < 3; i++) {
-                const orga: Organisation<true> = await sut.save(
+                const orga: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisation(false, {
                         administriertVon: orgaLand.id,
                         typ: OrganisationsTyp.SCHULE,
@@ -2047,7 +2222,7 @@ describe('OrganisationRepository', () => {
                 orgas.push(orga);
             }
 
-            const orgaTraeger: Organisation<true> = await sut.save(
+            const orgaTraeger: Organisation<true, false> = await sut.save(
                 DoFactory.createOrganisation(false, {
                     administriertVon: orgaLand.id,
                     typ: OrganisationsTyp.TRAEGER,
@@ -2056,7 +2231,7 @@ describe('OrganisationRepository', () => {
             orgas.push(orgaTraeger);
 
             for (let i: number = 0; i < 3; i++) {
-                const orga: Organisation<true> = await sut.save(
+                const orga: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisation(false, {
                         administriertVon: orgaTraeger.id,
                         typ: OrganisationsTyp.SCHULE,
@@ -2066,7 +2241,7 @@ describe('OrganisationRepository', () => {
             }
 
             // Land and Schulen that should not be fetched
-            const orgaLand2: Organisation<true> = await sut.save(
+            const orgaLand2: Organisation<true, false> = await sut.save(
                 DoFactory.createOrganisation(false, {
                     administriertVon: sut.ROOT_ORGANISATION_ID,
                     typ: OrganisationsTyp.LAND,
@@ -2074,7 +2249,7 @@ describe('OrganisationRepository', () => {
             );
             orgas.push(orgaLand2);
             for (let i: number = 0; i < 3; i++) {
-                const orga: Organisation<true> = await sut.save(
+                const orga: Organisation<true, false> = await sut.save(
                     DoFactory.createOrganisation(false, {
                         administriertVon: orgaLand2.id,
                         typ: OrganisationsTyp.SCHULE,
@@ -2489,6 +2664,37 @@ describe('OrganisationRepository', () => {
         });
     });
 
+    describe('findByNameOrKennungAndExcludeByOrganisationType without permitted IDs', () => {
+        it('should return organisations of all other types', async () => {
+            const schule: Organisation<true> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                    name: 'OrganisationFindbar',
+                }),
+            );
+
+            const result: Organisation<true>[] = await sut.findByNameOrKennungAndExcludeByOrganisationType(
+                OrganisationsTyp.KLASSE,
+                'OrganisationFindbar',
+                undefined,
+                25,
+            );
+
+            expect(result.map((o: Organisation<true>) => o.id)).toContain(schule.id);
+        });
+    });
+
+    describe('saveSeedData', () => {
+        it('should persist the organisation', async () => {
+            const organisation: Organisation<false> = DoFactory.createOrganisationAggregate(false);
+
+            const result: Organisation<true> = await sut.saveSeedData(organisation);
+
+            expect(result.id).toBeDefined();
+            await expect(sut.findById(result.id)).resolves.toBeDefined();
+        });
+    });
+
     describe('delete', () => {
         describe('when organisation can be found', () => {
             it('should succeed', async () => {
@@ -2611,6 +2817,350 @@ describe('OrganisationRepository', () => {
 
                 expect(result).not.toContain(klasse.id);
             });
+        });
+    });
+
+    describe('createOrganisationsbeziehung', () => {
+        it('should persist and return an Organisationsbeziehung', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const organisationsbeziehung: Organisationsbeziehung<false> = {
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            };
+
+            const result: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(organisationsbeziehung);
+
+            expect(result.id).toBeDefined();
+            expect(result.createdAt).toBeInstanceOf(Date);
+            expect(result.updatedAt).toBeInstanceOf(Date);
+            expect(result.quellOrganisationId).toBe(quellOrganisation.id);
+            expect(result.zielOrganisationId).toBe(zielOrganisation.id);
+            expect(result.typ).toBe(OrganisationsbeziehungsTyp.SCHULTRAEGER);
+
+            const persistedEntity: OrganisationsbeziehungEntity | null = await em.findOne(
+                OrganisationsbeziehungEntity,
+                result.id,
+            );
+
+            expect(persistedEntity).not.toBeNull();
+            expect(persistedEntity?.quellOrganisationId).toBe(quellOrganisation.id);
+            expect(persistedEntity?.zielOrganisationId).toBe(zielOrganisation.id);
+            expect(persistedEntity?.typ).toBe(OrganisationsbeziehungsTyp.SCHULTRAEGER);
+        });
+
+        it('should create a relationship of type SCHULAUFSICHT', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const organisationsbeziehung: Organisationsbeziehung<false> = {
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            };
+
+            const result: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(organisationsbeziehung);
+
+            expect(result.typ).toBe(OrganisationsbeziehungsTyp.SCHULAUFSICHT);
+        });
+
+        it('should reject a relationship if the source organisation does not exist', async () => {
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const organisationsbeziehung: Organisationsbeziehung<false> = {
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: faker.string.uuid(),
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            };
+
+            await expect(sut.createOrganisationsbeziehung(organisationsbeziehung)).rejects.toThrow();
+        });
+
+        it('should reject a relationship if the target organisation does not exist', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const organisationsbeziehung: Organisationsbeziehung<false> = {
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: faker.string.uuid(),
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            };
+
+            await expect(sut.createOrganisationsbeziehung(organisationsbeziehung)).rejects.toThrow();
+        });
+    });
+
+    describe('hasOrganisationsbeziehung', () => {
+        it('should return true if the organisation is the source of a relationship', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            await expect(sut.hasOrganisationsbeziehung(quellOrganisation.id)).resolves.toBe(true);
+        });
+
+        it('should return true if the organisation is the target of a relationship', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            await expect(sut.hasOrganisationsbeziehung(zielOrganisation.id)).resolves.toBe(true);
+        });
+
+        it('should return false if the organisation has no relationships', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            await expect(sut.hasOrganisationsbeziehung(organisation.id)).resolves.toBe(false);
+        });
+    });
+
+    describe('deleteOrganisationsbeziehung', () => {
+        it('should delete the Organisationsbeziehung with the specified ID', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const created: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            await sut.deleteOrganisationsbeziehung(created.id);
+
+            const result: Option<Organisationsbeziehung<true>> = await sut.findOrganisationsbeziehungById(created.id);
+
+            expect(result).toBeUndefined();
+        });
+
+        it('should only delete the Organisationsbeziehung with the specified ID', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisationA: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisationB: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const relationshipToDelete: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisationA.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const relationshipToKeep: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisationB.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            await sut.deleteOrganisationsbeziehung(relationshipToDelete.id);
+
+            const deleted: Option<Organisationsbeziehung<true>> = await sut.findOrganisationsbeziehungById(
+                relationshipToDelete.id,
+            );
+
+            const remaining: Option<Organisationsbeziehung<true>> = await sut.findOrganisationsbeziehungById(
+                relationshipToKeep.id,
+            );
+
+            expect(deleted).toBeUndefined();
+            expect(remaining).toEqual(relationshipToKeep);
+        });
+
+        it('should resolve without an error if the Organisationsbeziehung does not exist', async () => {
+            await expect(sut.deleteOrganisationsbeziehung(faker.string.uuid())).resolves.toBeUndefined();
+        });
+    });
+
+    describe('findOrganisationsbeziehungById', () => {
+        it('should return an Organisationsbeziehung by id', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const created: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const result: Option<Organisationsbeziehung<true>> = await sut.findOrganisationsbeziehungById(created.id);
+
+            expect(result).toEqual(created);
+        });
+
+        it('should return undefined if the Organisationsbeziehung does not exist', async () => {
+            const result: Option<Organisationsbeziehung<true>> = await sut.findOrganisationsbeziehungById(
+                faker.string.uuid(),
+            );
+
+            expect(result).toBeUndefined();
+        });
+    });
+
+    describe('findByIdWithRelationships', () => {
+        it('should return the organisation with its outgoing relationships', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisationA: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisationB: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const relationshipA: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisationA.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const relationshipB: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisationB.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+
+            const result: Option<Organisation<true, true>> = await sut.findByIdWithRelationships(quellOrganisation.id);
+
+            expect(result).toBeDefined();
+            expect(result?.id).toBe(quellOrganisation.id);
+            expect(result?.organisationsbeziehungen).toHaveLength(2);
+
+            expect(result?.organisationsbeziehungen).toEqual(expect.arrayContaining([relationshipA, relationshipB]));
+        });
+
+        it('should return the organisation with an empty relationship array', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const result: Option<Organisation<true, true>> = await sut.findByIdWithRelationships(organisation.id);
+
+            expect(result).toBeDefined();
+            expect(result?.id).toBe(organisation.id);
+            expect(result?.organisationsbeziehungen).toEqual([]);
+        });
+
+        it('should only load relationships for which the organisation is the source', async () => {
+            const quellOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            const zielOrganisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            await sut.createOrganisationsbeziehung({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quellOrganisation.id,
+                zielOrganisationId: zielOrganisation.id,
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            });
+
+            const sourceResult: Option<Organisation<true, true>> = await sut.findByIdWithRelationships(
+                quellOrganisation.id,
+            );
+
+            const targetResult: Option<Organisation<true, true>> = await sut.findByIdWithRelationships(
+                zielOrganisation.id,
+            );
+
+            expect(sourceResult?.organisationsbeziehungen).toHaveLength(1);
+            expect(targetResult?.organisationsbeziehungen).toEqual([]);
+        });
+
+        it('should return undefined if the organisation does not exist', async () => {
+            const result: Option<Organisation<true, true>> = await sut.findByIdWithRelationships(faker.string.uuid());
+
+            expect(result).toBeUndefined();
         });
     });
 });
