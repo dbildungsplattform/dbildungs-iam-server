@@ -58,8 +58,16 @@ export class Meldung<WasPersisted extends boolean> {
     private static sanitizeInhalt(inhalt: string): string {
         DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
             if ('target' in node) {
+                const href: string | null = node.getAttribute('href');
+                node.removeAttribute('href');
+                node.removeAttribute('target');
+                node.removeAttribute('rel');
+
                 node.setAttribute('target', '_blank');
-                node.setAttribute('rel', 'noopener noreferrer');
+                node.setAttribute('rel', 'noopener noreferrer nofollow');
+                if (href) {
+                    node.setAttribute('href', href);
+                }
             }
             if (!node.hasAttribute('target') && (node.hasAttribute('xlink:href') || node.hasAttribute('href'))) {
                 node.setAttribute('xlink:show', 'new');
