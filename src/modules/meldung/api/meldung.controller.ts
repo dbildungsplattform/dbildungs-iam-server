@@ -9,7 +9,6 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import DOMPurify from 'isomorphic-dompurify';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
@@ -103,8 +102,6 @@ export class MeldungController {
                 'Schulportal Bearbeiten & Hinweise Bearbeiten Systemrecht Required For This Endpoint',
             );
         }
-
-        body.inhalt = DOMPurify.sanitize(body.inhalt);
 
         if (this.isUpdateRequest(body)) {
             return this.handleUpdateMeldung(body);
