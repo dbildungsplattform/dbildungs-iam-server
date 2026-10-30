@@ -18,7 +18,7 @@
             "typ": "LAND",
             "administriertVon": 0,
             "zugehoerigZu": 0,
-            "emailDomain": "schule-sh.de"
+            "uemLdapOu": "oeffentlicheSchulen"
         },
         {
             "id": 2,
@@ -28,7 +28,7 @@
             "typ": "LAND",
             "administriertVon": 0,
             "zugehoerigZu": 0,
-            "emailDomain": "ersatzschule-sh.de"
+            "uemLdapOu": "ersatzSchulen"
         }
     ]
 }
