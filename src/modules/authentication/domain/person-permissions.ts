@@ -7,9 +7,9 @@ import { type OrganisationRepository } from '../../organisation/persistence/orga
 import { type Person } from '../../person/domain/person.js';
 import { type Personenkontext } from '../../personenkontext/domain/personenkontext.js';
 import { type DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { type RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
-import { type RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 
@@ -92,15 +92,24 @@ export class PersonPermissions implements IPersonPermissions {
             personKontextFields.map((pk: PersonKontextFields) => pk.rolleId),
         );
 
+        const rechteProOrganisation: Map<OrganisationID, Set<RollenSystemRecht>> = new Map();
         for (const pk of personKontextFields) {
             const rolle: Rolle<true> | undefined = rollen.get(pk.rolleId);
+            if (!rolle) {
+                continue;
+            }
+            const rechte: Set<RollenSystemRecht> = rechteProOrganisation.get(pk.organisationId) ?? new Set();
+            rolle.systemrechte.forEach((recht: RollenSystemRecht) => rechte.add(recht));
+            rechteProOrganisation.set(pk.organisationId, rechte);
+        }
+
+        for (const [organisationId, rechte] of rechteProOrganisation) {
             if (
-                rolle &&
-                (matchAll
-                    ? systemrechte.every((r: RollenSystemRecht) => rolle.hasSystemRecht(r))
-                    : systemrechte.some((r: RollenSystemRecht) => rolle.hasSystemRecht(r)))
+                matchAll
+                    ? systemrechte.every((recht: RollenSystemRecht) => rechte.has(recht))
+                    : systemrechte.some((recht: RollenSystemRecht) => rechte.has(recht))
             ) {
-                organisationIDs.add(pk.organisationId);
+                organisationIDs.add(organisationId);
             }
         }
 
