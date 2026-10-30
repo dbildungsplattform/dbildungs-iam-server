@@ -1893,10 +1893,12 @@ describe('RolleRepo', () => {
             const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
             const rolle: Rolle<true> | DomainError = await sut.save(
                 DoFactory.createRolle(false, {
                     administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LEHR,
                     serviceProviderIds: [serviceProvider.id],
                     serviceProviderData: [serviceProvider],
                 }),
@@ -1911,6 +1913,7 @@ describe('RolleRepo', () => {
             const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
 
             const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(

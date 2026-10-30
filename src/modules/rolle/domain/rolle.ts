@@ -13,6 +13,7 @@ import { ServiceProviderProvidedOutOfTreeError } from './service-provider-provid
 import { OrganisationMatchesRollenartError } from './specification/error/organisation-matches-rollenart.error.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
 import { type RollenSystemRecht } from './systemrecht.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 export class Rolle<WasPersisted extends boolean> {
     private constructor(
@@ -170,7 +171,7 @@ export class Rolle<WasPersisted extends boolean> {
             return Err(new NameForRolleWithTrailingSpaceError());
         }
 
-        // Check ServiceProviders existance
+        // Check ServiceProviders existence
         const serviceProviderMap: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
             this.serviceProviderIds,
         );
@@ -197,6 +198,12 @@ export class Rolle<WasPersisted extends boolean> {
                 )
             ) {
                 return Err(new ServiceProviderProvidedOutOfTreeError(serviceProviderId));
+            }
+            if (
+                serviceProvider.rollenartenWhitelist.length > 0 &&
+                !serviceProvider.rollenartenWhitelist.includes(this.rollenart)
+            ) {
+                return Err(new RollenartNotAllowedForSPError(this.rollenart, serviceProvider.id));
             }
         }
 

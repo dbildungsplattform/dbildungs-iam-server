@@ -21,6 +21,7 @@ import { NameForRolleWithTrailingSpaceError } from './name-with-trailing-space.e
 import { RollenArt, RollenMerkmal } from './rolle.enums.js';
 import { RolleFactory } from './rolle.factory.js';
 import { Rolle } from './rolle.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 import { ServiceProviderProvidedOutOfTreeError } from './service-provider-provided-out-of-tree.error.js';
 import { RollenSystemRecht } from './systemrecht.js';
 
@@ -489,6 +490,7 @@ describe('Rolle Aggregate', () => {
             const orga: Organisation<true> = DoFactory.createOrganisation(true);
             const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
                 providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [],
             });
             const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
                 'Valid Name',
@@ -516,7 +518,9 @@ describe('Rolle Aggregate', () => {
 
         it('should return Error serviceproviders can not be assigned to the rolle', async () => {
             const orga: Organisation<true> = DoFactory.createOrganisation(true);
-            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                rollenartenWhitelist: [],
+            });
             const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
                 'Valid Name',
                 orga.id,
@@ -539,6 +543,94 @@ describe('Rolle Aggregate', () => {
 
             expectErrResult(validateResult);
             expect(validateResult.error).toBeInstanceOf(ServiceProviderProvidedOutOfTreeError);
+        });
+
+        it('should return Ok if the rollenart is in the whitelist of the serviceprovider', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [serviceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(new Map([[serviceProvider.id, serviceProvider]]));
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate();
+
+            expectOkResult(validateResult);
+        });
+
+        it('should return Ok if the whitelist of the serviceprovider is empty', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [serviceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(new Map([[serviceProvider.id, serviceProvider]]));
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate();
+
+            expectOkResult(validateResult);
+        });
+
+        it('should return Error if the rollenart is not in the whitelist of the serviceprovider', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [serviceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(new Map([[serviceProvider.id, serviceProvider]]));
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate();
+
+            expectErrResult(validateResult);
+            expect(validateResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
         });
     });
 });
