@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { uniq } from 'lodash-es';
 
 import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
@@ -89,8 +88,10 @@ export class ItsLearningSyncEventHandler {
         const kontexte: Personenkontext<true>[] = await this.personenkontextRepo.findByPerson(event.personId);
 
         // Find all rollen and organisations
-        const rollenIDs: RolleID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.rolleId));
-        const organisationIDs: OrganisationID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.organisationId));
+        const rollenIDs: RolleID[] = [...new Set(kontexte.map((pk: Personenkontext<true>) => pk.rolleId))];
+        const organisationIDs: OrganisationID[] = [
+            ...new Set(kontexte.map((pk: Personenkontext<true>) => pk.organisationId)),
+        ];
         const [rollen, organisations]: [Map<RolleID, Rolle<true>>, Map<OrganisationID, Organisation<true>>] =
             await Promise.all([this.rolleRepo.findByIds(rollenIDs), this.organisationRepo.findByIds(organisationIDs)]);
 
@@ -121,12 +122,14 @@ export class ItsLearningSyncEventHandler {
             itslearningRollenIDs.has(pk.rolleId) || kontextIdsWithItslearningErweiterung.has(pk.id);
 
         // Classes are enabled through their parent school. The school is not necessarily one of the person's own organisations.
-        const parentSchoolIDs: OrganisationID[] = uniq(
-            Array.from(organisations.values())
-                .filter((organisation: Organisation<true>) => organisation.typ === OrganisationsTyp.KLASSE)
-                .map((organisation: Organisation<true>) => organisation.administriertVon)
-                .filter((id?: OrganisationID): id is OrganisationID => !!id && !organisations.has(id)),
-        );
+        const parentSchoolIDs: OrganisationID[] = [
+            ...new Set(
+                Array.from(organisations.values())
+                    .filter((organisation: Organisation<true>) => organisation.typ === OrganisationsTyp.KLASSE)
+                    .map((organisation: Organisation<true>) => organisation.administriertVon)
+                    .filter((id?: OrganisationID): id is OrganisationID => !!id && !organisations.has(id)),
+            ),
+        ];
         const parentSchools: Map<OrganisationID, Organisation<true>> = parentSchoolIDs.length > 0
             ? await this.organisationRepo.findByIds(parentSchoolIDs)
             : new Map<OrganisationID, Organisation<true>>();

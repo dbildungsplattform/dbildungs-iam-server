@@ -1,6 +1,6 @@
 import { BaseEntity, DateTimeType } from '@mikro-orm/core';
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 @Entity({ tableName: 'event_outbox' })
 @Index({ name: 'event_outbox_unpublished_index', properties: ['publishedAt', 'createdAt'] })

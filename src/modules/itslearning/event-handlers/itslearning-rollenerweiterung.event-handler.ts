@@ -90,7 +90,7 @@ export class ItsLearningRollenerweiterungEventHandler {
         const serviceProvider: Option<ServiceProvider<true>> = await this.serviceProviderRepo.findById(
             event.serviceProviderId,
         );
-        if (!serviceProvider || serviceProvider.externalSystem !== ServiceProviderSystem.ITSLEARNING) {
+        if (serviceProvider?.externalSystem !== ServiceProviderSystem.ITSLEARNING) {
             return this.logger.info(
                 `[EventID: ${event.eventID}] Service provider ${event.serviceProviderId} is not itslearning, ignoring event.`,
             );
