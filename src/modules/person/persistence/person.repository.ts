@@ -8,6 +8,7 @@ import {
     LockMode,
     QueryOrder,
     raw,
+    sql,
 } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -63,6 +64,7 @@ import { UsernameGeneratorService } from '../domain/username-generator.service.j
 import { VornameForPersonWithTrailingSpaceError } from '../domain/vorname-with-trailing-space.error.js';
 import { PersonExternalIdMappingEntity } from './external-id-mappings.entity.js';
 import { PersonenkontextEntity } from '../../personenkontext/persistence/personenkontext.entity.js';
+import { ITSLEARNING_ORGANISATION_SUBTREE_SQL } from '../../organisation/persistence/itslearning-organisation-subtree.js';
 import { PersonEntity } from './person.entity.js';
 import { PersonScope } from './person.scope.js';
 
@@ -333,12 +335,12 @@ export class PersonRepository {
     /**
      * Find all personen, that
      * - have a personenkontext with the specified rolle
-     * - at an organisation that is itslearning enabled
+     * - at an organisation of the itslearning subtree (itslearning enabled school or one of its classes)
      * but
      * - no other personenkontext
      * - with a different rolle
      * - with the itslearning serviceprovider
-     * - at an organisaton that is itslearning enabled
+     * - at an organisation of the itslearning subtree
      */
     public async findWithRolleAndNoOtherItslearningKontexteByCursor(
         rolle: RolleID,
@@ -347,33 +349,38 @@ export class PersonRepository {
     ): Promise<[persons: Person<true>[], cursor: string | undefined]> {
         const personCursor: Cursor<PersonEntity> = await this.em.findByCursor(PersonEntity, {
             where: {
-                personenKontexte: {
-                    // Only if the person has the requested rolle
-                    $some: {
-                        rolleId: rolle,
-                        // at an organisation that is itslearning enabled
-                        organisationId: {
-                            itslearningEnabled: true,
-                        },
-                    },
-                    // But no other kontext
-                    $none: {
-                        rolleId: {
-                            // That is not the requested rolle
-                            $ne: rolle,
-                            serviceProvider: {
-                                // with itslearning
-                                serviceProvider: {
-                                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                [raw(
+                    (alias: string) =>
+                        `${alias}.id IN (${this.em
+                            .createQueryBuilder(PersonenkontextEntity, 'pk_rolle')
+                            .select('personId')
+                            .where({
+                                rolleId: rolle,
+                                [raw(
+                                    (pkAlias: string) =>
+                                        `${pkAlias}.organisation_id IN (${ITSLEARNING_ORGANISATION_SUBTREE_SQL})`,
+                                )]: [],
+                            })
+                            .getFormattedQuery()}) AND NOT EXISTS (${this.em
+                            .createQueryBuilder(PersonenkontextEntity, 'pk_other')
+                            .select('id')
+                            .where({
+                                personId: sql.ref(alias, 'id'),
+                                rolleId: {
+                                    $ne: rolle,
+                                    serviceProvider: {
+                                        serviceProvider: {
+                                            externalSystem: ServiceProviderSystem.ITSLEARNING,
+                                        },
+                                    },
                                 },
-                            },
-                        },
-                        // at an organisation that is itslearning enabled
-                        organisationId: {
-                            itslearningEnabled: true,
-                        },
-                    },
-                },
+                                [raw(
+                                    (pkAlias: string) =>
+                                        `${pkAlias}.organisation_id IN (${ITSLEARNING_ORGANISATION_SUBTREE_SQL})`,
+                                )]: [],
+                            })
+                            .getFormattedQuery()})`,
+                )]: [],
             },
 
             after: cursor,

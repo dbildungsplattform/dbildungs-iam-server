@@ -33,6 +33,7 @@ import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationEntity } from '../../organisation/persistence/organisation.entity.js';
 import { OrganisationModule } from '../../organisation/organisation.module.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../person/domain/person.factory.js';
@@ -882,6 +883,101 @@ describe('dbiam Personenkontext Repo', () => {
 
             expect(pks).toHaveLength(0);
             expect(cursor).toBeUndefined();
+        });
+
+        it('should return personenkontexte of classes below an itslearning school, but not of sub-schools', async () => {
+            const sp: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                externalSystem: ServiceProviderSystem.ITSLEARNING,
+            });
+            const rolle: Rolle<true> = await createRolle({ serviceProviderIds: [sp.id] });
+            const school: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { itslearningEnabled: true, typ: OrganisationsTyp.SCHULE }),
+            );
+            const klasse: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.KLASSE,
+            );
+            const subSchool: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.SCHULE,
+            );
+            const personInKlasse: Person<true> = await createPerson();
+            const personInSubSchool: Person<true> = await createPerson();
+
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personInKlasse.id,
+                    organisationId: klasse.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personInSubSchool.id,
+                    organisationId: subSchool.id,
+                }),
+            );
+
+            const [pks]: [Personenkontext<true>[], string | undefined] =
+                await sut.findWithRolleAtItslearningOrgaByCursor(rolle.id, 10);
+
+            expect(pks.map((pk: Personenkontext<true>) => pk.personId)).toEqual([personInKlasse.id]);
+        });
+    });
+
+    describe('findPersonIdsWithRolleInOrganisationSubtree', () => {
+        it('should return person ids with the rolle at the school and its classes, but not at sub-schools', async () => {
+            const sp: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                externalSystem: ServiceProviderSystem.ITSLEARNING,
+            });
+            const rolle: Rolle<true> = await createRolle({ serviceProviderIds: [sp.id] });
+            const school: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                undefined,
+                OrganisationsTyp.SCHULE,
+            );
+            const klasse: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.KLASSE,
+            );
+            const subSchool: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.SCHULE,
+            );
+            const personAtSchool: Person<true> = await createPerson();
+            const personInKlasse: Person<true> = await createPerson();
+            const personInSubSchool: Person<true> = await createPerson();
+
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personAtSchool.id,
+                    organisationId: school.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personInKlasse.id,
+                    organisationId: klasse.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personInSubSchool.id,
+                    organisationId: subSchool.id,
+                }),
+            );
+
+            const personIds: string[] = await sut.findPersonIdsWithRolleInOrganisationSubtree(school.id, rolle.id, 10);
+
+            expect(personIds.sort()).toEqual([personAtSchool.id, personInKlasse.id].sort());
         });
     });
 

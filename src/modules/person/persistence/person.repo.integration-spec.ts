@@ -316,6 +316,52 @@ describe('PersonRepository Integration', () => {
             expect(cursor).toBeUndefined();
         });
 
+        it('should return persons in classes below an itslearning school, but not persons at sub-schools', async () => {
+            const school: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { itslearningEnabled: true, typ: OrganisationsTyp.SCHULE }),
+            );
+            const klasse: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.KLASSE,
+            );
+            const subSchool: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.SCHULE,
+            );
+            const personInKlasse: Person<true> = await savePerson(false, { username: 'klassenperson' });
+            const personInSubSchool: Person<true> = await savePerson(false, { username: 'unterschulperson' });
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                externalSystem: ServiceProviderSystem.ITSLEARNING,
+            });
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] }),
+            );
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+            await dbiamPersonenkontextRepoInternal.save(
+                DoFactory.createPersonenkontext(false, {
+                    organisationId: klasse.id,
+                    personId: personInKlasse.id,
+                    rolleId: rolle.id,
+                }),
+            );
+            await dbiamPersonenkontextRepoInternal.save(
+                DoFactory.createPersonenkontext(false, {
+                    organisationId: subSchool.id,
+                    personId: personInSubSchool.id,
+                    rolleId: rolle.id,
+                }),
+            );
+
+            const [personen]: [Person<true>[], string | undefined] =
+                await sut.findWithRolleAndNoOtherItslearningKontexteByCursor(rolle.id, 10);
+
+            expect(personen.map((person: Person<true>) => person.id)).toEqual([personInKlasse.id]);
+        });
+
         it('should not return persons that already have itslearning', async () => {
             const personA: Person<true> = await savePerson(false);
             const orgaA: Organisation<true> = await organisationRepository.save(

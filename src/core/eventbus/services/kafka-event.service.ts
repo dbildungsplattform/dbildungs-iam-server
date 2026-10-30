@@ -19,6 +19,7 @@ import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
 import { EventHandlerFailedError } from '../error/handler-failed.error.js';
 import { EventHandlerTimeoutError } from '../error/handler-timeout.error.js';
+import { KafkaProducerNotConnectedError } from '../error/kafka-producer-not-connected.error.js';
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
@@ -189,6 +190,21 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                 await this.publishToDLQ(kafkaEvent, firstFailure.value.error);
             }
         }
+    }
+
+    public async sendOutboxMessage(
+        eventKey: KafkaEventKey,
+        kafkaKey: string | undefined,
+        value: string,
+    ): Promise<void> {
+        if (!this.producer) {
+            throw new KafkaProducerNotConnectedError();
+        }
+        const topic: string = this.kafkaConfig.TOPIC_PREFIX + KafkaEventMapping[eventKey].topic;
+        await this.producer.send({
+            topic,
+            messages: [{ key: kafkaKey, value, headers: { eventKey } }],
+        });
     }
 
     private async sendEvent(

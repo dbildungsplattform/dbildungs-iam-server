@@ -14,6 +14,7 @@ import { HostConfig } from './host.config.js';
 import { ImportConfig } from './import.config.js';
 import { ItsLearningConfig } from './itslearning.config.js';
 import { KafkaConfig } from './kafka.config.js';
+import { EventOutboxConfig } from './event-outbox.config.js';
 import { KeycloakConfig } from './keycloak.config.js';
 import { LdapServerConfig } from './ldap-server.config.js';
 import { LoggingConfig } from './logging.config.js';
@@ -99,6 +100,10 @@ export class JsonConfig {
     @ValidateNested()
     @Type(() => KafkaConfig)
     public readonly KAFKA!: KafkaConfig;
+
+    @ValidateNested()
+    @Type(() => EventOutboxConfig)
+    public readonly EVENT_OUTBOX!: EventOutboxConfig;
 
     @ValidateNested()
     @Type(() => PortalConfig)

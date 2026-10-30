@@ -46,6 +46,9 @@ export class ItsLearningIMSESApiService {
         action: ItslearningAction<ResultType>,
         syncId?: string,
     ): Promise<Result<ResultType, DomainError>> {
+        // Offen (später klären): itslearning-Rate-Limit beim Anbieter ist mir nicht bekannt. Es gibt bisher keinen Deckel für
+        // parallele Requests. Die Last pro Pod ist dadurch unbegrenzt, Gesamtlast = Pods × parallele Requests.
+        // Vor dem Produktivbetrieb entscheiden, ob hier eine Semaphore mit ITSLEARNING-Config nötig ist.
         return this.sendWithRetry(action, syncId);
     }
 

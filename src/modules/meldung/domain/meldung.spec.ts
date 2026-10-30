@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { ConfigTestModule, DatabaseTestModule } from '../../../../test/utils/index.js';
 import { EventModule } from '../../../core/eventbus/event.module.js';
-import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
 import { MeldungRepo } from '../persistence/meldung.repo.js';
 import { Meldung } from './meldung.js';
 import { MeldungStatus } from '../persistence/meldung.entity.js';
@@ -17,7 +17,7 @@ describe('Meldung Aggregate', () => {
 
     beforeEach(async () => {
         module = await Test.createTestingModule({
-            imports: [LoggingTestModule, EventModule, ConfigTestModule],
+            imports: [LoggingTestModule, EventModule, ConfigTestModule, DatabaseTestModule.forRoot()],
             providers: [
                 {
                     provide: MeldungRepo,

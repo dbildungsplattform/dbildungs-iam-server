@@ -134,6 +134,10 @@ describe('configloader', () => {
                     SSL_CERT_PATH: '/tls/client-cert.pem',
                     SSL_KEY_PATH: '/tls/client-key.pem',
                 },
+                EVENT_OUTBOX: {
+                    POLL_INTERVAL_MS: 1000,
+                    BATCH_SIZE: 50,
+                },
                 PORTAL: {
                     LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
                 },
@@ -325,6 +329,10 @@ describe('configloader', () => {
                     SSL_CA_PATH: undefined,
                     SSL_CERT_PATH: undefined,
                     SSL_KEY_PATH: undefined,
+                },
+                EVENT_OUTBOX: {
+                    POLL_INTERVAL_MS: 1000,
+                    BATCH_SIZE: 50,
                 },
                 PORTAL: {
                     LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],

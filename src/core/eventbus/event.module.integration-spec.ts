@@ -3,7 +3,7 @@ import { Mock, vi } from 'vitest';
 import { Controller, Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ConfigTestModule } from '../../../test/utils/config-test.module.js';
+import { ConfigTestModule, DatabaseTestModule } from '../../../test/utils/index.js';
 import { BaseEvent } from '../../shared/events/index.js';
 import { EventHandler } from './decorators/event-handler.decorator.js';
 import { EventModule } from './event.module.js';
@@ -47,7 +47,7 @@ describe('EventModule (integration test)', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [EventModule, ConfigTestModule],
+            imports: [EventModule, ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: true })],
             providers: [TestProvider],
             controllers: [TestController],
         }).compile();

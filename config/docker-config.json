@@ -140,6 +140,10 @@
         "ENABLED": true,
         "SSL_ENABLED": false
     },
+    "EVENT_OUTBOX": {
+        "POLL_INTERVAL_MS": 1000,
+        "BATCH_SIZE": 50
+    },
     "PORTAL": {
         "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
     },
