@@ -552,6 +552,16 @@
             "externalSystem": "EMAIL",
             "requires2fa": true,
             "merkmale": []
+        },
+        {
+            "id": 46,
+            "name": "SAML Testumgebung (Test-Zugriff)",
+            "target": "NONE",
+            "kategorie": "VERWALTUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "keycloakClientId": "saml-test",
+            "merkmale": []
         }
     ]
 }

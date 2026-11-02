@@ -60,8 +60,6 @@ export default (): Config => ({
         URL: process.env['LDAP_URL'],
         BIND_DN: process.env['LDAP_BIND_DN'],
         ADMIN_PASSWORD: process.env['LDAP_ADMIN_PASSWORD'],
-        OEFFENTLICHE_SCHULEN_DOMAIN: process.env['LDAP_OEFFENTLICHE_SCHULEN_DOMAIN'],
-        ERSATZSCHULEN_DOMAIN: process.env['LDAP_ERSATZSCHULEN_DOMAIN'],
         BASE_DN: process.env['LDAP_BASE_DN'],
         RETRY_WRAPPER_NUMBER_OF_RETRIES: envToOptionalInteger('RETRY_WRAPPER_NUMBER_OF_RETRIES'),
         RETRY_WRAPPER_DELAY_IN_MS: envToOptionalInteger('RETRY_WRAPPER_DELAY_IN_MS'),
@@ -165,5 +163,8 @@ export default (): Config => ({
     },
     SCHULCONNEX: {
         LIMIT_PERSONENINFO: envToOptionalInteger('SCHULCONNEX_LIMIT_PERSONENINFO'),
+        PUSH_MAX_ATTEMPTS: envToOptionalInteger('SCHULCONNEX_PUSH_MAX_ATTEMPTS'),
+        PUSH_RETRY_DELAY_MS: envToOptionalInteger('SCHULCONNEX_PUSH_RETRY_DELAY_MS'),
+        PUSH_REQUEST_TIMEOUT_MS: envToOptionalInteger('SCHULCONNEX_PUSH_REQUEST_TIMEOUT_MS'),
     },
 });

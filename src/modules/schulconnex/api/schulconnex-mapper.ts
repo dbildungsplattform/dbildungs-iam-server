@@ -65,6 +65,7 @@ export class SchulconnexMapper {
             id: primaryNonKlassenKontext.personenkontext.id,
             organisation: SchulconnexMapper.mapOrganisation(primaryNonKlassenKontext.organisation),
             rolle: SchulconnexMapper.mapRolle(primaryNonKlassenKontext.rolle),
+            spshRolleId: primaryNonKlassenKontext.rolle.id,
             erreichbarkeiten: erreichbarkeit ? [erreichbarkeit] : [],
             personenstatus: SchulconnexMapper.mapPersonenStatus(userlocks),
             gruppen: associatedKlassenKontexte.map((kontext: KontextWithOrgaAndRolle) =>
@@ -77,6 +78,7 @@ export class SchulconnexMapper {
         return new PersonInfoPersonNameDtoV2({
             vorname: person.vorname,
             familiennamen: person.familienname,
+            familienname: person.familienname,
         });
     }
 

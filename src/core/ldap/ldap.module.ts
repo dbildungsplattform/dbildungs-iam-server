@@ -9,6 +9,7 @@ import { LdapClient } from './adapter/technical/ldap-client.js';
 import { LdapConfigModule } from './adapter/technical/ldap-config.module.js';
 import { LdapEventHandler } from './domain/ldap-event-handler.js';
 import { LdapSyncEventHandler } from './domain/ldap-sync-event-handler.js';
+import { EmailMicroserviceModule } from '../../modules/email-microservice/email-microservice.module.js';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { LdapSyncEventHandler } from './domain/ldap-sync-event-handler.js';
         OrganisationModule,
         PersonModule,
         PersonenKontextModule,
+        EmailMicroserviceModule,
     ],
     providers: [LdapEventHandler, LdapSyncEventHandler, LdapAdapter, LdapClient],
     exports: [LdapEventHandler, LdapSyncEventHandler, LdapAdapter, LdapClient],
