@@ -1,7 +1,7 @@
 import { DomainError } from '../../../../shared/error/domain.error.js';
 
-export class LdapEventInvalidEmailDomainError extends DomainError {
+export class LdapEventInvalidUemLdapOuError extends DomainError {
     public constructor(details?: unknown[] | Record<string, unknown>) {
-        super('Invalid email domain', 'LDAP_EVENT_INVALID_EMAIL_DOMAIN', details);
+        super('Invalid UEM LDAP OU', 'LDAP_EVENT_INVALID_UEM_LDAP_OU', details);
     }
 }

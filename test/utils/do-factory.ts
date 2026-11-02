@@ -81,7 +81,7 @@ export class DoFactory {
             kuerzel: faker.lorem.word(),
             typ: OrganisationsTyp.SONSTIGE,
             traegerschaft: Traegerschaft.SONSTIGE,
-            emailDomain: faker.internet.email(),
+            uemLdapOu: props?.uemLdapOu,
             createdAt: withId ? faker.date.past() : undefined,
             updatedAt: withId ? faker.date.recent() : undefined,
         };

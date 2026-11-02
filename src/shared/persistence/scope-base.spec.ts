@@ -5,8 +5,8 @@ import { ScopeOperator } from './scope.enums.js';
 class TestEntity {}
 
 class TestScope extends ScopeBase<TestEntity> {
-    protected get entityName(): string {
-        return 'TestEntity';
+    protected get entityName(): typeof TestEntity {
+        return TestEntity;
     }
 }
 

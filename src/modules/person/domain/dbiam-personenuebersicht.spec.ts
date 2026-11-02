@@ -178,7 +178,8 @@ describe('DbiamPersonenUebersicht', () => {
 
         describe('loading of orga-admins', () => {
             it('should add the admins to the response when not LEIT', async () => {
-                rolle.rollenart = RollenArt.LEHR;
+                rolle = DoFactory.createRolle<true>(true, { id: fakeRolleId, rollenart: RollenArt.LEHR });
+                rolleMap.set(rolle.id, rolle);
                 personenkontexte = [personenkontextRecent];
                 personRepositoryMock.findOrganisationAdminsByOrganisationId.mockResolvedValueOnce(['adminA']);
 
@@ -194,7 +195,8 @@ describe('DbiamPersonenUebersicht', () => {
             });
 
             it('should not add the admins to the response when LEIT', async () => {
-                rolle.rollenart = RollenArt.LEIT;
+                rolle = DoFactory.createRolle<true>(true, { id: fakeRolleId, rollenart: RollenArt.LEIT });
+                rolleMap.set(rolle.id, rolle);
                 personenkontexte = [personenkontextRecent];
                 personRepositoryMock.findOrganisationAdminsByOrganisationId.mockResolvedValueOnce(['adminA']);
 

@@ -118,6 +118,9 @@
         "ENDPOINT": "http://dbildungs-iam-server-email-backend:80/"
     },
     "SCHULCONNEX": {
-        "LIMIT_PERSONENINFO": 2500
+        "LIMIT_PERSONENINFO": 2500,
+        "PUSH_MAX_ATTEMPTS": 5,
+        "PUSH_RETRY_DELAY_MS": 15000,
+        "PUSH_REQUEST_TIMEOUT_MS": 30000
     }
 }

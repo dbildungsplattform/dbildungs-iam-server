@@ -7,7 +7,7 @@
     "license": "EUPL-1.2",
     "type": "module",
     "engines": {
-        "node": "= 24.16.0",
+        "node": "= 24.22.1",
         "npm": ">=11.10.0"
     },
     "scripts": {
@@ -19,12 +19,13 @@
         "start": "nest start server",
         "start:debug": "nest start server --debug 9229 --watch",
         "start:prod": "node dist/src/server/main.js",
-        "test": "vitest",
-        "test:ci": "vitest --coverage",
-        "test:cov": "vitest --coverage",
-        "test:watch": "vitest --watch",
-        "test:unit": "vitest --project unit",
-        "test:integration": "vitest --project integration",
+        "test": "npm run type-check-test && vitest",
+        "test:ci": "npm run type-check-test && vitest --coverage",
+        "test:cov": "npm run type-check-test && vitest --coverage",
+        "test:watch": "npm run type-check-test && vitest --watch",
+        "test:unit": "npm run type-check-test && vitest --project unit",
+        "test:integration": "npm run type-check-test && vitest --project integration",
+        "type-check-test": "tsc --noEmit -p tsconfig.test.json",
         "lint": "eslint --max-warnings=0",
         "lint:fix": "eslint --fix",
         "start:console": "nest start console --",
@@ -99,7 +100,7 @@
         "@types/passport": "^1.0.17",
         "@types/passport-jwt": "^4.0.1",
         "@types/supertest": "^7.2.0",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.12",
         "eslint": "^9.35.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-import": "^2.32.0",
@@ -109,6 +110,14 @@
         "testcontainers": "^12.0.1",
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.59.2",
-        "vitest": "^4.1.5"
+        "unplugin-swc": "^2.0.0",
+        "vitest": "^4.1.12"
+    },
+    "overrides": {
+        "body-parser": "^2.4.0",
+        "multer": "^2.5.0",
+        "@nestjs/swagger": {
+            "js-yaml": "^5.5.0"
+        }
     }
 }

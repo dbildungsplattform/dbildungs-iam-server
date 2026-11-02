@@ -1,7 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { MikroORM } from '@mikro-orm/core';
 import { type INestApplication } from '@nestjs/common';
-import { type ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import request, { type Response } from 'supertest';
@@ -43,10 +42,8 @@ import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { type DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { type PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { OperationContext } from '../domain/personenkontext.enums.js';
@@ -1138,14 +1135,8 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
                 personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
-                const mockWorkflow: DeepMocked<PersonenkontextWorkflowAggregate> = vi.mockObject(
-                    PersonenkontextWorkflowAggregate.createNew(
-                        null,
-                        null as unknown as OrganisationRepository,
-                        null as unknown as DbiamPersonenkontextFactory,
-                        null as unknown as ConfigService,
-                        null as unknown as PersonenkontextWorkflowSharedKernel,
-                    ),
+                const mockWorkflow: DeepMocked<PersonenkontextWorkflowAggregate> = createMock(
+                    PersonenkontextWorkflowAggregate,
                 );
                 mockWorkflow.commit.mockResolvedValueOnce(new DuplicatePersonalnummerError('12345'));
 
