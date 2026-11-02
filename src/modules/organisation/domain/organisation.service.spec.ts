@@ -63,8 +63,8 @@ function createOrganisation<WasPersisted extends boolean, RelationshipsLoaded ex
         props?.namensergaenzung,
         props?.kuerzel,
         props?.traegerschaft,
-        props?.emailDomain,
         props?.emailAdress,
+        props?.uemLdapOu,
         props?.itslearningEnabled,
     );
 }
