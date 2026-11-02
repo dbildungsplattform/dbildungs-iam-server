@@ -129,6 +129,45 @@ describe('Meldung Aggregate', () => {
         });
     });
 
+    describe('sanitizeInhalt', () => {
+        it('should force target _blank and secure rel on anchor elements', () => {
+            const result: Result<Meldung<false>, DomainError> = Meldung.createNew(
+                '<a href="https://example.com" target="_self" rel="opener">link</a>',
+                MeldungStatus.VEROEFFENTLICHT,
+            );
+            expect(result.ok).toBeTruthy();
+            if (result.ok) {
+                expect(result.value.inhalt).toContain('target="_blank"');
+                expect(result.value.inhalt).toContain('rel="noopener noreferrer nofollow"');
+                expect(result.value.inhalt).not.toContain('_self');
+                expect(result.value.inhalt).not.toContain('opener"');
+                expect(result.value.inhalt).not.toContain('xlink:show');
+            }
+        });
+
+        it('should set xlink:show to new on href elements without target property', () => {
+            const result: Result<Meldung<false>, DomainError> = Meldung.createNew(
+                '<p>text <svg><image xlink:href="https://example.com/image.png"/></svg></p>',
+                MeldungStatus.VEROEFFENTLICHT,
+            );
+            expect(result.ok).toBeTruthy();
+            if (result.ok) {
+                expect(result.value.inhalt).toContain('xlink:show="new"');
+            }
+        });
+
+        it('should not set xlink:show on elements without href', () => {
+            const result: Result<Meldung<false>, DomainError> = Meldung.createNew(
+                '<p>text</p>',
+                MeldungStatus.VEROEFFENTLICHT,
+            );
+            expect(result.ok).toBeTruthy();
+            if (result.ok) {
+                expect(result.value.inhalt).not.toContain('xlink:show');
+            }
+        });
+    });
+
     describe('construct', () => {
         it('should construct meldung', () => {
             const result: Meldung<true> = Meldung.construct(
