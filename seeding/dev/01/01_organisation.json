@@ -16,7 +16,7 @@
             "typ": "LAND",
             "administriertVon": 0,
             "zugehoerigZu": 0,
-            "emailDomain": "schule-sh.de"
+            "uemLdapOu": "oeffentlicheSchulen"
         },
         {
             "id": 2,
@@ -25,7 +25,7 @@
             "typ": "LAND",
             "administriertVon": 0,
             "zugehoerigZu": 0,
-            "emailDomain": "ersatzschule-sh.de"
+            "uemLdapOu": "ersatzSchulen"
         },
         {
             "id": 3,
@@ -301,7 +301,7 @@
             "zugehoerigZu": 1,
             "emailAdress": "grundschule-ohne-klassen@schule-sh.de"
         },
-              {
+        {
             "id": 34,
             "kennung": "1111138",
             "name": "Playwrightschule",
@@ -4055,6 +4055,5 @@
             "administriertVon": 35,
             "zugehoerigZu": 35
         }
-
     ]
 }

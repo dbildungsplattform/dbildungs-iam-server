@@ -42,8 +42,8 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
         public namensergaenzung?: string,
         public kuerzel?: string,
         public traegerschaft?: Traegerschaft,
-        public emailDomain?: string,
         public emailAdress?: string,
+        public uemLdapOu?: string,
     ) {}
 
     public static construct<WasPersisted extends boolean = false, RelationshipsLoaded extends boolean = false>(
@@ -60,8 +60,8 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
         namensergaenzung?: string,
         kuerzel?: string,
         traegerschaft?: Traegerschaft,
-        emailDomain?: string,
         emailAdress?: string,
+        uemLdapOu?: string,
         itslearningEnabled: boolean = false,
     ): Organisation<WasPersisted, RelationshipsLoaded> {
         return new Organisation<WasPersisted, RelationshipsLoaded>(
@@ -79,8 +79,8 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
             namensergaenzung,
             kuerzel,
             traegerschaft,
-            emailDomain,
             emailAdress,
+            uemLdapOu,
         );
     }
 
@@ -93,8 +93,8 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
         namensergaenzung?: string,
         kuerzel?: string,
         traegerschaft?: Traegerschaft,
-        emailDomain?: string,
         emailAdress?: string,
+        uemLdapOu?: string,
         itslearningEnabled: boolean = false,
     ): Organisation<false, false> | DomainError {
         const organisation: Organisation<false, false> = new Organisation<false, false>(
@@ -112,8 +112,8 @@ export class Organisation<WasPersisted extends boolean, RelationshipsLoaded exte
             namensergaenzung,
             kuerzel,
             traegerschaft,
-            emailDomain,
             emailAdress,
+            uemLdapOu,
         );
 
         const validationError: void | OrganisationSpecificationError = organisation.validateFieldNames();

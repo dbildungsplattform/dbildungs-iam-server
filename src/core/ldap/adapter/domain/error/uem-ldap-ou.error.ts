@@ -1,7 +1,7 @@
 import { DomainError } from '../../../../../shared/error/index.js';
 
-export class LdapEmailAddressError extends DomainError {
+export class UemLdapOuError extends DomainError {
     public constructor(details?: unknown[] | Record<string, unknown>) {
-        super(`LDAP error: EmailAddress Invalid`, 'INVALID_EMAIL_ADDRESS', details);
+        super(`LDAP error: Invalid uemLdapOu for organisation`, 'INVALID_UEM_LDAP_OU', details);
     }
 }
