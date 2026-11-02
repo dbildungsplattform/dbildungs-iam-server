@@ -75,8 +75,6 @@ export class DoFactory {
     ): Organisation<WasPersisted, false> {
         const organisation: Partial<Organisation<WasPersisted, false>> = {
             id: withId ? faker.string.uuid() : undefined,
-            createdAt: withId ? faker.date.past() : undefined,
-            updatedAt: withId ? faker.date.recent() : undefined,
             version: withId ? 1 : undefined,
             itslearningEnabled: false,
             kennung: faker.lorem.word(),
@@ -85,8 +83,11 @@ export class DoFactory {
             kuerzel: faker.lorem.word(),
             typ: OrganisationsTyp.SONSTIGE,
             traegerschaft: Traegerschaft.SONSTIGE,
-            emailDomain: faker.internet.domainName(),
+            emailAdress: faker.internet.domainName(),
             organisationsbeziehungen: undefined,
+            uemLdapOu: props?.uemLdapOu,
+            createdAt: withId ? faker.date.past() : undefined,
+            updatedAt: withId ? faker.date.recent() : undefined,
         };
 
         return Object.assign(
