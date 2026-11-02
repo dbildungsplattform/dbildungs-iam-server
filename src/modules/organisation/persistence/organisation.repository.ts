@@ -51,7 +51,7 @@ export function mapOrgaAggregateToData(organisation: Organisation<boolean>): Req
         kuerzel: organisation.kuerzel,
         typ: organisation.typ,
         traegerschaft: organisation.traegerschaft,
-        emailDomain: organisation.emailDomain,
+        uemLdapOu: organisation.uemLdapOu,
         emailAddress: organisation.emailAdress,
         itslearningEnabled: organisation.itslearningEnabled,
     };
@@ -71,8 +71,8 @@ export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisati
         entity.namensergaenzung,
         entity.kuerzel,
         entity.traegerschaft,
-        entity.emailDomain,
         entity.emailAddress,
+        entity.uemLdapOu,
         entity.itslearningEnabled,
     );
 }
@@ -223,26 +223,26 @@ export class OrganisationRepository {
     }
 
     /**
-     * Uses findParentOrgasForIdSortedByDepthAsc method to search for the first occurrence of an email-domain in the tree of organisations starting from passed organisationId.
+     * Uses findParentOrgasForIdSortedByDepthAsc method to search for the first occurrence of an OU for UEM's LDAP in the tree of organisations starting from passed organisationId.
      * @param id start of search (leaf)
-     * @return first found email-domain or undefined if no email-domain could be found while walking the tree upwards
+     * @return first found OU for UEM's LDAP or undefined if no OU could be found while walking the tree upwards
      */
-    public async findEmailDomainForOrganisation(id: OrganisationID): Promise<string | undefined> {
+    public async findUemLdapOuForOrganisation(id: OrganisationID): Promise<string | undefined> {
         const organisations: Organisation<true>[] = await this.findParentOrgasForIdSortedByDepthAsc(id);
-        const emailDomain: Option<string> = this.getDomainRecursive(organisations);
+        const uemLdapOu: Option<string> = this.getUemLdapOuRecursive(organisations);
 
-        return emailDomain ?? undefined;
+        return uemLdapOu ?? undefined;
     }
 
-    private getDomainRecursive(organisationsSortedByDepthAsc: Organisation<true>[]): Option<string> {
+    private getUemLdapOuRecursive(organisationsSortedByDepthAsc: Organisation<true>[]): Option<string> {
         if (!organisationsSortedByDepthAsc || organisationsSortedByDepthAsc.length === 0) {
             return undefined;
         }
-        if (organisationsSortedByDepthAsc[0] && organisationsSortedByDepthAsc[0].emailDomain) {
-            return organisationsSortedByDepthAsc[0].emailDomain;
+        if (organisationsSortedByDepthAsc[0] && organisationsSortedByDepthAsc[0].uemLdapOu) {
+            return organisationsSortedByDepthAsc[0].uemLdapOu;
         }
 
-        return this.getDomainRecursive(organisationsSortedByDepthAsc.slice(1));
+        return this.getUemLdapOuRecursive(organisationsSortedByDepthAsc.slice(1));
     }
 
     public async isOrgaAParentOfOrgaB(
