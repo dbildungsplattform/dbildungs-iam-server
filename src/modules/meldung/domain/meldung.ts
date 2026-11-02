@@ -74,6 +74,9 @@ export class Meldung<WasPersisted extends boolean> {
             }
         });
 
-        return DOMPurify.sanitize(inhalt);
+        const sanitizedInhalt: string = DOMPurify.sanitize(inhalt);
+        DOMPurify.removeHook('afterSanitizeAttributes');
+
+        return sanitizedInhalt;
     }
 }
