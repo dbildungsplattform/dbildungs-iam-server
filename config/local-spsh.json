@@ -1357,6 +1357,104 @@
             ],
             "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
             "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+        },
+        {
+            "clientId": "saml-test",
+            "name": "SAML-Testumgebung",
+            "enabled": true,
+            "protocol": "saml",
+            "standardFlowEnabled": true,
+            "consentRequired": false,
+            "redirectUris": ["http://localhost:8765/saml"],
+            "attributes": {
+                "saml.allow.ecp.flow": "true",
+                "saml.assertion.signature": "true",
+                "saml.server.signature": "true",
+                "saml.client.signature": "false",
+                "saml.encrypt": "false",
+                "saml.authnstatement": "true",
+                "saml.signature.algorithm": "RSA_SHA256",
+                "saml_name_id_format": "username",
+                "saml_assertion_consumer_url_post": "http://localhost:8765/saml"
+            },
+            "protocolMappers": [
+                {
+                    "name": "rolle",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.rollenart",
+                        "ignoreMissingPath": "true",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                },
+                {
+                    "name": "schulkennung",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.dienststellenNummern",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                },
+                {
+                    "name": "vorname",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.vorname",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                },
+                {
+                    "name": "email",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.emailAdresse",
+                        "ignoreMissingPath": "true",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                },
+                {
+                    "name": "nachname",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.nachname",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                },
+                {
+                    "name": "uid",
+                    "protocol": "saml",
+                    "protocolMapper": "spsh-custom-saml-api-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "fetchUrl": "http://backend:9090/v2/keycloakinternal/externaldata",
+                        "extractJsonPath": "$.personId",
+                        "keycloakClientId": "",
+                        "includeEmailAddress": "true"
+                    }
+                }
+            ],
+            "defaultClientScopes": [],
+            "optionalClientScopes": []
         }
     ],
     "clientScopes": [

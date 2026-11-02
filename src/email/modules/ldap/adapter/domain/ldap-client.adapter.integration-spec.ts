@@ -26,11 +26,7 @@ import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapClientAdapter, type PersonData } from './ldap-client.adapter.js';
 
 class PublicExecuteWithRetry {
-    public async executeWithRetry<T>(
-        _func: () => Promise<Result<T>>,
-        _retries: number,
-        _delay: number = 15000,
-    ): Promise<Result<T>> {
+    public async executeWithRetry<T>(_func: () => Promise<Result<T>>): Promise<Result<T>> {
         return _func();
     }
 }
@@ -289,7 +285,7 @@ describe('LDAP Client Adapter', () => {
                 .fn()
                 .mockResolvedValue({ ok: false, error: customError });
 
-            await expect(ldapClientAdapter['executeWithRetry'](failingFunc, 1)).resolves.toEqual({
+            await expect(ldapClientAdapter['executeWithRetry'](failingFunc)).resolves.toEqual({
                 ok: false,
                 error: customError,
             });

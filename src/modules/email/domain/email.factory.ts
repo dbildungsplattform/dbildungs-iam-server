@@ -10,6 +10,9 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EmailDomainNotFoundError } from '../error/email-domain-not-found.error.js';
 
+/**
+ * @deprecated Use the new Email Micro Service instead. This is broken since the refactoring of the UEM LDAP OU structure.
+ */
 @Injectable()
 export class EmailFactory {
     private emailGenerator: EmailGenerator;
@@ -48,7 +51,8 @@ export class EmailFactory {
                 error: new EntityNotFoundError('Organisation', organisationId),
             };
         }
-        const emailDomain: string | undefined = await this.organisationRepository.findEmailDomainForOrganisation(
+        // BROKEN!! Won't work with OU.
+        const emailDomain: string | undefined = await this.organisationRepository.findUemLdapOuForOrganisation(
             organisation.id,
         );
         if (!emailDomain) {

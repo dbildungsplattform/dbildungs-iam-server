@@ -17,6 +17,7 @@ import { type DBiamPersonenkontextRepoInternal } from '../../src/modules/persone
 import { type IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
 import { type PersonID } from '../../src/shared/types/index.js';
 import { EscalatedPersonPermissionsFactory } from '../../src/modules/permission/escalated-person-permissions.factory.js';
+import { type EmailResolverService } from '../../src/modules/email-microservice/domain/email-resolver.service.js';
 
 export function createLandesbediensteterWorkflowAggregateMock(): MockedObject<LandesbediensteterWorkflowAggregate> {
     const landesbediensteterWorkflowAggregate: LandesbediensteterWorkflowAggregate =
@@ -47,7 +48,7 @@ export function createPersonenkontexteUpdateMock(): MockedObject<Personenkontext
         null as unknown as number,
         null as unknown as DbiamPersonenkontextBodyParams[],
         null as unknown as IPersonPermissions,
-        null as unknown as string,
+        null as unknown as EmailResolverService,
     );
     return vi.mockObject(personenkontexteUpdate);
 }

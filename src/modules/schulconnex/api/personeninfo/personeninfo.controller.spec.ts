@@ -55,14 +55,22 @@ describe('PersonenInfoController', () => {
     });
 
     it.each([
-        ['infoV1', 'findPersonsForPersonenInfoV1', 'Extern'],
-        ['infoV2', 'findPersonsForPersonenInfoV2', 'SorgBer'],
+        ['infoV1', 'findPersonsForPersonenInfoV1', 'Extern', { familiennamen: 'Test', vorname: 'Anna' }, {}],
+        [
+            'infoV2',
+            'findPersonsForPersonenInfoV2',
+            'SorgBer',
+            { familiennamen: 'Test', familienname: 'Test', vorname: 'Anna' },
+            { spshRolleId: 'rolle-1' },
+        ],
     ] as const)(
         'should map domain data to the unchanged %s JSON response',
         async (
             method: 'infoV1' | 'infoV2',
             serviceMethod: 'findPersonsForPersonenInfoV1' | 'findPersonsForPersonenInfoV2',
             expectedRolle: string,
+            expectedName: object,
+            expectedKontextExtras: object,
         ) => {
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             const kontext: KontextWithOrgaAndRolle = {
@@ -73,7 +81,7 @@ describe('PersonenInfoController', () => {
                     name: 'Testschule',
                     typ: OrganisationsTyp.SCHULE,
                 }),
-                rolle: DoFactory.createRolle(true, { rollenart: RollenArt.SORGBER }),
+                rolle: DoFactory.createRolle(true, { id: 'rolle-1', rollenart: RollenArt.SORGBER }),
             };
             const data: PersonenInfoData = {
                 person: DoFactory.createPerson(true, { id: 'person-1', vorname: 'Anna', familienname: 'Test' }),
@@ -99,12 +107,13 @@ describe('PersonenInfoController', () => {
             expect(JSON.parse(JSON.stringify(result))).toEqual([
                 {
                     pid: 'person-1',
-                    person: { name: { familiennamen: 'Test', vorname: 'Anna' } },
+                    person: { name: expectedName },
                     personenkontexte: [
                         {
                             id: 'kontext-1',
                             organisation: { id: 'schule-1', kennung: '123456', name: 'Testschule', typ: 'Schule' },
                             rolle: expectedRolle,
+                            ...expectedKontextExtras,
                             erreichbarkeiten: [{ typ: 'E-Mail', kennung: 'anna.test@schule-sh.de' }],
                             personenstatus: SchulconnexPersonenstatus.AKTIV,
                             gruppen: [{ id: 'klasse-1', bezeichnung: '5a', typ: 'Klasse' }],
