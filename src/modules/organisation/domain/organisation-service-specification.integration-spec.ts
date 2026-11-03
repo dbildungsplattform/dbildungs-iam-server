@@ -102,10 +102,11 @@ describe('OrganisationServiceSpecificationTest', () => {
 
     describe('create', () => {
         const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-        it('should return DomainError, when KlasseNurVonSchuleAdministriert specificaton is not satisfied and type is KLASSE', async () => {
+        it('should return DomainError, when KlasseNurVonSchuleAdministriert specification is not satisfied and type is KLASSE', async () => {
             const klasseDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Klasse',
                 kennung: undefined,
+                emailAdress: undefined,
                 administriertVon: traeger1.id,
                 zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.KLASSE,
@@ -132,6 +133,7 @@ describe('OrganisationServiceSpecificationTest', () => {
             const schule: Organisation<true> = await organisationRepository.save(schuleDo);
             const klasseDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Klasse',
+                emailAdress: undefined,
                 administriertVon: schule.id,
                 zugehoerigZu: schule.id,
                 typ: OrganisationsTyp.KLASSE,
@@ -140,6 +142,7 @@ describe('OrganisationServiceSpecificationTest', () => {
             const weitereKlasseDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Klasse',
                 kennung: undefined,
+                emailAdress: undefined,
                 administriertVon: schule.id,
                 zugehoerigZu: schule.id,
                 typ: OrganisationsTyp.KLASSE,
@@ -161,6 +164,7 @@ describe('OrganisationServiceSpecificationTest', () => {
         it('should return DomainError, when klasse specifications are not satisfied and type is klasse', async () => {
             const klasse: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'klasse',
+                emailAdress: undefined,
                 administriertVon: traeger1.id,
                 zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.KLASSE,
@@ -168,6 +172,7 @@ describe('OrganisationServiceSpecificationTest', () => {
             const klassePersisted: Organisation<true> = await organisationRepository.save(klasse);
 
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
+
             const result: Result<Organisation<true>, DomainError> = await organisationService.updateOrganisation(
                 klassePersisted,
                 permissionsMock,
