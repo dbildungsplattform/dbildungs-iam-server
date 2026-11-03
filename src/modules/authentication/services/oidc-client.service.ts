@@ -16,6 +16,14 @@ export async function tryGetClient(config: KeycloakInstanceConfig): Promise<Base
     });
 }
 
+/*
+Explanation: openid-client v5's authorization-code callback() calls this.grant() and returns the same TokenSet
+after ID-token validation, so correlation stays within one request and does not depend on sticky sessions.
+The WeakMap links each TokenSet instance to its attemptId without preventing garbage collection if validation
+fails before cleanup.
+This undocumented call-chain/object-identity dependency may break on updates; wrapping both methods is currently
+the simplest option here because v5's HTTP customization hook runs before requests, not after ID-token validation.
+*/
 export const OIDCClientProvider: FactoryProvider<Client> = {
     provide: OIDC_CLIENT,
     async useFactory(config: KeycloakInstanceConfig, logger: ClassLogger): Promise<Client> {
