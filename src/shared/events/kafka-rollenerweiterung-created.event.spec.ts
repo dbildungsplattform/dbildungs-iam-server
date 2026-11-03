@@ -10,9 +10,13 @@ describe('KafkaRollenerweiterungCreatedEvent', () => {
         const rolle: Rolle<true> = DoFactory.createRolle(true);
         const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
 
-        const event: KafkaRollenerweiterungCreatedEvent = new KafkaRollenerweiterungCreatedEvent(orga.id, rolle.id, serviceProvider.id);
+        const event: KafkaRollenerweiterungCreatedEvent = new KafkaRollenerweiterungCreatedEvent(
+            orga.id,
+            rolle.id,
+            serviceProvider.id,
+        );
 
         expect(event).toBeInstanceOf(KafkaRollenerweiterungCreatedEvent);
         expect(event.kafkaKey).toBe(`${orga.id}-${rolle.id}-${serviceProvider.id}`);
-    })
-})
+    });
+});

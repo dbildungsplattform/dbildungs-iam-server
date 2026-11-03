@@ -10,9 +10,13 @@ describe('KafkaRollenerweiterungDeletedEvent', () => {
         const rolle: Rolle<true> = DoFactory.createRolle(true);
         const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true);
 
-        const event: KafkaRollenerweiterungDeletedEvent = new KafkaRollenerweiterungDeletedEvent(orga.id, rolle.id, serviceProvider.id);
+        const event: KafkaRollenerweiterungDeletedEvent = new KafkaRollenerweiterungDeletedEvent(
+            orga.id,
+            rolle.id,
+            serviceProvider.id,
+        );
 
         expect(event).toBeInstanceOf(KafkaRollenerweiterungDeletedEvent);
         expect(event.kafkaKey).toBe(`${orga.id}-${rolle.id}-${serviceProvider.id}`);
-    })
-})
+    });
+});
