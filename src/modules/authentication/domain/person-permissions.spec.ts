@@ -229,47 +229,57 @@ describe('PersonPermissions', () => {
 
             expect(permittedOrgas.all).toBe(true);
         });
-        it('should return orgas with children', async () => {
-            const person: Person<true> = Person.construct(
-                faker.string.uuid(),
-                faker.date.past(),
-                faker.date.recent(),
-                faker.person.lastName(),
-                faker.person.firstName(),
-                '1',
-                faker.lorem.word(),
-                undefined,
-                faker.string.uuid(),
-            );
-            const personenkontexte: Personenkontext<true>[] = [createPersonenkontext()];
-            dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce(personenkontexte);
-            dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
-            rolleRepoMock.findByIds.mockResolvedValueOnce(
-                new Map([['1', DoFactory.createRolle(true, { systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN] })]]),
-            );
-            organisationRepoMock.findChildOrgasForIds.mockResolvedValueOnce([
-                DoFactory.createOrganisation(true, { id: '2' }),
-            ]);
+        it.each([undefined, false, true])(
+            'should return child orgas with excludeKlassen=%s',
+            async (excludeKlassen: boolean | undefined) => {
+                const person: Person<true> = Person.construct(
+                    faker.string.uuid(),
+                    faker.date.past(),
+                    faker.date.recent(),
+                    faker.person.lastName(),
+                    faker.person.firstName(),
+                    '1',
+                    faker.lorem.word(),
+                    undefined,
+                    faker.string.uuid(),
+                );
+                const personenkontexte: Personenkontext<true>[] = [createPersonenkontext()];
+                dbiamPersonenkontextRepoMock.findByPerson.mockResolvedValueOnce(personenkontexte);
+                dbiamPersonenkontextRepoMock.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([
+                        ['1', DoFactory.createRolle(true, { systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN] })],
+                    ]),
+                );
+                organisationRepoMock.findChildOrgasForIds.mockResolvedValueOnce([
+                    DoFactory.createOrganisation(true, { id: '2', typ: OrganisationsTyp.SCHULE }),
+                    ...(excludeKlassen
+                        ? []
+                        : [DoFactory.createOrganisation(true, { id: '3', typ: OrganisationsTyp.KLASSE })]),
+                ]);
 
-            const personPermissions: IPersonPermissions = new PersonPermissions(
-                dbiamPersonenkontextRepoMock,
-                organisationRepoMock,
-                rolleRepoMock,
-                person,
-            );
-            const permittedOrgas: PermittedOrgas = await personPermissions.getOrgIdsWithSystemrecht(
-                [RollenSystemRecht.PERSONEN_VERWALTEN],
-                true,
-            );
+                const personPermissions: IPersonPermissions = new PersonPermissions(
+                    dbiamPersonenkontextRepoMock,
+                    organisationRepoMock,
+                    rolleRepoMock,
+                    person,
+                );
+                const permittedOrgas: PermittedOrgas = await personPermissions.getOrgIdsWithSystemrecht(
+                    [RollenSystemRecht.PERSONEN_VERWALTEN],
+                    true,
+                    true,
+                    excludeKlassen,
+                );
 
-            if (permittedOrgas.all) {
-                throw new Error('permittedOrgas.all should be false');
-            }
-            expect(permittedOrgas.orgaIds).toContain('1');
-            expect(permittedOrgas.orgaIds).toContain('2');
-        });
+                expect(organisationRepoMock.findChildOrgasForIds).toHaveBeenCalledExactlyOnceWith(
+                    ['1'],
+                    excludeKlassen ?? false,
+                );
+                expect(permittedOrgas).toEqual({ all: false, orgaIds: excludeKlassen ? ['1', '2'] : ['1', '2', '3'] });
+            },
+        );
 
-        it('should return organisations without children', async () => {
+        it.each([false, true])('should ignore excludeKlassen=%s without children', async (excludeKlassen: boolean) => {
             const person: Person<true> = Person.construct(
                 faker.string.uuid(),
                 faker.date.past(),
@@ -296,9 +306,13 @@ describe('PersonPermissions', () => {
                 person,
             );
 
-            const permittedOrgas: PermittedOrgas = await personPermissions.getOrgIdsWithSystemrecht([
-                RollenSystemRecht.PERSONEN_VERWALTEN,
-            ]);
+            const permittedOrgas: PermittedOrgas = await personPermissions.getOrgIdsWithSystemrecht(
+                [RollenSystemRecht.PERSONEN_VERWALTEN],
+                false,
+                true,
+                excludeKlassen,
+            );
+            expect(organisationRepoMock.findChildOrgasForIds).not.toHaveBeenCalled();
             if (permittedOrgas.all) {
                 throw new Error('permittedOrgas.all should be false');
             }
