@@ -66,6 +66,7 @@
         "express": "^5.2.1",
         "express-session": "^1.19.0",
         "fast-xml-parser": "^5.4.2",
+        "isomorphic-dompurify": "^4.6.0",
         "jsonwebtoken": "^9.0.3",
         "jwks-rsa": "^4.0.1",
         "ldapts": "^8.1.7",
