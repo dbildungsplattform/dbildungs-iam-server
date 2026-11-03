@@ -359,8 +359,8 @@ describe('OrganisationRepository', () => {
         });
     });
 
-    describe('findChildOrgasByIds', () => {
-        async function createOrgaTree(): Promise<[root: string, traeger: string, schule: string]> {
+    describe('findChildOrgasForIds', () => {
+        async function createOrgaTree(): Promise<[root: string, traeger: string, schule: string, klasse: string]> {
             const root: Organisation<true> = Organisation.construct(
                 sut.ROOT_ORGANISATION_ID,
                 faker.date.past(),
@@ -382,7 +382,7 @@ describe('OrganisationRepository', () => {
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
-                OrganisationsTyp.ROOT,
+                OrganisationsTyp.TRAEGER,
                 root.id,
                 root.id,
                 faker.string.numeric(6),
@@ -397,7 +397,7 @@ describe('OrganisationRepository', () => {
                 faker.date.recent(),
                 faker.number.int(),
                 faker.string.alphanumeric(10),
-                OrganisationsTyp.ROOT,
+                OrganisationsTyp.SCHULE,
                 traeger.id,
                 traeger.id,
                 faker.string.numeric(6),
@@ -406,15 +406,24 @@ describe('OrganisationRepository', () => {
                 undefined,
             );
 
+            const klasse: OrganisationEntity = em.create(OrganisationEntity, {
+                name: 'Testklasse',
+                typ: OrganisationsTyp.KLASSE,
+                administriertVon: schule.id,
+                zugehoerigZu: schule.id,
+                itslearningEnabled: false,
+            });
+
             await em
                 .persist([
                     em.create(OrganisationEntity, mapOrgaAggregateToData(root)),
                     em.create(OrganisationEntity, mapOrgaAggregateToData(traeger)),
                     em.create(OrganisationEntity, mapOrgaAggregateToData(schule)),
+                    klasse,
                 ])
                 .flush();
 
-            return [root.id, traeger.id, schule.id];
+            return [root.id, traeger.id, schule.id, klasse.id];
         }
 
         describe('when no input IDs are given', () => {
@@ -423,34 +432,80 @@ describe('OrganisationRepository', () => {
 
                 expect(result).toHaveLength(0);
             });
+
+            it('should return empty array when excluding Klassen', async () => {
+                const result: Organisation<true>[] = await sut.findChildOrgasForIds([], true);
+
+                expect(result).toEqual([]);
+            });
         });
 
         describe('when root organisation', () => {
             it('should return all organisations', async () => {
-                const [rootId]: [string, string, string] = await createOrgaTree();
+                const [rootId, traegerId, schuleId, klasseId]: [string, string, string, string] =
+                    await createOrgaTree();
 
                 const result: Organisation<true>[] = await sut.findChildOrgasForIds([rootId]);
 
+                expect(result.map((orga: Organisation<true>) => orga.id).sort()).toEqual(
+                    [traegerId, schuleId, klasseId].sort(),
+                );
+            });
+
+            it('should include Klassen when excludeKlassen is false', async () => {
+                const [rootId, traegerId, schuleId, klasseId]: [string, string, string, string] =
+                    await createOrgaTree();
+
+                const result: Organisation<true>[] = await sut.findChildOrgasForIds([rootId], false);
+
+                expect(result.map((orga: Organisation<true>) => orga.id).sort()).toEqual(
+                    [traegerId, schuleId, klasseId].sort(),
+                );
+            });
+
+            it('should exclude Klassen when excludeKlassen is true', async () => {
+                const [rootId, traegerId, schuleId]: [string, string, string, string] = await createOrgaTree();
+
+                const result: Organisation<true>[] = await sut.findChildOrgasForIds([rootId], true);
+
                 expect(result).toHaveLength(2);
+                expect(result.map((orga: Organisation<true>) => orga.id).sort()).toEqual([traegerId, schuleId].sort());
             });
         });
 
         describe('when not root organisation', () => {
             it('should return all child organisations', async () => {
-                const [, traegerId]: [string, string, string] = await createOrgaTree();
+                const [, traegerId, schuleId, klasseId]: [string, string, string, string] = await createOrgaTree();
 
                 const result: Organisation<true>[] = await sut.findChildOrgasForIds([traegerId]);
 
+                expect(result.map((orga: Organisation<true>) => orga.id).sort()).toEqual([schuleId, klasseId].sort());
+            });
+
+            it('should include Klassen when excludeKlassen is false', async () => {
+                const [, traegerId, schuleId, klasseId]: [string, string, string, string] = await createOrgaTree();
+
+                const result: Organisation<true>[] = await sut.findChildOrgasForIds([traegerId], false);
+
+                expect(result.map((orga: Organisation<true>) => orga.id).sort()).toEqual([schuleId, klasseId].sort());
+            });
+
+            it('should exclude Klassen when excludeKlassen is true', async () => {
+                const [, traegerId, schuleId]: [string, string, string, string] = await createOrgaTree();
+
+                const result: Organisation<true>[] = await sut.findChildOrgasForIds([traegerId], true);
+
                 expect(result).toHaveLength(1);
+                expect(result[0]?.id).toBe(schuleId);
             });
         });
 
         it('should map column names correctly', async () => {
-            const [, traegerId]: [string, string, string] = await createOrgaTree();
+            const [, traegerId]: [string, string, string, string] = await createOrgaTree();
 
             const result: Organisation<true>[] = await sut.findChildOrgasForIds([traegerId]);
 
-            expect(result).toHaveLength(1);
+            expect(result).toHaveLength(2);
             expect(result[0]?.createdAt).not.toBeUndefined();
             expect(result[0]?.updatedAt).not.toBeUndefined();
             expect(result[0]?.administriertVon).not.toBeUndefined();
