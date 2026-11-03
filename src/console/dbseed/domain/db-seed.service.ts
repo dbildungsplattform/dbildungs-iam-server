@@ -108,8 +108,8 @@ export class DbSeedService {
             data.namensergaenzung,
             data.kuerzel,
             data.traegerschaft,
-            data.emailDomain,
             data.emailAdress,
+            data.uemLdapOu,
         );
         if (organisation instanceof DomainError) {
             throw organisation;

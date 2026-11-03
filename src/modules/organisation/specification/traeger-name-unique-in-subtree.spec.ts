@@ -9,7 +9,7 @@ import { faker } from '@faker-js/faker';
 type SubtreeType = 'oeffentlich' | 'ersatz';
 
 describe('TraegerNameUniqueInSubtree Specification', () => {
-    let sut: TraegerNameUniqueInSubtree<true>;
+    let sut: TraegerNameUniqueInSubtree<true, false>;
     let orgaRepoMock: DeepMocked<OrganisationRepository>;
     beforeEach(() => {
         orgaRepoMock = createMock(OrganisationRepository);
@@ -17,12 +17,14 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
     });
 
     it('when object is not of type traeger, it should return true', async () => {
-        const nonTraeger: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+        const nonTraeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
+            typ: OrganisationsTyp.SCHULE,
+        });
         await expect(sut.isSatisfiedBy(nonTraeger)).resolves.toBe(true);
     });
 
     it('when traeger has no name, it should return false', async () => {
-        const traegerWithoutName: Organisation<true> = DoFactory.createOrganisation(true, {
+        const traegerWithoutName: Organisation<true, false> = DoFactory.createOrganisation(true, {
             typ: OrganisationsTyp.TRAEGER,
             name: undefined,
         });
@@ -33,18 +35,18 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
     it.each<RootNode[]>([['ROOT'], ['OEFFENTLICH'], ['ERSATZ']])(
         'when traeger has the same name as %s, it should return false',
         async (duplicateNodeType: RootNode) => {
-            const root: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+            const root: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
                 typ: OrganisationsTyp.ROOT,
             });
-            const oeffentlich: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+            const oeffentlich: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
                 typ: OrganisationsTyp.LAND,
             });
-            const ersatz: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+            const ersatz: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
                 typ: OrganisationsTyp.LAND,
             });
             orgaRepoMock.findById.mockResolvedValueOnce(root);
             orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([oeffentlich, ersatz]);
-            const traeger: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+            const traeger: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
                 typ: OrganisationsTyp.TRAEGER,
             });
             switch (duplicateNodeType) {
@@ -64,8 +66,10 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
     );
 
     it('when ersatz has the same name as traeger, it should return false', async () => {
-        const ersatz: Organisation<true> = DoFactory.createOrganisationAggregate(true, { typ: OrganisationsTyp.LAND });
-        const traeger: Organisation<true> = DoFactory.createOrganisationAggregate(true, {
+        const ersatz: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
+            typ: OrganisationsTyp.LAND,
+        });
+        const traeger: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
             typ: OrganisationsTyp.TRAEGER,
             name: ersatz.name,
         });
@@ -75,14 +79,18 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
     });
 
     it('when no traeger with same name exists, it should return true', async () => {
-        const traeger: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER });
+        const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
+            typ: OrganisationsTyp.TRAEGER,
+        });
         orgaRepoMock.findBy.mockResolvedValueOnce([[], 0]);
         orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([undefined, undefined]);
         await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(true);
     });
 
     it('when only traeger itself has the name, it should return true', async () => {
-        const traeger: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER });
+        const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
+            typ: OrganisationsTyp.TRAEGER,
+        });
         orgaRepoMock.findBy.mockResolvedValueOnce([[traeger], 1]);
         orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([undefined, undefined]);
         await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(true);
@@ -91,8 +99,8 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
     describe.each<SubtreeType[]>([['oeffentlich'], ['ersatz']])(
         'when looking at %s subtree',
         (subtreeType: SubtreeType) => {
-            let root: Organisation<true>;
-            let parent: Organisation<true>;
+            let root: Organisation<true, false>;
+            let parent: Organisation<true, false>;
             beforeEach(() => {
                 root = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.ROOT });
                 parent = DoFactory.createOrganisation(true, {
@@ -109,7 +117,7 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
             });
 
             describe.each([['direct'], ['indirect']])('when traeger is %s child of subtreeRoot', (label: string) => {
-                let traeger: Organisation<true>;
+                let traeger: Organisation<true, false>;
                 beforeEach(() => {
                     traeger = DoFactory.createOrganisation(true, {
                         typ: OrganisationsTyp.TRAEGER,
@@ -137,7 +145,7 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
             });
 
             it('when traeger is not part of the subtree, it should return true', async () => {
-                const traeger: Organisation<true> = DoFactory.createOrganisation(true, {
+                const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.TRAEGER,
                     zugehoerigZu: '',
                 });
