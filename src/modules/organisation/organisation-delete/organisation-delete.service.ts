@@ -16,6 +16,7 @@ import { Organisation } from '../domain/organisation.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
 import { OrganisationHasChildrenError } from './errors/organisation-has-children.error.js';
+import { OrganisationHasOrganisationsbeziehungenError } from './errors/organisation-has-organisationsbeziehungen.error.js';
 import { OrganisationHasPersonenkontexteError } from './errors/organisation-has-personenkontexte.error.js';
 import { OrganisationHasRollenError } from './errors/organisation-has-rollen.error.js';
 import { OrganisationHasRollenerweiterungError } from './errors/organisation-has-rollenerweiterung.error.js';
@@ -57,6 +58,10 @@ export class OrganisationDeleteService {
         );
         if (zugehoerigeOrganisationCount) {
             return Err(new OrganisationHasZugehoerigeError());
+        }
+
+        if (await this.organisationRepo.hasOrganisationsbeziehung(organisationId)) {
+            return Err(new OrganisationHasOrganisationsbeziehungenError());
         }
 
         const referencedRollen: Rolle<true>[] = await this.rolleRepo.findBySchulstrukturknoten(organisationId);
