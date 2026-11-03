@@ -1,12 +1,12 @@
-nameOverride: ""
-fullnameOverride: ""
-namespaceOverride: ""
+nameOverride: ''
+fullnameOverride: ''
+namespaceOverride: ''
 
-backendHostname: ""
-keycloakHostname: "http://dbildungs-iam-keycloak"
-keycloak2ndHostname: ""
-keycloakExternalHostname: "spsh-xxx-keycloak.dev.spsh.dbildungsplattform.de"
-backend2ndHostname: ""
+backendHostname: ''
+keycloakHostname: 'http://dbildungs-iam-keycloak'
+keycloak2ndHostname: ''
+keycloakExternalHostname: 'spsh-xxx-keycloak.dev.spsh.dbildungsplattform.de'
+backend2ndHostname: ''
 
 containerSecurityContext:
   enabled: true
@@ -16,18 +16,18 @@ containerSecurityContext:
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: false
   capabilities:
-    drop: ["ALL"]
+    drop: ['ALL']
   seccompProfile:
-    type: "RuntimeDefault"
+    type: 'RuntimeDefault'
 
 restartPolicy: Always
 environment: dev
 
 database:
-  name: "dbildungs_iam_server"
-  host: ""
-  password: ""
-  username: "dbildungs_iam_server"
+  name: 'dbildungs_iam_server'
+  host: ''
+  password: ''
+  username: 'dbildungs_iam_server'
 
 ldap:
   url: ldap://dbildungs-iam-ldap-internal.spsh-xxx.svc.cluster.local:389
@@ -74,76 +74,76 @@ system:
 
 auth:
   # existingSecret: Refers to a secret already present in the cluster, which is required.
-  existingSecret: ""
+  existingSecret: ''
   secretName: dbildungs-iam-server
-  keycloak_adminSecret: ""
-  keycloak_clientSecret: ""
-  service_account_private_jwks: ""
-  frontend_sessionSecret: ""
-  ldap_bind_dn: ""
-  ldap_admin_password: ""
-  secrets_json: ""
-  itslearning_username: ""
-  itslearning_password: ""
-  pi_admin_user: ""
-  pi_admin_password: ""
-  redis_password: ""
-  vidis_username: ""
-  vidis_password: ""
-  vidis_api_client_id: ""
-  vidis_api_client_secret: ""
-  import_passphrase_secret: ""
-  import_passphrase_salt: ""
-  ox_password: ""
-  basic_auth_password: ""
+  keycloak_adminSecret: ''
+  keycloak_clientSecret: ''
+  service_account_private_jwks: ''
+  frontend_sessionSecret: ''
+  ldap_bind_dn: ''
+  ldap_admin_password: ''
+  secrets_json: ''
+  itslearning_username: ''
+  itslearning_password: ''
+  pi_admin_user: ''
+  pi_admin_password: ''
+  redis_password: ''
+  vidis_username: ''
+  vidis_password: ''
+  vidis_api_client_id: ''
+  vidis_api_client_secret: ''
+  import_passphrase_secret: ''
+  import_passphrase_salt: ''
+  ox_password: ''
+  basic_auth_password: ''
 
 emailMicroserviceAuth:
   # existingSecret: Refers to a secret already present in the cluster, which is required.
-  existingSecret: ""
+  existingSecret: ''
   secretName: dbildungs-iam-server-email
-  ldap_bind_dn: ""
-  ldap_admin_password: ""
-  ldap_undi_bind_dn: ""
-  ldap_undi_admin_password: ""
-  secrets_json: ""
-  ox_password: ""
+  ldap_bind_dn: ''
+  ldap_admin_password: ''
+  ldap_undi_bind_dn: ''
+  ldap_undi_admin_password: ''
+  secrets_json: ''
+  ox_password: ''
 
 ox:
   enabled: false
-  username: "oxadmin"
-  endpoint: "https://webmail.example.com"
-  contextId: "10"
-  contextName: "10"
+  username: 'oxadmin'
+  endpoint: 'https://webmail.example.com'
+  contextId: '10'
+  contextName: '10'
   numberOfRetries: 3
-  userPasswordDefault: "placeholder"
+  userPasswordDefault: 'placeholder'
   emailAddressDeletedEventDelay: 0
 
 eflkOx:
   enabled: false
-  username: "oxadmin"
-  endpoint: "https://webmail.example.com"
-  contextId: "10"
-  contextName: "10"
+  username: 'oxadmin'
+  endpoint: 'https://webmail.example.com'
+  contextId: '10'
+  contextName: '10'
   numberOfRetries: 3
-  userPasswordDefault: "placeholder"
+  userPasswordDefault: 'placeholder'
   emailAddressDeletedEventDelay: 0
 
 email:
   nonEnabledEmailAddressesDeadlineInDays: 180
 
 vidis:
-  url: "http://localhost:10000"
-  region: "Schleswig-Holstein"
+  url: 'http://localhost:10000'
+  region: 'Schleswig-Holstein'
   syncSchoolsPageSize: 5
-  keycloakClientId: "vidis-test"
+  keycloakClientId: 'vidis-test'
 
 backend:
   replicaCount: 1
-  maxUnavailable: "50%"
-  maxSurge: "50%"
+  maxUnavailable: '50%'
+  maxSurge: '50%'
   image:
     repository: ghcr.io/dbildungsplattform/dbildungs-iam-server
-    tag: ""
+    tag: ''
     pullPolicy: Always
   containerPorts:
     http: 8080
@@ -160,9 +160,9 @@ backend:
     periodSeconds: 10
     failureThreshold: 10
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 8080
-      path: "/health"
+      path: '/health'
   livenessProbe:
     enabled: true
     initialDelaySeconds: 10
@@ -171,27 +171,23 @@ backend:
     successThreshold: 1
     failureThreshold: 3
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 8080
-      path: "/health"
+      path: '/health'
   readinessProbe:
     enabled: true
     initialDelaySeconds: 10
     timeoutSeconds: 30
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 8080
-      path: "/health"
+      path: '/health'
   dbseeding:
     enabled: true
-    command: ["node", "dist/src/console/main.js", "db", "seed", "dev"]
+    command: ['node', 'dist/src/console/main.js', 'db', 'seed', 'dev']
   dbmigration:
     enabled: true
-    command: ["node", "dist/src/console/main.js", "db", "migration-apply"]
-  keycloakdatamigration:
-    enabled: true
-    command:
-      ["node", "dist/src/console/main.js", "keycloak", "update-clients", "dev"]
+    command: ['node', 'dist/src/console/main.js', 'db', 'migration-apply']
   ingress:
     enabled: true
     healthenabled: true
@@ -206,17 +202,17 @@ backend:
       - /docs-yaml
     annotations: []
     tls: false
-    tlsSecretName: ""
+    tlsSecretName: ''
   service:
     type: ClusterIP
     ports:
       http: 80
   serviceMonitor:
     enabled: true
-    path: "/metrics"
+    path: '/metrics'
     interval: 1m
     endpoints:
-      - port: "web"
+      - port: 'web'
   volumeMounts:
     - mountPath: /app/config/config.json
       subPath: config-json
@@ -231,7 +227,7 @@ backend:
   env:
     renameWaitingTimeInSeconds: 3
     stepUpTimeoutInSeconds: 900
-    stepUpTimeoutEnabled: "false"
+    stepUpTimeoutEnabled: 'false'
     maxOldSpaceSize: 3584
   extraVolumeMounts: []
   extraVolumes: []
@@ -239,11 +235,11 @@ backend:
 
 emailBackend:
   replicaCount: 1
-  maxUnavailable: "50%"
-  maxSurge: "50%"
+  maxUnavailable: '50%'
+  maxSurge: '50%'
   image:
     repository: ghcr.io/dbildungsplattform/dbildungs-iam-server
-    tag: ""
+    tag: ''
     pullPolicy: Always
   containerPorts:
     http: 9095
@@ -260,33 +256,33 @@ emailBackend:
     periodSeconds: 10
     failureThreshold: 5
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 9095
-      path: "/health"
+      path: '/health'
   livenessProbe:
     enabled: true
     initialDelaySeconds: 10
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 9095
-      path: "/health"
+      path: '/health'
   readinessProbe:
     enabled: true
     initialDelaySeconds: 10
     httpGet:
-      scheme: "HTTP"
+      scheme: 'HTTP'
       port: 9095
-      path: "/health"
+      path: '/health'
   service:
     type: ClusterIP
     ports:
       http: 80
   serviceMonitor:
     enabled: false # No Metrics yet?
-    path: "/metrics"
+    path: '/metrics'
     interval: 30m
     endpoints:
-      - port: "web"
+      - port: 'web'
   extraEnvVars: []
   extraVolumes: []
   volumeMounts:
@@ -317,7 +313,7 @@ kafka:
   topicReplications: 3
   initImage:
     repository: docker.io/apache/kafka
-    tag: "3.9.0"
+    tag: '3.9.0'
     pullPolicy: Always
   existingSecret: dbildungs-iam-kafka-tls
 
@@ -329,64 +325,64 @@ autoscaling:
 
 podDisruptionBudget:
   enabled: false
-  minAvailable: "60%"
+  minAvailable: '60%'
 
 status:
-  url: "https://status.dev.spsh.dbildungsplattform.de/"
+  url: 'https://status.dev.spsh.dbildungsplattform.de/'
 
 cronjobs:
   enabled: true
   image:
-    tag: "latest"
+    tag: 'latest'
     repository: ghcr.io/dbildungsplattform/cron-tools
     pullPolicy: IfNotPresent
   port: 5656
-  keycloakTokenUrl: "/realms/SPSH/protocol/openid-connect/token"
+  keycloakTokenUrl: '/realms/SPSH/protocol/openid-connect/token'
   keycloakClientId: spsh-service
   jwksFilePath: /keys/jwks.json
-  backendHostname: "{{ $.Values.frontendHostname }}"
+  backendHostname: '{{ $.Values.frontendHostname }}'
   scriptDir: scripts
   jobs:
     lock-persons-without-kopers:
       schedule: 20 0 * * *
-      endpoint: "/api/cron/kopers-lock"
-      httpMethod: "PUT"
-      script: "cron_trigger.sh"
+      endpoint: '/api/cron/kopers-lock'
+      httpMethod: 'PUT'
+      script: 'cron_trigger.sh'
     delete-expired-context:
       schedule: 40 0 * * *
-      endpoint: "/api/cron/kontext-expired"
-      httpMethod: "PUT"
-      script: "cron_trigger.sh"
+      endpoint: '/api/cron/kontext-expired'
+      httpMethod: 'PUT'
+      script: 'cron_trigger.sh'
     delete-person-without-org:
-      schedule: "*/15 0-3,22-23 * * *"
-      endpoint: "/api/cron/person-without-org"
-      httpMethod: "PUT"
-      script: "cron_trigger.sh"
+      schedule: '*/15 0-3,22-23 * * *'
+      endpoint: '/api/cron/person-without-org'
+      httpMethod: 'PUT'
+      script: 'cron_trigger.sh'
     remove-expired-locks:
       schedule: 10 0 * * *
-      endpoint: "/api/cron/unlock"
-      httpMethod: "PUT"
-      script: "cron_trigger.sh"
+      endpoint: '/api/cron/unlock'
+      httpMethod: 'PUT'
+      script: 'cron_trigger.sh'
     vidis-sync:
-      schedule: "30 0 1 6 *"
-      endpoint: "/api/cron/vidis-sync"
-      httpMethod: "PUT"
-      script: "cron_trigger.sh"
+      schedule: '30 0 1 6 *'
+      endpoint: '/api/cron/vidis-sync'
+      httpMethod: 'PUT'
+      script: 'cron_trigger.sh'
 
 cronjobsEmail:
   enabled: true
   image:
-    tag: "latest"
+    tag: 'latest'
     repository: ghcr.io/dbildungsplattform/cron-tools
     pullPolicy: IfNotPresent
   port: 5656
   scriptDir: scripts
   jobs:
     delete-marked-emails:
-      schedule: "0 4 * * *"
-      endpoint: "api/cron/delete"
-      httpMethod: "DELETE"
-      script: "cron_trigger_email.sh"
+      schedule: '0 4 * * *'
+      endpoint: 'api/cron/delete'
+      httpMethod: 'DELETE'
+      script: 'cron_trigger_email.sh'
       suspended: false
 
 import:

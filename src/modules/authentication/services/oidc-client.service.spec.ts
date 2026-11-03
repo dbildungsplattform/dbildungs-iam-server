@@ -1,50 +1,58 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import type * as OpenIdClient from 'openid-client';
-import { type Client, type Issuer } from 'openid-client';
+import { type Client } from 'openid-client';
 
-import { ConfigTestModule, KeycloakConfigTestModule } from '../../../../test/utils/index.js';
+import { KeycloakInstanceConfig } from '../../keycloak-administration/keycloak-instance-config.js';
 import { OIDCClientProvider, OIDC_CLIENT } from './oidc-client.service.js';
-
-// vi.mock('openid-client', () => ({
-//     Issuer: {
-//         discover: vi.fn(() => Promise.resolve({ Client: Object })),
-//     },
-// }));
-
-type importType = typeof OpenIdClient;
-vi.mock<importType>(import('openid-client'), async (importOriginal: () => Promise<importType>) => {
-    const originalModule: importType = await importOriginal();
-    const mockedModule: importType = {
-        ...originalModule,
-        Issuer: {
-            discover: vi.fn(() => Promise.resolve({ Client: Object })),
-        } as unknown as typeof Issuer,
-    };
-    return mockedModule;
-});
 
 describe('OIDCClientProvider', () => {
     let module: TestingModule;
-    let sut: Client;
+    let client: Client;
+    const config: KeycloakInstanceConfig = new KeycloakInstanceConfig(
+        'http://127.0.0.1:1/',
+        'https://keycloak.example.com/',
+        'admin',
+        'admin-client',
+        'admin-secret',
+        'service-client',
+        '{"keys":[]}',
+        'SPSH',
+        'spsh',
+        'client-secret',
+        'test-client',
+    );
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         module = await Test.createTestingModule({
-            imports: [KeycloakConfigTestModule.forRoot(), ConfigTestModule],
-            providers: [OIDCClientProvider],
+            providers: [OIDCClientProvider, { provide: KeycloakInstanceConfig, useValue: config }],
         }).compile();
-
-        sut = module.get(OIDC_CLIENT);
+        client = module.get<Client>(OIDC_CLIENT);
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
         await module.close();
     });
 
-    afterEach(() => {
-        vi.resetAllMocks();
+    it('should initialize without discovery when Keycloak is unavailable', () => {
+        expect(client).toBeDefined();
+        expect(client.metadata.client_id).toBe('spsh');
+        expect(client.metadata.client_secret).toBe('client-secret');
     });
 
-    it('should be defined', () => {
-        expect(sut).toBeDefined();
+    it('should use the external issuer and browser endpoints', () => {
+        expect(client.issuer.metadata).toMatchObject({
+            issuer: 'https://keycloak.example.com/realms/SPSH',
+            authorization_endpoint: 'https://keycloak.example.com/realms/SPSH/protocol/openid-connect/auth',
+            end_session_endpoint: 'https://keycloak.example.com/realms/SPSH/protocol/openid-connect/logout',
+        });
+    });
+
+    it('should use internal endpoints for backend requests', () => {
+        expect(client.issuer.metadata).toMatchObject({
+            token_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/token',
+            userinfo_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/userinfo',
+            jwks_uri: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/certs',
+            introspection_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/token/introspect',
+            revocation_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/revoke',
+        });
     });
 });
