@@ -13,7 +13,7 @@ export class MeldungEntity extends TimestampedEntity {
         super();
     }
 
-    @Property({ length: 2000 })
+    @Property({ type: 'text' })
     public inhalt!: string;
 
     @Enum({
