@@ -28,7 +28,7 @@ describe('SchultraegerQuelleSchuleZielTraeger Specification', () => {
     it('should return false, if typ is not SCHULTRAEGER', async () => {
         const beziehung: OrganisationsbeziehungEntity = createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT);
 
-        await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(true);
     });
 
     it('should return false, if quellOrganisation does not exist', async () => {

@@ -12,30 +12,13 @@ describe('SchultraegerSchuleUndTraegerSelberBaum Specification', () => {
     let sut: SchultraegerSchuleUndTraegerSelberBaum;
     let orgaRepoMock: DeepMocked<OrganisationRepository>;
 
-    function createBeziehung(
-        typ: OrganisationsbeziehungsTyp,
-        zielOrganisationId: string,
-    ): Organisationsbeziehung<true> {
+    function createBeziehung(typ: OrganisationsbeziehungsTyp): Organisationsbeziehung<true> {
         return {
             id: faker.string.uuid(),
             quellOrganisationId: faker.string.uuid(),
-            zielOrganisationId,
+            zielOrganisationId: faker.string.uuid(),
             typ,
         } as Organisationsbeziehung<true>;
-    }
-
-    function createSchule(beziehungen: Organisationsbeziehung<true>[]): Organisation<true, true> {
-        const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
-        return Object.assign(schule, { organisationsbeziehungen: beziehungen });
-    }
-
-    function createZielMap(entries: [string, OrganisationsTyp][]): Map<string, Organisation<true>> {
-        return new Map(
-            entries.map(([id, typ]: [string, OrganisationsTyp]) => [
-                id,
-                DoFactory.createOrganisation(true, { id, typ }),
-            ]),
-        );
     }
 
     beforeEach(() => {
@@ -43,64 +26,63 @@ describe('SchultraegerSchuleUndTraegerSelberBaum Specification', () => {
         sut = new SchultraegerSchuleUndTraegerSelberBaum(orgaRepoMock);
     });
 
-    it('should return true, if typ is not SCHULE', async () => {
-        const orga: Organisation<true, true> = Object.assign(
+    it('should return true, if relation typ is not SCHULTRAEGER', async () => {
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        expect(orgaRepoMock.findById).not.toHaveBeenCalled();
+    });
+
+    it('should return true, if quellOrganisation does not exist', async () => {
+        orgaRepoMock.findById.mockResolvedValueOnce(undefined);
+
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findById).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return true, if quellOrganisation is not a SCHULE', async () => {
+        orgaRepoMock.findById.mockResolvedValueOnce(
             DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER }),
-            { organisationsbeziehungen: [] },
         );
 
-        await expect(sut.isSatisfiedBy(orga)).resolves.toBe(true);
-        expect(orgaRepoMock.findByIds).not.toHaveBeenCalled();
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findById).toHaveBeenCalledTimes(1);
     });
 
-    it('should return true, if there are no SCHUL-TRAEGER relations', async () => {
-        orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
-        orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValue(
-            RootDirectChildrenType.OEFFENTLICH,
-        );
+    it('should return true, if zielOrganisation does not exist', async () => {
+        orgaRepoMock.findById
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }))
+            .mockResolvedValueOnce(undefined);
 
-        await expect(
-            sut.isSatisfiedBy(
-                createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT, faker.string.uuid())]),
-            ),
-        ).resolves.toBe(true);
-        expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([]);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich).not.toHaveBeenCalled();
     });
 
-    it('should ignore referenced organisations that are not a TRAEGER', async () => {
-        const behoerdeId: string = faker.string.uuid();
-        const schule: Organisation<true, true> = createSchule([
-            createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, behoerdeId),
-        ]);
-        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[behoerdeId, OrganisationsTyp.BEHOERDE]]));
-        orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValue(
-            RootDirectChildrenType.OEFFENTLICH,
-        );
+    it('should return true, if zielOrganisation is not a TRAEGER', async () => {
+        orgaRepoMock.findById
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }))
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.BEHOERDE }));
 
-        await expect(sut.isSatisfiedBy(schule)).resolves.toBe(true);
-        expect(orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich).toHaveBeenCalledTimes(1);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich).not.toHaveBeenCalled();
     });
 
     it('should return true, if SCHULE and TRAEGER are in the same tree', async () => {
-        const traegerId: string = faker.string.uuid();
-        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[traegerId, OrganisationsTyp.TRAEGER]]));
+        orgaRepoMock.findById
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }))
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER }));
         orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockResolvedValue(RootDirectChildrenType.ERSATZ);
 
-        await expect(
-            sut.isSatisfiedBy(createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, traegerId)])),
-        ).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
     });
 
     it('should return false, if SCHULE and TRAEGER are in different trees', async () => {
-        const traegerId: string = faker.string.uuid();
-        const schule: Organisation<true, true> = createSchule([
-            createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, traegerId),
-        ]);
-        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[traegerId, OrganisationsTyp.TRAEGER]]));
+        const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+        orgaRepoMock.findById
+            .mockResolvedValueOnce(schule)
+            .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER }));
         orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich.mockImplementation((id: string) =>
             Promise.resolve(id === schule.id ? RootDirectChildrenType.OEFFENTLICH : RootDirectChildrenType.ERSATZ),
         );
 
-        await expect(sut.isSatisfiedBy(schule)).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(false);
     });
 });

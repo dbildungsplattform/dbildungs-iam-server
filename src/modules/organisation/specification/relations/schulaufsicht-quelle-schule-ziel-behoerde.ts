@@ -1,18 +1,17 @@
 import { CompositeSpecification } from '../../../specification/specifications.js';
-import { type Organisation } from '../../domain/organisation.js';
 import { type OrganisationRepository } from '../../persistence/organisation.repository.js';
 import { OrganisationsTyp } from '../../domain/organisation.enums.js';
-import { type OrganisationsbeziehungEntity } from '../../persistence/organisationsbeziehung.entity.js';
 import { OrganisationsbeziehungsTyp } from '../../domain/organisationsbeziehungs-typ.enum.js';
+import { type Organisation, type Organisationsbeziehung } from '../../domain/organisation.js';
 
-export class SchulaufsichtQuelleSchuleZielBehoerde extends CompositeSpecification<OrganisationsbeziehungEntity> {
+export class SchulaufsichtQuelleSchuleZielBehoerde extends CompositeSpecification<Organisationsbeziehung<boolean>> {
     public constructor(private readonly organisationRepo: OrganisationRepository) {
         super();
     }
 
-    public async isSatisfiedBy(t: OrganisationsbeziehungEntity): Promise<boolean> {
+    public async isSatisfiedBy(t: Organisationsbeziehung<boolean>): Promise<boolean> {
         if (t.typ !== OrganisationsbeziehungsTyp.SCHULAUFSICHT) {
-            return false;
+            return true;
         }
 
         const quellOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(

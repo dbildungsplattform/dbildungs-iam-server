@@ -14,7 +14,7 @@ describe('SchultraegerSchuleHatExaktEinenTraeger Specification', () => {
 
     function createBeziehung(
         typ: OrganisationsbeziehungsTyp,
-        zielOrganisationId: string,
+        zielOrganisationId: string = faker.string.uuid(),
     ): Organisationsbeziehung<true> {
         return {
             id: faker.string.uuid(),
@@ -22,6 +22,14 @@ describe('SchultraegerSchuleHatExaktEinenTraeger Specification', () => {
             zielOrganisationId,
             typ,
         } as Organisationsbeziehung<true>;
+    }
+
+    function createNewBeziehung(zielOrganisationId: string): Organisationsbeziehung<false> {
+        return {
+            quellOrganisationId: faker.string.uuid(),
+            zielOrganisationId,
+            typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+        } as Organisationsbeziehung<false>;
     }
 
     function createSchule(beziehungen: Organisationsbeziehung<true>[]): Organisation<true, true> {
@@ -43,85 +51,89 @@ describe('SchultraegerSchuleHatExaktEinenTraeger Specification', () => {
         sut = new SchultraegerSchuleHatExaktEinenTraeger(orgaRepoMock);
     });
 
-    it('should return false, if typ is not SCHULE', async () => {
+    it('should return true, if relation typ is not SCHULTRAEGER', async () => {
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        expect(orgaRepoMock.findByIdWithRelationships).not.toHaveBeenCalled();
+    });
+
+    it('should return true, if quellOrganisation does not exist', async () => {
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(undefined);
+
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findByIds).not.toHaveBeenCalled();
+    });
+
+    it('should return true, if quellOrganisation is not a SCHULE', async () => {
         const orga: Organisation<true, true> = Object.assign(
             DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER }),
             { organisationsbeziehungen: [] },
         );
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(orga);
 
-        await expect(sut.isSatisfiedBy(orga)).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+        expect(orgaRepoMock.findByIds).not.toHaveBeenCalled();
     });
 
-    it('should return false, if there are no relations', async () => {
-        orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+    it('should return true, if a new relation to a TRAEGER is the only one', async () => {
+        const traegerId: string = faker.string.uuid();
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(createSchule([]));
+        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[traegerId, OrganisationsTyp.TRAEGER]]));
 
-        await expect(sut.isSatisfiedBy(createSchule([]))).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(createNewBeziehung(traegerId))).resolves.toBe(true);
     });
 
-    it('should return false, if relation typ is not SCHULTRAEGER', async () => {
-        const zielId: string = faker.string.uuid();
-        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([]));
+    it('should return true, if the given relation is already persisted and not counted twice', async () => {
+        const traegerId: string = faker.string.uuid();
+        const beziehung: Organisationsbeziehung<true> = createBeziehung(
+            OrganisationsbeziehungsTyp.SCHULTRAEGER,
+            traegerId,
+        );
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(createSchule([beziehung]));
+        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[traegerId, OrganisationsTyp.TRAEGER]]));
 
-        await expect(
-            sut.isSatisfiedBy(createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT, zielId)])),
-        ).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(true);
+        expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([traegerId]);
+    });
+
+    it('should return true, if other relations are not SCHULTRAEGER', async () => {
+        const traegerId: string = faker.string.uuid();
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(
+            createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT)]),
+        );
+        orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[traegerId, OrganisationsTyp.TRAEGER]]));
+
+        await expect(sut.isSatisfiedBy(createNewBeziehung(traegerId))).resolves.toBe(true);
+        expect(orgaRepoMock.findByIds).toHaveBeenCalledWith([traegerId]);
     });
 
     it('should return false, if the zielOrganisation is not a TRAEGER', async () => {
         const zielId: string = faker.string.uuid();
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(createSchule([]));
         orgaRepoMock.findByIds.mockResolvedValueOnce(createZielMap([[zielId, OrganisationsTyp.BEHOERDE]]));
 
-        await expect(
-            sut.isSatisfiedBy(createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, zielId)])),
-        ).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(createNewBeziehung(zielId))).resolves.toBe(false);
     });
 
     it('should return false, if the zielOrganisation does not exist', async () => {
-        const zielId: string = faker.string.uuid();
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(createSchule([]));
         orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
 
-        await expect(
-            sut.isSatisfiedBy(createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, zielId)])),
-        ).resolves.toBe(false);
+        await expect(sut.isSatisfiedBy(createNewBeziehung(faker.string.uuid()))).resolves.toBe(false);
     });
 
-    it('should return false, if more than one TRAEGER is referenced', async () => {
-        const zielId1: string = faker.string.uuid();
-        const zielId2: string = faker.string.uuid();
+    it('should return false, if the schule would have more than one TRAEGER', async () => {
+        const existingTraegerId: string = faker.string.uuid();
+        const newTraegerId: string = faker.string.uuid();
+        orgaRepoMock.findByIdWithRelationships.mockResolvedValueOnce(
+            createSchule([createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, existingTraegerId)]),
+        );
         orgaRepoMock.findByIds.mockResolvedValueOnce(
             createZielMap([
-                [zielId1, OrganisationsTyp.TRAEGER],
-                [zielId2, OrganisationsTyp.TRAEGER],
+                [existingTraegerId, OrganisationsTyp.TRAEGER],
+                [newTraegerId, OrganisationsTyp.TRAEGER],
             ]),
         );
 
-        await expect(
-            sut.isSatisfiedBy(
-                createSchule([
-                    createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, zielId1),
-                    createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, zielId2),
-                ]),
-            ),
-        ).resolves.toBe(false);
-    });
-
-    it('should return true, if exactly one SCHULTRAEGER relation references a TRAEGER', async () => {
-        const traegerId: string = faker.string.uuid();
-        const behoerdeId: string = faker.string.uuid();
-        orgaRepoMock.findByIds.mockResolvedValueOnce(
-            createZielMap([
-                [traegerId, OrganisationsTyp.TRAEGER],
-                [behoerdeId, OrganisationsTyp.BEHOERDE],
-            ]),
-        );
-
-        await expect(
-            sut.isSatisfiedBy(
-                createSchule([
-                    createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER, traegerId),
-                    createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT, behoerdeId),
-                ]),
-            ),
-        ).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createNewBeziehung(newTraegerId))).resolves.toBe(false);
     });
 });

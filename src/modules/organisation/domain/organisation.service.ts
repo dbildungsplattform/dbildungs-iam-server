@@ -50,6 +50,16 @@ import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-
 import { OrganisationsTyp } from './organisation.enums.js';
 import { Organisation, Organisationsbeziehung } from './organisation.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
+import { SchulaufsichtQuelleSchuleZielBehoerde } from '../specification/relations/schulaufsicht-quelle-schule-ziel-behoerde.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaum } from '../specification/relations/schulaufsicht-schule-und-aufsicht-selber-baum.js';
+import { SchultraegerQuelleSchuleZielTraeger } from '../specification/relations/schultraeger-quelle-schule-ziel-traeger.js';
+import { SchultraegerSchuleHatExaktEinenTraeger } from '../specification/relations/schultraeger-schule-hat-exakt-einen-traeger.js';
+import { SchultraegerSchuleUndTraegerSelberBaum } from '../specification/relations/schultraeger-schule-und-traeger-selber-baum.js';
+import { SchulaufsichtQuelleSchuleZielBehoerdeError } from '../specification/relations/error/schulaufsicht-quelle-schule-ziel-behoerde.error.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaumError } from '../specification/relations/error/schulaufsicht-schule-und-aufsicht-selber-baum.error.js';
+import { SchultraegerQuelleSchuleZielTraegerError } from '../specification/relations/error/schultraeger-quelle-schule-ziel-traeger.error.js';
+import { SchultraegerSchuleHatExaktEinenTraegerError } from '../specification/relations/error/schultraeger-schule-hat-exakt-einen-traeger.error.js';
+import { SchultraegerSchuleUndTraegerSelberBaumError } from '../specification/relations/error/schultraeger-schule-und-traeger-selber-baum.error.js';
 
 export type UpdateOrganisationData = Pick<
     Organisation<true>,
@@ -341,7 +351,7 @@ export class OrganisationService {
             return fieldNamesError;
         }
 
-        const emailResult: Result<void, DomainError> = await this.validateEmailAdressOnOrganisationTyp(organisationDo);
+        const emailResult: Result<void, DomainError> = await this.validateEmailAddressOnOrganisationTyp(organisationDo);
         if (!emailResult.ok) {
             return emailResult.error;
         }
@@ -372,7 +382,7 @@ export class OrganisationService {
         return undefined;
     }
 
-    private async validateEmailAdressOnOrganisationTyp(
+    private async validateEmailAddressOnOrganisationTyp(
         organisation: Organisation<boolean>,
     ): Promise<Result<void, DomainError>> {
         const emailAdressOnOrganisationTyp: EmailAdressOnOrganisationTyp = new EmailAdressOnOrganisationTyp();
@@ -621,6 +631,38 @@ export class OrganisationService {
         return undefined;
     }
 
+    private async validateSpecificationsForOrganisationsbeziehung(
+        organisationsbeziehung: Organisationsbeziehung<false>,
+    ): Promise<OrganisationSpecificationError | undefined> {
+        const schulaufsichtQuelleSchuleZielBehoerde: SchulaufsichtQuelleSchuleZielBehoerde =
+            new SchulaufsichtQuelleSchuleZielBehoerde(this.organisationRepo);
+        const schulaufsichtSchuleUndAufsichtSelberBaum: SchulaufsichtSchuleUndAufsichtSelberBaum =
+            new SchulaufsichtSchuleUndAufsichtSelberBaum(this.organisationRepo);
+        const schultraegerQuelleSchuleZielTraeger: SchultraegerQuelleSchuleZielTraeger =
+            new SchultraegerQuelleSchuleZielTraeger(this.organisationRepo);
+        const schultraegerSchuleHatExaktEinenTraeger: SchultraegerSchuleHatExaktEinenTraeger =
+            new SchultraegerSchuleHatExaktEinenTraeger(this.organisationRepo);
+        const schultraegerSchuleUndTraegerSelberBaum: SchultraegerSchuleUndTraegerSelberBaum =
+            new SchultraegerSchuleUndTraegerSelberBaum(this.organisationRepo);
+        if (!(await schulaufsichtQuelleSchuleZielBehoerde.isSatisfiedBy(organisationsbeziehung))) {
+            return new SchulaufsichtQuelleSchuleZielBehoerdeError(organisationsbeziehung.id ?? undefined);
+        }
+        if (!(await schulaufsichtSchuleUndAufsichtSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+            return new SchulaufsichtSchuleUndAufsichtSelberBaumError(organisationsbeziehung.id ?? undefined);
+        }
+        if (!(await schultraegerQuelleSchuleZielTraeger.isSatisfiedBy(organisationsbeziehung))) {
+            return new SchultraegerQuelleSchuleZielTraegerError(organisationsbeziehung.id ?? undefined);
+        }
+        if (!(await schultraegerSchuleHatExaktEinenTraeger.isSatisfiedBy(organisationsbeziehung))) {
+            return new SchultraegerSchuleHatExaktEinenTraegerError(organisationsbeziehung.id ?? undefined);
+        }
+        if (!(await schultraegerSchuleUndTraegerSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+            return new SchultraegerSchuleUndTraegerSelberBaumError(organisationsbeziehung.id ?? undefined);
+        }
+
+        return undefined;
+    }
+
     public async findAllAdministriertVon(
         parentOrganisationID: string,
         searchFilter?: string,
@@ -738,6 +780,14 @@ export class OrganisationService {
             typ,
         );
 
+        const validationResultForSpecifications: DomainError | undefined =
+            await this.validateSpecificationsForOrganisationsbeziehung(organisationsbeziehung);
+        if (validationResultForSpecifications) {
+            return {
+                ok: false,
+                error: validationResultForSpecifications,
+            };
+        }
         try {
             const persistedOrganisationsbeziehung: Organisationsbeziehung<true> =
                 await this.organisationRepo.createOrganisationsbeziehung(organisationsbeziehung);
