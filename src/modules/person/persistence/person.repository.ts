@@ -511,9 +511,13 @@ export class PersonRepository {
             KafkaPersonenkontextUpdatedEvent,
         ] = await this.createPersonenkontextUpdatedEvents(personId, person, removedPersonenkontexts);
 
-        this.eventRoutingLegacyKafkaService.publish(personenkontextUpdatedEvent, kafkaPersonenkontextUpdatedEvent);
-
         const emailAddress: string | undefined = await this.emailResolverService.getPrimaryActiveEmailForPerson(person);
+
+        // Delete the person from the database with all their kontexte
+        await this.em.nativeDelete(PersonEntity, person.id);
+
+        // Publish only after the deletion, so listeners never react to a deletion that did not happen
+        this.eventRoutingLegacyKafkaService.publish(personenkontextUpdatedEvent, kafkaPersonenkontextUpdatedEvent);
 
         if (person.username !== undefined) {
             this.eventRoutingLegacyKafkaService.publish(
@@ -521,9 +525,6 @@ export class PersonRepository {
                 new KafkaPersonDeletedEvent(personId, person.username, emailAddress),
             );
         }
-
-        // Delete the person from the database with all their kontexte
-        await this.em.nativeDelete(PersonEntity, person.id);
 
         return {
             ok: true,
@@ -610,8 +611,6 @@ export class PersonRepository {
             KafkaPersonenkontextUpdatedEvent,
         ] = await this.createPersonenkontextUpdatedEvents(personId, person, removedPersonenkontexts);
 
-        this.eventRoutingLegacyKafkaService.publish(personenkontextUpdatedEvent, kafkaPersonenkontextUpdatedEvent);
-
         if (!person.username) {
             this.logger.error(
                 `Failure during creation of PersonDeletedAfterDeadlineExceededEvent, username UNDEFINED, personId:${personId}`,
@@ -624,15 +623,18 @@ export class PersonRepository {
                 `Failure during creation of PersonDeletedAfterDeadlineExceededEvent, oxUserId UNDEFINED, personId:${personId}`,
             );
         }
+        // Delete the person from the database with all their kontexte
+        await this.em.nativeDelete(PersonEntity, person.id);
+
+        // Publish only after the deletion, so listeners never react to a deletion that did not happen
+        this.eventRoutingLegacyKafkaService.publish(personenkontextUpdatedEvent, kafkaPersonenkontextUpdatedEvent);
+
         if (person.username && person.oxUserId) {
             this.eventRoutingLegacyKafkaService.publish(
                 new PersonDeletedAfterDeadlineExceededEvent(personId, person.username, person.oxUserId),
                 new KafkaPersonDeletedAfterDeadlineExceededEvent(personId, person.username, person.oxUserId),
             );
         }
-
-        // Delete the person from the database with all their kontexte
-        await this.em.nativeDelete(PersonEntity, person.id);
 
         return { ok: true, value: undefined };
     }

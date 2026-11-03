@@ -1,6 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 
-import { ConfigTestModule, DatabaseTestModule } from '../../../test/utils/index.js';
+import { ConfigTestModule } from '../../../test/utils/index.js';
 import { EventModule } from './event.module.js';
 import { EventService } from './services/event.service.js';
 
@@ -9,7 +9,7 @@ describe('EventModule', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [EventModule, ConfigTestModule, DatabaseTestModule.forRoot()],
+            imports: [EventModule, ConfigTestModule],
         }).compile();
 
         await module.init();

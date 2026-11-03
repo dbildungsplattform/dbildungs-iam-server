@@ -9,8 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { type KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { type KafkaJS } from '@confluentinc/kafka-javascript';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
+import { KafkaImportExecutedEvent } from '../../../shared/events/kafka-import-executed.event.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
-import { KafkaEventMapping } from '../types/kafka-event-mapping.js';
 import { inspect } from 'util';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
@@ -60,7 +60,12 @@ describe('KafkaEventService', () => {
         configService = createMock(ConfigService);
         configService.getOrThrow.mockReturnValue({ ...defaultKafkaConfig } satisfies KafkaConfig);
 
-        producer = { connect: vi.fn(), disconnect: vi.fn(), send: vi.fn() } as unknown as DeepMocked<Producer>;
+        producer = {
+            connect: vi.fn(),
+            disconnect: vi.fn(),
+            send: vi.fn(),
+            sendBatch: vi.fn(),
+        } as unknown as DeepMocked<Producer>;
         consumer = {
             connect: vi.fn(),
             disconnect: vi.fn(),
@@ -318,6 +323,93 @@ describe('KafkaEventService', () => {
         );
     });
 
+    describe('publishMultiple', () => {
+        it('should send all events in one batch grouped by topic', async () => {
+            const personDeleted: KafkaPersonDeletedEvent = new KafkaPersonDeletedEvent('test', 'test');
+            const importExecuted: KafkaImportExecutedEvent = new KafkaImportExecutedEvent(
+                'import-1',
+                'orga-1',
+                'rolle-1',
+                'keycloak-1',
+            );
+            const personDeletedOther: KafkaPersonDeletedEvent = new KafkaPersonDeletedEvent('other', 'other');
+
+            await sut.publishMultiple([personDeleted, importExecuted, personDeletedOther]);
+
+            expect(producer.sendBatch).toHaveBeenCalledTimes(1);
+            expect(producer.sendBatch).toHaveBeenCalledWith({
+                topicMessages: [
+                    {
+                        topic: 'prefix.user-topic',
+                        messages: [
+                            {
+                                key: 'test',
+                                value: JSON.stringify(personDeleted),
+                                headers: { eventKey: 'user.deleted' },
+                            },
+                            {
+                                key: 'other',
+                                value: JSON.stringify(personDeletedOther),
+                                headers: { eventKey: 'user.deleted' },
+                            },
+                        ],
+                    },
+                    {
+                        topic: 'prefix.import-topic',
+                        messages: [
+                            {
+                                key: 'import-1',
+                                value: JSON.stringify(importExecuted),
+                                headers: { eventKey: 'import.executed' },
+                            },
+                        ],
+                    },
+                ],
+            });
+            expect(producer.send).not.toHaveBeenCalled();
+        });
+
+        it('should skip events without mapping and log error', async () => {
+            const event: KafkaEvent = new TestEvent();
+            const deleteEvent: KafkaPersonDeletedEvent = new KafkaPersonDeletedEvent('test', 'test');
+
+            await sut.publishMultiple([event, deleteEvent]);
+
+            expect(logger.error).toHaveBeenCalledWith('(Batch publishing) No mapping found for event: TestEvent');
+            expect(producer.sendBatch).toHaveBeenCalledWith({
+                topicMessages: [
+                    {
+                        topic: 'prefix.user-topic',
+                        messages: [
+                            { key: 'test', value: JSON.stringify(deleteEvent), headers: { eventKey: 'user.deleted' } },
+                        ],
+                    },
+                ],
+            });
+        });
+
+        it('should not send anything for an empty list', async () => {
+            await sut.publishMultiple([]);
+
+            expect(producer.sendBatch).not.toHaveBeenCalled();
+        });
+
+        it('should not send anything when no event has a mapping', async () => {
+            await sut.publishMultiple([new TestEvent()]);
+
+            expect(producer.sendBatch).not.toHaveBeenCalled();
+        });
+
+        it('should log error if Kafka producer fails during batch publish', async () => {
+            const error: Error = new Error('Producer error');
+            producer.sendBatch.mockRejectedValueOnce(error);
+
+            await sut.publishMultiple([new KafkaPersonDeletedEvent('test', 'test')]);
+
+            expect(logger.logUnknownAsError).toHaveBeenCalledWith('Error publishing event batch to Kafka', error);
+        });
+    });
+
     it('should log error if no mapping is found for event type in publsih process', async () => {
         const event: KafkaEvent = new TestEvent();
 
@@ -405,30 +497,6 @@ describe('KafkaEventService', () => {
         expect(logger.info).toHaveBeenCalledWith('Kafka is disabled');
         expect(consumer.connect).not.toHaveBeenCalled();
         expect(producer.connect).not.toHaveBeenCalled();
-    });
-
-    it('should send outbox message with event key header and kafka key', async () => {
-        await sut.onModuleInit();
-
-        await sut.sendOutboxMessage('user.deleted', 'key-1', '{"a":1}');
-
-        expect(producer.send).toHaveBeenCalledWith({
-            topic: 'prefix.' + KafkaEventMapping['user.deleted'].topic,
-            messages: [{ key: 'key-1', value: '{"a":1}', headers: { eventKey: 'user.deleted' } }],
-        });
-    });
-
-    it('should throw from sendOutboxMessage if producer is not connected', async () => {
-        const configServiceKafkaDisabled: DeepMocked<ConfigService> = createMock(ConfigService);
-        configServiceKafkaDisabled.getOrThrow.mockReturnValue({
-            ...defaultKafkaConfig,
-            ENABLED: false,
-        } satisfies KafkaConfig);
-        const service: KafkaEventService = new KafkaEventService(logger, kafka, configServiceKafkaDisabled);
-
-        await expect(service.sendOutboxMessage('user.deleted', undefined, '{}')).rejects.toThrow(
-            'Kafka producer is not connected',
-        );
     });
 
     it('should call logger.info when keepAlive is invoked in handler', async () => {

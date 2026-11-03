@@ -8,8 +8,6 @@ import { EventService } from './services/event.service.js';
 import { KafkaEventService } from './services/kafka-event.service.js';
 import { KafkaLogger, KafkaProvider } from './kafka-client-provider.js';
 import { EventRoutingLegacyKafkaService } from './services/event-routing-legacy-kafka.service.js';
-import { EventOutboxService } from './outbox/event-outbox.service.js';
-import { EventOutboxPublisher } from './outbox/event-outbox-publisher.service.js';
 
 @Global()
 @Module({
@@ -21,8 +19,6 @@ import { EventOutboxPublisher } from './outbox/event-outbox-publisher.service.js
         KafkaProvider,
         EventRoutingLegacyKafkaService,
         KafkaLogger,
-        EventOutboxService,
-        EventOutboxPublisher,
     ],
     exports: [EventService, KafkaEventService, EventRoutingLegacyKafkaService],
 })

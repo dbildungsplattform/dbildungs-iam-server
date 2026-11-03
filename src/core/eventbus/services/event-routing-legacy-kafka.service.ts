@@ -1,4 +1,3 @@
-import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KafkaEvent } from '../../../shared/events/kafka-event.js';
@@ -8,7 +7,6 @@ import { KafkaEventService } from './kafka-event.service.js';
 import { BaseEvent } from '../../../shared/events/index.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { KafkaConfig } from '../../../shared/config/kafka.config.js';
-import { EventOutboxService } from '../outbox/event-outbox.service.js';
 
 export type LegacyKafkaEventPair = {
     legacyEvent: BaseEvent;
@@ -28,36 +26,36 @@ export class EventRoutingLegacyKafkaService {
         private readonly logger: ClassLogger,
         private readonly eventService: EventService,
         private readonly kafkaEventService: KafkaEventService,
-        private readonly eventOutboxService: EventOutboxService,
-        private readonly em: EntityManager,
         configService: ConfigService<ServerConfig>,
     ) {
         this.kafkaEnabled = configService.getOrThrow<KafkaConfig>('KAFKA').ENABLED;
     }
 
     /**
-     * Runs the state change and emits the resulting events.
-     * With Kafka enabled, events are written to the outbox in the same transaction as the change.
-     * Without Kafka, legacy events are published in-process after the change has been persisted.
+     * Runs the state change and publishes the resulting events afterwards.
      * The callback returns only the events for changes that actually happened.
      */
     public async persistAndPublish<T>(persist: () => Promise<PersistedWithEvents<T>>): Promise<T> {
-        if (!this.kafkaEnabled) {
-            const outcome: PersistedWithEvents<T> = await persist();
-            for (const pair of outcome.events) {
-                this.publish(pair.legacyEvent);
-            }
-            return outcome.result;
+        const outcome: PersistedWithEvents<T> = await persist();
+        this.publishMultiple(outcome.events);
+        return outcome.result;
+    }
+
+    public publishMultiple(pairs: LegacyKafkaEventPair[]): void {
+        if (pairs.length === 0) {
+            return;
         }
 
-        const outcome: PersistedWithEvents<T> = await this.em.transactional(async () => {
-            const persisted: PersistedWithEvents<T> = await persist();
-            await this.eventOutboxService.enqueueAll(
-                persisted.events.map((pair: LegacyKafkaEventPair) => pair.kafkaEvent),
-            );
-            return persisted;
-        });
-        return outcome.result;
+        if (this.kafkaEnabled) {
+            this.logger.debug(`Publishing ${pairs.length} events to Kafka as batch`);
+            this.kafkaEventService
+                .publishMultiple(pairs.map((pair: LegacyKafkaEventPair) => pair.kafkaEvent))
+                .catch((err: unknown) => this.logger.logUnknownAsError(`Failed publishing kafka event batch`, err));
+        } else {
+            for (const pair of pairs) {
+                this.eventService.publish(pair.legacyEvent);
+            }
+        }
     }
 
     public publish(legacyEvent: BaseEvent, kafkaEvent?: KafkaEvent): void {
