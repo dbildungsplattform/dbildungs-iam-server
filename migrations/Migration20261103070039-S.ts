@@ -6,6 +6,6 @@ export class Migration20261103070039 extends Migration {
     }
 
     override down(): void {
-        this.addSql('alter table "meldung" alter column "inhalt" type varchar(2000) using ("inhalt"::varchar(2000));');
+        this.addSql('alter table "meldung" alter column "inhalt" type varchar(2000);');
     }
 }
