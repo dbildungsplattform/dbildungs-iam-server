@@ -14,7 +14,6 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -50,7 +49,6 @@ describe('ImportVorgangRepository', () => {
                 RolleModule,
                 OrganisationModule,
                 ConfigTestModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
                 DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
             ],

@@ -1,13 +1,22 @@
 import { type BaseEvent } from '../../../shared/events/index.js';
 import { type KafkaEvent } from '../../../shared/events/kafka-event.js';
 
+import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
+import { KafkaDisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-disabled-email-address-generated.event.js';
+import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
 import { KafkaEmailAddressChangedEvent } from '../../../shared/events/email/kafka-email-address-changed.event.js';
+import { KafkaEmailAddressDeletedInDatabaseEvent } from '../../../shared/events/email/kafka-email-address-deleted-in-database.event.js';
+import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kafka-email-address-disabled.event.js';
 import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-email-address-generated.event.js';
+import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
+import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
 import { KafkaImportExecutedEvent } from '../../../shared/events/kafka-import-executed.event.js';
 import { KafkaGroupAndRoleCreatedEvent } from '../../../shared/events/kafka-kc-group-and-role-event.js';
 import { KafkaKlasseCreatedEvent } from '../../../shared/events/kafka-klasse-created.event.js';
 import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-updated.event.js';
 import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
+import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
 import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
@@ -17,32 +26,20 @@ import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updat
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
 import { KafkaSchuleItslearningEnabledEvent } from '../../../shared/events/kafka-schule-itslearning-enabled.event.js';
 import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
-import { type Constructor } from './util.types.js';
-import { KafkaPersonDeletedAfterDeadlineExceededEvent } from '../../../shared/events/kafka-person-deleted-after-deadline-exceeded.event.js';
-import { KafkaEmailAddressAlreadyExistsEvent } from '../../../shared/events/email/kafka-email-address-already-exists.event.js';
-import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
-import { KafkaEmailAddressDeletedInDatabaseEvent } from '../../../shared/events/email/kafka-email-address-deleted-in-database.event.js';
 import { KafkaLdapEmailAddressDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-email-address-deleted.event.js';
-import { KafkaEmailAddressDisabledEvent } from '../../../shared/events/email/kafka-email-address-disabled.event.js';
-import { KafkaDisabledEmailAddressGeneratedEvent } from '../../../shared/events/email/kafka-disabled-email-address-generated.event.js';
-import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
-import { KafkaLdapPersonEntryChangedEvent } from '../../../shared/events/ldap/kafka-ldap-person-entry-changed.event.js';
 import { KafkaLdapEntryDeletedEvent } from '../../../shared/events/ldap/kafka-ldap-entry-deleted.event.js';
+import { KafkaLdapPersonEntryChangedEvent } from '../../../shared/events/ldap/kafka-ldap-person-entry-changed.event.js';
 import { KafkaLdapPersonEntryRenamedEvent } from '../../../shared/events/ldap/kafka-ldap-person-entry-renamed.event.js';
-import { KafkaOxAccountDeletedEvent } from '../../../shared/events/ox/kafka-ox-account-deleted.event.js';
-import { KafkaDisabledOxUserChangedEvent } from '../../../shared/events/ox/kafka-disabled-ox-user-changed.event.js';
-import { KafkaOxEmailAddressDeletedEvent } from '../../../shared/events/ox/kafka-ox-email-address-deleted.event.js';
-import { KafkaOxUserChangedEvent } from '../../../shared/events/ox/kafka-ox-user-changed.event.js';
 import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
-import { KafkaLdapSyncFailedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-failed.event.js';
-import { KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent } from '../../../shared/events/email/kafka-email-address-generated-after-ldap-sync-failed.event.js';
+import { KafkaDisabledOxUserChangedEvent } from '../../../shared/events/ox/kafka-disabled-ox-user-changed.event.js';
+import { KafkaOxAccountDeletedEvent } from '../../../shared/events/ox/kafka-ox-account-deleted.event.js';
+import { KafkaOxEmailAddressDeletedEvent } from '../../../shared/events/ox/kafka-ox-email-address-deleted.event.js';
 import { KafkaOxSyncUserCreatedEvent } from '../../../shared/events/ox/kafka-ox-sync-user-created.event.js';
-import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
-import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
+import { KafkaOxUserChangedEvent } from '../../../shared/events/ox/kafka-ox-user-changed.event.js';
+import { type Constructor } from './util.types.js';
 
 export type KafkaEventKey =
     | 'user.created.email'
-    | 'user.created.email.after.ldap.sync.failed'
     | 'user.deleted'
     | 'user.deleted_deadline'
     | 'user.modified.name'
@@ -58,7 +55,6 @@ export type KafkaEventKey =
     | 'user.email.purged'
     | 'user.ldap.synced'
     | 'user.ldap.sync.completed'
-    | 'user.ldap.sync.failed'
     | 'user.ldap.entry_deleted'
     | 'user.ldap.entry_changed'
     | 'user.ldap.entry_renamed'
@@ -93,11 +89,6 @@ export interface KafkaEventMappingEntry {
 export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = {
     'user.created.email': {
         eventClass: KafkaEmailAddressGeneratedEvent,
-        topic: 'user-topic',
-        topicDlq: 'user-dlq-topic',
-    },
-    'user.created.email.after.ldap.sync.failed': {
-        eventClass: KafkaEmailAddressGeneratedAfterLdapSyncFailedEvent,
         topic: 'user-topic',
         topicDlq: 'user-dlq-topic',
     },
@@ -251,11 +242,6 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
     },
     'user.ldap.sync.completed': {
         eventClass: KafkaLdapSyncCompletedEvent,
-        topic: 'user-topic',
-        topicDlq: 'user-dlq-topic',
-    },
-    'user.ldap.sync.failed': {
-        eventClass: KafkaLdapSyncFailedEvent,
         topic: 'user-topic',
         topicDlq: 'user-dlq-topic',
     },
