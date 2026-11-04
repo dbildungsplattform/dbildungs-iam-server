@@ -126,7 +126,6 @@
         "PERSON_WITHOUT_ORG_LIMIT": 30
     },
     "EMAIL_MICROSERVICE": {
-        "USE_EMAIL_MICROSERVICE": true,
         "ENDPOINT": "http://localhost:9091/"
     },
     "SCHULCONNEX": {

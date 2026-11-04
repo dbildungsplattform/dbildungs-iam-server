@@ -134,8 +134,6 @@ describe('LdapSyncEventHandler', () => {
 
         sut = module.get(LdapSyncEventHandler);
 
-        emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-
         app = module.createNestApplication();
         await app.init();
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
