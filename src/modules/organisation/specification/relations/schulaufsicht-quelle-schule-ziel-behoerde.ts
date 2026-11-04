@@ -17,12 +17,12 @@ export class SchulaufsichtQuelleSchuleZielBehoerde extends CompositeSpecificatio
         const quellOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(
             t.quellOrganisationId,
         );
-        if (!quellOrganisation || quellOrganisation.typ !== OrganisationsTyp.SCHULE) {
+        if (quellOrganisation?.typ !== OrganisationsTyp.SCHULE) {
             return false;
         }
 
         const zielOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(t.zielOrganisationId);
-        if (!zielOrganisation || zielOrganisation.typ !== OrganisationsTyp.BEHOERDE) {
+        if (zielOrganisation?.typ !== OrganisationsTyp.BEHOERDE) {
             return false;
         }
 

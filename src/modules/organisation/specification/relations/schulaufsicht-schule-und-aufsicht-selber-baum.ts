@@ -19,12 +19,12 @@ export class SchulaufsichtSchuleUndAufsichtSelberBaum extends CompositeSpecifica
         }
 
         const schule: Option<Organisation<true>> = await this.organisationRepo.findById(beziehung.quellOrganisationId);
-        if (!schule || schule.typ !== OrganisationsTyp.SCHULE) {
+        if (schule?.typ !== OrganisationsTyp.SCHULE) {
             return true;
         }
 
         const behoerde: Option<Organisation<true>> = await this.organisationRepo.findById(beziehung.zielOrganisationId);
-        if (!behoerde || behoerde.typ !== OrganisationsTyp.BEHOERDE) {
+        if (behoerde?.typ !== OrganisationsTyp.BEHOERDE) {
             return true;
         }
 

@@ -22,7 +22,7 @@ export class SchultraegerQuelleSchuleZielTraeger extends CompositeSpecification<
         }
 
         const zielOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(t.zielOrganisationId);
-        if (!zielOrganisation || zielOrganisation.typ !== OrganisationsTyp.TRAEGER) {
+        if (zielOrganisation?.typ !== OrganisationsTyp.TRAEGER) {
             return false;
         }
 

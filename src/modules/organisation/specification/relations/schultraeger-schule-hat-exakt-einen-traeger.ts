@@ -17,7 +17,7 @@ export class SchultraegerSchuleHatExaktEinenTraeger extends CompositeSpecificati
         const schule: Option<Organisation<true, true>> = await this.organisationRepo.findByIdWithRelationships(
             beziehung.quellOrganisationId,
         );
-        if (!schule || schule.typ !== OrganisationsTyp.SCHULE) {
+        if (schule?.typ !== OrganisationsTyp.SCHULE) {
             return true;
         }
 
