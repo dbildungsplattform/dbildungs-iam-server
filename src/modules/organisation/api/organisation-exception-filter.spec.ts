@@ -8,6 +8,11 @@ import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-f
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
+import { SchulaufsichtQuelleSchuleZielBehoerdeError } from '../specification/relations/error/schulaufsicht-quelle-schule-ziel-behoerde.error.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaumError } from '../specification/relations/error/schulaufsicht-schule-und-aufsicht-selber-baum.error.js';
+import { SchultraegerQuelleSchuleZielTraegerError } from '../specification/relations/error/schultraeger-quelle-schule-ziel-traeger.error.js';
+import { SchultraegerSchuleHatExaktEinenTraegerError } from '../specification/relations/error/schultraeger-schule-hat-exakt-einen-traeger.error.js';
+import { SchultraegerSchuleUndTraegerSelberBaumError } from '../specification/relations/error/schultraeger-schule-und-traeger-selber-baum.error.js';
 
 describe('OrganisationExceptionFilter', () => {
     let filter: OrganisationExceptionFilter;
@@ -63,6 +68,79 @@ describe('OrganisationExceptionFilter', () => {
                 new DbiamOrganisationError({
                     code: 400,
                     i18nKey: OrganisationSpecificationErrorI18nTypes.BEHOERDE_ADMINISTRIERT_VON,
+                }),
+            );
+        });
+
+        it('should map SchulaufsichtQuelleSchuleZielBehoerdeError to its validation key', () => {
+            const error: SchulaufsichtQuelleSchuleZielBehoerdeError = new SchulaufsichtQuelleSchuleZielBehoerdeError();
+
+            filter.catch(error, argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULAUFSICHT_QUELLE_SCHULE_ZIEL_BEHOERDE,
+                }),
+            );
+        });
+
+        it('should map SchulaufsichtSchuleUndAufsichtSelberBaumError to its validation key', () => {
+            const error: SchulaufsichtSchuleUndAufsichtSelberBaumError =
+                new SchulaufsichtSchuleUndAufsichtSelberBaumError();
+
+            filter.catch(error, argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULAUFSICHT_SCHULE_UND_AUFSICHT_SELBER_BAUM,
+                }),
+            );
+        });
+
+        it('should map SchultraegerQuelleSchuleZielTraegerError to its validation key', () => {
+            const error: SchultraegerQuelleSchuleZielTraegerError = new SchultraegerQuelleSchuleZielTraegerError();
+
+            filter.catch(error, argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULTRAEGER_QUELLE_SCHULE_ZIEL_TRAEGER,
+                }),
+            );
+        });
+
+        it('should map SchultraegerSchuleHatExaktEinenTraegerError to its validation key', () => {
+            const error: SchultraegerSchuleHatExaktEinenTraegerError =
+                new SchultraegerSchuleHatExaktEinenTraegerError();
+
+            filter.catch(error, argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULTRAEGER_SCHULE_HAT_EXAKT_EINEN_TRAEGER,
+                }),
+            );
+        });
+
+        it('should map SchultraegerSchuleUndTraegerSelberBaumError to its validation key', () => {
+            const error: SchultraegerSchuleUndTraegerSelberBaumError =
+                new SchultraegerSchuleUndTraegerSelberBaumError();
+
+            filter.catch(error, argumentsHost);
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: 400,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULTRAEGER_SCHULE_UND_TRAEGER_SELBER_BAUM,
                 }),
             );
         });
