@@ -1,13 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { type Mock, type MockedObject, vi } from 'vitest';
-import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type Request, type Response } from 'express';
 import { type SessionData } from 'express-session';
 import { type Client, type EndSessionParameters, type IssuerMetadata } from 'openid-client';
+import { type Mock, type MockedObject, vi } from 'vitest';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 
 import { MikroORM } from '@mikro-orm/core';
+import { InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
+import { createRequestMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
 import {
     createOidcClientMock,
     createPassportUserMock,
@@ -17,6 +20,7 @@ import {
 } from '../../../../test/utils/index.js';
 import { type FrontendConfig } from '../../../shared/config/frontend.config.js';
 import { type KeycloakConfig } from '../../../shared/config/keycloak.config.js';
+import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import PersonTimeLimitService from '../../person/domain/person-time-limit-info.service.js';
@@ -25,24 +29,19 @@ import { PersonRepository } from '../../person/persistence/person.repository.js'
 import { PersonModule } from '../../person/person.module.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { PersonenKontextModule } from '../../personenkontext/personenkontext.module.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { PersonPermissionsRepo } from '../domain/person-permission.repo.js';
 import { type PersonenkontextRolleWithOrganisation, type PersonPermissions } from '../domain/person-permissions.js';
 import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
+import { CsrfTokenService } from '../services/csrf-token.service.js';
 import { OIDC_CLIENT } from '../services/oidc-client.service.js';
 import { type PassportUser } from '../types/user.js';
 import { AuthenticationController } from './authentication.controller.js';
-import { UserinfoResponse } from './userinfo.response.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { RolleModule } from '../../rolle/rolle.module.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { createRequestMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
-import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
-import { CsrfTokenService } from '../services/csrf-token.service.js';
 import { CsrfTokenResponse } from './csrf-token.response.js';
-import { InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { UserinfoResponse } from './userinfo.response.js';
 
 describe('AuthenticationController', () => {
     let module: TestingModule;
@@ -62,7 +61,6 @@ describe('AuthenticationController', () => {
                 PersonModule,
                 PersonenKontextModule,
                 RolleModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [
