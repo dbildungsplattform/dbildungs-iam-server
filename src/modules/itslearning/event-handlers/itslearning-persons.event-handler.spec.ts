@@ -16,6 +16,10 @@ import {
 } from '../../../shared/events/personenkontext-updated.event.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Person } from '../../person/domain/person.js';
+import {
+    DBiamPersonenkontextRepo,
+    type ErweiterterServiceProviderForPK,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type PersonResponse } from '../adapter/technical/actions/read-person.action.js';
@@ -26,6 +30,8 @@ import {
 import { ItslearningPersonAdapter } from '../adapter/domain/itslearning-person.adapter.js';
 import { IMSESInstitutionRoleType } from '../adapter/domain/role.enum.js';
 import { ItsLearningPersonsEventHandler } from './itslearning-persons.event-handler.js';
+import { ItsLearningSyncEventHandler } from './itslearning-sync.event-handler.js';
+import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 
@@ -48,6 +54,8 @@ describe('ItsLearning Persons Event Handler', () => {
     let sut: ItsLearningPersonsEventHandler;
     let itslearningPersonAdapterMock: DeepMocked<ItslearningPersonAdapter>;
     let itslearningMembershipAdapterMock: DeepMocked<ItslearningMembershipAdapter>;
+    let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
+    let syncEventHandlerMock: DeepMocked<ItsLearningSyncEventHandler>;
     let loggerMock: DeepMocked<ClassLogger>;
 
     beforeAll(async () => {
@@ -63,12 +71,22 @@ describe('ItsLearning Persons Event Handler', () => {
                     provide: ItslearningMembershipAdapter,
                     useValue: createMock(ItslearningMembershipAdapter),
                 },
+                {
+                    provide: DBiamPersonenkontextRepo,
+                    useValue: createMock(DBiamPersonenkontextRepo),
+                },
+                {
+                    provide: ItsLearningSyncEventHandler,
+                    useValue: createMock(ItsLearningSyncEventHandler),
+                },
             ],
         }).compile();
 
         sut = module.get(ItsLearningPersonsEventHandler);
         itslearningPersonAdapterMock = module.get(ItslearningPersonAdapter);
         itslearningMembershipAdapterMock = module.get(ItslearningMembershipAdapter);
+        personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
+        syncEventHandlerMock = module.get(ItsLearningSyncEventHandler);
         loggerMock = module.get(ClassLogger);
     });
 
@@ -78,6 +96,7 @@ describe('ItsLearning Persons Event Handler', () => {
 
     beforeEach(() => {
         sut.ENABLED = true;
+        personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -526,6 +545,141 @@ describe('ItsLearning Persons Event Handler', () => {
             await sut.updatePersonenkontexteEventHandler(event);
 
             expect(updatePersonSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it('should delete person, if no relevant kontext and no itslearning Rollenerweiterung exists', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [],
+            );
+
+            const deletePersonSpy: Mock = vi.spyOn(sut, 'deletePerson').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(deletePersonSpy).toHaveBeenCalledWith(event.person.id, `${event.eventID}-DELETE-PERSON`);
+        });
+
+        it('should delegate to sync handler, if itslearning is given through a Rollenerweiterung', async () => {
+            const lehrKontext: PersonenkontextUpdatedData = makeKontextEventData({ rolle: RollenArt.LEHR });
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [lehrKontext],
+            );
+
+            const erweiterterSP: ErweiterterServiceProviderForPK = {
+                personenkontext: DoFactory.createPersonenkontext(true, { personId: event.person.id }),
+                serviceProvider: DoFactory.createServiceProvider(true, {
+                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                }),
+            };
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([erweiterterSP]);
+
+            const updatePersonSpy: Mock = vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
+            const updateMembershipsSpy: Mock = vi.spyOn(sut, 'updateMemberships').mockResolvedValueOnce(undefined);
+            const deletePersonSpy: Mock = vi.spyOn(sut, 'deletePerson').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledWith(
+                expect.any(PersonExternalSystemsSyncEvent),
+            );
+            const [syncEvent]: [PersonExternalSystemsSyncEvent] = syncEventHandlerMock
+                .personExternalSystemSyncEventHandler.mock.calls[0] as [PersonExternalSystemsSyncEvent];
+            expect(syncEvent.personId).toBe(event.person.id);
+            expect(updatePersonSpy).not.toHaveBeenCalled();
+            expect(updateMembershipsSpy).not.toHaveBeenCalled();
+            expect(deletePersonSpy).not.toHaveBeenCalled();
+        });
+
+        it('should delegate to sync handler, if own relevant kontext and Rollenerweiterung exist', async () => {
+            const leitKontext: PersonenkontextUpdatedData = makeKontextEventData({ rolle: RollenArt.LEIT });
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [leitKontext],
+            );
+
+            const erweiterterSP: ErweiterterServiceProviderForPK = {
+                personenkontext: DoFactory.createPersonenkontext(true, { personId: event.person.id }),
+                serviceProvider: DoFactory.createServiceProvider(true, {
+                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                }),
+            };
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([erweiterterSP]);
+
+            const updatePersonSpy: Mock = vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
+            const updateMembershipsSpy: Mock = vi.spyOn(sut, 'updateMemberships').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(1);
+            expect(updatePersonSpy).not.toHaveBeenCalled();
+            expect(updateMembershipsSpy).not.toHaveBeenCalled();
+        });
+
+        it('should not delegate to sync handler, if no Rollenerweiterung exists', async () => {
+            const lernKontext: PersonenkontextUpdatedData = makeKontextEventData({ rolle: RollenArt.LERN });
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [lernKontext],
+            );
+
+            const updatePersonSpy: Mock = vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
+            vi.spyOn(sut, 'updateMemberships').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).not.toHaveBeenCalled();
+            expect(updatePersonSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('should not query Rollenerweiterungen, if no LEHR, LERN or LEIT kontext exists', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [makeKontextEventData({ rolle: RollenArt.SYSADMIN })],
+            );
+
+            vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
+            vi.spyOn(sut, 'updateMemberships').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(personenkontextRepoMock.findErweiterteSPByPersonId).not.toHaveBeenCalled();
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).not.toHaveBeenCalled();
+        });
+
+        it('should delete person, if only a Rollenerweiterung exists but no LEHR, LERN or LEIT kontext remains', async () => {
+            const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
+                { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
+                [],
+                [],
+                [],
+            );
+
+            const erweiterterSP: ErweiterterServiceProviderForPK = {
+                personenkontext: DoFactory.createPersonenkontext(true, { personId: event.person.id }),
+                serviceProvider: DoFactory.createServiceProvider(true, {
+                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                }),
+            };
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([erweiterterSP]);
+
+            const deletePersonSpy: Mock = vi.spyOn(sut, 'deletePerson').mockResolvedValueOnce(undefined);
+
+            await sut.updatePersonenkontexteEventHandler(event);
+
+            expect(personenkontextRepoMock.findErweiterteSPByPersonId).not.toHaveBeenCalled();
+            expect(deletePersonSpy).toHaveBeenCalledWith(event.person.id, `${event.eventID}-DELETE-PERSON`);
         });
 
         it('should skip event, if not enabled', async () => {

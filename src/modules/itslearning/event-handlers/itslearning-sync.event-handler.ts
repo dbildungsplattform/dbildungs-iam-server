@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { uniq } from 'lodash-es';
 
 import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
@@ -13,7 +12,10 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import {
+    DBiamPersonenkontextRepo,
+    type ErweiterterServiceProviderForPK,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -86,21 +88,55 @@ export class ItsLearningSyncEventHandler {
         const kontexte: Personenkontext<true>[] = await this.personenkontextRepo.findByPerson(event.personId);
 
         // Find all rollen and organisations
-        const rollenIDs: RolleID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.rolleId));
-        const organisationIDs: OrganisationID[] = uniq(kontexte.map((pk: Personenkontext<true>) => pk.organisationId));
+        const rollenIDs: RolleID[] = [...new Set(kontexte.map((pk: Personenkontext<true>) => pk.rolleId))];
+        const organisationIDs: OrganisationID[] = [
+            ...new Set(kontexte.map((pk: Personenkontext<true>) => pk.organisationId)),
+        ];
         const [rollen, organisations]: [Map<RolleID, Rolle<true>>, Map<OrganisationID, Organisation<true>>] =
             await Promise.all([this.rolleRepo.findByIds(rollenIDs), this.organisationRepo.findByIds(organisationIDs)]);
 
-        // Remove all rollen that do not have itslearning
-        for (const [rolleId, rolle] of rollen.entries()) {
-            if (
-                !rolle.serviceProviderData.some(
-                    (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.ITSLEARNING,
+        // Rollen that have itslearning rolle-wide. Kontexte of these rollen are relevant without any extension.
+        const itslearningRollenIDs: Set<RolleID> = new Set(
+            Array.from(rollen.values())
+                .filter((rolle: Rolle<true>) =>
+                    rolle.serviceProviderData.some(
+                        (sp: ServiceProvider<true>) => sp.externalSystem === ServiceProviderSystem.ITSLEARNING,
+                    ),
                 )
-            ) {
-                rollen.delete(rolleId);
-            }
-        }
+                .map((rolle: Rolle<true>) => rolle.id),
+        );
+
+        // Kontexte that receive itslearning through a school-specific Rollenerweiterung
+        const erweiterteSPs: ErweiterterServiceProviderForPK[] =
+            await this.personenkontextRepo.findErweiterteSPByPersonId(event.personId);
+        const kontextIdsWithItslearningErweiterung: Set<string> = new Set(
+            erweiterteSPs
+                .filter(
+                    (erweiterterSP: ErweiterterServiceProviderForPK) =>
+                        erweiterterSP.serviceProvider.externalSystem === ServiceProviderSystem.ITSLEARNING,
+                )
+                .map((erweiterterSP: ErweiterterServiceProviderForPK) => erweiterterSP.personenkontext.id),
+        );
+
+        const hasItslearning = (pk: Personenkontext<true>): boolean =>
+            itslearningRollenIDs.has(pk.rolleId) || kontextIdsWithItslearningErweiterung.has(pk.id);
+
+        // Classes are enabled through their parent school. The school is not necessarily one of the person's own organisations.
+        const parentSchoolIDs: OrganisationID[] = [
+            ...new Set(
+                Array.from(organisations.values())
+                    .filter((organisation: Organisation<true>) => organisation.typ === OrganisationsTyp.KLASSE)
+                    .map((organisation: Organisation<true>) => organisation.administriertVon)
+                    .filter((id?: OrganisationID): id is OrganisationID => !!id && !organisations.has(id)),
+            ),
+        ];
+        const parentSchools: Map<OrganisationID, Organisation<true>> = parentSchoolIDs.length > 0
+            ? await this.organisationRepo.findByIds(parentSchoolIDs)
+            : new Map<OrganisationID, Organisation<true>>();
+        const organisationsWithParents: Map<OrganisationID, Organisation<true>> = new Map([
+            ...organisations,
+            ...parentSchools,
+        ]);
 
         // Remove all organisations that do not have itslearning
         for (const [orgaId, organisation] of organisations.entries()) {
@@ -113,7 +149,7 @@ export class ItsLearningSyncEventHandler {
                 // Only keep classes, whose schools are enabled for itslearning
                 const parentItslearningEnabled: boolean = !!(
                     organisation.administriertVon &&
-                    organisations.get(organisation.administriertVon)?.itslearningEnabled
+                    organisationsWithParents.get(organisation.administriertVon)?.itslearningEnabled
                 );
 
                 if (!parentItslearningEnabled) {
@@ -127,13 +163,15 @@ export class ItsLearningSyncEventHandler {
 
         // Filter kontexte we care about
         const relevantKontexte: Personenkontext<true>[] = kontexte.filter(
-            (pk: Personenkontext<true>) => rollen.has(pk.rolleId) && organisations.has(pk.organisationId),
+            (pk: Personenkontext<true>) => hasItslearning(pk) && organisations.has(pk.organisationId),
         );
 
         // Check if the person has at least one personenkontext with the itslearning-system
         if (relevantKontexte.length > 0) {
             const targetRole: RollenArt = determineHighestRollenart(
-                Array.from(rollen.values()).map((rolle: Rolle<true>) => rolle.rollenart),
+                kontexte
+                    .filter((pk: Personenkontext<true>) => hasItslearning(pk))
+                    .map((pk: Personenkontext<true>) => rollen.get(pk.rolleId)!.rollenart),
             );
 
             const emailAddress: string | undefined =

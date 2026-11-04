@@ -5,6 +5,9 @@ import { OrganisationEntity } from '../../organisation/persistence/organisation.
 import { ServiceProviderEntity } from '../../service-provider/repo/service-provider.entity.js';
 import { RolleEntity } from './rolle.entity.js';
 
+// DB-level following FK rules (see migrations) findings:
+// - rolle_id: ON DELETE CASCADE. Deleting a Rolle removes its extensions silently, without ORM hooks or events.
+// - organisation_id, service_provider_id: NO ACTION. Deleting such an organisation or service provider fails while extensions reference it.
 @Entity({ tableName: 'rollenerweiterung' })
 @Unique({
     // Weird name to avoid recreation of index, MikroORM7 was trying to generate a different name

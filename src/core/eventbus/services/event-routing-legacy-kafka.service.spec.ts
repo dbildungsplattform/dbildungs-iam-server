@@ -1,5 +1,5 @@
 // eslint-disable-next-line max-classes-per-file
-import { vi } from 'vitest';
+import { type Mock, vi } from 'vitest';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -119,6 +119,139 @@ describe('EventRoutingLegacyKafkaService', () => {
             expect(kafkaEventServiceMock.publish).toHaveBeenCalledWith(kafkaEvent);
             expect(eventServiceMock.publish).not.toHaveBeenCalled();
             expect(logger.logUnknownAsError).toHaveBeenCalled();
+        });
+    });
+
+    describe('publishMultiple', () => {
+        it('should send all kafka events in one batch when kafka is enabled', async () => {
+            await setupModule(true);
+
+            const legacyEvent1: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent1: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            const legacyEvent2: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent2: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            kafkaEventServiceMock.publishMultiple.mockResolvedValue(undefined);
+
+            sut.publishMultiple([
+                { legacyEvent: legacyEvent1, kafkaEvent: kafkaEvent1 },
+                { legacyEvent: legacyEvent2, kafkaEvent: kafkaEvent2 },
+            ]);
+            await flushPromises();
+
+            expect(kafkaEventServiceMock.publishMultiple).toHaveBeenCalledTimes(1);
+            expect(kafkaEventServiceMock.publishMultiple).toHaveBeenCalledWith([kafkaEvent1, kafkaEvent2]);
+            expect(kafkaEventServiceMock.publish).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
+        it('should publish each legacy event to legacy event service when kafka is disabled', async () => {
+            await setupModule(false);
+
+            const legacyEvent1: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent1: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            const legacyEvent2: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent2: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+
+            sut.publishMultiple([
+                { legacyEvent: legacyEvent1, kafkaEvent: kafkaEvent1 },
+                { legacyEvent: legacyEvent2, kafkaEvent: kafkaEvent2 },
+            ]);
+
+            expect(kafkaEventServiceMock.publishMultiple).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).toHaveBeenCalledTimes(2);
+            expect(eventServiceMock.publish).toHaveBeenNthCalledWith(1, legacyEvent1);
+            expect(eventServiceMock.publish).toHaveBeenNthCalledWith(2, legacyEvent2);
+        });
+
+        it('should publish nothing for an empty list', async () => {
+            await setupModule(true);
+
+            sut.publishMultiple([]);
+
+            expect(kafkaEventServiceMock.publishMultiple).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
+        it('should log error if batch publish fails', async () => {
+            await setupModule(true);
+
+            const legacyEvent: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            const error: Error = new Error('Kafka batch failed');
+            kafkaEventServiceMock.publishMultiple.mockRejectedValue(error);
+
+            sut.publishMultiple([{ legacyEvent, kafkaEvent }]);
+            await flushPromises();
+
+            expect(logger.logUnknownAsError).toHaveBeenCalledWith('Failed publishing kafka event batch', error);
+        });
+    });
+
+    describe('persistAndPublish', () => {
+        it('should persist first and then publish legacy events when kafka is disabled', async () => {
+            await setupModule(false);
+
+            const legacyEvent: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            const persist: Mock = vi
+                .fn()
+                .mockResolvedValue({ result: 'persisted', events: [{ legacyEvent, kafkaEvent }] });
+
+            const result: string = await sut.persistAndPublish(persist);
+
+            expect(result).toBe('persisted');
+            expect(persist).toHaveBeenCalledTimes(1);
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(legacyEvent);
+            expect(kafkaEventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
+        it('should not publish when persisting fails and kafka is disabled', async () => {
+            await setupModule(false);
+
+            const persist: Mock = vi.fn().mockRejectedValue(new Error('db failed'));
+
+            await expect(sut.persistAndPublish(persist)).rejects.toThrow('db failed');
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
+        it('should publish kafka events after persisting when kafka is enabled', async () => {
+            await setupModule(true);
+
+            const legacyEvent: DeepMocked<BaseEvent> = createMock(BaseEventMock);
+            const kafkaEvent: DeepMocked<KafkaEvent> = createMock(KafkaEventMock);
+            kafkaEventServiceMock.publishMultiple.mockResolvedValue(undefined);
+            const persist: Mock = vi
+                .fn()
+                .mockResolvedValue({ result: 'persisted', events: [{ legacyEvent, kafkaEvent }] });
+
+            const result: string = await sut.persistAndPublish(persist);
+            await flushPromises();
+
+            expect(result).toBe('persisted');
+            expect(persist).toHaveBeenCalledTimes(1);
+            expect(kafkaEventServiceMock.publishMultiple).toHaveBeenCalledWith([kafkaEvent]);
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+        });
+
+        it('should not publish kafka events when persisting fails and kafka is enabled', async () => {
+            await setupModule(true);
+
+            const persist: Mock = vi.fn().mockRejectedValue(new Error('db failed'));
+
+            await expect(sut.persistAndPublish(persist)).rejects.toThrow('db failed');
+            expect(kafkaEventServiceMock.publishMultiple).not.toHaveBeenCalled();
+        });
+
+        it('should publish nothing when no events were produced', async () => {
+            await setupModule(true);
+
+            const persist: Mock = vi.fn().mockResolvedValue({ result: 'unchanged', events: [] });
+
+            const result: string = await sut.persistAndPublish(persist);
+
+            expect(result).toBe('unchanged');
+            expect(kafkaEventServiceMock.publishMultiple).not.toHaveBeenCalled();
+            expect(eventServiceMock.publish).not.toHaveBeenCalled();
         });
     });
 });

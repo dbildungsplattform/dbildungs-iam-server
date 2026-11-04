@@ -2,6 +2,10 @@ import { faker } from '@faker-js/faker';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+    EventRoutingLegacyKafkaService,
+    type PersistedWithEvents,
+} from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
@@ -32,6 +36,7 @@ describe('ApplyRollenerweiterungChangesService', () => {
     let rolleRepoMock: DeepMocked<RolleRepo>;
     let serviceProviderRepoMock: DeepMocked<ServiceProviderRepo>;
     let rollenerweiterungRepoMock: DeepMocked<InternalRollenerweiterungRepo>;
+    let eventServiceMock: DeepMocked<EventRoutingLegacyKafkaService>;
 
     beforeAll(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -53,6 +58,10 @@ describe('ApplyRollenerweiterungChangesService', () => {
                     provide: InternalRollenerweiterungRepo,
                     useValue: createMock<InternalRollenerweiterungRepo>(InternalRollenerweiterungRepo),
                 },
+                {
+                    provide: EventRoutingLegacyKafkaService,
+                    useValue: createMock<EventRoutingLegacyKafkaService>(EventRoutingLegacyKafkaService),
+                },
                 ApplyRollenerweiterungService,
             ],
         }).compile();
@@ -60,12 +69,22 @@ describe('ApplyRollenerweiterungChangesService', () => {
         service = module.get(ApplyRollenerweiterungService);
         organisationRepoMock = module.get(OrganisationRepository);
         rolleRepoMock = module.get(RolleRepo);
+        eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         serviceProviderRepoMock = module.get(ServiceProviderRepo);
         rollenerweiterungRepoMock = module.get(InternalRollenerweiterungRepo);
     }, DEFAULT_TIMEOUT_FOR_TESTCONTAINERS);
 
     beforeEach(() => {
         vi.resetAllMocks();
+        eventServiceMock.persistAndPublish.mockImplementation(
+            async <T>(persist: () => Promise<PersistedWithEvents<T>>) => {
+                const outcome: PersistedWithEvents<T> = await persist();
+                for (const pair of outcome.events) {
+                    eventServiceMock.publish(pair.legacyEvent, pair.kafkaEvent);
+                }
+                return outcome.result;
+            },
+        );
     });
 
     function createPermissions(
@@ -213,6 +232,22 @@ describe('ApplyRollenerweiterungChangesService', () => {
                 rolleId,
                 serviceProviderId: serviceProviderIdToRemove,
             });
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({ organisationId, rolleId, serviceProviderId: serviceProviderIdToAdd }),
+                expect.objectContaining({ organisationId, rolleId, serviceProviderId: serviceProviderIdToAdd }),
+            );
+            expect(eventServiceMock.publish).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    organisationId,
+                    rolleId,
+                    serviceProviderId: serviceProviderIdToRemove,
+                }),
+                expect.objectContaining({
+                    organisationId,
+                    rolleId,
+                    serviceProviderId: serviceProviderIdToRemove,
+                }),
+            );
         });
 
         it('should return MissingPermissionsError if base permission is missing', async () => {
