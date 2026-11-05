@@ -1395,8 +1395,10 @@ describe('RolleRepo', () => {
                 },
             });
 
-            expect(rollen).toEqual(expect.arrayContaining([mptRolle, combinedRolle]));
-            expect(rollen).not.toContain(pilotRolle);
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toHaveLength(2);
+            expect(rolleIds).toEqual(expect.arrayContaining([mptRolle.id, combinedRolle.id]));
+            expect(rolleIds).not.toContain(pilotRolle.id);
         });
 
         it('should return authorized Pilot rollen without MPT in restricted account creation, if their rollenart is allowed', async () => {
@@ -1428,9 +1430,10 @@ describe('RolleRepo', () => {
                 },
             });
 
-            expect(rollen).toEqual([authorizedPilotLernRolle]);
-            expect(rollen).not.toContain(unauthorizedPilotLernRolle);
-            expect(rollen).not.toContain(pilotLeitRolle);
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toEqual([authorizedPilotLernRolle.id]);
+            expect(rolleIds).not.toContain(unauthorizedPilotLernRolle.id);
+            expect(rolleIds).not.toContain(pilotLeitRolle.id);
         });
 
         it('should return rollen without MPT rollen', async () => {
