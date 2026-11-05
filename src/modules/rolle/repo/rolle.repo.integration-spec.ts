@@ -1399,6 +1399,40 @@ describe('RolleRepo', () => {
             expect(rollen).not.toContain(pilotRolle);
         });
 
+        it('should return authorized Pilot rollen without MPT in restricted account creation, if their rollenart is allowed', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const authorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const unauthorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_2_ROLLE],
+            });
+            const pilotLeitRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [RollenArt.LERN],
+                gatedBucket: {
+                    allowedRollenarten: [RollenArt.LERN, RollenArt.LEIT],
+                    authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                    requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
+                },
+            });
+
+            expect(rollen).toEqual([authorizedPilotLernRolle]);
+            expect(rollen).not.toContain(unauthorizedPilotLernRolle);
+            expect(rollen).not.toContain(pilotLeitRolle);
+        });
+
         it('should return rollen without MPT rollen', async () => {
             await createRolle();
             const rolle: Rolle<true> = await createRolle();

@@ -152,6 +152,7 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
         authorizedMerkmale: Array<RollenMerkmal>;
+        /** Gated Rollen must carry one of these Merkmale, unless their Rollenart is in the top-level allowedRollenarten. */
         requiredMerkmale?: Array<RollenMerkmal>;
     };
     searchStr?: string;
@@ -585,11 +586,16 @@ export class RolleRepo {
                                   ...(params.gatedBucket.requiredMerkmale?.length
                                       ? [
                                             {
-                                                merkmale: {
-                                                    $some: {
-                                                        merkmal: { $in: params.gatedBucket.requiredMerkmale },
+                                                $or: [
+                                                    { rollenart: { $in: params.allowedRollenarten } },
+                                                    {
+                                                        merkmale: {
+                                                            $some: {
+                                                                merkmal: { $in: params.gatedBucket.requiredMerkmale },
+                                                            },
+                                                        },
                                                     },
-                                                },
+                                                ],
                                             },
                                         ]
                                       : []),
