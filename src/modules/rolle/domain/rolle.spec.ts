@@ -632,5 +632,112 @@ describe('Rolle Aggregate', () => {
             expectErrResult(validateResult);
             expect(validateResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
         });
+
+        it('should not check the rollenart whitelist for already assigned serviceproviders', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const serviceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [serviceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(new Map([[serviceProvider.id, serviceProvider]]));
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate([serviceProvider.id]);
+
+            expectOkResult(validateResult);
+        });
+
+        it('should return Error for a new serviceprovider violating the whitelist even if an already assigned one is exempt', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const existingServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [existingServiceProvider.id, newServiceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(
+                new Map([
+                    [existingServiceProvider.id, existingServiceProvider],
+                    [newServiceProvider.id, newServiceProvider],
+                ]),
+            );
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate([existingServiceProvider.id]);
+
+            expectErrResult(validateResult);
+            expect(validateResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+            expect((validateResult.error as RollenartNotAllowedForSPError).entityId).toBe(newServiceProvider.id);
+        });
+
+        it('should return Ok if only already assigned serviceproviders violate the whitelist and new ones are allowed', async () => {
+            const orga: Organisation<true> = DoFactory.createOrganisation(true);
+            const existingServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+                providedOnSchulstrukturknoten: orga.id,
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const rolle: Rolle<false> | DomainError = rolleFactory.createNew(
+                faker.string.alpha(),
+                orga.id,
+                RollenArt.LERN,
+                [],
+                [],
+                [existingServiceProvider.id, newServiceProvider.id],
+                [],
+                false,
+            );
+
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(
+                new Map([
+                    [existingServiceProvider.id, existingServiceProvider],
+                    [newServiceProvider.id, newServiceProvider],
+                ]),
+            );
+            organisationRepo.findParentOrgasForIdSortedByDepthAsc.mockResolvedValue([orga]);
+
+            const validateResult: Result<void, DomainError> = await rolle.validate([existingServiceProvider.id]);
+
+            expectOkResult(validateResult);
+        });
     });
 });

@@ -19,7 +19,6 @@ import { Rolle } from './rolle.js';
 import { CreateRollenerweiterungError, Rollenerweiterung } from './rollenerweiterung.js';
 import { RollenSystemRecht } from './systemrecht.js';
 import { InternalRollenerweiterungRepo } from '../repo/internal-rollenerweiterung.repo.js';
-import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 interface RollenerweiterungOperationResult {
     id: string;
@@ -433,18 +432,8 @@ export class ApplyRollenerweiterungService {
                 continue;
             }
 
-            if (
-                serviceProvider.rollenartenWhitelist.length > 0 &&
-                !serviceProvider.rollenartenWhitelist.includes(rolle.rollenart)
-            ) {
-                results.push({
-                    id: serviceProvider.id,
-                    errorIdType: ErrorIdType.ROLLENART_BESCHRAENKUNG,
-                    result: Err(new RollenartNotAllowedForSPError(rolle.rollenart, serviceProvider.id)),
-                });
-
-                continue;
-            }
+            /* no validation of serviceProvider.rollenartenWhitelist here,
+            because changes of rollenartenWhitelist should repair/clean up data inconsistencies */
 
             this.logger.info(
                 `Adding Erweiterung for rolleId: ${rolleId}, ` +

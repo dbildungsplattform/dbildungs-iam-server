@@ -164,8 +164,10 @@ export class Rolle<WasPersisted extends boolean> {
      * - No duplicate serviceproviders
      * - All serviceproviders exist
      * - All serviceproviders are defined at the Rolle's organisation or above
+     * - The rollenart is allowed by the whitelist of every newly added serviceprovider
+     *   (those in alreadyAssignedServiceProviderIds are exempt from the whitelist check)
      */
-    public async validate(): Promise<Result<void, DomainError>> {
+    public async validate(alreadyAssignedServiceProviderIds: string[] = []): Promise<Result<void, DomainError>> {
         // Check Name
         if (!NameValidator.isNameValid(this.name)) {
             return Err(new NameForRolleWithTrailingSpaceError());
@@ -199,7 +201,9 @@ export class Rolle<WasPersisted extends boolean> {
             ) {
                 return Err(new ServiceProviderProvidedOutOfTreeError(serviceProviderId));
             }
+            const isNewServiceProvider: boolean = !alreadyAssignedServiceProviderIds.includes(serviceProviderId);
             if (
+                isNewServiceProvider &&
                 serviceProvider.rollenartenWhitelist.length > 0 &&
                 !serviceProvider.rollenartenWhitelist.includes(this.rollenart)
             ) {
