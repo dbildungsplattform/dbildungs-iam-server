@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Export all persons with email (priority 0/1) to EFLK target LDIF.
 // Standalone script, no dependency on the NestJS app bootstrap.
-// Connection exclusively via SSH tunnel, all parameters are required (no fallback).
-// Password/passphrase are prompted interactively and masked.
+// Starts a kubectl port-forward for the selected environment. The DB password
+// is prompted interactively and masked.
 //
 // Usage: see README.md in the same folder (--help for all options).
 
 import { Client } from 'pg';
 import { writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { closeKubectlPortForward, openKubectlPortForward } from './kubectl-port-forward.mjs';
 import { buildContainerEntries, buildGroupEntry, buildPersonEntry, toPersonRecord } from './ldif-format.mjs';
 import {
     queryOrganisationChildren,
@@ -18,17 +21,14 @@ import {
     queryPersonOrganisationContexts,
     queryOrganisationsByIds,
 } from './db-queries.mjs';
-import { openSshTunnel, closeSshTunnel, promptHidden } from './ssh-tunnel.mjs';
+import { promptHidden } from './ssh-tunnel.mjs';
+import { resolveOuFromEmailAddress } from './email-domains.mjs';
 
-const DEFAULT_LOCAL_PORT = 15432;
 // see config/config.json
 const DEFAULT_BASE_DN = 'dc=schule-sh,dc=de';
-const DEFAULT_DB_PORT = 5432;
-
-const REQUIRED_OPTIONS = [
-    'out', 'rootOrganisationId', 'pgUser', 'pgDatabase',
-    'sshHost', 'sshPort', 'sshUser', 'sshKey', 'dbHost',
-];
+const DEFAULT_LOCAL_PORT = 5433;
+const DEFAULT_KUBECONFIG_DIR = join(homedir(), '.kube');
+const REQUIRED_OPTIONS = ['out', 'rootOrganisationId', 'pgUser', 'pgDatabase', 'environment'];
 
 function parseArgs(argv) {
     const args = {
@@ -37,14 +37,11 @@ function parseArgs(argv) {
         rootOrganisationId: undefined,
         pgUser: undefined,
         pgDatabase: undefined,
-        sshHost: undefined,
-        sshPort: undefined,
-        sshUser: undefined,
-        sshKey: undefined,
-        dbHost: undefined,
-        dbPort: DEFAULT_DB_PORT,
+        environment: undefined,
+        kubeconfigDir: DEFAULT_KUBECONFIG_DIR,
         localPort: DEFAULT_LOCAL_PORT,
         includeContainers: false,
+        excludeSchools: false,
     };
 
     for (let i = 0; i < argv.length; i += 1) {
@@ -67,29 +64,20 @@ function parseArgs(argv) {
             case '--pg-database':
                 args.pgDatabase = next();
                 break;
-            case '--ssh-host':
-                args.sshHost = next();
+            case '--environment':
+                args.environment = next();
                 break;
-            case '--ssh-port':
-                args.sshPort = Number.parseInt(next(), 10);
-                break;
-            case '--ssh-user':
-                args.sshUser = next();
-                break;
-            case '--ssh-key':
-                args.sshKey = next();
-                break;
-            case '--db-host':
-                args.dbHost = next();
-                break;
-            case '--db-port':
-                args.dbPort = Number.parseInt(next(), 10);
+            case '--kubeconfig-dir':
+                args.kubeconfigDir = next();
                 break;
             case '--local-port':
                 args.localPort = Number.parseInt(next(), 10);
                 break;
             case '--include-containers':
                 args.includeContainers = true;
+                break;
+            case '--exclude-schools':
+                args.excludeSchools = true;
                 break;
             case '--help':
                 printHelp();
@@ -99,9 +87,19 @@ function parseArgs(argv) {
                 throw new Error(`Unbekannte Option: ${arg} (siehe --help)`);
         }
     }
+
     const missing = REQUIRED_OPTIONS.filter((key) => args[key] === undefined || Number.isNaN(args[key]));
     if (missing.length > 0) {
         throw new Error(`Fehlende Pflicht-Optionen (kein Fallback): ${missing.join(', ')} (siehe --help)`);
+    }
+    if (!['dev', 'stage', 'prod'].includes(args.environment)) {
+        throw new Error(`Ungueltige Umgebung '${args.environment}'. Erlaubt sind: dev, stage, prod.`);
+    }
+    if (!Number.isInteger(args.localPort) || args.localPort < 1 || args.localPort > 65535) {
+        throw new Error('--local-port muss eine Portnummer zwischen 1 und 65535 sein.');
+    }
+    if (!args.kubeconfigDir) {
+        throw new Error('--kubeconfig-dir darf nicht leer sein.');
     }
 
     return args;
@@ -110,28 +108,25 @@ function parseArgs(argv) {
 function printHelp() {
     console.log(`Export aller Personen mit E-Mail nach EFLK-Ziel-LDIF
 
-Alle Optionen sind Pflicht (kein Fallback/Default), ausser --local-port, --base-dn, --db-port und --include-containers:
+Alle Optionen sind Pflicht (kein Fallback/Default), ausser --base-dn, --kubeconfig-dir, --local-port, --include-containers und --exclude-schools:
   --out <datei>                   Ausgabedatei
   --base-dn <dn>                  Basis-DN (Default: ${DEFAULT_BASE_DN})
   --root-organisation-id <uuid>   ROOT_ORGANISATION_ID (siehe config/config.json)
-    --include-containers           OU-/users-/groups-/lists-Container mit exportieren (Default: ohne Container)
+  --environment <dev|stage|prod>  Kubernetes-Umgebung fuer den Port-Forward
+  --kubeconfig-dir <pfad>         Verzeichnis der Cluster-Konfigurationen (Default: ~/.kube)
+  --local-port <port>             Lokaler Port des Forwards (Default: ${DEFAULT_LOCAL_PORT})
+  --include-containers            OU-/users-/groups-/lists-Container mit exportieren (Default: ohne Container)
+  --exclude-schools               Schul-/Gruppen-Eintraege nicht exportieren (Default: exportieren)
 
   Postgres-Zugangsdaten:
   --pg-user <user>                 Postgres-Benutzer
   --pg-database <db>               Postgres-Datenbank
 
-  SSH-Tunnel (verpflichtend, z.B. wie in pgAdmin ueber einen Jump-Host):
-  --ssh-host <host>                 Jump-Host
-  --ssh-port <port>                 SSH-Port des Jump-Hosts
-  --ssh-user <user>                 SSH-Benutzer auf dem Jump-Host
-  --ssh-key <pfad>                  Pfad zum privaten SSH-Key
-  --db-host <host>                  Ziel-DB-Host aus Sicht des Jump-Hosts
-  --db-port <port>                  Ziel-DB-Port aus Sicht des Jump-Hosts (Default: ${DEFAULT_DB_PORT})
-  --local-port <port>               Rein lokaler Forward-Port, hat nichts mit dem Zielsystem zu tun (Default: ${DEFAULT_LOCAL_PORT})
+  kubectl startet automatisch einen Port-Forward zu svc/socat-tunneller-pg
+  im Namespace spsh-service. Der Zielport in Kubernetes ist 5432.
   --help                            Diese Hilfe anzeigen
 
-Das Postgres-Passwort und die SSH-Key-Passphrase werden immer interaktiv und
-maskiert abgefragt (keine Uebergabe per Parameter/ENV-Variable).
+Das Postgres-Passwort wird immer interaktiv und maskiert abgefragt.
 `);
 }
 
@@ -228,20 +223,6 @@ async function classifyAllOrganisations(client, organisationIds, roots) {
     return new Map(entries);
 }
 
-function resolveOuFromEmailAddress(emailAddress) {
-    const addressParts = emailAddress?.split('@') ?? [];
-    const domainPart = addressParts[1];
-    const domain = domainPart?.toLowerCase();
-    let ou;
-    if (domain === 'schule-sh.de') {
-        ou = 'oeffentlich';
-    } else if (domain === 'ersatzschule-sh.de') {
-        ou = 'ersatz';
-    }
-
-    return ou;
-}
-
 function resolvePersonBucketFromEmail(person) {
     const email = person.emails.find((entry) => entry.priority === 0)
         ?? person.emails.find((entry) => entry.priority === 1);
@@ -318,29 +299,24 @@ function buildAllGroupEntries(organisationIds, ouByOrganisation, organisationen,
 async function main() {
     const args = parseArgs(process.argv.slice(2));
 
-    const sshTunnel = await openSshTunnel({
-        sshHost: args.sshHost,
-        sshPort: args.sshPort,
-        sshUser: args.sshUser,
-        sshKey: args.sshKey,
-        dbHost: args.dbHost,
-        dbPort: args.dbPort,
-        localPort: args.localPort,
-    });
-
-    const clientConfig = {
-        host: '127.0.0.1',
-        port: args.localPort,
-        user: args.pgUser,
-        database: args.pgDatabase,
-        password: await promptHidden('PGPASSWORD: '),
-        connectionTimeoutMillis: 15000,
-    };
-
-    const client = new Client(clientConfig);
-
+    let portForward;
+    let client;
     try {
-        console.log('Verbinde mit Postgres ueber den Tunnel...');
+        portForward = await openKubectlPortForward({
+            environment: args.environment,
+            kubeconfigDir: args.kubeconfigDir,
+            localPort: args.localPort,
+        });
+        client = new Client({
+            host: '127.0.0.1',
+            port: args.localPort,
+            user: args.pgUser,
+            database: args.pgDatabase,
+            password: await promptHidden('PGPASSWORD: '),
+            connectionTimeoutMillis: 15000,
+        });
+
+        console.log(`Verbinde mit Postgres ueber den Port-Forward (127.0.0.1:${args.localPort})...`);
         await client.connect();
         console.log('Verbunden.');
 
@@ -356,17 +332,20 @@ async function main() {
 
         const { personLines, personDnById } = buildPersonEntries(persons, ouByPerson, args.baseDn);
         const membersByOrganisation = groupMembersByOrganisation(persons, personDnById);
-        const groupLines = buildAllGroupEntries(allOrganisationIds, ouByOrganisation, organisationen, membersByOrganisation, args.baseDn);
+        const groupLines = args.excludeSchools
+            ? []
+            : buildAllGroupEntries(allOrganisationIds, ouByOrganisation, organisationen, membersByOrganisation, args.baseDn);
 
         const containerLines = args.includeContainers ? buildContainerEntries(args.baseDn) : [];
         const outputLines = [...containerLines, ...personLines, ...groupLines];
+        const groupCount = args.excludeSchools ? 0 : allOrganisationIds.length;
 
         await writeFile(args.out, outputLines.join('\n'));
-        console.log(`${personDnById.size} Personen und ${allOrganisationIds.length} Gruppen exportiert nach ${args.out}`);
+        console.log(`${personDnById.size} Personen und ${groupCount} Gruppen exportiert nach ${args.out}`);
     } finally {
         // .end() can itself throw if .connect() never succeeded - don't let that hide the real error.
-        await client.end().catch(() => {});
-        await closeSshTunnel(sshTunnel);
+        if (client) await client.end().catch(() => {});
+        await closeKubectlPortForward(portForward);
     }
 }
 
@@ -375,8 +354,4 @@ try {
 } catch (err) {
     console.error(err);
     process.exitCode = 1;
-} finally {
-    // The spawned ssh tunnel process (with its piped stdio) can keep the event loop
-    // alive even after kill() - force-exit once our own cleanup has run.
-    process.exit(process.exitCode ?? 0);
 }
