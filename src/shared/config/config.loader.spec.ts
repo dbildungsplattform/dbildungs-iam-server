@@ -3,9 +3,9 @@ import { type PathLike } from 'node:fs';
 import 'reflect-metadata'; // some decorators use reflect-metadata in the background
 import { type Mock } from 'vitest';
 import { type DeepPartial } from '../../../test/utils/index.js';
+import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { JsonConfig, loadConfigFiles, loadEmailAppConfigFiles } from './index.js';
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 
 describe('configloader', () => {
     describe('loadConfigFiles', () => {

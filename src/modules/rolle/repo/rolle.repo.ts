@@ -1,8 +1,8 @@
 import {
     EntityName,
     FilterQuery,
-    ForeignKeyConstraintViolationException,
     FindAllOptions,
+    ForeignKeyConstraintViolationException,
     Loaded,
     ObjectQuery,
     OrderDefinition,
