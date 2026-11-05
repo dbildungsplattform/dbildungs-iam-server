@@ -232,7 +232,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     ]);
                 });
 
-                it(`should return rollen matching the selected organisation and LIMITED_ROLLENART_ALLOWLIST, if user has ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
+                it(`should return rollen matching the selected organisation and restricted-creation allowlist, if user has ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
                     );
@@ -270,7 +270,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     ]);
                 });
 
-                it(`should not allow commit, if rollenart of selected rolle is not allowed via LIMITED_ROLLENART_ALLOWLIST or is MPT for users with ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
+                it(`should not allow commit for a Pilot-only role during restricted account creation`, async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
                     );
@@ -280,19 +280,12 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             administriertVon: traeger.id,
                         }),
                     );
-                    const mptRolle: Rolle<true> = await rolleRepo.create(
+                    const pilotRolle: Rolle<true> = await rolleRepo.create(
                         DoFactory.createRolle(false, {
                             name: 'Rolle A',
                             administeredBySchulstrukturknoten: traeger.id,
                             rollenart: RollenArt.LEIT,
-                            merkmale: [RollenMerkmal.MPT_ROLLE],
-                        }),
-                    );
-                    const mismatchedRolle: Rolle<true> = await rolleRepo.create(
-                        DoFactory.createRolle(false, {
-                            name: 'Rolle B',
-                            administeredBySchulstrukturknoten: traeger.id,
-                            rollenart: RollenArt.LEIT,
+                            merkmale: [RollenMerkmal.PILOT_1_ROLLE],
                         }),
                     );
                     personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
@@ -316,7 +309,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         .query({
                             operationContext: OperationContext.PERSON_ANLEGEN,
                             organisationId: schule.id,
-                            rollenIds: [mptRolle.id, mismatchedRolle.id],
+                            rollenIds: [pilotRolle.id],
                         } as FindDbiamPersonenkontextWorkflowQueryParams)
                         .send();
                     expect(response.status).toBe(200);

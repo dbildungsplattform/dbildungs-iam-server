@@ -18,7 +18,6 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { RollenArt, RollenMerkmal } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
@@ -657,7 +656,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should return undefined if user has limited anlegen permissions and only limited rollen are assigned', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
-                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
@@ -713,32 +712,43 @@ describe('PersonenkontextWorkflow', () => {
             expect(permissions.getPermittedMerkmaleForOrga).toHaveBeenCalledWith('orgId');
         });
 
-        it.each(
-            RollenmerkmalSystemrechtPaar.ALL.map((paar: RollenmerkmalSystemrechtPaar) => ({
-                merkmal: paar.merkmal,
-            })),
-        )(
-            'should allow a non-allowlisted role with $merkmal and its permission',
-            async ({ merkmal }: { merkmal: RollenMerkmal }) => {
+        it.each([
+            {
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+                authorizedMerkmale: [RollenMerkmal.MPT_ROLLE],
+            },
+            {
+                merkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                authorizedMerkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+            },
+        ])(
+            'should allow a non-allowlisted MPT role when its required permissions are granted',
+            async ({
+                merkmale,
+                authorizedMerkmale,
+            }: {
+                merkmale: RollenMerkmal[];
+                authorizedMerkmale: RollenMerkmal[];
+            }) => {
                 configMock.getOrThrow.mockReturnValueOnce({
-                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],
+                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
                 });
                 const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
                 permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-                permissions.getPermittedMerkmaleForOrga.mockResolvedValue([merkmal]);
+                permissions.getPermittedMerkmaleForOrga.mockResolvedValue(authorizedMerkmale);
 
-                const rolleWithGatedMerkmal: Rolle<true> = DoFactory.createRolle(true, {
+                const rolleWithMptMerkmal: Rolle<true> = DoFactory.createRolle(true, {
                     id: faker.string.uuid(),
                     rollenart: RollenArt.LEIT,
-                    merkmale: [merkmal],
+                    merkmale,
                 });
-                rolleRepoMock.findByIds.mockResolvedValue(new Map([[rolleWithGatedMerkmal.id, rolleWithGatedMerkmal]]));
+                rolleRepoMock.findByIds.mockResolvedValue(new Map([[rolleWithMptMerkmal.id, rolleWithMptMerkmal]]));
 
                 const result: Result<void, DomainError> = await anlage.checkPermissions(
                     permissions,
                     undefined,
                     'orgId',
-                    [rolleWithGatedMerkmal.id],
+                    [rolleWithMptMerkmal.id],
                     OperationContext.PERSON_ANLEGEN,
                 );
 
@@ -747,9 +757,35 @@ describe('PersonenkontextWorkflow', () => {
             },
         );
 
+        it('should reject a non-allowlisted Pilot-only role even with its Pilot permission', async () => {
+            configMock.getOrThrow.mockReturnValueOnce({
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
+            });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+            permissions.getPermittedMerkmaleForOrga.mockResolvedValue([RollenMerkmal.PILOT_1_ROLLE]);
+            const pilotRolle: Rolle<true> = DoFactory.createRolle(true, {
+                id: faker.string.uuid(),
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            rolleRepoMock.findByIds.mockResolvedValue(new Map([[pilotRolle.id, pilotRolle]]));
+
+            const result: Result<void, DomainError> = await anlage.checkPermissions(
+                permissions,
+                undefined,
+                'orgId',
+                [pilotRolle.id],
+                OperationContext.PERSON_ANLEGEN,
+            );
+
+            expectErrResult(result);
+            expect(result.error).toBeInstanceOf(DomainError);
+        });
+
         it('should reject a mixed assignment with a non-allowlisted non-MPT rolle', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
-                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN],
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation
@@ -844,7 +880,9 @@ describe('PersonenkontextWorkflow', () => {
                 });
 
                 it('should return error if config is not set for limited rollenarten', async () => {
-                    configMock.getOrThrow.mockReturnValueOnce({ LIMITED_ROLLENART_ALLOWLIST: [] });
+                    configMock.getOrThrow.mockReturnValueOnce({
+                        EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [],
+                    });
 
                     const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
                     permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);

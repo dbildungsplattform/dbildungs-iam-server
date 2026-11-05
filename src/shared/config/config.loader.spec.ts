@@ -135,7 +135,10 @@ describe('configloader', () => {
                     SSL_KEY_PATH: '/tls/client-key.pem',
                 },
                 PORTAL: {
-                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                        RollenArt.LERN,
+                        RollenArt.EXTERN,
+                    ],
                 },
                 CRON: {
                     PERSON_WITHOUT_ORG_LIMIT: 30,
@@ -326,7 +329,10 @@ describe('configloader', () => {
                     SSL_KEY_PATH: undefined,
                 },
                 PORTAL: {
-                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                        RollenArt.LERN,
+                        RollenArt.EXTERN,
+                    ],
                 },
                 CRON: {
                     PERSON_WITHOUT_ORG_LIMIT: 30,

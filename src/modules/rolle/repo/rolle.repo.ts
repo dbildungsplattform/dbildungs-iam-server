@@ -152,6 +152,7 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
         authorizedMerkmale: Array<RollenMerkmal>;
+        requiredMerkmale?: Array<RollenMerkmal>;
     };
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
@@ -581,6 +582,17 @@ export class RolleRepo {
                               rollenart: { $in: params.gatedBucket.allowedRollenarten },
                               $and: [
                                   { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
+                                  ...(params.gatedBucket.requiredMerkmale?.length
+                                      ? [
+                                            {
+                                                merkmale: {
+                                                    $some: {
+                                                        merkmal: { $in: params.gatedBucket.requiredMerkmale },
+                                                    },
+                                                },
+                                            },
+                                        ]
+                                      : []),
                                   {
                                       merkmale: {
                                           $none: {

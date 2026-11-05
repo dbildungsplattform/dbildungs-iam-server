@@ -905,6 +905,7 @@ describe('RolleFindService', () => {
                         gatedBucket: {
                             allowedRollenarten: allowedRollenartenForGatedRollen,
                             authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                            requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
                         },
                     });
                 });
@@ -1001,6 +1002,7 @@ describe('RolleFindService', () => {
                         gatedBucket: {
                             allowedRollenarten: allowedRollenartenForGatedRollen,
                             authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                            requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
                         },
                     });
                 });

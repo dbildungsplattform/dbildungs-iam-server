@@ -61,27 +61,34 @@ describe('Config Loader', () => {
 
     describe('Portal Config', () => {
         it('should load Portal configuration with parsed enum array values', () => {
-            process.env['PORTAL_LIMITED_ROLLENART_ALLOWLIST'] = 'LERN,EXTERN';
+            process.env['PORTAL_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT'] = 'LERN,EXTERN';
 
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                    RollenArt.LERN,
+                    RollenArt.EXTERN,
+                ],
             });
         });
 
         it('should filter invalid Portal enum values', () => {
-            process.env['PORTAL_LIMITED_ROLLENART_ALLOWLIST'] = 'LERN,INVALID,EXTERN';
+            process.env['PORTAL_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT'] =
+                'LERN,INVALID,EXTERN';
 
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                    RollenArt.LERN,
+                    RollenArt.EXTERN,
+                ],
             });
         });
 
         it('should set undefined for Portal values if not provided', () => {
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                LIMITED_ROLLENART_ALLOWLIST: undefined,
+                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: undefined,
             });
         });
     });

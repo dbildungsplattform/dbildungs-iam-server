@@ -251,6 +251,9 @@ export class RolleFindService {
             query.gatedBucket = {
                 allowedRollenarten: allowedRollenartenForGatedRollen,
                 authorizedMerkmale: authorizedGatedMerkmale,
+                ...(params.systemrecht === RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN
+                    ? { requiredMerkmale: [RollenMerkmal.MPT_ROLLE] }
+                    : {}),
             };
         }
 
@@ -513,7 +516,7 @@ export class RolleFindService {
     }
 
     /**
-     * Returns two arrays of allowed rollenarten based on parameters. The latter is the more general one, while the first may be narrowed based on users permissions and LIMITED_ROLLENART_ALLOWLIST
+     * Returns two arrays of allowed rollenarten based on parameters. The latter is the more general one, while the first may be narrowed based on users permissions and the restricted-creation allowlist.
      * @param params
      * @param organisation
      * @returns [allowedRollenarten, allowedRollenartenForGatedRollen]
@@ -559,7 +562,7 @@ export class RolleFindService {
 
     private getLimitedRollenarten(): Array<RollenArt> {
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-        return portalConfig.LIMITED_ROLLENART_ALLOWLIST;
+        return portalConfig.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT;
     }
 
     private async resolveOrganisationBounds(

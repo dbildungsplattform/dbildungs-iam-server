@@ -111,7 +111,7 @@
         "SSL_KEY_PATH": "/tls/client-key.pem"
     },
     "PORTAL": {
-        "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
+        "EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT": ["LERN"]
     },
     "EMAIL_MICROSERVICE": {
         "ENDPOINT": "http://dbildungs-iam-server-email-backend:80/"
