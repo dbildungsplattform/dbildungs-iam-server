@@ -18,6 +18,7 @@ function createClient(config: KeycloakInstanceConfig): Client {
         introspection_endpoint: `${internalRealmUrl}/protocol/openid-connect/token/introspect`,
         revocation_endpoint: `${internalRealmUrl}/protocol/openid-connect/revoke`,
         end_session_endpoint: `${externalRealmUrl}/protocol/openid-connect/logout`,
+        code_challenge_methods_supported: ['S256'],
     });
 
     return new TrustIssuer.Client({
