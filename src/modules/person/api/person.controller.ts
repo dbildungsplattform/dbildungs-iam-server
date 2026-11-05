@@ -38,13 +38,18 @@ import { LdapAdapter } from '../../../core/ldap/adapter/domain/ldap.adapter.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
 import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
+import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
+import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
+import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
 import { ApiOkResponsePaginated, Paged, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { ResultInterceptor } from '../../../shared/util/result-interceptor.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PermittedOrgas, PersonFields } from '../../authentication/domain/person-permissions.js';
+import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';
@@ -62,24 +67,18 @@ import { Person } from '../domain/person.js';
 import { PersonApiMapper } from '../mapper/person-api.mapper.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import { PersonDeleteService } from '../person-deletion/person-delete.service.js';
+import { PersonLandesbediensteterSearchService } from '../person-landesbedienstete-search/person-landesbediensteter-search.service.js';
 import { DbiamPersonError } from './dbiam-person.error.js';
 import { LockUserBodyParams } from './lock-user.body.params.js';
 import { PersonByIdParams } from './person-by-id.param.js';
 import { PersonEmailResponse } from './person-email-response.js';
 import { PersonExceptionFilter } from './person-exception-filter.js';
+import { PersonLandesbediensteterSearchQueryParams } from './person-landesbediensteter-search-query.param.js';
+import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
 import { PersonLockResponse } from './person-lock.response.js';
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { UpdatePersonBodyParams } from './update-person.body.params.js';
-import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
-import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
-import { PersonLandesbediensteterSearchQueryParams } from './person-landesbediensteter-search-query.param.js';
-import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
-import { PersonLandesbediensteterSearchService } from '../person-landesbedienstete-search/person-landesbediensteter-search.service.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 
 @UseFilters(new PersonExceptionFilter())
 @ApiTags('personen')
@@ -90,7 +89,6 @@ export class PersonController {
     public readonly ROOT_ORGANISATION_ID: string;
 
     public constructor(
-        private readonly emailRepo: EmailRepo,
         private readonly personRepository: PersonRepository,
         private readonly emailResolverService: EmailResolverService,
         private readonly personenkontextService: PersonenkontextService,
@@ -190,16 +188,10 @@ export class PersonController {
             throw new EntityNotFoundError('Person', params.personId);
         }
 
-        let personEmailResponse: Option<PersonEmailResponse>;
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(
-                `Getting PersonEmailResponse for PersonId ${personResult.value.id} using new Microservice`,
-            );
-            personEmailResponse = await this.emailResolverService.findEmailBySpshPerson(personResult.value.id);
-        } else {
-            this.logger.info(`Getting PersonEmailResponse for PersonId ${personResult.value.id} using old emailRepo`);
-            personEmailResponse = await this.emailRepo.getEmailAddressAndStatusForPerson(personResult.value);
-        }
+        this.logger.info(`Getting PersonEmailResponse for PersonId ${personResult.value.id} using new Microservice`);
+        const personEmailResponse: Option<PersonEmailResponse> = await this.emailResolverService.findEmailBySpshPerson(
+            personResult.value.id,
+        );
 
         const response: PersonendatensatzResponse = new PersonendatensatzResponse(
             personResult.value,
