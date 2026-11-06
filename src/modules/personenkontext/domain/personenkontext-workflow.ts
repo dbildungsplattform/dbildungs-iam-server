@@ -9,8 +9,7 @@ import { type PermittedOrgas } from '../../authentication/domain/person-permissi
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenMerkmal, type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -269,7 +268,8 @@ export class PersonenkontextWorkflowAggregate {
         }
 
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-        const allowedRollenArten: RollenArt[] = portalConfig.LIMITED_ROLLENART_ALLOWLIST;
+        const allowedRollenArten: RollenArt[] =
+            portalConfig.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT;
         if (!this.isLimitedCreationAllowedForRollen(rollen.values(), allowedRollenArten)) {
             return Err(new MissingPermissionsError('Unauthorized to manage rollenart at the organisation'));
         }
@@ -280,8 +280,7 @@ export class PersonenkontextWorkflowAggregate {
     private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
-                allowedRollenArten.includes(rolle.rollenart) ||
-                RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale).length > 0,
+                allowedRollenArten.includes(rolle.rollenart) || rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE),
         );
     }
 }

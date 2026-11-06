@@ -1,8 +1,8 @@
 import {
     EntityName,
     FilterQuery,
-    ForeignKeyConstraintViolationException,
     FindAllOptions,
+    ForeignKeyConstraintViolationException,
     Loaded,
     ObjectQuery,
     OrderDefinition,
@@ -152,6 +152,8 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     gatedBucket?: {
         allowedRollenarten: Array<RollenArt>;
         authorizedMerkmale: Array<RollenMerkmal>;
+        /** Gated Rollen must carry one of these Merkmale, unless their Rollenart is in the top-level allowedRollenarten. */
+        requiredMerkmale?: Array<RollenMerkmal>;
     };
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
@@ -581,6 +583,22 @@ export class RolleRepo {
                               rollenart: { $in: params.gatedBucket.allowedRollenarten },
                               $and: [
                                   { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
+                                  ...(params.gatedBucket.requiredMerkmale?.length
+                                      ? [
+                                            {
+                                                $or: [
+                                                    { rollenart: { $in: params.allowedRollenarten } },
+                                                    {
+                                                        merkmale: {
+                                                            $some: {
+                                                                merkmal: { $in: params.gatedBucket.requiredMerkmale },
+                                                            },
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        ]
+                                      : []),
                                   {
                                       merkmale: {
                                           $none: {

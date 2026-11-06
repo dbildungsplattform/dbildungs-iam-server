@@ -24,9 +24,9 @@ import { type ServiceProvider } from '../../service-provider/domain/service-prov
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing-space.error.js';
+import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
-import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { Rolle } from '../domain/rolle.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
@@ -1366,6 +1366,76 @@ describe('RolleRepo', () => {
     });
 
     describe('findRollenAvailableForPersonenkontextCreation', () => {
+        it('should require MPT for gated roles in restricted account creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+            });
+            const pilotRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const combinedRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [],
+                gatedBucket: {
+                    allowedRollenarten: [RollenArt.LEIT],
+                    authorizedMerkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                    requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
+                },
+            });
+
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toHaveLength(2);
+            expect(rolleIds).toEqual(expect.arrayContaining([mptRolle.id, combinedRolle.id]));
+            expect(rolleIds).not.toContain(pilotRolle.id);
+        });
+
+        it('should return authorized Pilot rollen without MPT in restricted account creation, if their rollenart is allowed', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const authorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const unauthorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_2_ROLLE],
+            });
+            const pilotLeitRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [RollenArt.LERN],
+                gatedBucket: {
+                    allowedRollenarten: [RollenArt.LERN, RollenArt.LEIT],
+                    authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                    requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
+                },
+            });
+
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toEqual([authorizedPilotLernRolle.id]);
+            expect(rolleIds).not.toContain(unauthorizedPilotLernRolle.id);
+            expect(rolleIds).not.toContain(pilotLeitRolle.id);
+        });
+
         it('should return rollen without MPT rollen', async () => {
             await createRolle();
             const rolle: Rolle<true> = await createRolle();
