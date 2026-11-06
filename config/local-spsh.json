@@ -937,7 +937,7 @@
             "id": "f45add8b-ab22-4742-afb4-cefa9bc12331",
             "clientId": "spsh",
             "name": "Schulportal SH",
-            "description": "",
+            "description": "Default client for the Schulportal",
             "rootUrl": "https://localhost:8099",
             "adminUrl": "",
             "baseUrl": "https://localhost:8099/",
