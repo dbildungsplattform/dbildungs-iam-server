@@ -16,6 +16,7 @@ import { EmailMicroserviceModule } from '../email-microservice/email-microservic
 import { EmailPersistenceModule } from '../email/email-persistence.module.js';
 import { SchulconnexPushAdapter } from './push-api/adapter/domain/schulconnex-push.adapter.js';
 import { SchulconnexPushApiClient } from './push-api/adapter/technical/schulconnex-push-api.client.js';
+import { SchulconnexPushHandler } from './push-api/domain/schulconnex-push-handler.js';
 
 @Module({
     imports: [
@@ -36,6 +37,7 @@ import { SchulconnexPushApiClient } from './push-api/adapter/technical/schulconn
         SchulconnexPushRegistryRepo,
         SchulconnexPushApiClient,
         SchulconnexPushAdapter,
+        SchulconnexPushHandler,
     ],
     controllers: [PersonInfoController, PersonenInfoController],
 })
