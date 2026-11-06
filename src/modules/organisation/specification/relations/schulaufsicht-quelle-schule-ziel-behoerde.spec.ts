@@ -25,7 +25,7 @@ describe('SchulaufsichtQuelleSchuleZielBehoerde Specification', () => {
         sut = new SchulaufsichtQuelleSchuleZielBehoerde(orgaRepoMock);
     });
 
-    it('should return false, if typ is not SCHULAUFSICHT', async () => {
+    it('should return true, if typ is not SCHULAUFSICHT', async () => {
         const beziehung: OrganisationsbeziehungEntity = createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER);
 
         await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(true);

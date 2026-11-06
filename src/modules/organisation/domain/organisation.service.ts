@@ -645,7 +645,9 @@ export class OrganisationService {
         const schultraegerSchuleUndTraegerSelberBaum: SchultraegerSchuleUndTraegerSelberBaum =
             new SchultraegerSchuleUndTraegerSelberBaum(this.organisationRepo);
         if (!(await schulaufsichtQuelleSchuleZielBehoerde.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchulaufsichtQuelleSchuleZielBehoerdeError(organisationsbeziehung.id ?? undefined);
+            return new SchulaufsichtQuelleSchuleZielBehoerdeError(
+                organisationsbeziehung.quellOrganisationId ?? undefined,
+            );
         }
         if (!(await schulaufsichtSchuleUndAufsichtSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
             return new SchulaufsichtSchuleUndAufsichtSelberBaumError(organisationsbeziehung.id ?? undefined);
