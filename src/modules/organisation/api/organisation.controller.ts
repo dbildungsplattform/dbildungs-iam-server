@@ -399,12 +399,13 @@ export class OrganisationController {
         @Param() _params: OrganisationByIdParams,
         @Query() queryParams: FindOrganisationsbeziehungenQueryParams,
     ): Promise<PagedResponse<OrganisationsbeziehungWithOrganisationenResponse>> {
+        // _params.organisationId
         const items: OrganisationsbeziehungWithOrganisationenResponse[] = [
             {
                 id: '11111111-1111-4111-8111-111111111111',
                 typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
                 quelle: {
-                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    id: _params.organisationId,
                     name: 'Gymnasium Musterstadt',
                     dienststellennummer: '1234567',
                 },
@@ -417,7 +418,7 @@ export class OrganisationController {
                 id: '22222222-2222-4222-8222-222222222222',
                 typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
                 quelle: {
-                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    id: _params.organisationId,
                     name: 'Gymnasium Musterstadt',
                     dienststellennummer: '1234567',
                 },
@@ -430,9 +431,9 @@ export class OrganisationController {
                 id: '33333333-3333-4333-8333-333333333333',
                 typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
                 quelle: {
-                    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-                    name: 'Grundschule Beispieldorf',
-                    dienststellennummer: '2345678',
+                    id: _params.organisationId,
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
                 },
                 ziel: {
                     id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -440,6 +441,48 @@ export class OrganisationController {
                 },
             },
         ];
+        /*
+        const items: OrganisationsbeziehungWithOrganisationenResponse[] = [
+            {
+                id: '11111111-1111-4111-8111-111111111111',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+            {
+                id: '22222222-2222-4222-8222-222222222222',
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                quelle: {
+                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+            {
+                id: '33333333-3333-4333-8333-333333333333',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                    name: 'Grundschule Beispieldorf',
+                    dienststellennummer: '2345678',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+        ];*/
 
         return new PagedResponse({
             total: items.length,
