@@ -42,7 +42,7 @@ describe('SchulconnexPushHandler', () => {
         findByPersonId: ReturnType<typeof vi.fn>;
     };
     let emailResolverServiceMock: {
-        findEmailBySpshPerson: ReturnType<typeof vi.fn>;
+        findEmailsBySpshPersons: ReturnType<typeof vi.fn>;
     };
 
     const personId: PersonID = 'person-id';
@@ -78,7 +78,7 @@ describe('SchulconnexPushHandler', () => {
             findByPersonId: vi.fn(),
         };
         emailResolverServiceMock = {
-            findEmailBySpshPerson: vi.fn(),
+            findEmailsBySpshPersons: vi.fn(),
         };
 
         module = await Test.createTestingModule({
@@ -120,7 +120,7 @@ describe('SchulconnexPushHandler', () => {
         pushRegistryRepoMock.findAll.mockResolvedValue([registry]);
         personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([kontext]);
         userLockRepoMock.findByPersonId.mockResolvedValue([]);
-        emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(null);
+        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map()));
         pushAdapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
     });
 
@@ -130,7 +130,7 @@ describe('SchulconnexPushHandler', () => {
                 address: 'new@example.org',
             } as unknown as PersonEmailResponse;
 
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
+            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[personId, email]])));
 
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
@@ -144,7 +144,7 @@ describe('SchulconnexPushHandler', () => {
 
             expect(pushRegistryRepoMock.findAll).toHaveBeenCalledOnce();
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
-            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
+            expect(emailResolverServiceMock.findEmailsBySpshPersons).toHaveBeenCalledWith([personId]);
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledWith(
                 personId,
                 registry.serviceProviderId,
@@ -161,11 +161,11 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(null);
+            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map()));
 
             await sut.handleEmailAddressChanged(event);
 
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], null);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
         });
 
         it('should not push when no relevant personenkontexte exist', async () => {
@@ -189,7 +189,7 @@ describe('SchulconnexPushHandler', () => {
                 address: 'current@example.org',
             } as unknown as PersonEmailResponse;
 
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
+            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[personId, email]])));
 
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
@@ -218,7 +218,12 @@ describe('SchulconnexPushHandler', () => {
             await sut.handleLocksForPersonChanged(event);
 
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, currentLocks, null);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                registry,
+                kontext,
+                currentLocks,
+                undefined,
+            );
         });
 
         it('should use current locks instead of locks from the event', async () => {
@@ -246,7 +251,12 @@ describe('SchulconnexPushHandler', () => {
 
             await sut.handleLocksForPersonChanged(event);
 
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, currentLocks, null);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                registry,
+                kontext,
+                currentLocks,
+                undefined,
+            );
         });
 
         it('should not push when no relevant personenkontexte exist', async () => {
@@ -302,8 +312,13 @@ describe('SchulconnexPushHandler', () => {
 
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], null);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(secondRegistry, secondKontext, [], null);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                secondRegistry,
+                secondKontext,
+                [],
+                undefined,
+            );
         });
 
         it('should not resolve personenkontexte when no registries exist', async () => {
@@ -347,8 +362,8 @@ describe('SchulconnexPushHandler', () => {
             await sut.handleEmailAddressChanged(event);
 
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], null);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, secondKontext, [], null);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, secondKontext, [], undefined);
         });
     });
 
@@ -374,6 +389,28 @@ describe('SchulconnexPushHandler', () => {
                 ),
                 error,
             );
+        });
+
+        it('should not push when resolving the email fails', async () => {
+            const error: SchulconnexPushError = new SchulconnexPushError('Failed to resolve email');
+
+            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Err(error));
+
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                'new@example.org',
+                undefined,
+                'old@example.org',
+                undefined,
+            );
+
+            await sut.handleEmailAddressChanged(event);
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                expect.stringContaining(`Could not resolve email for person ${personId}`),
+                error,
+            );
+            expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
         });
     });
 });

@@ -52,15 +52,25 @@ export class SchulconnexPushHandler {
     }
 
     private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<void> {
-        const [registries, userLocks, email]: [
+        const [registries, userLocks, emailResult]: [
             SchulconnexPushRegistry<true>[],
             UserLock[],
-            Option<PersonEmailResponse>,
+            Result<Map<PersonID, PersonEmailResponse | undefined>, DomainError>,
         ] = await Promise.all([
             this.pushRegistryRepo.findAll(),
             this.userLockRepo.findByPersonId(personId),
-            this.emailResolverService.findEmailBySpshPerson(personId),
+            this.emailResolverService.findEmailsBySpshPersons([personId]),
         ]);
+
+        if (!emailResult.ok) {
+            this.logger.logUnknownAsError(
+                `[EventID: ${eventId}] Could not resolve email for person ${personId}`,
+                emailResult.error,
+            );
+            return;
+        }
+
+        const email: Option<PersonEmailResponse> = emailResult.value.get(personId);
 
         await Promise.all(
             registries.map(async (registry: SchulconnexPushRegistry<true>): Promise<void> => {
