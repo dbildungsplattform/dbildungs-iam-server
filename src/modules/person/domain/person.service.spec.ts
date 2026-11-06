@@ -167,60 +167,122 @@ describe('PersonService', () => {
             },
         );
 
-        it.each([true, false])(
-            'returns an error for a missing or unauthorized person when lock is %s',
-            async (lock: boolean) => {
+        describe('when the person is missing or unauthorized', () => {
+            it('returns an error when locking', async () => {
                 personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({
                     ok: false,
                     error: new EntityNotFoundError('Person'),
                 });
                 const error: NotFoundOrNoPermissionError = new NotFoundOrNoPermissionError(personId);
 
-                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, lock, lockedBy);
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, true, lockedBy);
 
                 expect(result).toEqual({ ok: false, error });
                 expect(personRepoMock.getPersonIfAllowed).toHaveBeenCalledExactlyOnceWith(personId, permissions);
                 expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer (BenutzerId: ${personId}) zu ${lock ? 'sperren' : 'entsperren'}. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
-            },
-        );
+            });
 
-        it.each([true, false])('returns an error for a missing Keycloak ID when lock is %s', async (lock: boolean) => {
-            person.keycloakUserId = undefined;
-            personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
-            const error: PersonDomainError = new PersonDomainError(
-                `Person with id ${personId} has no keycloak id`,
-                personId,
-            );
+            it('returns an error when unlocking', async () => {
+                personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({
+                    ok: false,
+                    error: new EntityNotFoundError('Person'),
+                });
+                const error: NotFoundOrNoPermissionError = new NotFoundOrNoPermissionError(personId);
 
-            const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, lock, lockedBy);
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, false, lockedBy);
 
-            expect(result).toEqual({ ok: false, error });
-            expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
-            expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu ${lock ? 'sperren' : 'entsperren'}. Fehler: ${error.message}.`,
-            );
-            expect(logger.info).not.toHaveBeenCalled();
+                expect(result).toEqual({ ok: false, error });
+                expect(personRepoMock.getPersonIfAllowed).toHaveBeenCalledExactlyOnceWith(personId, permissions);
+                expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
+                expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                );
+                expect(logger.info).not.toHaveBeenCalled();
+            });
         });
 
-        it.each([true, false])('wraps downstream Keycloak errors when lock is %s', async (lock: boolean) => {
-            personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
-            const downstreamError: KeycloakClientError = new KeycloakClientError('Could not update user status');
-            keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({ ok: false, error: downstreamError });
-            const error: DownstreamKeycloakError = new DownstreamKeycloakError(downstreamError.message, personId, [
-                downstreamError.details,
-            ]);
+        describe('when the Keycloak ID is missing', () => {
+            it('returns an error when locking', async () => {
+                person.keycloakUserId = undefined;
+                personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
+                const error: PersonDomainError = new PersonDomainError(
+                    `Person with id ${personId} has no keycloak id`,
+                    personId,
+                );
 
-            const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, lock, lockedBy);
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, true, lockedBy);
 
-            expect(result).toEqual({ ok: false, error });
-            expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu ${lock ? 'sperren' : 'entsperren'}. Fehler: ${error.message}.`,
-            );
-            expect(logger.info).not.toHaveBeenCalled();
+                expect(result).toEqual({ ok: false, error });
+                expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
+                expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
+                );
+                expect(logger.info).not.toHaveBeenCalled();
+            });
+
+            it('returns an error when unlocking', async () => {
+                person.keycloakUserId = undefined;
+                personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
+                const error: PersonDomainError = new PersonDomainError(
+                    `Person with id ${personId} has no keycloak id`,
+                    personId,
+                );
+
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, false, lockedBy);
+
+                expect(result).toEqual({ ok: false, error });
+                expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
+                expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                );
+                expect(logger.info).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('when Keycloak returns an error', () => {
+            it('wraps the downstream error when locking', async () => {
+                personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
+                const downstreamError: KeycloakClientError = new KeycloakClientError('Could not update user status');
+                keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({
+                    ok: false,
+                    error: downstreamError,
+                });
+                const error: DownstreamKeycloakError = new DownstreamKeycloakError(downstreamError.message, personId, [
+                    downstreamError.details,
+                ]);
+
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, true, lockedBy);
+
+                expect(result).toEqual({ ok: false, error });
+                expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
+                );
+                expect(logger.info).not.toHaveBeenCalled();
+            });
+
+            it('wraps the downstream error when unlocking', async () => {
+                personRepoMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
+                const downstreamError: KeycloakClientError = new KeycloakClientError('Could not update user status');
+                keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({
+                    ok: false,
+                    error: downstreamError,
+                });
+                const error: DownstreamKeycloakError = new DownstreamKeycloakError(downstreamError.message, personId, [
+                    downstreamError.details,
+                ]);
+
+                const result: Result<void, DomainError> = await sut.lockPerson(personId, permissions, false, lockedBy);
+
+                expect(result).toEqual({ ok: false, error });
+                expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                );
+                expect(logger.info).not.toHaveBeenCalled();
+            });
         });
     });
 });
