@@ -1,7 +1,18 @@
+import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
+import { Migrator, TSMigrationGenerator } from '@mikro-orm/migrations';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { defineConfig, PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { LdapModule } from '../core/ldap/ldap.module.js';
+import { LoggerModule } from '../core/logging/logger.module.js';
+import { KeycloakAdministrationModule } from '../modules/keycloak-administration/keycloak-administration.module.js';
+import { KeycloakConfigModule } from '../modules/keycloak-administration/keycloak-config.module.js';
+import { OrganisationModule } from '../modules/organisation/organisation.module.js';
+import { PersonModule } from '../modules/person/person.module.js';
+import { PersonenKontextModule } from '../modules/personenkontext/personenkontext.module.js';
+import { RolleModule } from '../modules/rolle/rolle.module.js';
+import { ServiceProviderModule } from '../modules/service-provider/service-provider.module.js';
 import {
     DbConfig,
     EmailConfigModule,
@@ -9,26 +20,14 @@ import {
     ServerConfig,
     ServerConfigModule,
 } from '../shared/config/index.js';
-import { DbConsole } from './db.console.js';
 import { DbInitConsole } from './db-init.console.js';
-import { LoggerModule } from '../core/logging/logger.module.js';
-import { KeycloakAdministrationModule } from '../modules/keycloak-administration/keycloak-administration.module.js';
-import { KeycloakConfigModule } from '../modules/keycloak-administration/keycloak-config.module.js';
-import { OrganisationModule } from '../modules/organisation/organisation.module.js';
-import { RolleModule } from '../modules/rolle/rolle.module.js';
-import { ServiceProviderModule } from '../modules/service-provider/service-provider.module.js';
-import { PersonModule } from '../modules/person/person.module.js';
-import { PersonenKontextModule } from '../modules/personenkontext/personenkontext.module.js';
+import { DbConsole } from './db.console.js';
+import { DbApplyMigrationConsole } from './dbmigrate/db-apply-migration.console.js';
+import { DbCreateMigrationConsole } from './dbmigrate/db-create-migration.console.js';
+import { DbInitMigrationConsole } from './dbmigrate/db-init-migration.console.js';
+import { DbSeedDataGeneratorConsole } from './dbseed/db-seed-data-generator.console.js';
 import { DbSeedConsole } from './dbseed/db-seed.console.js';
 import { DbSeedModule } from './dbseed/db-seed.module.js';
-import { Migrator, TSMigrationGenerator } from '@mikro-orm/migrations';
-import { DbInitMigrationConsole } from './dbmigrate/db-init-migration.console.js';
-import { DbCreateMigrationConsole } from './dbmigrate/db-create-migration.console.js';
-import { DbApplyMigrationConsole } from './dbmigrate/db-apply-migration.console.js';
-import { LdapModule } from '../core/ldap/ldap.module.js';
-import { DbSeedDataGeneratorConsole } from './dbseed/db-seed-data-generator.console.js';
-import { KeycloakConsoleModule } from './keycloak/keycloak-console.module.js';
-import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 
 @Module({
     imports: [
@@ -41,7 +40,6 @@ import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
         PersonenKontextModule,
         LdapModule,
         DbSeedModule,
-        KeycloakConsoleModule,
         LoggerModule.register(ConsoleModule.name),
         ConfigModule.forRoot({
             isGlobal: true,
