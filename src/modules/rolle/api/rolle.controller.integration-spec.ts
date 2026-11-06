@@ -1795,6 +1795,43 @@ describe('Rolle API', () => {
             });
         });
 
+        it('should return 400 if the rollenart is not allowed for a service provider', async () => {
+            const organisation: OrganisationEntity = await createOrganisationEntity();
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisation.id,
+                    rollenart: RollenArt.LERN,
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisation.id,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const params: UpdateRolleBodyParams = {
+                name: rolle.name,
+                merkmale: [],
+                systemrechte: [],
+                serviceProviderIds: [serviceProvider.id],
+                version: rolle.version,
+            };
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(buildUrl(rolle.id))
+                .send(params);
+
+            expect(response.status).toBe(400);
+            expect(response.body).toMatchObject({
+                code: 400,
+                i18nKey: 'ROLLENART_NOT_ALLOWED_FOR_SERVICE_PROVIDER',
+            });
+        });
+
         it('should fail if the rolle does not exist', async () => {
             const userOrganisation: Organisation<false> = DoFactory.createOrganisation(false);
             const savedUserOrganisation: Organisation<true> = await organisationRepo.save(userOrganisation);
@@ -2516,7 +2553,7 @@ describe('Rolle API', () => {
                 idsWithI18nKeys: [
                     {
                         id: serviceProviderId,
-                        errorIdType: ErrorIdType.ROLLE,
+                        errorIdType: ErrorIdType.ANGEBOT,
                         i18nKey: 'NOT_FOUND',
                     },
                 ],
