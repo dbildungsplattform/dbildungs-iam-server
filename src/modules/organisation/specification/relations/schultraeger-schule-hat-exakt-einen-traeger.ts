@@ -9,9 +9,13 @@ export class SchultraegerSchuleHatExaktEinenTraeger extends CompositeSpecificati
         super();
     }
 
+    /**
+     * Also returns false if type of OrganisationBeziehung does not match.
+     * @param beziehung
+     */
     public async isSatisfiedBy(beziehung: Organisationsbeziehung<boolean>): Promise<boolean> {
         if (beziehung.typ !== OrganisationsbeziehungsTyp.SCHULTRAEGER) {
-            return true;
+            return false;
         }
 
         const schule: Option<Organisation<true, true>> = await this.organisationRepo.findByIdWithRelationships(

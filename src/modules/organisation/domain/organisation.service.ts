@@ -634,32 +634,34 @@ export class OrganisationService {
     private async validateSpecificationsForOrganisationsbeziehung(
         organisationsbeziehung: Organisationsbeziehung<false>,
     ): Promise<OrganisationSpecificationError | undefined> {
-        const schulaufsichtQuelleSchuleZielBehoerde: SchulaufsichtQuelleSchuleZielBehoerde =
-            new SchulaufsichtQuelleSchuleZielBehoerde(this.organisationRepo);
-        const schulaufsichtSchuleUndAufsichtSelberBaum: SchulaufsichtSchuleUndAufsichtSelberBaum =
-            new SchulaufsichtSchuleUndAufsichtSelberBaum(this.organisationRepo);
-        const schultraegerQuelleSchuleZielTraeger: SchultraegerQuelleSchuleZielTraeger =
-            new SchultraegerQuelleSchuleZielTraeger(this.organisationRepo);
-        const schultraegerSchuleHatExaktEinenTraeger: SchultraegerSchuleHatExaktEinenTraeger =
-            new SchultraegerSchuleHatExaktEinenTraeger(this.organisationRepo);
-        const schultraegerSchuleUndTraegerSelberBaum: SchultraegerSchuleUndTraegerSelberBaum =
-            new SchultraegerSchuleUndTraegerSelberBaum(this.organisationRepo);
-        if (!(await schulaufsichtQuelleSchuleZielBehoerde.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchulaufsichtQuelleSchuleZielBehoerdeError(
-                organisationsbeziehung.quellOrganisationId ?? undefined,
-            );
+        if (organisationsbeziehung.typ === OrganisationsbeziehungsTyp.SCHULAUFSICHT) {
+            const schulaufsichtQuelleSchuleZielBehoerde: SchulaufsichtQuelleSchuleZielBehoerde =
+                new SchulaufsichtQuelleSchuleZielBehoerde(this.organisationRepo);
+            const schulaufsichtSchuleUndAufsichtSelberBaum: SchulaufsichtSchuleUndAufsichtSelberBaum =
+                new SchulaufsichtSchuleUndAufsichtSelberBaum(this.organisationRepo);
+            if (!(await schulaufsichtQuelleSchuleZielBehoerde.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchulaufsichtQuelleSchuleZielBehoerdeError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schulaufsichtSchuleUndAufsichtSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchulaufsichtSchuleUndAufsichtSelberBaumError(organisationsbeziehung.quellOrganisationId);
+            }
         }
-        if (!(await schulaufsichtSchuleUndAufsichtSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchulaufsichtSchuleUndAufsichtSelberBaumError(organisationsbeziehung.id ?? undefined);
-        }
-        if (!(await schultraegerQuelleSchuleZielTraeger.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchultraegerQuelleSchuleZielTraegerError(organisationsbeziehung.id ?? undefined);
-        }
-        if (!(await schultraegerSchuleHatExaktEinenTraeger.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchultraegerSchuleHatExaktEinenTraegerError(organisationsbeziehung.id ?? undefined);
-        }
-        if (!(await schultraegerSchuleUndTraegerSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
-            return new SchultraegerSchuleUndTraegerSelberBaumError(organisationsbeziehung.id ?? undefined);
+        if (organisationsbeziehung.typ === OrganisationsbeziehungsTyp.SCHULTRAEGER) {
+            const schultraegerQuelleSchuleZielTraeger: SchultraegerQuelleSchuleZielTraeger =
+                new SchultraegerQuelleSchuleZielTraeger(this.organisationRepo);
+            const schultraegerSchuleHatExaktEinenTraeger: SchultraegerSchuleHatExaktEinenTraeger =
+                new SchultraegerSchuleHatExaktEinenTraeger(this.organisationRepo);
+            const schultraegerSchuleUndTraegerSelberBaum: SchultraegerSchuleUndTraegerSelberBaum =
+                new SchultraegerSchuleUndTraegerSelberBaum(this.organisationRepo);
+            if (!(await schultraegerQuelleSchuleZielTraeger.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerQuelleSchuleZielTraegerError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schultraegerSchuleHatExaktEinenTraeger.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerSchuleHatExaktEinenTraegerError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schultraegerSchuleUndTraegerSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerSchuleUndTraegerSelberBaumError(organisationsbeziehung.quellOrganisationId);
+            }
         }
 
         return undefined;

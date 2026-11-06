@@ -51,8 +51,8 @@ describe('SchultraegerSchuleHatExaktEinenTraeger Specification', () => {
         sut = new SchultraegerSchuleHatExaktEinenTraeger(orgaRepoMock);
     });
 
-    it('should return true, if relation typ is not SCHULTRAEGER', async () => {
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+    it('should return false, if relation typ is not SCHULTRAEGER', async () => {
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findByIdWithRelationships).not.toHaveBeenCalled();
     });
 

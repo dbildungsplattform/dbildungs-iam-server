@@ -25,10 +25,10 @@ describe('SchultraegerQuelleSchuleZielTraeger Specification', () => {
         sut = new SchultraegerQuelleSchuleZielTraeger(orgaRepoMock);
     });
 
-    it('should return true, if typ is not SCHULTRAEGER', async () => {
+    it('should return false, if typ is not SCHULTRAEGER', async () => {
         const beziehung: OrganisationsbeziehungEntity = createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT);
 
-        await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(beziehung)).resolves.toBe(false);
     });
 
     it('should return false, if quellOrganisation does not exist', async () => {

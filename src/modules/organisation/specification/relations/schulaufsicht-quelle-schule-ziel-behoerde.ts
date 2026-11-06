@@ -9,9 +9,13 @@ export class SchulaufsichtQuelleSchuleZielBehoerde extends CompositeSpecificatio
         super();
     }
 
+    /**
+     * Also returns false if type of OrganisationBeziehung does not match.
+     * @param t
+     */
     public async isSatisfiedBy(t: Organisationsbeziehung<boolean>): Promise<boolean> {
         if (t.typ !== OrganisationsbeziehungsTyp.SCHULAUFSICHT) {
-            return true;
+            return false;
         }
 
         const quellOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(

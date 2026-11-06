@@ -2675,6 +2675,7 @@ describe('OrganisationService', () => {
         describe('validateSpecificationsForOrganisationsbeziehung', () => {
             async function createBeziehungAndExpectError(
                 expectedError: new (organisationsbeziehungId?: string) => DomainError,
+                beziehungsTyp: OrganisationsbeziehungsTyp = typ,
             ): Promise<void> {
                 const result: Result<
                     Organisationsbeziehung<true>,
@@ -2682,7 +2683,7 @@ describe('OrganisationService', () => {
                 > = await organisationService.createOrganisationsbeziehung(
                     quellOrganisationId,
                     zielOrganisationId,
-                    typ,
+                    beziehungsTyp,
                     permissionsMock,
                 );
 
@@ -2696,13 +2697,19 @@ describe('OrganisationService', () => {
             it('should return SchulaufsichtQuelleSchuleZielBehoerdeError when SchulaufsichtQuelleSchuleZielBehoerde is not satisfied', async () => {
                 vi.spyOn(SchulaufsichtQuelleSchuleZielBehoerde.prototype, 'isSatisfiedBy').mockResolvedValue(false);
 
-                await createBeziehungAndExpectError(SchulaufsichtQuelleSchuleZielBehoerdeError);
+                await createBeziehungAndExpectError(
+                    SchulaufsichtQuelleSchuleZielBehoerdeError,
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                );
             });
 
             it('should return SchulaufsichtSchuleUndAufsichtSelberBaumError when SchulaufsichtSchuleUndAufsichtSelberBaum is not satisfied', async () => {
                 vi.spyOn(SchulaufsichtSchuleUndAufsichtSelberBaum.prototype, 'isSatisfiedBy').mockResolvedValue(false);
 
-                await createBeziehungAndExpectError(SchulaufsichtSchuleUndAufsichtSelberBaumError);
+                await createBeziehungAndExpectError(
+                    SchulaufsichtSchuleUndAufsichtSelberBaumError,
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                );
             });
 
             it('should return SchultraegerQuelleSchuleZielTraegerError when SchultraegerQuelleSchuleZielTraeger is not satisfied', async () => {
@@ -2723,29 +2730,62 @@ describe('OrganisationService', () => {
                 await createBeziehungAndExpectError(SchultraegerSchuleUndTraegerSelberBaumError);
             });
 
-            it('should pass the new Organisationsbeziehung to every specification', async () => {
-                const spies: MockInstance[] = [
-                    vi.spyOn(SchulaufsichtQuelleSchuleZielBehoerde.prototype, 'isSatisfiedBy'),
-                    vi.spyOn(SchulaufsichtSchuleUndAufsichtSelberBaum.prototype, 'isSatisfiedBy'),
-                    vi.spyOn(SchultraegerQuelleSchuleZielTraeger.prototype, 'isSatisfiedBy'),
-                    vi.spyOn(SchultraegerSchuleHatExaktEinenTraeger.prototype, 'isSatisfiedBy'),
-                    vi.spyOn(SchultraegerSchuleUndTraegerSelberBaum.prototype, 'isSatisfiedBy'),
-                ];
-
-                await organisationService.createOrganisationsbeziehung(
-                    quellOrganisationId,
-                    zielOrganisationId,
-                    typ,
-                    permissionsMock,
-                );
-
-                for (const spy of spies) {
-                    expect(spy).toHaveBeenCalledTimes(1);
-                    expect(spy).toHaveBeenCalledWith(
-                        expect.objectContaining({ id: undefined, quellOrganisationId, zielOrganisationId, typ }),
+            it.each([
+                [
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                    [SchulaufsichtQuelleSchuleZielBehoerde, SchulaufsichtSchuleUndAufsichtSelberBaum],
+                    [
+                        SchultraegerQuelleSchuleZielTraeger,
+                        SchultraegerSchuleHatExaktEinenTraeger,
+                        SchultraegerSchuleUndTraegerSelberBaum,
+                    ],
+                ],
+                [
+                    OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                    [
+                        SchultraegerQuelleSchuleZielTraeger,
+                        SchultraegerSchuleHatExaktEinenTraeger,
+                        SchultraegerSchuleUndTraegerSelberBaum,
+                    ],
+                    [SchulaufsichtQuelleSchuleZielBehoerde, SchulaufsichtSchuleUndAufsichtSelberBaum],
+                ],
+            ])(
+                'should only check the specifications matching type %s',
+                async (
+                    beziehungsTyp: OrganisationsbeziehungsTyp,
+                    checked: { prototype: { isSatisfiedBy: unknown } }[],
+                    notChecked: { prototype: { isSatisfiedBy: unknown } }[],
+                ) => {
+                    const checkedSpies: MockInstance[] = checked.map((c: { prototype: object }) =>
+                        vi.spyOn(c.prototype as { isSatisfiedBy: () => Promise<boolean> }, 'isSatisfiedBy'),
                     );
-                }
-            });
+                    const notCheckedSpies: MockInstance[] = notChecked.map((c: { prototype: object }) =>
+                        vi.spyOn(c.prototype as { isSatisfiedBy: () => Promise<boolean> }, 'isSatisfiedBy'),
+                    );
+
+                    await organisationService.createOrganisationsbeziehung(
+                        quellOrganisationId,
+                        zielOrganisationId,
+                        beziehungsTyp,
+                        permissionsMock,
+                    );
+
+                    for (const spy of checkedSpies) {
+                        expect(spy).toHaveBeenCalledTimes(1);
+                        expect(spy).toHaveBeenCalledWith(
+                            expect.objectContaining({
+                                id: undefined,
+                                quellOrganisationId,
+                                zielOrganisationId,
+                                typ: beziehungsTyp,
+                            }),
+                        );
+                    }
+                    for (const spy of notCheckedSpies) {
+                        expect(spy).not.toHaveBeenCalled();
+                    }
+                },
+            );
         });
     });
 

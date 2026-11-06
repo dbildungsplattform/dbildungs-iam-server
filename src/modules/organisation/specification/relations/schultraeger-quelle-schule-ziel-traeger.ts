@@ -9,15 +9,19 @@ export class SchultraegerQuelleSchuleZielTraeger extends CompositeSpecification<
         super();
     }
 
+    /**
+     * Also returns false if type of OrganisationBeziehung does not match.
+     * @param t
+     */
     public async isSatisfiedBy(t: Organisationsbeziehung<boolean>): Promise<boolean> {
         if (t.typ !== OrganisationsbeziehungsTyp.SCHULTRAEGER) {
-            return true;
+            return false;
         }
 
         const quellOrganisation: Option<Organisation<true>> = await this.organisationRepo.findById(
             t.quellOrganisationId,
         );
-        if (!quellOrganisation || quellOrganisation.typ !== OrganisationsTyp.SCHULE) {
+        if (quellOrganisation?.typ !== OrganisationsTyp.SCHULE) {
             return false;
         }
 

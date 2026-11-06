@@ -26,8 +26,8 @@ describe('SchultraegerSchuleUndTraegerSelberBaum Specification', () => {
         sut = new SchultraegerSchuleUndTraegerSelberBaum(orgaRepoMock);
     });
 
-    it('should return true, if relation typ is not SCHULTRAEGER', async () => {
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+    it('should return false, if relation typ is not SCHULTRAEGER', async () => {
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findById).not.toHaveBeenCalled();
     });
 

@@ -26,8 +26,8 @@ describe('SchulaufsichtSchuleUndAufsichtSelberBaum Specification', () => {
         sut = new SchulaufsichtSchuleUndAufsichtSelberBaum(orgaRepoMock);
     });
 
-    it('should return true, if relation typ is not SCHULAUFSICHT', async () => {
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(true);
+    it('should return false, if relation typ is not SCHULAUFSICHT', async () => {
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULTRAEGER))).resolves.toBe(false);
         expect(orgaRepoMock.findById).not.toHaveBeenCalled();
     });
 

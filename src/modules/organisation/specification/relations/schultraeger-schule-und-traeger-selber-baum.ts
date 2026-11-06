@@ -13,9 +13,13 @@ export class SchultraegerSchuleUndTraegerSelberBaum extends CompositeSpecificati
         this.sameSubtree = new OrganisationsOnSameSubtree(organisationRepo);
     }
 
+    /**
+     * Also returns false if type of OrganisationBeziehung does not match.
+     * @param beziehung
+     */
     public async isSatisfiedBy(beziehung: Organisationsbeziehung<boolean>): Promise<boolean> {
         if (beziehung.typ !== OrganisationsbeziehungsTyp.SCHULTRAEGER) {
-            return true;
+            return false;
         }
 
         const schule: Option<Organisation<true>> = await this.organisationRepo.findById(beziehung.quellOrganisationId);
