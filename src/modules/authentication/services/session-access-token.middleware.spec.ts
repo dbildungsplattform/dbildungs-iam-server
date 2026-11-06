@@ -1,22 +1,23 @@
-import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { type Request } from 'express';
-import { type PassportUser } from '../types/user.js';
-import { SessionAccessTokenMiddleware } from './session-access-token.middleware.js';
-import { type Client, TokenSet } from 'openid-client';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { type LogOutOptions } from 'passport';
-import { type PersonPermissions } from '../domain/person-permissions.js';
+import { faker } from '@faker-js/faker';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type SystemConfig } from '../../../shared/config/system.config.js';
+import { type Request } from 'express';
+import { type Client, TokenSet } from 'openid-client';
+import { type LogOutOptions } from 'passport';
+import { type Mock } from 'vitest';
 import {
     createOidcClientMock,
     createPassportUserMock,
     createPersonPermissionsMock,
     createUserinfoResponseMock,
 } from '../../../../test/utils/auth.mock.js';
-import { type Mock } from 'vitest';
-import { faker } from '@faker-js/faker';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { createResponseMock } from '../../../../test/utils/http.mocks.js';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { type SystemConfig } from '../../../shared/config/system.config.js';
+import { type PersonPermissions } from '../domain/person-permissions.js';
+import { type PassportUser } from '../types/user.js';
+import { SessionAccessTokenMiddleware } from './session-access-token.middleware.js';
 
 describe('sessionAccessTokenMiddleware', () => {
     let passportUser: PassportUser;
@@ -71,6 +72,63 @@ describe('sessionAccessTokenMiddleware', () => {
 
             expect(request.headers.authorization).toBeUndefined();
         });
+    });
+
+    it('should reject the request without destroying the session when access token introspection fails', async () => {
+        clientMock.introspect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        const middleware: SessionAccessTokenMiddleware = new SessionAccessTokenMiddleware(
+            clientMock,
+            createMock(ClassLogger),
+            configService,
+        );
+        const nextMock: Mock = vi.fn();
+
+        await expect(middleware.use(request, createResponseMock(), nextMock)).rejects.toBeInstanceOf(
+            ServiceUnavailableException,
+        );
+
+        expect(nextMock).not.toHaveBeenCalled();
+        expect(request.logout).not.toHaveBeenCalled();
+        expect(request.passportUser).toBe(passportUser);
+    });
+
+    it('should reject the request when refresh token introspection fails', async () => {
+        clientMock.introspect
+            .mockResolvedValueOnce({ scope: 'openid', active: false })
+            .mockRejectedValueOnce(new Error('ECONNREFUSED'));
+        const nextMock: Mock = vi.fn();
+
+        await expect(
+            new SessionAccessTokenMiddleware(clientMock, createMock(ClassLogger), configService).use(
+                request,
+                createResponseMock(),
+                nextMock,
+            ),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+        expect(nextMock).not.toHaveBeenCalled();
+        expect(request.logout).not.toHaveBeenCalled();
+    });
+
+    it('should recover on the next request without recreating the middleware or session', async () => {
+        clientMock.introspect
+            .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+            .mockResolvedValueOnce({ scope: 'openid', active: true });
+        const middleware: SessionAccessTokenMiddleware = new SessionAccessTokenMiddleware(
+            clientMock,
+            createMock(ClassLogger),
+            configService,
+        );
+        const nextMock: Mock = vi.fn();
+
+        await expect(middleware.use(request, createResponseMock(), nextMock)).rejects.toBeInstanceOf(
+            ServiceUnavailableException,
+        );
+        await middleware.use(request, createResponseMock(), nextMock);
+
+        expect(nextMock).toHaveBeenCalledExactlyOnceWith();
+        expect(request.logout).not.toHaveBeenCalled();
+        expect(clientMock.introspect).toHaveBeenCalledTimes(2);
     });
 
     describe('when the request does not contain a session', () => {
