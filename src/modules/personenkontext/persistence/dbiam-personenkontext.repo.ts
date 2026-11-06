@@ -689,4 +689,16 @@ export class DBiamPersonenkontextRepo {
 
         return result;
     }
+
+    public async findByPersonAndServiceProviderWithOrgaAndRolle(
+        personId: PersonID,
+        serviceProviderId: ServiceProviderID,
+    ): Promise<KontextWithOrgaAndRolle[]> {
+        const kontexteByPerson: Map<PersonID, KontextWithOrgaAndRolle[]> =
+            await this.findByPersonIdsAndServiceprovidersWithOrgaAndRolle([personId], [serviceProviderId], {
+                all: true,
+            });
+
+        return kontexteByPerson.get(personId) ?? [];
+    }
 }
