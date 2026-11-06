@@ -47,6 +47,7 @@ import { OrganisationSpecificationError } from '../specification/error/organisat
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
 import { DbiamOrganisationError } from './dbiam-organisation.error.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
@@ -56,6 +57,8 @@ import { ParentOrganisationenResponse } from './organisation.parents.response.js
 import { OrganisationResponse } from './organisation.response.js';
 import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbeziehung.body.params.js';
@@ -375,6 +378,119 @@ export class OrganisationController {
         if (!res.ok) {
             throw res.error;
         }
+    }
+
+    // TODO: STUB - returns fake data only (SPSH-4324). Replace with real implementation once SPSH-4320 is merged.
+    @Get(':organisationId/beziehungen')
+    @ApiOperation({ description: 'Get all relationships of an organisation (stub, returns fake data).' })
+    @ApiOkResponse({
+        description: 'The organisation relationships were successfully returned.',
+        type: [OrganisationsbeziehungWithOrganisationenResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get organisation relationships.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get organisation relationships.' })
+    @ApiNotFoundResponse({ description: 'The organisation does not exist.' })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting the organisation relationships.',
+    })
+    // eslint-disable-next-line @typescript-eslint/require-await
+    public async getOrganisationsbeziehungen(
+        @Param() _params: OrganisationByIdParams,
+        @Query() queryParams: FindOrganisationsbeziehungenQueryParams,
+    ): Promise<PagedResponse<OrganisationsbeziehungWithOrganisationenResponse>> {
+        // _params.organisationId
+        const items: OrganisationsbeziehungWithOrganisationenResponse[] = [
+            {
+                id: '11111111-1111-4111-8111-111111111111',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: _params.organisationId,
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                    name: 'Stadt Musterstadt',
+                },
+            },
+            {
+                id: '22222222-2222-4222-8222-222222222222',
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                quelle: {
+                    id: _params.organisationId,
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                    name: 'Schulamt Musterkreis',
+                },
+            },
+            {
+                id: '33333333-3333-4333-8333-333333333333',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: _params.organisationId,
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                    name: 'Stadt Musterstadt',
+                },
+            },
+        ];
+        /*
+        const items: OrganisationsbeziehungWithOrganisationenResponse[] = [
+            {
+                id: '11111111-1111-4111-8111-111111111111',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+            {
+                id: '22222222-2222-4222-8222-222222222222',
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                quelle: {
+                    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    name: 'Gymnasium Musterstadt',
+                    dienststellennummer: '1234567',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+            {
+                id: '33333333-3333-4333-8333-333333333333',
+                typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                quelle: {
+                    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                    name: 'Grundschule Beispieldorf',
+                    dienststellennummer: '2345678',
+                },
+                ziel: {
+                    id: _params.organisationId,,
+                    name: 'Stadt Musterstadt',
+                },
+            },
+        ];*/
+
+        return new PagedResponse({
+            total: items.length,
+            offset: queryParams.offset ?? 0,
+            limit: queryParams.limit ?? items.length,
+            items,
+            pageTotal: items.length,
+        });
     }
 
     @Patch(':organisationId/name')
