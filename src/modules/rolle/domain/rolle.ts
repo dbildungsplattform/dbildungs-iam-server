@@ -201,6 +201,8 @@ export class Rolle<WasPersisted extends boolean> {
             ) {
                 return Err(new ServiceProviderProvidedOutOfTreeError(serviceProviderId));
             }
+
+            // TODO: Remove this check once the whole Service-Provider-Rollenarten-Whitelist checks and cleanup are implemented in dedicated place.
             const isNewServiceProvider: boolean = !alreadyAssignedServiceProviderIds.includes(serviceProviderId);
             if (
                 isNewServiceProvider &&
