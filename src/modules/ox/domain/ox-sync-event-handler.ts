@@ -1,80 +1,52 @@
-import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { EntityManager } from '@mikro-orm/core';
-import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
-import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
-import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
-import { KafkaLdapSyncCompletedEvent } from '../../../shared/events/ldap/kafka-ldap-sync-completed.event.js';
-import { LdapSyncCompletedEvent } from '../../../shared/events/ldap/ldap-sync-completed.event.js';
-import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
-import { PersonEmailIdentifier, PersonIdentifier } from '../../../core/logging/person-identifier.js';
-import { Person } from '../../person/domain/person.js';
-import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
-import { DomainError } from '../../../shared/error/domain.error.js';
-import { ChangeUserAction } from '../adapter/technical/actions/user/change-user.action.js';
-import { generateOxUserChangedEvent, OxAdapter, OxUserChangedEventCreator } from '../adapter/domain/ox.adapter.js';
-import { OxSendService } from '../adapter/technical/ox.send-service.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
-import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
-import { uniq } from 'lodash-es';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
-import { OxSyncError } from '../adapter/domain/error/ox-sync.error.js';
-import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { ConfigService } from '@nestjs/config';
-import { ServerConfig } from '../../../shared/config/server.config.js';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { uniq } from 'lodash-es';
+import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { PersonEmailIdentifier, PersonIdentifier } from '../../../core/logging/person-identifier.js';
+import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
+import { ServerConfig } from '../../../shared/config/server.config.js';
+import { DomainError } from '../../../shared/error/domain.error.js';
+import { OrganisationID, PersonID, PersonUsername, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OXGroupID, OXUserID } from '../../../shared/types/ox-ids.types.js';
+import { EmailAddress, EmailAddressStatus } from '../../email/domain/email-address.js';
+import { EmailRepo } from '../../email/persistence/email.repo.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { Personenkontext } from '../../personenkontext/domain/personenkontext.js';
+import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
+import { OxSyncError } from '../adapter/domain/error/ox-sync.error.js';
+import { generateOxUserChangedEvent, OxAdapter, OxUserChangedEventCreator } from '../adapter/domain/ox.adapter.js';
 import {
     AddMemberToGroupAction,
     AddMemberToGroupResponse,
 } from '../adapter/technical/actions/group/add-member-to-group.action.js';
-import { OxMemberAlreadyInGroupError } from '../adapter/domain/error/ox-member-already-in-group.error.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { OxServerConfig } from '../../../shared/config/ox-server.config.js';
+import { ChangeUserAction } from '../adapter/technical/actions/user/change-user.action.js';
+import { OxSendService } from '../adapter/technical/ox.send-service.js';
 
 @Injectable()
 export class OxSyncEventHandler {
     public ENABLED: boolean;
 
     public constructor(
-        protected readonly logger: ClassLogger,
-        protected readonly oxService: OxSendService,
-        protected readonly oxAdapter: OxAdapter,
-        protected readonly emailRepo: EmailRepo,
-        protected readonly personRepository: PersonRepository,
-        protected readonly eventService: EventRoutingLegacyKafkaService,
-        protected configService: ConfigService<ServerConfig>,
-        protected readonly emailResolverService: EmailResolverService,
-
+        private readonly logger: ClassLogger,
+        private readonly oxService: OxSendService,
+        private readonly oxAdapter: OxAdapter,
+        private readonly emailRepo: EmailRepo,
+        private readonly personRepository: PersonRepository,
+        configService: ConfigService<ServerConfig>,
         private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         private readonly rolleRepo: RolleRepo,
         private readonly organisationRepository: OrganisationRepository,
-        // @ts-expect-error used by EnsureRequestContext decorator
-        // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
-        // to create the request-bound EntityManager context. Removing it would break context creation.
-        private readonly em: EntityManager,
     ) {
         const oxConfig: OxServerConfig = configService.getOrThrow<OxServerConfig>('OX');
         this.ENABLED = oxConfig.ENABLED;
-    }
-
-    @KafkaEventHandler(KafkaLdapSyncCompletedEvent)
-    @EventHandler(LdapSyncCompletedEvent)
-    @EnsureRequestContext()
-    public async ldapSyncCompletedEventHandler(event: LdapSyncCompletedEvent): Promise<void> {
-        this.logger.info(`[EventID: ${event.eventID}] Received LdapSyncCompletedEvent, personId:${event.personId}`);
-
-        if (this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is enabled`);
-            return;
-        }
-        await this.sync(event.personId, event.username);
     }
 
     private async getPerson(personId: PersonID, username: PersonUsername): Promise<PersonEmailIdentifier | undefined> {
