@@ -2,10 +2,7 @@ import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { expectErrResult, expectOkResult } from '../../../../test/utils/test-types.js';
-import {
-    EventRoutingLegacyKafkaService,
-    type PersistedWithEvents,
-} from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { type DomainError } from '../../../shared/error/domain.error.js';
 import { Ok } from '../../../shared/util/result.js';
@@ -34,15 +31,6 @@ describe('ServiceProviderModificationService', () => {
         rolleRepoMock = createMock(RolleRepo);
         rollenerweiterungRepoMock = createMock(RollenerweiterungRepo);
         eventServiceMock = createMock(EventRoutingLegacyKafkaService);
-        eventServiceMock.persistAndPublish.mockImplementation(
-            async <T>(persist: () => Promise<PersistedWithEvents<T>>) => {
-                const outcome: PersistedWithEvents<T> = await persist();
-                for (const pair of outcome.events) {
-                    eventServiceMock.publish(pair.legacyEvent, pair.kafkaEvent);
-                }
-                return outcome.result;
-            },
-        );
         rollenerweiterungRepoMock.findByServiceProviderIdAndRollenarten.mockResolvedValue([]);
 
         sut = new ServiceProviderModificationService(
@@ -222,14 +210,19 @@ describe('ServiceProviderModificationService', () => {
             );
 
             expectOkResult(result);
-            expect(eventServiceMock.publish).toHaveBeenCalledTimes(2);
-            for (const rollenerweiterung of affected) {
-                expect(eventServiceMock.publish).toHaveBeenCalledWith(
+            expect(eventServiceMock.publishMultiple).toHaveBeenCalledTimes(1);
+            const [pairs]: [{ legacyEvent: unknown; kafkaEvent: unknown }[]] = eventServiceMock.publishMultiple.mock
+                .calls[0] as [{ legacyEvent: unknown; kafkaEvent: unknown }[]];
+            expect(pairs).toHaveLength(2);
+            for (const [index, rollenerweiterung] of affected.entries()) {
+                expect(pairs[index]?.legacyEvent).toEqual(
                     expect.objectContaining({
                         organisationId: rollenerweiterung.organisationId,
                         rolleId: rollenerweiterung.rolleId,
                         serviceProviderId: rollenerweiterung.serviceProviderId,
                     }),
+                );
+                expect(pairs[index]?.kafkaEvent).toEqual(
                     expect.objectContaining({
                         organisationId: rollenerweiterung.organisationId,
                         rolleId: rollenerweiterung.rolleId,
@@ -272,7 +265,7 @@ describe('ServiceProviderModificationService', () => {
             );
 
             expectErrResult(result);
-            expect(eventServiceMock.publish).not.toHaveBeenCalled();
+            expect(eventServiceMock.publishMultiple).not.toHaveBeenCalled();
         });
     });
 

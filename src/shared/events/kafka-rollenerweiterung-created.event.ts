@@ -3,6 +3,6 @@ import { RollenerweiterungCreatedEvent } from './rollenerweiterung-created.event
 
 export class KafkaRollenerweiterungCreatedEvent extends RollenerweiterungCreatedEvent implements KafkaEvent {
     public get kafkaKey(): string {
-        return `${this.organisationId}-${this.rolleId}-${this.serviceProviderId}`;
+        return this.rolleId;
     }
 }

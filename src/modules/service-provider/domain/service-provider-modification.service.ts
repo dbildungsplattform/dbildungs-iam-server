@@ -173,38 +173,35 @@ export class ServiceProviderModificationService {
         serviceProviderId: ServiceProviderID,
         rollenarten?: RollenArt[],
     ): Promise<Result<null, DomainError>> {
-        return this.eventRouting.persistAndPublish(async () => {
-            const affected: Rollenerweiterung<true>[] =
-                await this.rollenerweiterungRepo.findByServiceProviderIdAndRollenarten(serviceProviderId, rollenarten);
+        const affected: Rollenerweiterung<true>[] =
+            await this.rollenerweiterungRepo.findByServiceProviderIdAndRollenarten(serviceProviderId, rollenarten);
 
-            const deleteResult: Result<null, DomainError> =
-                rollenarten === undefined
-                    ? await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
-                          serviceProviderId,
-                      )
-                    : await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
-                          serviceProviderId,
-                          rollenarten,
-                      );
+        const deleteResult: Result<null, DomainError> =
+            rollenarten === undefined
+                ? await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(serviceProviderId)
+                : await this.rollenerweiterungRepo.deleteByServiceProviderIdAndRollenartenForSPUpdate(
+                      serviceProviderId,
+                      rollenarten,
+                  );
 
-            return {
-                result: deleteResult,
-                events: deleteResult.ok
-                    ? affected.map((rollenerweiterung: Rollenerweiterung<true>) => ({
-                          legacyEvent: new RollenerweiterungDeletedEvent(
-                              rollenerweiterung.organisationId,
-                              rollenerweiterung.rolleId,
-                              rollenerweiterung.serviceProviderId,
-                          ),
-                          kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
-                              rollenerweiterung.organisationId,
-                              rollenerweiterung.rolleId,
-                              rollenerweiterung.serviceProviderId,
-                          ),
-                      }))
-                    : [],
-            };
-        });
+        if (deleteResult.ok) {
+            this.eventRouting.publishMultiple(
+                affected.map((rollenerweiterung: Rollenerweiterung<true>) => ({
+                    legacyEvent: new RollenerweiterungDeletedEvent(
+                        rollenerweiterung.organisationId,
+                        rollenerweiterung.rolleId,
+                        rollenerweiterung.serviceProviderId,
+                    ),
+                    kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
+                        rollenerweiterung.organisationId,
+                        rollenerweiterung.rolleId,
+                        rollenerweiterung.serviceProviderId,
+                    ),
+                })),
+            );
+        }
+
+        return deleteResult;
     }
 
     public async deleteByIdAuthorized(

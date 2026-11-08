@@ -33,7 +33,6 @@ import {
     DBiamPersonenkontextRepo,
     type ErweiterterServiceProviderForPK,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { ItsLearningSyncEventHandler } from './itslearning-sync.event-handler.js';
 
@@ -187,11 +186,7 @@ export class ItsLearningPersonsEventHandler {
                 return this.logger.info(`[EventID: ${event.eventID}] Not enabled, ignoring event.`);
             }
 
-            const hasExtendableRolle: boolean = event.currentKontexte.some((pk: PersonenkontextUpdatedData) =>
-                [RollenArt.LEHR, RollenArt.LERN, RollenArt.LEIT].includes(pk.rolle),
-            );
-
-            if (hasExtendableRolle && (await this.hasItslearningErweiterung(event.person.id))) {
+            if (await this.hasItslearningErweiterung(event.person.id)) {
                 // The sync handler is the single source of truth for memberships. Updating them here from
                 // currentKontexte alone would remove the memberships granted by the Rollenerweiterung.
                 await this.syncEventHandler.personExternalSystemSyncEventHandler(

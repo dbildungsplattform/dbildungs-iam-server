@@ -11,7 +11,6 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ItsLearningConfig, ServerConfig } from '../../../shared/config/index.js';
 import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
 import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
-import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { RollenerweiterungCreatedEvent } from '../../../shared/events/rollenerweiterung-created.event.js';
 import { RollenerweiterungDeletedEvent } from '../../../shared/events/rollenerweiterung-deleted.event.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
@@ -107,17 +106,14 @@ export class ItsLearningRollenerweiterungEventHandler {
                     afterPersonId,
                 );
 
-                for (const personId of personIds) {
+                if (personIds.length > 0) {
                     try {
-                        await this.syncEventHandler.personExternalSystemSyncEventHandler(
-                            new PersonExternalSystemsSyncEvent(personId),
-                        );
+                        await this.syncEventHandler.personExternalSystemSyncBatch(personIds, event.eventID, keepAlive);
                     } catch (err: unknown) {
                         this.logger.error(
-                            `[EventID: ${event.eventID}] Sync of person ${personId} failed: ${err instanceof Error ? err.message : String(err)}`,
+                            `[EventID: ${event.eventID}] Sync of persons failed: ${err instanceof Error ? err.message : String(err)}`,
                         );
                     }
-                    keepAlive();
                 }
 
                 afterPersonId = personIds.at(-1);

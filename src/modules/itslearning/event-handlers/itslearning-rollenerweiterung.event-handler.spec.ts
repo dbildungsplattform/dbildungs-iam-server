@@ -3,7 +3,6 @@ import { createMock, type DeepMocked } from '../../../../test/utils/createMock.j
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
-import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { RollenerweiterungCreatedEvent } from '../../../shared/events/rollenerweiterung-created.event.js';
 import { RollenerweiterungDeletedEvent } from '../../../shared/events/rollenerweiterung-deleted.event.js';
 import { DBiamPersonenkontextRepo } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
@@ -82,9 +81,10 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
                 expect.any(Number),
                 undefined,
             );
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(2);
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledWith(
-                expect.any(PersonExternalSystemsSyncEvent),
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).toHaveBeenCalledWith(
+                ['p1', 'p2'],
+                event.eventID,
+                keepAlive,
             );
         });
 
@@ -101,7 +101,7 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
             await sut.rollenerweiterungCreatedEventHandler(event, keepAlive);
 
             expect(personenkontextRepoMock.findPersonIdsWithRolleInOrganisationSubtree).not.toHaveBeenCalled();
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).not.toHaveBeenCalled();
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).not.toHaveBeenCalled();
         });
 
         it('should ignore the event if the service provider does not exist', async () => {
@@ -114,7 +114,7 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
 
             await sut.rollenerweiterungCreatedEventHandler(event, keepAlive);
 
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).not.toHaveBeenCalled();
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).not.toHaveBeenCalled();
         });
 
         it('should do nothing if the handler is not enabled', async () => {
@@ -131,7 +131,7 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
             expect(personenkontextRepoMock.findPersonIdsWithRolleInOrganisationSubtree).not.toHaveBeenCalled();
         });
 
-        it('should continue with the remaining persons if one sync fails', async () => {
+        it('should log and stop the fan-out if the batch sync fails', async () => {
             const event: RollenerweiterungCreatedEvent = new RollenerweiterungCreatedEvent(
                 'orga-id',
                 'rolle-id',
@@ -139,14 +139,12 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
             );
             serviceProviderRepoMock.findById.mockResolvedValueOnce(itslearningProvider);
             personenkontextRepoMock.findPersonIdsWithRolleInOrganisationSubtree.mockResolvedValueOnce(['p1', 'p2']);
-            syncEventHandlerMock.personExternalSystemSyncEventHandler
-                .mockRejectedValueOnce(new Error('boom'))
-                .mockResolvedValueOnce(undefined);
+            syncEventHandlerMock.personExternalSystemSyncBatch.mockRejectedValueOnce(new Error('boom'));
 
             await sut.rollenerweiterungCreatedEventHandler(event, keepAlive);
 
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(2);
-            expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Sync of person p1 failed'));
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).toHaveBeenCalledTimes(1);
+            expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining('Sync of persons failed'));
         });
     });
 
@@ -162,7 +160,11 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
 
             await sut.rollenerweiterungDeletedEventHandler(event, keepAlive);
 
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(1);
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).toHaveBeenCalledWith(
+                ['p1'],
+                event.eventID,
+                keepAlive,
+            );
         });
     });
 });

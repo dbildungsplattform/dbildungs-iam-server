@@ -17,6 +17,6 @@ describe('KafkaRollenerweiterungCreatedEvent', () => {
         );
 
         expect(event).toBeInstanceOf(KafkaRollenerweiterungCreatedEvent);
-        expect(event.kafkaKey).toBe(`${orga.id}-${rolle.id}-${serviceProvider.id}`);
+        expect(event.kafkaKey).toBe(rolle.id);
     });
 });

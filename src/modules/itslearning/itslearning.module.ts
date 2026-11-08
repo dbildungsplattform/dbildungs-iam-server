@@ -9,7 +9,6 @@ import { RolleModule } from '../rolle/rolle.module.js';
 import { ServiceProviderModule } from '../service-provider/service-provider.module.js';
 import { ItsLearningOrganisationsEventHandler } from './event-handlers/itslearning-organisations.event-handler.js';
 import { ItsLearningPersonsEventHandler } from './event-handlers/itslearning-persons.event-handler.js';
-import { ItsLearningRolleEventHandler } from './event-handlers/itslearning-rolle.event-handler.js';
 import { ItsLearningRollenerweiterungEventHandler } from './event-handlers/itslearning-rollenerweiterung.event-handler.js';
 import { ItsLearningSyncEventHandler } from './event-handlers/itslearning-sync.event-handler.js';
 import { ItsLearningIMSESApiService } from './adapter/technical/itslearning.api-service.js';
@@ -39,7 +38,6 @@ import { EmailMicroserviceModule } from '../email-microservice/email-microservic
         ItsLearningOrganisationsEventHandler,
         ItsLearningPersonsEventHandler,
         ItsLearningSyncEventHandler,
-        ItsLearningRolleEventHandler,
         ItsLearningRollenerweiterungEventHandler,
     ],
     exports: [ItsLearningIMSESApiService],

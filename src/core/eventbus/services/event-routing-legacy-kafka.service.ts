@@ -13,11 +13,6 @@ export type LegacyKafkaEventPair = {
     kafkaEvent: KafkaEvent;
 };
 
-export type PersistedWithEvents<T> = {
-    result: T;
-    events: LegacyKafkaEventPair[];
-};
-
 @Injectable()
 export class EventRoutingLegacyKafkaService {
     private readonly kafkaEnabled: boolean;
@@ -29,16 +24,6 @@ export class EventRoutingLegacyKafkaService {
         configService: ConfigService<ServerConfig>,
     ) {
         this.kafkaEnabled = configService.getOrThrow<KafkaConfig>('KAFKA').ENABLED;
-    }
-
-    /**
-     * Runs the state change and publishes the resulting events afterwards.
-     * The callback returns only the events for changes that actually happened.
-     */
-    public async persistAndPublish<T>(persist: () => Promise<PersistedWithEvents<T>>): Promise<T> {
-        const outcome: PersistedWithEvents<T> = await persist();
-        this.publishMultiple(outcome.events);
-        return outcome.result;
     }
 
     public publishMultiple(pairs: LegacyKafkaEventPair[]): void {
@@ -53,6 +38,7 @@ export class EventRoutingLegacyKafkaService {
                 .catch((err: unknown) => this.logger.logUnknownAsError(`Failed publishing kafka event batch`, err));
         } else {
             for (const pair of pairs) {
+                this.logger.debug(`Publishing '${pair.legacyEvent.constructor.name}' to legacy event service`);
                 this.eventService.publish(pair.legacyEvent);
             }
         }

@@ -331,20 +331,12 @@ export class ApplyRollenerweiterungService {
             return createResult;
         }
 
-        const persistedRollenerweiterung: Rollenerweiterung<true> = await this.eventService.persistAndPublish(
-            async () => ({
-                result: await this.rollenerweiterungRepo.create(createResult.value),
-                events: [
-                    {
-                        legacyEvent: new RollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
-                        kafkaEvent: new KafkaRollenerweiterungCreatedEvent(
-                            organisation.id,
-                            rolle.id,
-                            serviceProvider.id,
-                        ),
-                    },
-                ],
-            }),
+        const persistedRollenerweiterung: Rollenerweiterung<true> = await this.rollenerweiterungRepo.create(
+            createResult.value,
+        );
+        this.eventService.publish(
+            new RollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
+            new KafkaRollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
         );
 
         return Ok(persistedRollenerweiterung);
@@ -587,37 +579,24 @@ export class ApplyRollenerweiterungService {
         errorId,
         errorIdType,
     }: RemoveRollenerweiterungParams): Promise<RollenerweiterungOperationResult> {
-        return this.eventService.persistAndPublish(async () => {
-            const result: Result<null, DomainError> = await this.rollenerweiterungRepo.deleteByComposedId({
-                organisationId,
-                rolleId,
-                serviceProviderId,
-            });
-
-            return {
-                result: {
-                    id: errorId,
-                    errorIdType,
-                    result,
-                },
-                events: result.ok
-                    ? [
-                          {
-                              legacyEvent: new RollenerweiterungDeletedEvent(
-                                  organisationId,
-                                  rolleId,
-                                  serviceProviderId,
-                              ),
-                              kafkaEvent: new KafkaRollenerweiterungDeletedEvent(
-                                  organisationId,
-                                  rolleId,
-                                  serviceProviderId,
-                              ),
-                          },
-                      ]
-                    : [],
-            };
+        const result: Result<null, DomainError> = await this.rollenerweiterungRepo.deleteByComposedId({
+            organisationId,
+            rolleId,
+            serviceProviderId,
         });
+
+        if (result.ok) {
+            this.eventService.publish(
+                new RollenerweiterungDeletedEvent(organisationId, rolleId, serviceProviderId),
+                new KafkaRollenerweiterungDeletedEvent(organisationId, rolleId, serviceProviderId),
+            );
+        }
+
+        return {
+            id: errorId,
+            errorIdType,
+            result,
+        };
     }
 
     private async checkBasePermission(

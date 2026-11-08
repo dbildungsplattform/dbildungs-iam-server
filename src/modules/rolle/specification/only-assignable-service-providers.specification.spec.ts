@@ -2,10 +2,11 @@ import { xorBy } from 'lodash-es';
 import { vi } from 'vitest';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProviderMerkmal, ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { type Rolle } from '../domain/rolle.js';
+import { KeinNachtraeglichesItslearningServiceProvider } from './kein-nachtraegliches-itslearning-service-provider.specification.js';
 import { NurNachtraeglichZuweisbareServiceProvider } from './only-assignable-service-providers.specification.js';
 
 function getUnassignableServiceProviders(n: number): ServiceProvider<true>[] {
@@ -203,5 +204,54 @@ describe('OnlyAssignableServiceProviders', () => {
             );
             await expect(spec.isSatisfiedBy(updatedRolle)).resolves.toBe(isValid);
         });
+    });
+});
+
+describe('KeinNachtraeglichesItslearningServiceProvider', () => {
+    const serviceProviderRepoMock: DeepMocked<ServiceProviderRepo> = createMock(ServiceProviderRepo);
+    beforeEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const itslearningSp: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+        externalSystem: ServiceProviderSystem.ITSLEARNING,
+        merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
+    });
+    const otherSp: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+        externalSystem: ServiceProviderSystem.NONE,
+        merkmale: [],
+    });
+
+    it.each([
+        { description: 'nothing changes', changed: [], isValid: true },
+        { description: 'a non-itslearning SP is added', changed: [otherSp], isValid: true },
+        { description: 'the itslearning SP is added', changed: [itslearningSp], isValid: false },
+    ])(
+        'when $description, should return $isValid',
+        async ({ changed, isValid }: { changed: ServiceProvider<true>[]; isValid: boolean }) => {
+            const oldRolle: Rolle<true> = buildRolleWithServiceProviders([]);
+            const updatedRolle: Rolle<true> = buildRolleWithServiceProviders(changed, oldRolle);
+
+            serviceProviderRepoMock.findByIds.mockResolvedValue(
+                buildServiceProviderDifferenceMap(oldRolle, updatedRolle),
+            );
+
+            const spec: KeinNachtraeglichesItslearningServiceProvider =
+                new KeinNachtraeglichesItslearningServiceProvider(serviceProviderRepoMock, oldRolle);
+            await expect(spec.isSatisfiedBy(updatedRolle)).resolves.toBe(isValid);
+        },
+    );
+
+    it('should return false, if the itslearning SP is removed', async () => {
+        const oldRolle: Rolle<true> = buildRolleWithServiceProviders([itslearningSp, otherSp]);
+        const updatedRolle: Rolle<true> = buildRolleWithServiceProviders([otherSp], oldRolle);
+
+        serviceProviderRepoMock.findByIds.mockResolvedValue(buildServiceProviderDifferenceMap(oldRolle, updatedRolle));
+
+        const spec: KeinNachtraeglichesItslearningServiceProvider = new KeinNachtraeglichesItslearningServiceProvider(
+            serviceProviderRepoMock,
+            oldRolle,
+        );
+        await expect(spec.isSatisfiedBy(updatedRolle)).resolves.toBe(false);
     });
 });

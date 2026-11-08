@@ -13,7 +13,6 @@ import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafk
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
-import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updated.event.js';
 import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
 import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
 import { KafkaSchuleCreatedEvent } from '../../../shared/events/kafka-schule-created.event.js';
@@ -75,7 +74,6 @@ export type KafkaEventKey =
     | 'group_role.created'
     | 'klasse.created'
     | 'klasse.updated'
-    | 'rolle.updated'
     | 'rollenerweiterung.created'
     | 'rollenerweiterung.deleted'
     | 'schule.created'
@@ -161,12 +159,6 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
         eventClass: KafkaGroupAndRoleCreatedEvent,
         topic: 'group-role-topic',
         topicDlq: 'group-role-dlq-topic',
-    },
-
-    'rolle.updated': {
-        eventClass: KafkaRolleUpdatedEvent,
-        topic: 'rolle-topic',
-        topicDlq: 'rolle-dlq-topic',
     },
 
     'rollenerweiterung.created': {

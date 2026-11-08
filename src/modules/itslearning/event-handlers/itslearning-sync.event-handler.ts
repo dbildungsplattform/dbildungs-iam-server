@@ -6,7 +6,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ItsLearningConfig, ServerConfig } from '../../../shared/config/index.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID, PersonID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { Person } from '../../person/domain/person.js';
@@ -28,12 +28,30 @@ import {
 } from '../adapter/domain/itslearning-membership.adapter.js';
 import { ItslearningPersonAdapter } from '../adapter/domain/itslearning-person.adapter.js';
 import { determineHighestRollenart, rollenartToIMSESInstitutionRole } from '../adapter/domain/role-utils.js';
+import { type CreatePersonParams } from '../adapter/technical/actions/create-person.action.js';
+import { type FailureStatusInfo, type MassResult } from '../adapter/technical/actions/base-mass-action.js';
+import { StatusInfoHelpers } from '../adapter/technical/utils/status-info.utils.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EntityManager } from '@mikro-orm/core';
+
+export type UpsertSyncTarget = {
+    action: 'upsert';
+    personId: PersonID;
+    person: CreatePersonParams;
+    memberships: SetMembershipParams[];
+};
+
+export type DeleteSyncTarget = {
+    action: 'delete';
+    personId: PersonID;
+};
+
+export type PersonSyncTarget = UpsertSyncTarget | DeleteSyncTarget;
+
 @Injectable()
 export class ItsLearningSyncEventHandler {
     public ENABLED: boolean;
@@ -71,21 +89,102 @@ export class ItsLearningSyncEventHandler {
             return this.logger.info(`[EventID: ${event.eventID}] Not enabled, ignoring event.`);
         }
 
-        // Retrieve the person from the DB
-        const person: Option<Person<true>> = await this.personRepo.findById(event.personId);
-        if (!person) {
-            return this.logger.error(
-                `[EventID: ${event.eventID}] Person with ID ${event.personId} could not be found!`,
+        const target: Option<PersonSyncTarget> = await this.determineSyncTarget(event.personId, event.eventID);
+        if (!target) {
+            return;
+        }
+
+        if (target.action === 'delete') {
+            // We don't have any relevant personenkontexte for this person, so we delete it
+            const deleteError: Option<DomainError> = await this.itslearningPersonAdapter.deletePerson(
+                target.personId,
+                `${event.eventID}-DELETE`,
             );
+
+            if (deleteError) {
+                return this.logger.error(
+                    `[EventID: ${event.eventID}] Could not delete person with ID ${target.personId} from itslearning!`,
+                );
+            }
+
+            return;
+        }
+
+        const creationResult: Result<void, DomainError> = await this.itslearningPersonAdapter.createOrUpdatePerson(
+            target.person,
+            `${event.eventID}-SYNC-PERSON`,
+        );
+
+        if (!creationResult.ok) {
+            return this.logger.logUnknownAsError(
+                `[EventID: ${event.eventID}] Could not create/update person with ID ${target.personId} in itslearning!`,
+                creationResult.error,
+            );
+        }
+
+        this.logger.info(`[EventID: ${event.eventID}] Updated person with ID ${target.personId} in itslearning!`);
+
+        await this.setMembershipsForPerson(target, event.eventID);
+    }
+
+    /**
+     * Syncs several persons at once. Persons are created, updated or deleted with mass requests,
+     * memberships are still set per person.
+     */
+    public async personExternalSystemSyncBatch(
+        personIds: PersonID[],
+        eventId: string,
+        keepAlive: () => void,
+    ): Promise<void> {
+        const targets: PersonSyncTarget[] = [];
+        for (const personId of personIds) {
+            try {
+                // eslint-disable-next-line no-await-in-loop
+                const target: Option<PersonSyncTarget> = await this.determineSyncTarget(personId, eventId);
+                if (target) {
+                    targets.push(target);
+                }
+            } catch (err: unknown) {
+                this.logger.error(
+                    `[EventID: ${eventId}] Could not determine sync target of person ${personId}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+            }
+            keepAlive();
+        }
+
+        const upserts: UpsertSyncTarget[] = targets.filter(
+            (target: PersonSyncTarget): target is UpsertSyncTarget => target.action === 'upsert',
+        );
+        const deletions: DeleteSyncTarget[] = targets.filter(
+            (target: PersonSyncTarget): target is DeleteSyncTarget => target.action === 'delete',
+        );
+
+        const persistedUpserts: UpsertSyncTarget[] = await this.createOrUpdatePersonsMass(upserts, eventId);
+        for (const target of persistedUpserts) {
+            // eslint-disable-next-line no-await-in-loop
+            await this.setMembershipsForPerson(target, eventId);
+            keepAlive();
+        }
+
+        await this.deletePersonsMass(deletions, eventId);
+    }
+
+    private async determineSyncTarget(personId: PersonID, eventId: string): Promise<Option<PersonSyncTarget>> {
+        // Retrieve the person from the DB
+        const person: Option<Person<true>> = await this.personRepo.findById(personId);
+        if (!person) {
+            this.logger.error(`[EventID: ${eventId}] Person with ID ${personId} could not be found!`);
+            return undefined;
         }
 
         // Check if person has a username
         if (!person.username) {
-            return this.logger.error(`[EventID: ${event.eventID}] Person with ID ${event.personId} has no username!`);
+            this.logger.error(`[EventID: ${eventId}] Person with ID ${personId} has no username!`);
+            return undefined;
         }
 
         // Get all personenkontexte for this person
-        const kontexte: Personenkontext<true>[] = await this.personenkontextRepo.findByPerson(event.personId);
+        const kontexte: Personenkontext<true>[] = await this.personenkontextRepo.findByPerson(personId);
 
         // Find all rollen and organisations
         const rollenIDs: RolleID[] = [...new Set(kontexte.map((pk: Personenkontext<true>) => pk.rolleId))];
@@ -108,7 +207,7 @@ export class ItsLearningSyncEventHandler {
 
         // Kontexte that receive itslearning through a school-specific Rollenerweiterung
         const erweiterteSPs: ErweiterterServiceProviderForPK[] =
-            await this.personenkontextRepo.findErweiterteSPByPersonId(event.personId);
+            await this.personenkontextRepo.findErweiterteSPByPersonId(personId);
         const kontextIdsWithItslearningErweiterung: Set<string> = new Set(
             erweiterteSPs
                 .filter(
@@ -167,78 +266,126 @@ export class ItsLearningSyncEventHandler {
         );
 
         // Check if the person has at least one personenkontext with the itslearning-system
-        if (relevantKontexte.length > 0) {
-            const targetRole: RollenArt = determineHighestRollenart(
-                kontexte
-                    .filter((pk: Personenkontext<true>) => hasItslearning(pk))
-                    .map((pk: Personenkontext<true>) => rollen.get(pk.rolleId)!.rollenart),
-            );
-
-            const emailAddress: string | undefined =
-                await this.emailResolverService.getPrimaryActiveEmailForPerson(person);
-
-            // Create or update the person in itslearning
-            const creationResult: Result<void, DomainError> = await this.itslearningPersonAdapter.createOrUpdatePerson(
-                {
-                    id: person.id,
-                    firstName: person.vorname,
-                    lastName: person.familienname,
-                    username: person.username,
-                    institutionRoleType: rollenartToIMSESInstitutionRole(targetRole),
-                    email: emailAddress,
-                },
-                `${event.eventID}-SYNC-PERSON`,
-            );
-
-            if (!creationResult.ok) {
-                return this.logger.logUnknownAsError(
-                    `[EventID: ${event.eventID}] Could not create/update person with ID ${person.id} in itslearning!`,
-                    creationResult.error,
-                );
-            }
-
-            this.logger.info(`[EventID: ${event.eventID}] Updated person with ID ${person.id} in itslearning!`);
-
-            // Set the memberships
-            const memberships: SetMembershipParams[] = relevantKontexte.map((pk: Personenkontext<true>) => ({
-                organisationId: pk.organisationId,
-
-                // We know the map will contain the rolle, 'relevantKontexte' was already filtered
-                role: rollen.get(pk.rolleId)!.rollenart,
-            }));
-
-            const setMembershipsResult: Result<SetMembershipsResult, DomainError> =
-                await this.itslearningMembershipAdapter.setMemberships(
-                    person.id,
-                    memberships,
-                    `${event.eventID}-SYNC-PERSON-MEMBERSHIPS`,
-                );
-
-            if (!setMembershipsResult.ok) {
-                return this.logger.error(
-                    `[EventID: ${event.eventID}] Could not delete person with ID ${person.id} from itslearning!`,
-                );
-            }
-
+        if (relevantKontexte.length === 0) {
             this.logger.info(
-                `[EventID: ${event.eventID}] Created/Updated ${setMembershipsResult.value.updated} and deleted ${setMembershipsResult.value.deleted} memberships for person with ID ${person.id} to itslearning!`,
-            );
-        } else {
-            this.logger.info(
-                `[EventID: ${event.eventID}] Deleting person with ID ${person.id} from itslearning (if they exist), because they have no relevant personenkontexte!`,
+                `[EventID: ${eventId}] Deleting person with ID ${person.id} from itslearning (if they exist), because they have no relevant personenkontexte!`,
             );
 
-            // We don't have any relevant personenkontexte for this person, so we delete it
-            const deleteError: Option<DomainError> = await this.itslearningPersonAdapter.deletePerson(
-                person.id,
-                `${event.eventID}-DELETE`,
-            );
-
-            if (deleteError) {
-                return this.logger.error(
-                    `[EventID: ${event.eventID}] Could not delete person with ID ${person.id} from itslearning!`,
-                );
-            }
+            return { action: 'delete', personId: person.id };
         }
+
+        const targetRole: RollenArt = determineHighestRollenart(
+            kontexte
+                .filter((pk: Personenkontext<true>) => hasItslearning(pk))
+                .map((pk: Personenkontext<true>) => rollen.get(pk.rolleId)!.rollenart),
+        );
+
+        const emailAddress: string | undefined = await this.emailResolverService.getPrimaryActiveEmailForPerson(person);
+
+        const memberships: SetMembershipParams[] = relevantKontexte.map((pk: Personenkontext<true>) => ({
+            organisationId: pk.organisationId,
+
+            // We know the map will contain the rolle, 'relevantKontexte' was already filtered
+            role: rollen.get(pk.rolleId)!.rollenart,
+        }));
+
+        return {
+            action: 'upsert',
+            personId: person.id,
+            person: {
+                id: person.id,
+                firstName: person.vorname,
+                lastName: person.familienname,
+                username: person.username,
+                institutionRoleType: rollenartToIMSESInstitutionRole(targetRole),
+                email: emailAddress,
+            },
+            memberships,
+        };
+    }
+
+    private async createOrUpdatePersonsMass(targets: UpsertSyncTarget[], eventId: string): Promise<UpsertSyncTarget[]> {
+        if (targets.length === 0) {
+            return [];
+        }
+
+        const createResult: Result<
+            MassResult<void>,
+            DomainError
+        > = await this.itslearningPersonAdapter.createOrUpdatePersons(
+            targets.map((target: UpsertSyncTarget): CreatePersonParams => target.person),
+            `${eventId}-SYNC-PERSONS`,
+        );
+
+        if (!createResult.ok) {
+            this.logger.logUnknownAsError(
+                `[EventID: ${eventId}] Could not create/update ${targets.length} persons in itslearning!`,
+                createResult.error,
+            );
+            return [];
+        }
+
+        const failed: [FailureStatusInfo, UpsertSyncTarget][] = StatusInfoHelpers.zipFailed(
+            createResult.value.status,
+            targets,
+        );
+        for (const [status, target] of failed) {
+            this.logger.error(
+                `[EventID: ${eventId}] Could not create/update person with ID ${target.personId} in itslearning: ${status.description.text}`,
+            );
+        }
+
+        const failedIds: Set<PersonID> = new Set(
+            failed.map(([, target]: [FailureStatusInfo, UpsertSyncTarget]) => target.personId),
+        );
+        return targets.filter((target: UpsertSyncTarget) => !failedIds.has(target.personId));
+    }
+
+    private async deletePersonsMass(targets: DeleteSyncTarget[], eventId: string): Promise<void> {
+        if (targets.length === 0) {
+            return;
+        }
+
+        const deleteResult: Result<MassResult<void>, DomainError> = await this.itslearningPersonAdapter.deletePersons(
+            targets.map((target: DeleteSyncTarget) => target.personId),
+            `${eventId}-DELETE-PERSONS`,
+        );
+
+        if (!deleteResult.ok) {
+            this.logger.logUnknownAsError(
+                `[EventID: ${eventId}] Could not delete ${targets.length} persons from itslearning!`,
+                deleteResult.error,
+            );
+            return;
+        }
+
+        const failed: [FailureStatusInfo, DeleteSyncTarget][] = StatusInfoHelpers.zipFailed(
+            deleteResult.value.status,
+            targets,
+        );
+        for (const [status, target] of failed) {
+            this.logger.error(
+                `[EventID: ${eventId}] Could not delete person with ID ${target.personId} from itslearning: ${status.description.text}`,
+            );
+        }
+    }
+
+    private async setMembershipsForPerson(target: UpsertSyncTarget, eventId: string): Promise<void> {
+        const setMembershipsResult: Result<SetMembershipsResult, DomainError> =
+            await this.itslearningMembershipAdapter.setMemberships(
+                target.personId,
+                target.memberships,
+                `${eventId}-SYNC-PERSON-MEMBERSHIPS`,
+            );
+
+        if (!setMembershipsResult.ok) {
+            return this.logger.error(
+                `[EventID: ${eventId}] Could not delete person with ID ${target.personId} from itslearning!`,
+            );
+        }
+
+        this.logger.info(
+            `[EventID: ${eventId}] Created/Updated ${setMembershipsResult.value.updated} and deleted ${setMembershipsResult.value.deleted} memberships for person with ID ${target.personId} to itslearning!`,
+        );
     }
 }

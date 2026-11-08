@@ -641,7 +641,7 @@ describe('ItsLearning Persons Event Handler', () => {
             expect(updatePersonSpy).toHaveBeenCalledTimes(1);
         });
 
-        it('should not query Rollenerweiterungen, if no LEHR, LERN or LEIT kontext exists', async () => {
+        it('should delegate to sync handler, if itslearning is given through a Rollenerweiterung of any Rollenart', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
                 [],
@@ -649,16 +649,24 @@ describe('ItsLearning Persons Event Handler', () => {
                 [makeKontextEventData({ rolle: RollenArt.SYSADMIN })],
             );
 
-            vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
-            vi.spyOn(sut, 'updateMemberships').mockResolvedValueOnce(undefined);
+            const erweiterterSP: ErweiterterServiceProviderForPK = {
+                personenkontext: DoFactory.createPersonenkontext(true, { personId: event.person.id }),
+                serviceProvider: DoFactory.createServiceProvider(true, {
+                    externalSystem: ServiceProviderSystem.ITSLEARNING,
+                }),
+            };
+            personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([erweiterterSP]);
+
+            const updatePersonSpy: Mock = vi.spyOn(sut, 'updatePerson').mockResolvedValueOnce(undefined);
 
             await sut.updatePersonenkontexteEventHandler(event);
 
-            expect(personenkontextRepoMock.findErweiterteSPByPersonId).not.toHaveBeenCalled();
-            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).not.toHaveBeenCalled();
+            expect(personenkontextRepoMock.findErweiterteSPByPersonId).toHaveBeenCalledWith(event.person.id);
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(1);
+            expect(updatePersonSpy).not.toHaveBeenCalled();
         });
 
-        it('should delete person, if only a Rollenerweiterung exists but no LEHR, LERN or LEIT kontext remains', async () => {
+        it('should delegate to sync handler, if no kontext remains but a Rollenerweiterung exists', async () => {
             const event: PersonenkontextUpdatedEvent = new PersonenkontextUpdatedEvent(
                 { id: faker.string.uuid(), vorname: faker.person.firstName(), familienname: faker.person.lastName() },
                 [],
@@ -678,8 +686,8 @@ describe('ItsLearning Persons Event Handler', () => {
 
             await sut.updatePersonenkontexteEventHandler(event);
 
-            expect(personenkontextRepoMock.findErweiterteSPByPersonId).not.toHaveBeenCalled();
-            expect(deletePersonSpy).toHaveBeenCalledWith(event.person.id, `${event.eventID}-DELETE-PERSON`);
+            expect(syncEventHandlerMock.personExternalSystemSyncEventHandler).toHaveBeenCalledTimes(1);
+            expect(deletePersonSpy).not.toHaveBeenCalled();
         });
 
         it('should skip event, if not enabled', async () => {

@@ -8,6 +8,7 @@ import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
 import { RolleNameNotUniqueOnSskError } from '../specification/error/rolle-name-not-unique-on-ssk.error.js';
 import { ServiceProviderNichtNachtraeglichZuweisbarError } from '../specification/error/service-provider-nicht-nachtraeglich-zuweisbar.error.js';
+import { ItslearningNichtNachtraeglichZuweisbarError } from '../specification/error/itslearning-nicht-nachtraeglich-zuweisbar.error.js';
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { ServiceProviderProvidedOutOfTreeError } from '../domain/service-provider-provided-out-of-tree.error.js';
@@ -55,6 +56,13 @@ export class RolleExceptionFilter implements ExceptionFilter<RolleDomainError> {
             new DbiamRolleError({
                 code: 400,
                 i18nKey: RolleErrorI18nTypes.SERVICE_PROVIDER_NICHT_NACHTRAEGLICH_ZUWEISBAR,
+            }),
+        ],
+        [
+            ItslearningNichtNachtraeglichZuweisbarError.name,
+            new DbiamRolleError({
+                code: 400,
+                i18nKey: RolleErrorI18nTypes.ITSLEARNING_NICHT_NACHTRAEGLICH_ZUWEISBAR,
             }),
         ],
         [
