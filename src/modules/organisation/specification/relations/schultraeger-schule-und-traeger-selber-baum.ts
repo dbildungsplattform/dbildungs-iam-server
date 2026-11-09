@@ -24,13 +24,13 @@ export class SchultraegerSchuleUndTraegerSelberBaum extends CompositeSpecificati
 
         const schule: Option<Organisation<true>> = await this.organisationRepo.findById(beziehung.quellOrganisationId);
         if (schule?.typ !== OrganisationsTyp.SCHULE) {
-            return true;
+            return false;
         }
 
         // The specification SchultraegerSchuleHatExaktEinenTraeger checks that there is exactly one TRAEGER, not part of this specification
         const traeger: Option<Organisation<true>> = await this.organisationRepo.findById(beziehung.zielOrganisationId);
         if (traeger?.typ !== OrganisationsTyp.TRAEGER) {
-            return true;
+            return false;
         }
 
         return this.sameSubtree.isSatisfiedBy([schule, traeger]);

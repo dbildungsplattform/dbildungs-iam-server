@@ -31,37 +31,37 @@ describe('SchulaufsichtSchuleUndAufsichtSelberBaum Specification', () => {
         expect(orgaRepoMock.findById).not.toHaveBeenCalled();
     });
 
-    it('should return true, if quellOrganisation does not exist', async () => {
+    it('should return false, if quellOrganisation does not exist', async () => {
         orgaRepoMock.findById.mockResolvedValueOnce(undefined);
 
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findById).toHaveBeenCalledTimes(1);
     });
 
-    it('should return true, if quellOrganisation is not a SCHULE', async () => {
+    it('should return false, if quellOrganisation is not a SCHULE', async () => {
         orgaRepoMock.findById.mockResolvedValueOnce(
             DoFactory.createOrganisation(true, { typ: OrganisationsTyp.BEHOERDE }),
         );
 
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findById).toHaveBeenCalledTimes(1);
     });
 
-    it('should return true, if zielOrganisation does not exist', async () => {
+    it('should return false, if zielOrganisation does not exist', async () => {
         orgaRepoMock.findById
             .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }))
             .mockResolvedValueOnce(undefined);
 
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich).not.toHaveBeenCalled();
     });
 
-    it('should return true, if zielOrganisation is not a BEHOERDE', async () => {
+    it('should return false, if zielOrganisation is not a BEHOERDE', async () => {
         orgaRepoMock.findById
             .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE }))
             .mockResolvedValueOnce(DoFactory.createOrganisation(true, { typ: OrganisationsTyp.TRAEGER }));
 
-        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(true);
+        await expect(sut.isSatisfiedBy(createBeziehung(OrganisationsbeziehungsTyp.SCHULAUFSICHT))).resolves.toBe(false);
         expect(orgaRepoMock.findOrganisationZuordnungErsatzOderOeffentlich).not.toHaveBeenCalled();
     });
 
