@@ -207,13 +207,13 @@ jobs:
 
   branch_meta:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/get-branch-meta.yml@7
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/get-branch-meta.yml@SPSH-4664
 
   create_branch_identifier:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
     needs:
       - branch_meta
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@7
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@SPSH-4664
     with:
       branch: ${{ needs.branch_meta.outputs.branch }}
 
@@ -224,7 +224,7 @@ jobs:
       - create_branch_identifier
       - wait_for_helm_chart_to_get_published
       - build_image_on_push
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/deploy.yml@9
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/deploy.yml@SPSH-4664
     with:
       dbildungs_iam_server_branch: ${{ needs.branch_meta.outputs.ticket }}
       schulportal_client_branch: ${{ needs.branch_meta.outputs.ticket }}
@@ -238,7 +238,7 @@ jobs:
   # On Delete
   create_branch_identifier_for_deletion:
     if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@7
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@SPSH-4664
     with:
       branch: ${{ github.event.ref }}
 
@@ -246,7 +246,7 @@ jobs:
     if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch'}}
     needs:
       - create_branch_identifier_for_deletion
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/delete-namespace.yml@7
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/delete-namespace.yml@SPSH-4664
     with:
       namespace: ${{ needs.create_branch_identifier_for_deletion.outputs.namespace_from_branch }}
     secrets:
