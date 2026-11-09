@@ -153,25 +153,18 @@ export type OrganisationsbeziehungSearchOptions = {
 
 type OrderDirection = 'asc' | 'desc';
 
-// The typ is sorted by its text value instead of the position within the native enum.
 const ORGANISATIONSBEZIEHUNG_ORDER_BY: Record<
     SortFieldOrganisationsbeziehung,
     (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>
 > = {
     [SortFieldOrganisationsbeziehung.TYP]: (direction: OrderDirection) => ({
-        [raw((alias: string) => `cast(${alias}.typ as text)`)]: direction,
+        [raw('cast(b.typ as text)')]: direction,
     }),
-    [SortFieldOrganisationsbeziehung.QUELLE_NAME]: (direction: OrderDirection) => ({
-        quellOrganisationId: { name: direction },
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME]: (direction: OrderDirection) => ({
+        [raw('coalesce(q.name, z.name)')]: direction,
     }),
-    [SortFieldOrganisationsbeziehung.QUELLE_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
-        quellOrganisationId: { kennung: direction },
-    }),
-    [SortFieldOrganisationsbeziehung.ZIEL_NAME]: (direction: OrderDirection) => ({
-        zielOrganisationId: { name: direction },
-    }),
-    [SortFieldOrganisationsbeziehung.ZIEL_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
-        zielOrganisationId: { kennung: direction },
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
+        [raw('coalesce(q.kennung, z.kennung)')]: direction,
     }),
 };
 
@@ -902,31 +895,31 @@ export class OrganisationRepository {
         const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
             ORGANISATIONSBEZIEHUNG_ORDER_BY[options.sortField ?? SortFieldOrganisationsbeziehung.TYP](direction);
 
-        const filters: FilterQuery<OrganisationsbeziehungEntity>[] = [
-            { $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }] },
-        ];
-        if (options.searchString) {
-            const pattern: string = `%${options.searchString}%`;
-            filters.push({
-                $or: [
-                    { quellOrganisationId: { name: { $ilike: pattern } } },
-                    { quellOrganisationId: { kennung: { $ilike: pattern } } },
-                    { zielOrganisationId: { name: { $ilike: pattern } } },
-                    { zielOrganisationId: { kennung: { $ilike: pattern } } },
-                ],
-            });
-        }
+        const pattern: string = `%${options.searchString ?? ''}%`;
 
-        const [entities, total]: Counted<OrganisationsbeziehungEntity> = await this.em.findAndCount(
-            OrganisationsbeziehungEntity,
-            { $and: filters },
-            {
-                populate: ['quellOrganisationId', 'zielOrganisationId'],
-                orderBy: [orderBy, { id: 'asc' }],
-                limit: options.limit,
-                offset: options.offset,
-            },
-        );
+        // Only one of q and z is joined per row, so searching never matches the organisation in the param.
+        const [entities, total]: Counted<OrganisationsbeziehungEntity> = await this.em
+            .createQueryBuilder(OrganisationsbeziehungEntity, 'b')
+            .leftJoin('b.quellOrganisationId', 'q', { id: { $ne: organisationId } })
+            .leftJoin('b.zielOrganisationId', 'z', { id: { $ne: organisationId } })
+            .where({ $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }] })
+            .andWhere(
+                options.searchString
+                    ? {
+                          $or: [
+                              { 'q.name': { $ilike: pattern } },
+                              { 'q.kennung': { $ilike: pattern } },
+                              { 'z.name': { $ilike: pattern } },
+                              { 'z.kennung': { $ilike: pattern } },
+                          ],
+                      }
+                    : {},
+            )
+            .orderBy([orderBy, { 'b.id': 'asc' }])
+            .limit(options.limit)
+            .offset(options.offset)
+            .getResultAndCount();
+        await this.em.populate(entities, ['quellOrganisationId', 'zielOrganisationId']);
 
         const items: OrganisationsbeziehungWithOrganisationen[] = entities.map(
             (entity: OrganisationsbeziehungEntity): OrganisationsbeziehungWithOrganisationen => ({

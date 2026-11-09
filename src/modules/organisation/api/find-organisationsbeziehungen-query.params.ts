@@ -10,7 +10,8 @@ export class FindOrganisationsbeziehungenQueryParams extends PagedQueryParams {
     @ApiPropertyOptional({
         required: false,
         nullable: true,
-        description: 'Search string used to filter the organisation relationships.',
+        description:
+            'Search string used to filter the organisation relationships by name or Dienststellennummer of the other organisation.',
     })
     public readonly searchString?: string;
 

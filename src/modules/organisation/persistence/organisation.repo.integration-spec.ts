@@ -3156,7 +3156,7 @@ describe('OrganisationRepository', () => {
 
             const [items, total]: Counted<OrganisationsbeziehungWithOrganisationen> =
                 await sut.findOrganisationsbeziehungen(organisation.id, {
-                    sortField: SortFieldOrganisationsbeziehung.ZIEL_NAME,
+                    sortField: SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME,
                     offset: 1,
                     limit: 1,
                 });
@@ -3217,6 +3217,16 @@ describe('OrganisationRepository', () => {
                 await sut.findOrganisationsbeziehungen(organisation.id, { searchString: 'muster' });
             const [byKennungItems, byKennungTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
                 await sut.findOrganisationsbeziehungen(organisation.id, { searchString: '9999' });
+            const [ownNameItems, ownNameTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: 'Zentrale' });
+            const [ownKennungItems, ownKennungTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: '0000000' });
+
+            // the requested organisation itself is never matched by the search string
+            expect(ownNameTotal).toBe(0);
+            expect(ownNameItems).toEqual([]);
+            expect(ownKennungTotal).toBe(0);
+            expect(ownKennungItems).toEqual([]);
 
             expect(byNameTotal).toBe(1);
             expect(byNameItems.map((i: OrganisationsbeziehungWithOrganisationen) => i.organisationsbeziehung)).toEqual([
@@ -3282,8 +3292,8 @@ describe('OrganisationRepository', () => {
             }
 
             it.each([
-                [SortFieldOrganisationsbeziehung.ZIEL_NAME, 'A'],
-                [SortFieldOrganisationsbeziehung.ZIEL_DIENSTSTELLENNUMMER, 'B'],
+                [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME, 'A'],
+                [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER, 'B'],
                 [SortFieldOrganisationsbeziehung.TYP, 'B'],
             ])('should sort ascending by %s', async (sortField: SortFieldOrganisationsbeziehung, first: string) => {
                 const expected: string[] =
@@ -3293,14 +3303,31 @@ describe('OrganisationRepository', () => {
                 await expect(findIds(sortField, ScopeOrder.DESC)).resolves.toEqual([...expected].reverse());
             });
 
-            it('should sort by quelle fields', async () => {
-                // quelle is identical for both relations, so the order falls back to the id tiebreaker
-                const expected: string[] = [relationToA.id, relationToB.id].sort();
-
-                await expect(findIds(SortFieldOrganisationsbeziehung.QUELLE_NAME)).resolves.toEqual(expected);
-                await expect(findIds(SortFieldOrganisationsbeziehung.QUELLE_DIENSTSTELLENNUMMER)).resolves.toEqual(
-                    expected,
+            it('should sort by the other organisation regardless of the direction of the relation', async () => {
+                const quelleAA: Organisation<true, false> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        name: 'AA-Quelle',
+                        kennung: '3333333',
+                        typ: OrganisationsTyp.SONSTIGE,
+                    }),
                 );
+                const relationFromAA: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                    DoFactory.createOrganisationsbeziehung(false, {
+                        quellOrganisationId: quelleAA.id,
+                        zielOrganisationId: organisation.id,
+                    }),
+                );
+
+                // A-Ziel, AA-Quelle (organisation is ziel), B-Ziel
+                await expect(findIds(SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME)).resolves.toEqual([
+                    relationToA.id,
+                    relationFromAA.id,
+                    relationToB.id,
+                ]);
+                // 1111111 (B-Ziel), 2222222 (A-Ziel), 3333333 (AA-Quelle)
+                await expect(
+                    findIds(SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER),
+                ).resolves.toEqual([relationToB.id, relationToA.id, relationFromAA.id]);
             });
 
             it('should default to sorting by typ ascending', async () => {
