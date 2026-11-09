@@ -1,11 +1,22 @@
 import { access } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 
+const KUBECTL_BINARY_CANDIDATES = ['/usr/bin/kubectl', '/bin/kubectl', '/usr/local/bin/kubectl', '/opt/homebrew/bin/kubectl'];
 const REMOTE_DB_PORT = 5432;
 const STARTUP_TIMEOUT_MS = 15000;
 const STOP_TIMEOUT_MS = 2000;
+
+function resolveKubectlBinary() {
+    const found = KUBECTL_BINARY_CANDIDATES.find((path) => existsSync(path));
+    if (!found) {
+        throw new Error(`kubectl-Binary wurde in keinem der bekannten Pfade gefunden (${KUBECTL_BINARY_CANDIDATES.join(', ')})`);
+    }
+
+    return found;
+}
 
 function stopChild(child) {
     if (!child.pid || child.exitCode !== null || child.signalCode !== null) {
@@ -39,10 +50,13 @@ export async function openKubectlPortForward({ environment, kubeconfig, localPor
     ];
     console.log(`Starte kubectl-Port-Forward fuer ${environment}: 127.0.0.1:${localPort} -> Postgres:${REMOTE_DB_PORT}`);
 
-    const child = spawn('kubectl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(resolveKubectlBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
-    const outputDetails = () => [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
+    const outputDetails = () => {
+        const details = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
+        return details ? `\nkubectl: ${details}` : '';
+    };
 
     try {
         await new Promise((resolveReady, rejectReady) => {
@@ -57,10 +71,10 @@ export async function openKubectlPortForward({ environment, kubeconfig, localPor
             };
             const onError = (error) => finish(() => rejectReady(error));
             const onExit = (code, signal) => finish(() => rejectReady(
-                new Error(`kubectl-Port-Forward wurde vorzeitig beendet (Exit-Code ${code}, Signal ${signal}).${outputDetails() ? `\nkubectl: ${outputDetails()}` : ''}`),
+                new Error(`kubectl-Port-Forward wurde vorzeitig beendet (Exit-Code ${code}, Signal ${signal}).${outputDetails()}`),
             ));
             const timer = setTimeout(() => finish(() => rejectReady(
-                new Error(`Timeout beim Starten des kubectl-Port-Forwards.${outputDetails() ? `\nkubectl: ${outputDetails()}` : ''}`),
+                new Error(`Timeout beim Starten des kubectl-Port-Forwards.${outputDetails()}`),
             )), STARTUP_TIMEOUT_MS);
 
             child.on('error', onError);

@@ -18,6 +18,9 @@ node scripts/eflk/export-eflk-ldif.mjs \
   `kubectl` muss installiert sein und Zugriff auf den ausgewählten Cluster
   haben. Der Cluster wird ausschließlich durch die mit `--kubeconfig`
   angegebene Datei bestimmt, nicht durch `--environment`.
+  Das Skript sucht `kubectl` ausschließlich unter `/usr/bin/kubectl`,
+  `/bin/kubectl`, `/usr/local/bin/kubectl` und `/opt/homebrew/bin/kubectl`
+  (in dieser Reihenfolge), nicht über `PATH`.
 * `--base-dn` ändert sich normalerweise nicht (Default `dc=schule-sh,dc=de`),
   ist aber optional überschreibbar.
 * `--root-organisation-id` ist die UUID der Wurzel-Organisation (siehe
