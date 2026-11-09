@@ -13,7 +13,6 @@ import { type PersonID, type PersonenkontextID, type RolleID } from '../../../..
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
-import { EmailRepo } from '../../../email/persistence/email.repo.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
@@ -42,7 +41,6 @@ describe('SchulconnexPushHandler', () => {
     let personRepoMock: DeepMocked<PersonRepository>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let userLockRepoMock: DeepMocked<UserLockRepository>;
-    let emailRepoMock: DeepMocked<EmailRepo>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
     let adapterMock: DeepMocked<SchulconnexPushAdapter>;
 
@@ -148,7 +146,6 @@ describe('SchulconnexPushHandler', () => {
                 { provide: PersonRepository, useValue: createMock(PersonRepository) },
                 { provide: DBiamPersonenkontextRepo, useValue: createMock(DBiamPersonenkontextRepo) },
                 { provide: UserLockRepository, useValue: createMock(UserLockRepository) },
-                { provide: EmailRepo, useValue: createMock(EmailRepo) },
                 { provide: EmailResolverService, useValue: createMock(EmailResolverService) },
                 { provide: SchulconnexPushAdapter, useValue: createMock(SchulconnexPushAdapter) },
             ],
@@ -161,7 +158,6 @@ describe('SchulconnexPushHandler', () => {
         personRepoMock = module.get(PersonRepository);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         userLockRepoMock = module.get(UserLockRepository);
-        emailRepoMock = module.get(EmailRepo);
         emailResolverServiceMock = module.get(EmailResolverService);
         adapterMock = module.get(SchulconnexPushAdapter);
     });
@@ -204,8 +200,7 @@ describe('SchulconnexPushHandler', () => {
         personRepoMock.findById.mockResolvedValue(person);
         personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([pushKontext]);
         userLockRepoMock.findByPersonId.mockResolvedValue(userLocks);
-        emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValue(false);
-        emailRepoMock.getEmailAddressAndStatusForPersonIds.mockResolvedValue(Ok(new Map([[person.id, email]])));
+        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[person.id, email]])));
         adapterMock.upsertPerson.mockResolvedValue(Ok());
         adapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
         adapterMock.deletePersonenkontext.mockResolvedValue(Ok());
@@ -543,14 +538,13 @@ describe('SchulconnexPushHandler', () => {
         });
 
         describe('push data', () => {
-            it('should resolve email addresses through the legacy repository when the microservice is disabled', async () => {
+            it('should resolve email addresses through the email microservice', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(emailRepoMock.getEmailAddressAndStatusForPersonIds).toHaveBeenCalledExactlyOnceWith([person.id]);
-                expect(emailResolverServiceMock.findEmailsBySpshPersons).not.toHaveBeenCalled();
+                expect(emailResolverServiceMock.findEmailsBySpshPersons).toHaveBeenCalledExactlyOnceWith([person.id]);
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
                     registry,
                     pushKontext,
@@ -559,13 +553,12 @@ describe('SchulconnexPushHandler', () => {
                 );
             });
 
-            it('should resolve email addresses through the microservice when it is enabled', async () => {
+            it('should pass the resolved email address and status to the adapter unchanged', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const microserviceEmail: PersonEmailResponse = {
                     address: 'microservice@example.org',
                     status: EmailAddressStatus.DISABLED,
                 };
-                emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
                 emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
                     Ok(new Map([[person.id, microserviceEmail]])),
                 );
@@ -574,7 +567,6 @@ describe('SchulconnexPushHandler', () => {
 
                 expect(result).toEqual(Ok());
                 expect(emailResolverServiceMock.findEmailsBySpshPersons).toHaveBeenCalledExactlyOnceWith([person.id]);
-                expect(emailRepoMock.getEmailAddressAndStatusForPersonIds).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
                     registry,
                     pushKontext,
@@ -585,8 +577,8 @@ describe('SchulconnexPushHandler', () => {
 
             it('should push an undefined email when the email map has no entry for the person', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                emailRepoMock.getEmailAddressAndStatusForPersonIds.mockResolvedValueOnce(
-                    Ok(new Map<PersonID, PersonEmailResponse>()),
+                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
+                    Ok(new Map<PersonID, PersonEmailResponse | undefined>()),
                 );
                 userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
 
@@ -603,7 +595,6 @@ describe('SchulconnexPushHandler', () => {
 
             it('should pass through an undefined email returned by the microservice', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
                 emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
                     Ok(new Map<PersonID, PersonEmailResponse | undefined>([[person.id, undefined]])),
                 );
@@ -643,10 +634,10 @@ describe('SchulconnexPushHandler', () => {
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });
 
-            it('should propagate legacy email errors without creating or deleting contexts', async () => {
+            it('should stop context creation and deletion when resolving emails fails', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent([newKontext], [removedKontext]);
-                const error: DomainError = new DomainErrorMock('Legacy email lookup failed');
-                emailRepoMock.getEmailAddressAndStatusForPersonIds.mockResolvedValueOnce(Err(error));
+                const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
+                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -660,13 +651,11 @@ describe('SchulconnexPushHandler', () => {
             it('should propagate email microservice errors without pushing', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
-                emailResolverServiceMock.shouldUseEmailMicroservice.mockReturnValueOnce(true);
                 emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [error]);
-                expect(emailRepoMock.getEmailAddressAndStatusForPersonIds).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });

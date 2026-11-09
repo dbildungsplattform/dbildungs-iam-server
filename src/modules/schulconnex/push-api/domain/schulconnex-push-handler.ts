@@ -12,7 +12,6 @@ import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenk
 import { type PersonID, type PersonenkontextID, type RolleID } from '../../../../shared/types/index.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
-import { EmailRepo } from '../../../email/persistence/email.repo.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
@@ -36,7 +35,6 @@ export class SchulconnexPushHandler {
         private readonly personRepo: PersonRepository,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         private readonly userLockRepo: UserLockRepository,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
         private readonly adapter: SchulconnexPushAdapter,
         // @ts-expect-error used by EnsureRequestContext decorator
@@ -212,9 +210,7 @@ export class SchulconnexPushHandler {
             this.personRepo.findById(personId),
             this.personenkontextRepo.findByPersonWithOrgaAndRolle(personId),
             this.userLockRepo.findByPersonId(personId),
-            this.emailResolverService.shouldUseEmailMicroservice()
-                ? this.emailResolverService.findEmailsBySpshPersons([personId])
-                : this.emailRepo.getEmailAddressAndStatusForPersonIds([personId]),
+            this.emailResolverService.findEmailsBySpshPersons([personId]),
         ]);
         if (!person) {
             return Err(new SchulconnexPushError(`Person ${personId} not found`));
