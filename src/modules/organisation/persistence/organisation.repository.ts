@@ -4,6 +4,8 @@ import {
     FilterQuery,
     Loaded,
     QueryBuilder,
+    QueryOrderMap,
+    raw,
     RawQueryFragment,
     RequiredEntityData,
     sql,
@@ -35,7 +37,13 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation, Organisationsbeziehung, Organisationsbeziehungen } from '../domain/organisation.js';
+import {
+    Organisation,
+    Organisationsbeziehung,
+    Organisationsbeziehungen,
+    OrganisationsbeziehungWithOrganisationen,
+} from '../domain/organisation.js';
+import { SortFieldOrganisationsbeziehung } from '../domain/sort-field-organisationsbeziehung.enum.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
 import { OrganisationScope } from './organisation.scope.js';
@@ -88,8 +96,8 @@ export function mapOrganisationsbeziehungEntityToAggregate(
         id: entity.id,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
-        quellOrganisationId: entity.quellOrganisationId,
-        zielOrganisationId: entity.zielOrganisationId,
+        quellOrganisationId: entity.quellOrganisationId.id,
+        zielOrganisationId: entity.zielOrganisationId.id,
         typ: entity.typ,
     };
 }
@@ -133,6 +141,38 @@ export type OrganisationSearchOptions = {
     readonly sortOrder?: ScopeOrder;
     readonly getChildrenRecursively?: boolean;
     readonly matchAllSystemrechte?: boolean;
+};
+
+export type OrganisationsbeziehungSearchOptions = {
+    readonly searchString?: string;
+    readonly offset?: number;
+    readonly limit?: number;
+    readonly sortField?: SortFieldOrganisationsbeziehung;
+    readonly sortOrder?: ScopeOrder;
+};
+
+type OrderDirection = 'asc' | 'desc';
+
+// The typ is sorted by its text value instead of the position within the native enum.
+const ORGANISATIONSBEZIEHUNG_ORDER_BY: Record<
+    SortFieldOrganisationsbeziehung,
+    (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>
+> = {
+    [SortFieldOrganisationsbeziehung.TYP]: (direction: OrderDirection) => ({
+        [raw((alias: string) => `cast(${alias}.typ as text)`)]: direction,
+    }),
+    [SortFieldOrganisationsbeziehung.QUELLE_NAME]: (direction: OrderDirection) => ({
+        quellOrganisationId: { name: direction },
+    }),
+    [SortFieldOrganisationsbeziehung.QUELLE_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
+        quellOrganisationId: { kennung: direction },
+    }),
+    [SortFieldOrganisationsbeziehung.ZIEL_NAME]: (direction: OrderDirection) => ({
+        zielOrganisationId: { name: direction },
+    }),
+    [SortFieldOrganisationsbeziehung.ZIEL_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
+        zielOrganisationId: { kennung: direction },
+    }),
 };
 
 @Injectable()
@@ -852,6 +892,51 @@ export class OrganisationRepository {
         }
 
         return mapOrganisationsbeziehungEntityToAggregate(entity);
+    }
+
+    public async findOrganisationsbeziehungen(
+        organisationId: OrganisationID,
+        options: OrganisationsbeziehungSearchOptions,
+    ): Promise<Counted<OrganisationsbeziehungWithOrganisationen>> {
+        const direction: OrderDirection = options.sortOrder === ScopeOrder.DESC ? 'desc' : 'asc';
+        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
+            ORGANISATIONSBEZIEHUNG_ORDER_BY[options.sortField ?? SortFieldOrganisationsbeziehung.TYP](direction);
+
+        const filters: FilterQuery<OrganisationsbeziehungEntity>[] = [
+            { $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }] },
+        ];
+        if (options.searchString) {
+            const pattern: string = `%${options.searchString}%`;
+            filters.push({
+                $or: [
+                    { quellOrganisationId: { name: { $ilike: pattern } } },
+                    { quellOrganisationId: { kennung: { $ilike: pattern } } },
+                    { zielOrganisationId: { name: { $ilike: pattern } } },
+                    { zielOrganisationId: { kennung: { $ilike: pattern } } },
+                ],
+            });
+        }
+
+        const [entities, total]: Counted<OrganisationsbeziehungEntity> = await this.em.findAndCount(
+            OrganisationsbeziehungEntity,
+            { $and: filters },
+            {
+                populate: ['quellOrganisationId', 'zielOrganisationId'],
+                orderBy: [orderBy, { id: 'asc' }],
+                limit: options.limit,
+                offset: options.offset,
+            },
+        );
+
+        const items: OrganisationsbeziehungWithOrganisationen[] = entities.map(
+            (entity: OrganisationsbeziehungEntity): OrganisationsbeziehungWithOrganisationen => ({
+                organisationsbeziehung: mapOrganisationsbeziehungEntityToAggregate(entity),
+                quelle: mapOrgaEntityToAggregate(entity.quellOrganisationId.unwrap()),
+                ziel: mapOrgaEntityToAggregate(entity.zielOrganisationId.unwrap()),
+            }),
+        );
+
+        return [items, total];
     }
 
     public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {

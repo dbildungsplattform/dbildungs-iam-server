@@ -8,7 +8,8 @@ import { ImportDataItemStatus } from '../../src/modules/import/domain/importData
 import { User } from '../../src/modules/keycloak-administration/domain/user.js';
 import { Meldung } from '../../src/modules/meldung/domain/meldung.js';
 import { OrganisationsTyp, Traegerschaft } from '../../src/modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../src/modules/organisation/domain/organisation.js';
+import { Organisation, type Organisationsbeziehung } from '../../src/modules/organisation/domain/organisation.js';
+import { OrganisationsbeziehungsTyp } from '../../src/modules/organisation/domain/organisationsbeziehungs-typ.enum.js';
 import { Person } from '../../src/modules/person/domain/person.js';
 import {
     Jahrgangsstufe,
@@ -95,6 +96,23 @@ export class DoFactory {
             organisation,
             props,
         );
+    }
+
+    public static createOrganisationsbeziehung<WasPersisted extends boolean>(
+        this: void,
+        withId: WasPersisted,
+        props: Partial<Organisationsbeziehung<WasPersisted>> = {},
+    ): Organisationsbeziehung<WasPersisted> {
+        const organisationsbeziehung: Partial<Organisationsbeziehung<WasPersisted>> = {
+            id: withId ? faker.string.uuid() : undefined,
+            createdAt: withId ? faker.date.past() : undefined,
+            updatedAt: withId ? faker.date.recent() : undefined,
+            quellOrganisationId: faker.string.uuid(),
+            zielOrganisationId: faker.string.uuid(),
+            typ: faker.helpers.enumValue(OrganisationsbeziehungsTyp),
+        };
+
+        return Object.assign(organisationsbeziehung, props) as Organisationsbeziehung<WasPersisted>;
     }
 
     public static createUser<WasPersisted extends boolean>(

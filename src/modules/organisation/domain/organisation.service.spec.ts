@@ -36,7 +36,12 @@ import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klasse
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, Traegerschaft } from './organisation.enums.js';
-import { type Organisationsbeziehungen, Organisation, type Organisationsbeziehung } from './organisation.js';
+import {
+    type Organisationsbeziehungen,
+    Organisation,
+    type Organisationsbeziehung,
+    type OrganisationsbeziehungWithOrganisationen,
+} from './organisation.js';
 import { OrganisationService, type UpdateOrganisationData } from './organisation.service.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 
@@ -2348,6 +2353,68 @@ describe('OrganisationService', () => {
                     organisation.id,
                     RollenSystemRecht.BEHOERDEN_VERWALTEN,
                 );
+            });
+        });
+    });
+
+    describe('findOrganisationsbeziehungen', () => {
+        const organisationId: OrganisationID = faker.string.uuid();
+
+        it('should return EntityNotFoundError if the organisation does not exist', async () => {
+            organisationRepositoryMock.exists.mockResolvedValueOnce(false);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, {});
+
+            expect(result).toEqual({ ok: false, error: new EntityNotFoundError('Organisation', organisationId) });
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
+        });
+
+        it('should return the paged relationships without requiring permissions', async () => {
+            const item: OrganisationsbeziehungWithOrganisationen = {
+                organisationsbeziehung: {
+                    id: faker.string.uuid(),
+                    createdAt: faker.date.past(),
+                    updatedAt: faker.date.recent(),
+                    quellOrganisationId: organisationId,
+                    zielOrganisationId: faker.string.uuid(),
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                },
+                quelle: DoFactory.createOrganisation(true),
+                ziel: DoFactory.createOrganisation(true),
+            };
+            organisationRepositoryMock.exists.mockResolvedValueOnce(true);
+            organisationRepositoryMock.findOrganisationsbeziehungen.mockResolvedValueOnce([[item], 5]);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, { offset: 2, limit: 1 });
+
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).toHaveBeenCalledWith(organisationId, {
+                offset: 2,
+                limit: 1,
+            });
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 5, offset: 2, limit: 1, items: [item], pageTotal: 1 },
+            });
+        });
+
+        it('should default offset to 0 and limit to total', async () => {
+            organisationRepositoryMock.exists.mockResolvedValueOnce(true);
+            organisationRepositoryMock.findOrganisationsbeziehungen.mockResolvedValueOnce([[], 0]);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, {});
+
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 0, offset: 0, limit: 0, items: [], pageTotal: 0 },
             });
         });
     });
