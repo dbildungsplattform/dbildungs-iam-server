@@ -205,42 +205,15 @@ jobs:
           echo "Chart $CHART_NAME:$CHART_VERSION not found after waiting."
           exit 1
 
-  determine_spsh_app_deploy_ref:
-    name: "Determine spsh-app-deploy branch reference"
-    if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
-    runs-on: ubuntu-latest
-    outputs:
-      ref: ${{ steps.determine_ref.outputs.ref }}
-    steps:
-      - name: Check if branch exists in spsh-app-deploy
-        id: determine_ref
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          REPO="dBildungsplattform/spsh-app-deploy"
-          
-          # Try to get the branch from the remote repository
-          if gh api repos/$REPO/branches/$BRANCH_NAME --silent 2>/dev/null; then
-            echo "Branch $BRANCH_NAME exists in $REPO"
-            echo "ref=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          else
-            echo "Branch $BRANCH_NAME does not exist in $REPO, using default version 7"
-            echo "ref=7" >> $GITHUB_OUTPUT
-          fi
-
   branch_meta:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
-    needs:
-      - determine_spsh_app_deploy_ref
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/get-branch-meta.yml@${{ needs.determine_spsh_app_deploy_ref.outputs.ref }}
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/get-branch-meta.yml@7
 
   create_branch_identifier:
     if: ${{ github.event_name == 'push' && !startsWith(github.ref_name,'dependabot/') }}
     needs:
       - branch_meta
-      - determine_spsh_app_deploy_ref
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@${{ needs.determine_spsh_app_deploy_ref.outputs.ref }}
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@7
     with:
       branch: ${{ needs.branch_meta.outputs.branch }}
 
@@ -251,8 +224,7 @@ jobs:
       - create_branch_identifier
       - wait_for_helm_chart_to_get_published
       - build_image_on_push
-      - determine_spsh_app_deploy_ref
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/deploy.yml@${{ needs.determine_spsh_app_deploy_ref.outputs.ref }}
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/deploy.yml@SPSH-4664
     with:
       dbildungs_iam_server_branch: ${{ needs.branch_meta.outputs.ticket }}
       schulportal_client_branch: ${{ needs.branch_meta.outputs.ticket }}
@@ -263,36 +235,10 @@ jobs:
     secrets:
       SPSH_DEV_KUBECONFIG: ${{ secrets.SPSH_DEV_KUBECONFIG }}
 
-  determine_spsh_app_deploy_ref_for_deletion:
-    name: "Determine spsh-app-deploy branch reference for deletion"
-    if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
-    runs-on: ubuntu-latest
-    outputs:
-      ref: ${{ steps.determine_ref.outputs.ref }}
-    steps:
-      - name: Check if branch exists in spsh-app-deploy
-        id: determine_ref
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH_NAME="${{ github.event.ref }}"
-          REPO="dBildungsplattform/spsh-app-deploy"
-          
-          # Try to get the branch from the remote repository
-          if gh api repos/$REPO/branches/$BRANCH_NAME --silent 2>/dev/null; then
-            echo "Branch $BRANCH_NAME exists in $REPO"
-            echo "ref=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          else
-            echo "Branch $BRANCH_NAME does not exist in $REPO, using default version 7"
-            echo "ref=7" >> $GITHUB_OUTPUT
-          fi
-
   # On Delete
   create_branch_identifier_for_deletion:
     if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
-    needs:
-      - determine_spsh_app_deploy_ref_for_deletion
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@${{ needs.determine_spsh_app_deploy_ref_for_deletion.outputs.ref }}
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/convert-branch-name.yml@7
     with:
       branch: ${{ github.event.ref }}
 
@@ -300,8 +246,7 @@ jobs:
     if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch'}}
     needs:
       - create_branch_identifier_for_deletion
-      - determine_spsh_app_deploy_ref_for_deletion
-    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/delete-namespace.yml@${{ needs.determine_spsh_app_deploy_ref_for_deletion.outputs.ref }}
+    uses: dBildungsplattform/spsh-app-deploy/.github/workflows/delete-namespace.yml@7
     with:
       namespace: ${{ needs.create_branch_identifier_for_deletion.outputs.namespace_from_branch }}
     secrets:
