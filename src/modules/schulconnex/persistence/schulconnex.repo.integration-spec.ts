@@ -8,7 +8,6 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
-import { EmailPersistenceModule } from '../../email/email-persistence.module.js';
 import { KeycloakUserService, type User } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
@@ -90,7 +89,6 @@ describe('Schulconnex Repo', () => {
                 OrganisationModule,
                 SchulconnexModule,
                 ServiceProviderModule,
-                EmailPersistenceModule,
                 EmailMicroserviceModule,
             ],
             providers: [

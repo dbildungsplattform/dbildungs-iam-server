@@ -1,24 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { PersonRepository } from '../persistence/person.repository.js';
-import { PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
-import { Person } from '../domain/person.js';
-import {
-    DBiamPersonenkontextRepo,
-    KontextWithOrgaAndRolle,
-} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
-import { PersonEmailResponse } from '../api/person-email-response.js';
-import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
-import { PersonLockOccasion } from '../domain/person.enums.js';
-import { LandesbediensteterSearchNoPersonFoundError } from '../domain/landesbediensteter-search-no-person-found.error.js';
-import { LandesbediensteterSearchMultiplePersonsFoundError } from '../domain/landesbediensteter-search-multiple-persons-found.error.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import {
     EmailResolverService,
     PersonIdWithEmailResponse,
 } from '../../email-microservice/domain/email-resolver.service.js';
+import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import {
+    DBiamPersonenkontextRepo,
+    KontextWithOrgaAndRolle,
+} from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
+import { PersonEmailResponse } from '../api/person-email-response.js';
+import { PersonLandesbediensteterSearchResponse } from '../api/person-landesbediensteter-search.response.js';
+import { LandesbediensteterSearchMultiplePersonsFoundError } from '../domain/landesbediensteter-search-multiple-persons-found.error.js';
+import { LandesbediensteterSearchNoPersonFoundError } from '../domain/landesbediensteter-search-no-person-found.error.js';
+import { PersonLockOccasion } from '../domain/person.enums.js';
+import { Person } from '../domain/person.js';
+import { PersonRepository } from '../persistence/person.repository.js';
 
 @Injectable()
 export class PersonLandesbediensteterSearchService {
@@ -26,7 +25,6 @@ export class PersonLandesbediensteterSearchService {
         private personRepository: PersonRepository,
         private readonly dBiamPersonenkontextRepo: DBiamPersonenkontextRepo,
         private readonly userLockRepository: UserLockRepository,
-        private readonly emailRepo: EmailRepo,
         private readonly emailResolverService: EmailResolverService,
     ) {}
 
@@ -48,24 +46,19 @@ export class PersonLandesbediensteterSearchService {
             throw new LandesbediensteterSearchNoPersonFoundError();
         }
 
-        const shouldUseEmailMicroservice: boolean = this.emailResolverService.shouldUseEmailMicroservice();
-
         let persons: Person<true>[] = [];
         let personEmailResponse: Option<PersonEmailResponse> = undefined;
 
         if (personalnummer) {
             persons = await this.personRepository.findByPersonalnummer(personalnummer.trim());
         } else if (primaryEmailAddress) {
-            if (shouldUseEmailMicroservice) {
-                const response: Option<PersonIdWithEmailResponse> =
-                    await this.emailResolverService.findByPrimaryAddress(primaryEmailAddress.trim());
-                if (response) {
-                    const person: Option<Person<true>> = await this.personRepository.findById(response.personId);
-                    persons = person ? [person] : [];
-                    personEmailResponse = response.personEmailResponse;
-                }
-            } else {
-                persons = await this.personRepository.findByPrimaryEmailAddress(primaryEmailAddress.trim());
+            const response: Option<PersonIdWithEmailResponse> = await this.emailResolverService.findByPrimaryAddress(
+                primaryEmailAddress.trim(),
+            );
+            if (response) {
+                const person: Option<Person<true>> = await this.personRepository.findById(response.personId);
+                persons = person ? [person] : [];
+                personEmailResponse = response.personEmailResponse;
             }
         } else if (username) {
             persons = await this.personRepository.findByUsername(username.trim());
@@ -89,10 +82,7 @@ export class PersonLandesbediensteterSearchService {
 
         const [email, kontexteWithOrgaAndRolle]: [Option<PersonEmailResponse>, Array<KontextWithOrgaAndRolle>] =
             await Promise.all([
-                personEmailResponse ??
-                    (shouldUseEmailMicroservice
-                        ? this.emailResolverService.findEmailBySpshPerson(person.id)
-                        : this.emailRepo.getEmailAddressAndStatusForPerson(person)),
+                personEmailResponse ?? this.emailResolverService.findEmailBySpshPerson(person.id),
                 this.dBiamPersonenkontextRepo.findByPersonWithOrgaAndRolle(person.id),
             ]);
 

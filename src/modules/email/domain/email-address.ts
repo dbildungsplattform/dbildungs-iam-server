@@ -114,10 +114,6 @@ export class EmailAddress<WasPersisted extends boolean> {
         return this.addressStatus === EmailAddressStatus.ENABLED || this.addressStatus === EmailAddressStatus.REQUESTED;
     }
 
-    public get disabled(): boolean {
-        return this.addressStatus === EmailAddressStatus.DISABLED;
-    }
-
     public get personId(): PersonID | undefined {
         return this.addressPersonId;
     }

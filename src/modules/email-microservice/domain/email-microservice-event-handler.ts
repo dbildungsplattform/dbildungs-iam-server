@@ -1,43 +1,43 @@
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { Injectable } from '@nestjs/common';
+import { uniqBy } from 'lodash-es';
 import { EventHandler } from '../../../core/eventbus/decorators/event-handler.decorator.js';
 import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
-import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { EmailResolverService } from './email-resolver.service.js';
-import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
-import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
-import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { Rolle } from '../../rolle/domain/rolle.js';
+import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
+import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
+import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
+import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonRenamedEvent } from '../../../shared/events/kafka-person-renamed-event.js';
+import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
+import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
+import { LocksForPersonChangedEvent } from '../../../shared/events/locks-for-person-changed.event.js';
+import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
+import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
+import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonRenamedEvent } from '../../../shared/events/person-renamed-event.js';
+import { PersonenkontextEventKontextData } from '../../../shared/events/personenkontext-event.types.js';
+import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
+import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
+import { OrganisationID, RolleID } from '../../../shared/types/index.js';
+import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { Organisation } from '../../organisation/domain/organisation.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { Person } from '../../person/domain/person.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
     KontextWithOrgaAndRolle,
 } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { uniqBy } from 'lodash-es';
-import { KafkaPersonDeletedEvent } from '../../../shared/events/kafka-person-deleted.event.js';
-import { PersonDeletedEvent } from '../../../shared/events/person-deleted.event.js';
-import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
-import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { OrganisationID, RolleID } from '../../../shared/types/index.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { Person } from '../../person/domain/person.js';
+import { Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
+import { EmailResolverService } from './email-resolver.service.js';
 import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
-import { Organisation } from '../../organisation/domain/organisation.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
-import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
-import { LocksForPersonChangedEvent } from '../../../shared/events/locks-for-person-changed.event.js';
-import { KafkaOrganisationDeletedEvent } from '../../../shared/events/kafka-organisation-deleted.event.js';
-import { KafkaSchuleUpdatedEvent } from '../../../shared/events/kafka-schule-updated.event.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { OrganisationDeletedEvent } from '../../../shared/events/organisation-deleted.event.js';
-import { SchuleUpdatedEvent } from '../../../shared/events/schule-updated.event.js';
 
 type PersonEmailContext = {
     emailServiceProviderId: string;
@@ -70,10 +70,6 @@ export class EmailMicroserviceEventHandler {
             `Received PersonenkontextUpdatedEvent, personId:${event.person.id}, username:${event.person.username}, newPKs:${event.newKontexte.length}, removedPKs:${event.removedKontexte.length}`,
         );
 
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.person.id} because email microservice is disabled`);
-            return;
-        }
         if (!event.person.username) {
             throw new PersonHasNoUsernameError(event.person.id);
         }
@@ -140,10 +136,6 @@ export class EmailMicroserviceEventHandler {
             `Received PersonRenamedEvent, personId:${event.personId}, username:${event.username}, oldUsername:${event.oldUsername}`,
         );
 
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
-            return;
-        }
         if (!event.username) {
             throw new PersonHasNoUsernameError(event.personId);
         }
@@ -178,10 +170,7 @@ export class EmailMicroserviceEventHandler {
         this.logger.info(
             `Received PersonenkontextDeletedEvent, personId:${event.personId}, username:${event.username}`,
         );
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
-            return;
-        }
+
         await this.emailResolverService.deleteEmailsForSpshPerson({ spshPersonId: event.personId });
     }
 
@@ -194,13 +183,6 @@ export class EmailMicroserviceEventHandler {
         this.logger.info(
             `Received KafkaOrganisationDeletedEvent, organisationId:${event.organisationId}, typ:${event.typ}`,
         );
-
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because email microservice is disabled`,
-            );
-            return;
-        }
 
         if (event.typ !== OrganisationsTyp.SCHULE) {
             this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because it is not a school`);
@@ -215,13 +197,6 @@ export class EmailMicroserviceEventHandler {
     @EnsureRequestContext()
     public async handleSchuleUpdatedEvent(event: KafkaSchuleUpdatedEvent | SchuleUpdatedEvent): Promise<void> {
         this.logger.info(`Received KafkaSchuleUpdatedEvent, organisationId:${event.organisationId}`);
-
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(
-                `Ignoring Event for organisationId:${event.organisationId} because email microservice is disabled`,
-            );
-            return;
-        }
 
         if (!event.name) {
             this.logger.info(`Ignoring Event for organisationId:${event.organisationId} because name is not provided`);
@@ -248,10 +223,6 @@ export class EmailMicroserviceEventHandler {
         event: PersonExternalSystemsSyncEvent | KafkaPersonExternalSystemsSyncEvent,
     ): Promise<void> {
         this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${event.personId}`);
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
-            return;
-        }
 
         await this.syncPerson(event.personId);
     }
@@ -263,10 +234,6 @@ export class EmailMicroserviceEventHandler {
         event: LocksForPersonChangedEvent | KafkaLocksForPersonChangedEvent,
     ): Promise<void> {
         this.logger.info(`Received LocksForPersonChangedEvent, personId:${event.personId}`);
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${event.personId} because email microservice is disabled`);
-            return;
-        }
 
         await this.syncPerson(event.personId);
     }
@@ -314,10 +281,6 @@ export class EmailMicroserviceEventHandler {
 
     private async syncPerson(personId: string): Promise<void> {
         this.logger.info(`Received PersonExternalSystemsSyncEvent, personId:${personId}`);
-        if (!this.emailResolverService.shouldUseEmailMicroservice()) {
-            this.logger.info(`Ignoring Event for personId:${personId} because email microservice is disabled`);
-            return;
-        }
 
         const userLocks: UserLock[] = await this.userLockRepo.findByPersonId(personId);
         const gesperrt: boolean = userLocks.length > 0;
