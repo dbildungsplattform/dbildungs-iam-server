@@ -8,7 +8,7 @@ Eigenständiges Node-Skript, das alle Personen mit E-Mail (Priorität 0/1) aus
 ```bash
 node scripts/eflk/export-eflk-ldif.mjs \
   --environment stage \
-  --kubeconfig-dir /pfad/zu/kubeconfigs \
+  --kubeconfig /pfad/zu/meiner-kubeconfig.yaml \
   --pg-user <user> --pg-database <db> \
   --root-organisation-id <root-organisation-id> \
   --out ../export-stage.ldif
@@ -16,14 +16,8 @@ node scripts/eflk/export-eflk-ldif.mjs \
 
 * `--environment` ist verpflichtend und akzeptiert `dev`, `stage` oder `prod`.
   `kubectl` muss installiert sein und Zugriff auf den ausgewählten Cluster
-  haben.
-
-  | Parameter | Kubeconfig-Datei |
-  | :-- | :-- |
-  | `dev` | `spsh-dev-schulportal.yaml` |
-  | `stage` | `spsh-staging-schulportal.yaml` |
-  | `prod` | `spsh-prod-schulportal.yaml` |
-
+  haben. Der Cluster wird ausschließlich durch die mit `--kubeconfig`
+  angegebene Datei bestimmt, nicht durch `--environment`.
 * `--base-dn` ändert sich normalerweise nicht (Default `dc=schule-sh,dc=de`),
   ist aber optional überschreibbar.
 * `--root-organisation-id` ist die UUID der Wurzel-Organisation (siehe
@@ -44,7 +38,10 @@ node scripts/eflk/export-eflk-ldif.mjs \
   | Test (im Stage-Cluster) | `test.schule-sh.de` | `test.ersatzschule-sh.de` |
   | Dev (Seed-Daten) | `qs.schule-sh.de` | `qs.ersatzschule-sh.de` |
 * `--local-port`: lokaler Forward-Port (Default `5433`, Cluster-Zielport `5432`).
-* `--kubeconfig-dir`: Kubeconfig-Verzeichnis (Default `~/.kube`), keine einzelne YAML-Datei.
+* `--kubeconfig` ist verpflichtend: Pfad inklusive frei wählbarem Dateinamen.
+  Es gibt keinen Standardpfad und keine automatische Dateiauswahl.
+  Relative Pfade und
+  `~` werden unterstützt; Pfade mit Leerzeichen in Anführungszeichen setzen.
 * Alle Optionen siehe `--help`.
 
 ## Export validieren

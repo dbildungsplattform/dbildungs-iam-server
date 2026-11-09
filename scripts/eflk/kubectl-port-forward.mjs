@@ -1,24 +1,11 @@
 import { access } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 const REMOTE_DB_PORT = 5432;
 const STARTUP_TIMEOUT_MS = 15000;
 const STOP_TIMEOUT_MS = 2000;
-
-const KUBECONFIG_BY_ENVIRONMENT = {
-    dev: 'spsh-dev-schulportal.yaml',
-    stage: 'spsh-staging-schulportal.yaml',
-    prod: 'spsh-prod-schulportal.yaml',
-};
-
-function resolveKubeconfigPath(directory, environment) {
-    const expandedDirectory = directory.replace(/^~(?=$|\/)/, homedir());
-    const kubeconfigDirectory = resolve(expandedDirectory);
-
-    return join(kubeconfigDirectory, KUBECONFIG_BY_ENVIRONMENT[environment]);
-}
 
 function stopChild(child) {
     if (!child.pid || child.exitCode !== null || child.signalCode !== null) {
@@ -38,8 +25,8 @@ function stopChild(child) {
     });
 }
 
-export async function openKubectlPortForward({ environment, kubeconfigDir, localPort }) {
-    const kubeconfigPath = resolveKubeconfigPath(kubeconfigDir, environment);
+export async function openKubectlPortForward({ environment, kubeconfig, localPort }) {
+    const kubeconfigPath = resolve(kubeconfig.replace(/^~(?=$|\/)/, homedir()));
     await access(kubeconfigPath);
 
     const args = [

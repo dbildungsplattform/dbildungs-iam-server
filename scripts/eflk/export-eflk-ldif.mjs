@@ -8,8 +8,6 @@
 
 import { Client } from 'pg';
 import { writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { closeKubectlPortForward, openKubectlPortForward } from './kubectl-port-forward.mjs';
 import { buildContainerEntries, buildGroupEntry, buildPersonEntry, toPersonRecord } from './ldif-format.mjs';
 import {
@@ -27,8 +25,7 @@ import { resolveOuFromEmailAddress } from './email-domains.mjs';
 // see config/config.json
 const DEFAULT_BASE_DN = 'dc=schule-sh,dc=de';
 const DEFAULT_LOCAL_PORT = 5433;
-const DEFAULT_KUBECONFIG_DIR = join(homedir(), '.kube');
-const REQUIRED_OPTIONS = ['out', 'rootOrganisationId', 'pgUser', 'pgDatabase', 'environment'];
+const REQUIRED_OPTIONS = ['out', 'rootOrganisationId', 'pgUser', 'pgDatabase', 'environment', 'kubeconfig'];
 
 function parseArgs(argv) {
     const args = {
@@ -38,7 +35,7 @@ function parseArgs(argv) {
         pgUser: undefined,
         pgDatabase: undefined,
         environment: undefined,
-        kubeconfigDir: DEFAULT_KUBECONFIG_DIR,
+        kubeconfig: undefined,
         localPort: DEFAULT_LOCAL_PORT,
         includeContainers: false,
         excludeSchools: false,
@@ -67,8 +64,11 @@ function parseArgs(argv) {
             case '--environment':
                 args.environment = next();
                 break;
-            case '--kubeconfig-dir':
-                args.kubeconfigDir = next();
+            case '--kubeconfig':
+                args.kubeconfig = next();
+                if (!args.kubeconfig || args.kubeconfig.startsWith('--')) {
+                    throw new Error('--kubeconfig muss einen Dateipfad enthalten.');
+                }
                 break;
             case '--local-port':
                 args.localPort = Number.parseInt(next(), 10);
@@ -98,9 +98,6 @@ function parseArgs(argv) {
     if (!Number.isInteger(args.localPort) || args.localPort < 1 || args.localPort > 65535) {
         throw new Error('--local-port muss eine Portnummer zwischen 1 und 65535 sein.');
     }
-    if (!args.kubeconfigDir) {
-        throw new Error('--kubeconfig-dir darf nicht leer sein.');
-    }
 
     return args;
 }
@@ -108,12 +105,12 @@ function parseArgs(argv) {
 function printHelp() {
     console.log(`Export aller Personen mit E-Mail nach EFLK-Ziel-LDIF
 
-Alle Optionen sind Pflicht (kein Fallback/Default), ausser --base-dn, --kubeconfig-dir, --local-port, --include-containers und --exclude-schools:
+Alle Optionen sind Pflicht (kein Fallback/Default), ausser --base-dn, --local-port, --include-containers und --exclude-schools:
   --out <datei>                   Ausgabedatei
   --base-dn <dn>                  Basis-DN (Default: ${DEFAULT_BASE_DN})
   --root-organisation-id <uuid>   ROOT_ORGANISATION_ID (siehe config/config.json)
   --environment <dev|stage|prod>  Kubernetes-Umgebung fuer den Port-Forward
-  --kubeconfig-dir <pfad>         Verzeichnis der Cluster-Konfigurationen (Default: ~/.kube)
+    --kubeconfig <datei>            Kubeconfig-Pfad inklusive Dateiname (Pflicht, kein Default)
   --local-port <port>             Lokaler Port des Forwards (Default: ${DEFAULT_LOCAL_PORT})
   --include-containers            OU-/users-/groups-/lists-Container mit exportieren (Default: ohne Container)
   --exclude-schools               Schul-/Gruppen-Eintraege nicht exportieren (Default: exportieren)
@@ -304,7 +301,7 @@ async function main() {
     try {
         portForward = await openKubectlPortForward({
             environment: args.environment,
-            kubeconfigDir: args.kubeconfigDir,
+            kubeconfig: args.kubeconfig,
             localPort: args.localPort,
         });
         client = new Client({
