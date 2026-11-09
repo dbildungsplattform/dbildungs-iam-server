@@ -26,10 +26,12 @@ export type IPersonPermissions = {
 
     hasSystemrechteAtRootOrganisation(systemrechte: RollenSystemRecht[], matchAll?: boolean): Promise<boolean>;
 
+    /** excludeKlassen only filters children; directly permitted organisations and root permissions are unchanged. */
     getOrgIdsWithSystemrecht(
         systemrechte: RollenSystemRecht[],
         withChildren?: boolean,
         matchAll?: boolean,
+        excludeKlassen?: boolean,
     ): Promise<PermittedOrgas>;
 
     canModifyPerson(personId: PersonID): Promise<boolean>;
