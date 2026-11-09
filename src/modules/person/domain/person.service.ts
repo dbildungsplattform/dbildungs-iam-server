@@ -89,7 +89,7 @@ export class PersonService {
     ): void {
         const action: string = lock ? 'sperren' : 'entsperren';
         this.logger.error(
-            `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person?.username} (BenutzerId: ${personId}) zu ${action}. Fehler: ${error.message}.`,
+            `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person?.username} (BenutzerId: ${personId}) zu ${action}. Fehler: ${error.message}.`,
         );
     }
 
