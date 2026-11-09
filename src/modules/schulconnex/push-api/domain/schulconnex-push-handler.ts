@@ -65,12 +65,10 @@ export class SchulconnexPushHandler {
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
         const results: PromiseSettledResult<Result<void, DomainError>>[] = await Promise.allSettled(
             registries
-            .filter((registry: SchulconnexPushRegistry<true>) =>
-                this.createRegistryKontextFilter(registry, rollen)
-            )
-            .map((registry: SchulconnexPushRegistry<true>) =>
-                this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen),
-            ),
+                .filter((registry: SchulconnexPushRegistry<true>) => this.createRegistryKontextFilter(registry, rollen))
+                .map((registry: SchulconnexPushRegistry<true>) =>
+                    this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen),
+                ),
         );
         const failures: unknown[] = [];
         results.forEach((result: PromiseSettledResult<Result<void, DomainError>>, index: number) => {
@@ -89,15 +87,20 @@ export class SchulconnexPushHandler {
         return failures.length > 0 ? Err(new SchulconnexPushError(`${logPrefix} failed`, failures)) : Ok();
     }
 
-
     private async pushPersonenkontextUpdatedEventToRegistry(
         event: PersonenkontextUpdatedEvent,
         registry: SchulconnexPushRegistry<true>,
         rollen: Map<RolleID, Rolle<true>>,
     ): Promise<Result<void, DomainError>> {
-        const newKontexte: PersonenkontextEventKontextData[] = event.newKontexte.filter(this.createRegistryKontextFilter(registry, rollen));
-        const removedKontexte: PersonenkontextEventKontextData[] = event.removedKontexte.filter(this.createRegistryKontextFilter(registry, rollen));
-        const currentKontexte: PersonenkontextEventKontextData[] = event.currentKontexte.filter(this.createRegistryKontextFilter(registry, rollen));
+        const newKontexte: PersonenkontextEventKontextData[] = event.newKontexte.filter(
+            this.createRegistryKontextFilter(registry, rollen),
+        );
+        const removedKontexte: PersonenkontextEventKontextData[] = event.removedKontexte.filter(
+            this.createRegistryKontextFilter(registry, rollen),
+        );
+        const currentKontexte: PersonenkontextEventKontextData[] = event.currentKontexte.filter(
+            this.createRegistryKontextFilter(registry, rollen),
+        );
         if (newKontexte.length === 0 && removedKontexte.length === 0) {
             return Ok();
         }
@@ -106,11 +109,22 @@ export class SchulconnexPushHandler {
         const hadRelevantKontexte: boolean = this.hadRelevantKontexteBefore(removedKontexte, currentKontexte, newIds);
         const kontexteToUpsert: PersonenkontextEventKontextData[] = hadRelevantKontexte ? newKontexte : currentKontexte;
 
-        const creationResult: Result<void, DomainError> = await this.handleCreation(event, kontexteToUpsert, hadRelevantKontexte, registry);
+        const creationResult: Result<void, DomainError> = await this.handleCreation(
+            event,
+            kontexteToUpsert,
+            hadRelevantKontexte,
+            registry,
+        );
         if (!creationResult.ok) {
             return creationResult;
         }
-        const deletionResult: Result<void, DomainError> = await this.handleDeletion(event, removedKontexte, currentKontexte, hadRelevantKontexte, registry);
+        const deletionResult: Result<void, DomainError> = await this.handleDeletion(
+            event,
+            removedKontexte,
+            currentKontexte,
+            hadRelevantKontexte,
+            registry,
+        );
         if (!deletionResult.ok) {
             return deletionResult;
         }
@@ -122,8 +136,8 @@ export class SchulconnexPushHandler {
         removedKontexte: PersonenkontextEventKontextData[],
         currentKontexte: PersonenkontextEventKontextData[],
         hadRelevantKontexte: boolean,
-        registry: SchulconnexPushRegistry<true>
-    ): Promise<Result<void, DomainError>>{
+        registry: SchulconnexPushRegistry<true>,
+    ): Promise<Result<void, DomainError>> {
         for (const pk of removedKontexte) {
             // eslint-disable-next-line no-await-in-loop
             const result: Result<void, DomainError> = await this.adapter.deletePersonenkontext(
@@ -143,8 +157,11 @@ export class SchulconnexPushHandler {
     }
 
     private async handleCreation(
-        event: PersonenkontextUpdatedEvent, kontexteToUpsert: PersonenkontextEventKontextData[], hadRelevantKontexte: boolean, registry: SchulconnexPushRegistry<true>
-    ): Promise<Result<void, DomainError>>{
+        event: PersonenkontextUpdatedEvent,
+        kontexteToUpsert: PersonenkontextEventKontextData[],
+        hadRelevantKontexte: boolean,
+        registry: SchulconnexPushRegistry<true>,
+    ): Promise<Result<void, DomainError>> {
         if (kontexteToUpsert.length === 0) {
             return Ok();
         }
@@ -184,7 +201,11 @@ export class SchulconnexPushHandler {
         return Ok();
     }
 
-    private hadRelevantKontexteBefore(removedKontexte: PersonenkontextEventKontextData[], currentKontexte: PersonenkontextEventKontextData[], newIds: Set<string>): boolean{
+    private hadRelevantKontexteBefore(
+        removedKontexte: PersonenkontextEventKontextData[],
+        currentKontexte: PersonenkontextEventKontextData[],
+        newIds: Set<string>,
+    ): boolean {
         const hadRelevantKontexte: boolean =
             removedKontexte.length > 0 ||
             currentKontexte.some((pk: PersonenkontextEventKontextData) => !newIds.has(pk.id));
