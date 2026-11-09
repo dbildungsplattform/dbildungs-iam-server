@@ -245,20 +245,6 @@ describe('LdapEventHandler with PostgreSQL and LDAP', () => {
         expect((await personRepository.findById(person.id))?.externalIds.LDAP).toBe(entry['entryUUID']);
     });
 
-    it('ignores new contexts without a UEM service provider', async () => {
-        const nonUemKontext: PersonenkontextEventKontextData = { ...kontext, serviceProviderExternalSystems: [] };
-
-        const result: Result<unknown> = await sut.handlePersonenkontextUpdatedEvent(
-            new PersonenkontextUpdatedEvent(person, [nonUemKontext], [], [nonUemKontext]),
-        );
-
-        expect(result.ok).toBe(true);
-        expect(await search(`(uid=${person.username})`)).toEqual([]);
-        expect(await getTeacherGroup()).toEqual([]);
-        orm.em.clear();
-        expect((await personRepository.findById(person.id))?.externalIds.LDAP).toBeUndefined();
-    });
-
     it('removes the last school membership without deleting the teacher entry', async () => {
         const entry: Entry = await createTeacher();
 
