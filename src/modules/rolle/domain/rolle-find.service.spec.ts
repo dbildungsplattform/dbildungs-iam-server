@@ -513,9 +513,11 @@ describe('RolleFindService', () => {
                         ],
                     }),
                 );
-                if (bounded) {
+                for (const paar of RollenmerkmalSystemrechtPaar.ALL) {
                     expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
-                        [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                        [paar.systemrecht],
+                        true,
+                        true,
                         true,
                     );
                 }
@@ -1356,6 +1358,8 @@ describe('RolleFindService', () => {
                     expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
                         [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
                         true,
+                        true,
+                        true,
                     );
                     expect(permissions.getPermittedMerkmaleForOrga).not.toHaveBeenCalled();
                     const expectedQuery: Partial<RolleFindByParameters> = {
@@ -1451,6 +1455,8 @@ describe('RolleFindService', () => {
                 expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledTimes(2);
                 expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
                     [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                    true,
+                    true,
                     true,
                 );
                 expect(permissions.getPermittedMerkmaleForOrga).not.toHaveBeenCalled();
