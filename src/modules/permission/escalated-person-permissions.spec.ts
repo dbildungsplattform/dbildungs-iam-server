@@ -918,26 +918,47 @@ describe('EscalatedPersonPermission', () => {
             expect(result.orgaIds).toContain(orgaId2);
         });
 
-        it('should add child orga ids if withChildren is true', async () => {
-            const childOrga: Organisation<true> = { id: faker.string.uuid() } as Organisation<true>;
-            organisationRepo.findChildOrgasForIds.mockResolvedValue([childOrga]);
-            const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
-                { name: 'testInstance' },
-                [{ orgaId: orgaId1, systemrechte: 'ALL' }],
-                organisationRepo,
-                personenkontextRepo,
-                logger,
-            );
-            vi.spyOn(escalatedPersonPermission, 'hasSystemrechteAtRootOrganisation').mockResolvedValue(false);
+        it.each([undefined, false, true])(
+            'should add child orga ids with excludeKlassen=%s',
+            async (excludeKlassen: boolean | undefined) => {
+                organisationRepo.findChildOrgasForIds.mockClear();
+                const childOrga: Organisation<true> = DoFactory.createOrganisation(true, {
+                    id: 'child-school',
+                    typ: OrganisationsTyp.SCHULE,
+                });
+                const childKlasse: Organisation<true> = DoFactory.createOrganisation(true, {
+                    id: 'child-class',
+                    typ: OrganisationsTyp.KLASSE,
+                });
+                organisationRepo.findChildOrgasForIds.mockResolvedValue(
+                    excludeKlassen ? [childOrga] : [childOrga, childKlasse],
+                );
+                const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
+                    { name: 'testInstance' },
+                    [{ orgaId: orgaId1, systemrechte: 'ALL' }],
+                    organisationRepo,
+                    personenkontextRepo,
+                    logger,
+                );
+                vi.spyOn(escalatedPersonPermission, 'hasSystemrechteAtRootOrganisation').mockResolvedValue(false);
 
-            const result: PermittedOrgas = await escalatedPersonPermission.getOrgIdsWithSystemrecht(systemrechte, true);
-            expect(result.all).toBe(false);
-            if (result.all) {
-                return;
-            }
-            expect(result.orgaIds).toContain(orgaId1);
-            expect(result.orgaIds).toContain(childOrga.id);
-        });
+                const result: PermittedOrgas = await escalatedPersonPermission.getOrgIdsWithSystemrecht(
+                    systemrechte,
+                    true,
+                    true,
+                    excludeKlassen,
+                );
+
+                expect(organisationRepo.findChildOrgasForIds).toHaveBeenCalledExactlyOnceWith(
+                    [orgaId1],
+                    excludeKlassen ?? false,
+                );
+                expect(result).toEqual({
+                    all: false,
+                    orgaIds: excludeKlassen ? [orgaId1, childOrga.id] : [orgaId1, childOrga.id, childKlasse.id],
+                });
+            },
+        );
 
         it('should return empty orgaIds if no permissions match', async () => {
             const escalatedPersonPermission: EscalatedPersonPermissions = EscalatedPersonPermissions.createNew(
