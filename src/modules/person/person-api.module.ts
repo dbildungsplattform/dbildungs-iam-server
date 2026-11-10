@@ -8,7 +8,6 @@ import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
 import { RolleModule } from '../rolle/rolle.module.js';
 import { PersonController } from './api/person.controller.js';
-import { PersonFrontendController } from './api/person.frontend.controller.js';
 import { DBiamPersonenuebersichtController } from './api/personenuebersicht/dbiam-personenuebersicht.controller.js';
 import { PersonApiMapper } from './mapper/person-api.mapper.js';
 import { PersonDeleteModule } from './person-deletion/person-delete.module.js';
@@ -29,6 +28,6 @@ import { PersonModule } from './person.module.js';
         LoggerModule.register(PersonApiModule.name),
     ],
     providers: [PersonApiMapper],
-    controllers: [PersonController, PersonFrontendController, DBiamPersonenuebersichtController],
+    controllers: [PersonController, DBiamPersonenuebersichtController],
 })
 export class PersonApiModule {}

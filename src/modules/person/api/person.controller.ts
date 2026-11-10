@@ -37,12 +37,19 @@ import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/
 import { LdapAdapter } from '../../../core/ldap/adapter/domain/ldap.adapter.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DataConfig, ServerConfig } from '../../../shared/config/index.js';
-import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
+import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { ApiOkResponsePaginated, Paged, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import {
+    ApiOkResponsePaginated,
+    DisablePagingInterceptor,
+    Paged,
+    PagedResponse,
+    PagingHeadersObject,
+    RawPagedResponse,
+} from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { ResultInterceptor } from '../../../shared/util/result-interceptor.js';
@@ -64,6 +71,7 @@ import { NotFoundOrNoPermissionError } from '../domain/person-not-found-or-no-pe
 import { PersonUserPasswordModificationError } from '../domain/person-user-password-modification.error.js';
 import { PersonLockOccasion } from '../domain/person.enums.js';
 import { Person } from '../domain/person.js';
+import { PersonService } from '../domain/person.service.js';
 import { PersonApiMapper } from '../mapper/person-api.mapper.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import { PersonDeleteService } from '../person-deletion/person-delete.service.js';
@@ -77,6 +85,7 @@ import { PersonLandesbediensteterSearchQueryParams } from './person-landesbedien
 import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
 import { PersonLockResponse } from './person-lock.response.js';
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
+import { PersonenQueryParams } from './personen-query.param.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { UpdatePersonBodyParams } from './update-person.body.params.js';
 
@@ -100,9 +109,41 @@ export class PersonController {
         private readonly ldapClientAdapter: LdapAdapter,
         private readonly personApiMapper: PersonApiMapper,
         private readonly eventService: EventRoutingLegacyKafkaService,
+        private readonly personService: PersonService,
         config: ConfigService<ServerConfig>,
     ) {
         this.ROOT_ORGANISATION_ID = config.getOrThrow<DataConfig>('DATA').ROOT_ORGANISATION_ID;
+    }
+
+    @Get()
+    @DisablePagingInterceptor()
+    @ApiOkResponsePaginated(PersonendatensatzResponse, {
+        description:
+            'The persons were successfully returned. WARNING: This endpoint returns all persons as default when no paging parameters were set.',
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get persons.' })
+    @ApiNotFoundResponse({ description: 'Insufficient permissions to get persons.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get persons.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting all persons.' })
+    public async findPersons(
+        @Query() queryParams: PersonenQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<RawPagedResponse<PersonendatensatzResponse>> {
+        const result: Result<Counted<Person<true>>, MissingPermissionsError> = await this.personService.findPersons(
+            queryParams,
+            permissions,
+        );
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        const [persons, total]: Counted<Person<true>> = result.value;
+        return new RawPagedResponse({
+            offset: queryParams.offset ?? 0,
+            limit: queryParams.limit ?? total,
+            total,
+            items: persons.map((person: Person<true>) => new PersonendatensatzResponse(person, false)),
+        });
     }
 
     @Get('landesbediensteter')

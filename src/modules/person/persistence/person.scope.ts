@@ -3,6 +3,7 @@ import { ScopeBase, ScopeOperator } from '../../../shared/persistence/index.js';
 import { PersonEntity } from './person.entity.js';
 import { type OrganisationID, type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { type EntityManager, type SelectQueryBuilder } from '@mikro-orm/postgresql';
+import { type PersonLockOccasion } from '../domain/person.enums.js';
 
 type FindProps = {
     ids?: PersonID[] | undefined[];
@@ -59,6 +60,16 @@ export class PersonScope extends ScopeBase<PersonEntity> {
 
     public findBySearchString(searchStr: string): this {
         this.findBySubstring(['vorname', 'familienname', 'username', 'personalnummer'], searchStr, ScopeOperator.OR);
+
+        return this;
+    }
+
+    public findBySperrgruende(sperrgruende?: PersonLockOccasion[]): this {
+        if (sperrgruende?.length) {
+            this.findByQuery({
+                userLocks: { $some: { locked_occasion: { $in: sperrgruende } } },
+            });
+        }
 
         return this;
     }
