@@ -1,7 +1,7 @@
-import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
+import { Inject, Injectable, NestMiddleware, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { Client, TokenSet } from 'openid-client';
+import { Client, IntrospectionResponse, TokenSet } from 'openid-client';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { SystemConfig } from '../../../shared/config/system.config.js';
@@ -38,11 +38,11 @@ export class SessionAccessTokenMiddleware implements NestMiddleware {
         }
 
         if (accessToken) {
-            const isAccessTokenActive: boolean = (await this.client.introspect(accessToken, 'access_token')).active;
+            const isAccessTokenActive: boolean = await this.tryIntrospectToken(accessToken, 'access_token');
             if (!isAccessTokenActive) {
                 // Do we have a refresh token and somewhere to store the result of the refresh?
                 const isRefreshTokenActive: boolean =
-                    refreshToken !== undefined && (await this.client.introspect(refreshToken, 'refresh_token')).active;
+                    refreshToken !== undefined && (await this.tryIntrospectToken(refreshToken, 'refresh_token'));
                 if (refreshToken && isRefreshTokenActive && req.passportUser) {
                     try {
                         const tokens: TokenSet = await this.client.refresh(refreshToken);
@@ -73,5 +73,16 @@ export class SessionAccessTokenMiddleware implements NestMiddleware {
             }
         }
         next();
+    }
+
+    private async tryIntrospectToken(token: string, tokenType: 'access_token' | 'refresh_token'): Promise<boolean> {
+        try {
+            const isTokenActive: IntrospectionResponse = await this.client.introspect(token, tokenType);
+
+            return isTokenActive.active;
+        } catch (error: unknown) {
+            this.logger.logUnknownAsWarning('Token introspection failed', error);
+            throw new ServiceUnavailableException('Authentication service is temporarily unavailable');
+        }
     }
 }
