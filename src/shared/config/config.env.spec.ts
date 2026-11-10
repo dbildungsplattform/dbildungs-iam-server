@@ -61,11 +61,12 @@ describe('Config Loader', () => {
 
     describe('Portal Config', () => {
         it('should load Portal configuration with parsed enum array values', () => {
-            process.env['PORTAL_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT'] = 'LERN,EXTERN';
+            process.env['PORTAL_ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN'] =
+                'LERN,EXTERN';
 
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
                     RollenArt.LERN,
                     RollenArt.EXTERN,
                 ],
@@ -73,12 +74,12 @@ describe('Config Loader', () => {
         });
 
         it('should filter invalid Portal enum values', () => {
-            process.env['PORTAL_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT'] =
+            process.env['PORTAL_ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN'] =
                 'LERN,INVALID,EXTERN';
 
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
                     RollenArt.LERN,
                     RollenArt.EXTERN,
                 ],
@@ -88,7 +89,7 @@ describe('Config Loader', () => {
         it('should set undefined for Portal values if not provided', () => {
             const config: Config = configEnv();
             expect(config.PORTAL).toEqual({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: undefined,
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: undefined,
             });
         });
     });

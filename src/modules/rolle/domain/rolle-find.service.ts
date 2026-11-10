@@ -562,7 +562,7 @@ export class RolleFindService {
 
     private getLimitedRollenarten(): Array<RollenArt> {
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-        return portalConfig.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT;
+        return portalConfig.ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN;
     }
 
     private async resolveOrganisationBounds(

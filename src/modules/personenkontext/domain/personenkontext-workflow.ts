@@ -270,7 +270,7 @@ export class PersonenkontextWorkflowAggregate {
 
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
         const allowedRollenArten: RollenArt[] =
-            portalConfig.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT;
+            portalConfig.ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN;
         const isLimitedCreationAllowedForRollen: boolean = this.isLimitedCreationAllowedForRollen(
             rollenList,
             allowedRollenArten,

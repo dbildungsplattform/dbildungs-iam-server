@@ -135,7 +135,7 @@ describe('configloader', () => {
                     SSL_KEY_PATH: '/tls/client-key.pem',
                 },
                 PORTAL: {
-                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                    ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
                         RollenArt.LERN,
                         RollenArt.EXTERN,
                     ],
@@ -329,7 +329,7 @@ describe('configloader', () => {
                     SSL_KEY_PATH: undefined,
                 },
                 PORTAL: {
-                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [
+                    ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
                         RollenArt.LERN,
                         RollenArt.EXTERN,
                     ],

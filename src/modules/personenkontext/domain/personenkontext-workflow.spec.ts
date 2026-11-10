@@ -656,7 +656,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should return undefined if user has limited anlegen permissions and only limited rollen are assigned', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [RollenArt.LERN],
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
@@ -731,7 +731,7 @@ describe('PersonenkontextWorkflow', () => {
                 authorizedMerkmale: RollenMerkmal[];
             }) => {
                 configMock.getOrThrow.mockReturnValueOnce({
-                    EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
+                    ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [RollenArt.LERN],
                 });
                 const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
                 permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
@@ -759,7 +759,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should reject a non-allowlisted Pilot-only role even with its Pilot permission', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [RollenArt.LERN],
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
@@ -785,7 +785,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should reject a mixed assignment with a non-allowlisted non-MPT rolle', async () => {
             configMock.getOrThrow.mockReturnValueOnce({
-                EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [RollenArt.LERN],
+                ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [RollenArt.LERN],
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation
@@ -881,7 +881,7 @@ describe('PersonenkontextWorkflow', () => {
 
                 it('should return error if config is not set for limited rollenarten', async () => {
                     configMock.getOrThrow.mockReturnValueOnce({
-                        EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT: [],
+                        ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [],
                     });
 
                     const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
