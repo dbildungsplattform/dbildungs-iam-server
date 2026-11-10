@@ -244,15 +244,16 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-        const hasUnauthorizedGatedRolle: boolean = (
-            await Promise.all(
-                Array.from(rollen.values()).map((rolle: Rolle<true>) =>
-                    permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
-                ),
-            )
-        ).some((hasPermission: boolean) => !hasPermission);
-        if (hasUnauthorizedGatedRolle) {
-            return Err(new MissingPermissionsError('Unauthorized to assign MPT/Pilot-Rollen at the organisation'));
+        const rollenList: Rolle<true>[] = Array.from(rollen.values());
+        const hasPermissionsForRollenmerkmalePromises: Promise<boolean>[] = rollenList.map((rolle: Rolle<true>) =>
+            permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
+        );
+        const hasPermissionsForRollenmerkmale: boolean[] = await Promise.all(hasPermissionsForRollenmerkmalePromises);
+        const hasMissingRollenmerkmalPermission: boolean = hasPermissionsForRollenmerkmale.some(
+            (hasPermission: boolean) => !hasPermission,
+        );
+        if (hasMissingRollenmerkmalPermission) {
+            return Err(new MissingPermissionsError('Unauthorized to assign Rollenmerkmal at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {
@@ -270,7 +271,11 @@ export class PersonenkontextWorkflowAggregate {
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
         const allowedRollenArten: RollenArt[] =
             portalConfig.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN_ROLLENART_ALLOWLIST_EXCEPT_MPT;
-        if (!this.isLimitedCreationAllowedForRollen(rollen.values(), allowedRollenArten)) {
+        const isLimitedCreationAllowedForRollen: boolean = this.isLimitedCreationAllowedForRollen(
+            rollenList,
+            allowedRollenArten,
+        );
+        if (!isLimitedCreationAllowedForRollen) {
             return Err(new MissingPermissionsError('Unauthorized to manage rollenart at the organisation'));
         }
 
