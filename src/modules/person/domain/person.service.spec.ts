@@ -181,7 +181,7 @@ describe('PersonService', () => {
                 expect(personRepoMock.getPersonIfAllowed).toHaveBeenCalledExactlyOnceWith(personId, permissions);
                 expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: undefined) hat versucht den Benutzer undefined (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: undefined) hat versucht den Benutzer undefined (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
@@ -199,7 +199,7 @@ describe('PersonService', () => {
                 expect(personRepoMock.getPersonIfAllowed).toHaveBeenCalledExactlyOnceWith(personId, permissions);
                 expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: undefined) hat versucht den Benutzer undefined (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: undefined) hat versucht den Benutzer undefined (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
@@ -219,7 +219,7 @@ describe('PersonService', () => {
                 expect(result).toEqual({ ok: false, error });
                 expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: undefined) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: undefined) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
@@ -237,7 +237,7 @@ describe('PersonService', () => {
                 expect(result).toEqual({ ok: false, error });
                 expect(keycloakUserService.updateKeycloakUserStatus).not.toHaveBeenCalled();
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: undefined) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: undefined) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
@@ -259,7 +259,7 @@ describe('PersonService', () => {
 
                 expect(result).toEqual({ ok: false, error });
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
@@ -279,7 +279,7 @@ describe('PersonService', () => {
 
                 expect(result).toEqual({ ok: false, error });
                 expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id} Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
+                    `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${lockedBy}) hat versucht den Benutzer ${person.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
                 );
                 expect(logger.info).not.toHaveBeenCalled();
             });
