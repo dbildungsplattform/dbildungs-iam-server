@@ -32,6 +32,7 @@ import { Personenkontext } from '../domain/personenkontext.js';
 import { PersonenkontextErweitertVirtualEntity } from './personenkontext-erweitert.virtual.entity.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
 import { PersonenkontextScope } from './personenkontext.scope.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
 export type RollenCount = { rollenart: string; count: string };
 
@@ -699,6 +700,8 @@ export class DBiamPersonenkontextRepo {
                 all: true,
             });
 
-        return kontexteByPerson.get(personId) ?? [];
+        return (kontexteByPerson.get(personId) ?? []).filter(
+            (kontext: KontextWithOrgaAndRolle) => kontext.organisation.typ !== OrganisationsTyp.KLASSE,
+        );
     }
 }

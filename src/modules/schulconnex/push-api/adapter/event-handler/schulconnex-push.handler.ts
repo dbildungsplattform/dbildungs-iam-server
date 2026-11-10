@@ -19,6 +19,7 @@ import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../../../shared
 import { KafkaLocksForPersonChangedEvent } from '../../../../../shared/events/kafka-locks-for-person-changed.event.js';
 import { UserLock } from '../../../../keycloak-administration/domain/user-lock.js';
 import { PersonEmailResponse } from '../../../../person/api/person-email-response.js';
+import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 
 @Injectable()
 export class SchulconnexPushHandler {
@@ -33,6 +34,7 @@ export class SchulconnexPushHandler {
 
     @KafkaEventHandler(KafkaEmailMicroserviceAddressChangedEvent)
     @EventHandler(EmailMicroserviceAddressChangedEvent)
+    @EnsureRequestContext()
     public async handleEmailAddressChanged(event: EmailMicroserviceAddressChangedEvent): Promise<void> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received EmailMicroserviceAddressChangedEvent for person ${event.personId}`,
@@ -43,6 +45,7 @@ export class SchulconnexPushHandler {
 
     @KafkaEventHandler(KafkaLocksForPersonChangedEvent)
     @EventHandler(LocksForPersonChangedEvent)
+    @EnsureRequestContext()
     public async handleLocksForPersonChanged(event: LocksForPersonChangedEvent): Promise<void> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received LocksForPersonChangedEvent for person ${event.personId}`,
@@ -52,52 +55,38 @@ export class SchulconnexPushHandler {
     }
 
     private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<void> {
-        const [registries, userLocks, emailResult]: [
+        const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
             UserLock[],
-            Result<Map<PersonID, PersonEmailResponse | undefined>, DomainError>,
+            Option<PersonEmailResponse>,
         ] = await Promise.all([
             this.pushRegistryRepo.findAll(),
             this.userLockRepo.findByPersonId(personId),
-            this.emailResolverService.findEmailsBySpshPersons([personId]),
+            this.emailResolverService.findEmailBySpshPerson(personId),
         ]);
 
-        if (!emailResult.ok) {
-            this.logger.logUnknownAsError(
-                `[EventID: ${eventId}] Could not resolve email for person ${personId}`,
-                emailResult.error,
-            );
-            return;
-        }
-
-        const email: Option<PersonEmailResponse> = emailResult.value.get(personId);
-
-        await Promise.all(
-            registries.map(async (registry: SchulconnexPushRegistry<true>): Promise<void> => {
-                const kontexte: KontextWithOrgaAndRolle[] =
-                    await this.personenkontextRepo.findByPersonAndServiceProviderWithOrgaAndRolle(
-                        personId,
-                        registry.serviceProviderId,
-                    );
-
-                await Promise.all(
-                    kontexte.map(async (kontext: KontextWithOrgaAndRolle): Promise<void> => {
-                        const result: Result<void, DomainError> = await this.pushAdapter.upsertPersonenkontext(
-                            registry,
-                            kontext,
-                            userLocks,
-                            email,
-                        );
-
-                        if (!result.ok) {
-                            this.logger.logUnknownAsError(
-                                `[EventID: ${eventId}] Could not update Personenkontext ${kontext.personenkontext.id} for person ${personId}`,
-                                result.error,
-                            );
-                        }
-                    }),
+        for (const registry of registries) {
+            const kontexte: KontextWithOrgaAndRolle[] =
+                await this.personenkontextRepo.findByPersonAndServiceProviderWithOrgaAndRolle(
+                    personId,
+                    registry.serviceProviderId,
                 );
-            }),
-        );
+
+            for (const kontext of kontexte) {
+                const result: Result<void, DomainError> = await this.pushAdapter.upsertPersonenkontext(
+                    registry,
+                    kontext,
+                    userLocks,
+                    email,
+                );
+
+                if (!result.ok) {
+                    this.logger.logUnknownAsError(
+                        `[EventID: ${eventId}] Could not update Personenkontext ${kontext.personenkontext.id} for person ${personId}`,
+                        result.error,
+                    );
+                }
+            }
+        }
     }
 }

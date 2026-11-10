@@ -42,7 +42,7 @@ describe('SchulconnexPushHandler', () => {
         findByPersonId: ReturnType<typeof vi.fn>;
     };
     let emailResolverServiceMock: {
-        findEmailsBySpshPersons: ReturnType<typeof vi.fn>;
+        findEmailBySpshPerson: ReturnType<typeof vi.fn>;
     };
 
     const personId: PersonID = 'person-id';
@@ -78,7 +78,7 @@ describe('SchulconnexPushHandler', () => {
             findByPersonId: vi.fn(),
         };
         emailResolverServiceMock = {
-            findEmailsBySpshPersons: vi.fn(),
+            findEmailBySpshPerson: vi.fn(),
         };
 
         module = await Test.createTestingModule({
@@ -120,7 +120,7 @@ describe('SchulconnexPushHandler', () => {
         pushRegistryRepoMock.findAll.mockResolvedValue([registry]);
         personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([kontext]);
         userLockRepoMock.findByPersonId.mockResolvedValue([]);
-        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map()));
+        emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
         pushAdapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
     });
 
@@ -130,7 +130,7 @@ describe('SchulconnexPushHandler', () => {
                 address: 'new@example.org',
             } as unknown as PersonEmailResponse;
 
-            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[personId, email]])));
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
 
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
@@ -144,7 +144,7 @@ describe('SchulconnexPushHandler', () => {
 
             expect(pushRegistryRepoMock.findAll).toHaveBeenCalledOnce();
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
-            expect(emailResolverServiceMock.findEmailsBySpshPersons).toHaveBeenCalledWith([personId]);
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledWith(
                 personId,
                 registry.serviceProviderId,
@@ -161,7 +161,7 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map()));
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
 
             await sut.handleEmailAddressChanged(event);
 
@@ -189,7 +189,7 @@ describe('SchulconnexPushHandler', () => {
                 address: 'current@example.org',
             } as unknown as PersonEmailResponse;
 
-            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[personId, email]])));
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
 
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
@@ -365,6 +365,57 @@ describe('SchulconnexPushHandler', () => {
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, secondKontext, [], undefined);
         });
+
+        it('should update personenkontexte sequentially', async () => {
+            const secondKontext: KontextWithOrgaAndRolle = {
+                personenkontext: {
+                    id: 'kontext-id-2',
+                    personId,
+                },
+            } as KontextWithOrgaAndRolle;
+
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([
+                kontext,
+                secondKontext,
+            ]);
+
+            let resolveFirstPush: (() => void) | undefined;
+
+            const firstPush: Promise<ReturnType<typeof Ok>> = new Promise((resolve) => {
+                resolveFirstPush = () => resolve(Ok());
+            });
+
+            pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const handling: Promise<void> = sut.handleEmailAddressChanged(event);
+
+            await vi.waitFor(() => {
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+            });
+
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(1, registry, kontext, [], undefined);
+
+            resolveFirstPush?.();
+
+            await handling;
+
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                2,
+                registry,
+                secondKontext,
+                [],
+                undefined,
+            );
+        });
     });
 
     describe('error handling', () => {
@@ -389,28 +440,6 @@ describe('SchulconnexPushHandler', () => {
                 ),
                 error,
             );
-        });
-
-        it('should not push when resolving the email fails', async () => {
-            const error: SchulconnexPushError = new SchulconnexPushError('Failed to resolve email');
-
-            emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Err(error));
-
-            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
-                personId,
-                'new@example.org',
-                undefined,
-                'old@example.org',
-                undefined,
-            );
-
-            await sut.handleEmailAddressChanged(event);
-
-            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
-                expect.stringContaining(`Could not resolve email for person ${personId}`),
-                error,
-            );
-            expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
         });
     });
 });
