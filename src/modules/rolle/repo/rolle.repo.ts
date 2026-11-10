@@ -144,17 +144,19 @@ const rollenartOrderClause: RawQueryFragment = sql`CASE
     ELSE 10
 END`;
 
+export interface GatedRollenBucket {
+    allowedRollenarten: Array<RollenArt>;
+    authorizedMerkmale: Array<RollenMerkmal>;
+    /** Gated Rollen must carry one of these Merkmale, unless their Rollenart is in the top-level allowedRollenarten. */
+    requiredMerkmale?: Array<RollenMerkmal>;
+}
+
 export interface FindRollenAvailableForPersonenkontextCreationParams {
     organisationId: OrganisationID;
     allowedOrganisationIds: Array<OrganisationID>;
     allowedRollenarten: Array<RollenArt>;
     /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
-    gatedBucket?: {
-        allowedRollenarten: Array<RollenArt>;
-        authorizedMerkmale: Array<RollenMerkmal>;
-        /** Gated Rollen must carry one of these Merkmale, unless their Rollenart is in the top-level allowedRollenarten. */
-        requiredMerkmale?: Array<RollenMerkmal>;
-    };
+    gatedBucket?: GatedRollenBucket;
     searchStr?: string;
     stickyRollenIds?: Array<RolleID>;
     limit?: number;
@@ -175,6 +177,17 @@ type RolleFindAllOptions = WithUsingOptions<
     NoInfer<RolleEntity>,
     never
 >;
+
+const ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS: Pick<RolleFindAllOptions, 'populate' | 'exclude'> = {
+    populate: [
+        'merkmale',
+        'systemrechte',
+        'serviceProvider.serviceProvider',
+        'serviceProvider.serviceProvider.merkmale',
+        'serviceProvider.serviceProvider.rollenartenWhitelist',
+    ],
+    exclude: ['serviceProvider.serviceProvider.logo'],
+};
 
 @Injectable()
 export class RolleRepo {
@@ -569,108 +582,116 @@ export class RolleRepo {
     public async findRollenAvailableForPersonenkontextCreation(
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<Rolle<true>>> {
-        const allowedRollenWhere: ObjectQuery<NoInfer<RolleEntity>> =
-            params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0
-                ? {
-                      $or: [
-                          {
-                              rollenart: { $in: params.allowedRollenarten },
-                              merkmale: {
-                                  $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
-                              },
-                          },
-                          {
-                              rollenart: { $in: params.gatedBucket.allowedRollenarten },
-                              $and: [
-                                  { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
-                                  ...(params.gatedBucket.requiredMerkmale?.length
-                                      ? [
-                                            {
-                                                $or: [
-                                                    { rollenart: { $in: params.allowedRollenarten } },
-                                                    {
-                                                        merkmale: {
-                                                            $some: {
-                                                                merkmal: { $in: params.gatedBucket.requiredMerkmale },
-                                                            },
-                                                        },
-                                                    },
-                                                ],
-                                            },
-                                        ]
-                                      : []),
-                                  {
-                                      merkmale: {
-                                          $none: {
-                                              merkmal: {
-                                                  $in: RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(
-                                                      params.gatedBucket.authorizedMerkmale,
-                                                  ),
-                                              },
-                                          },
-                                      },
-                                  },
-                              ],
-                          },
-                      ],
-                  }
-                : {
-                      rollenart: { $in: params.allowedRollenarten },
-                      merkmale: {
-                          $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
-                      },
-                  };
-        const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = {
+        const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = this.createCreationScopeQuery(params);
+        const stickyRollenEntities: Array<RolleEntity> = await this.findStickyRollen(
+            creationScopeWhere,
+            params.stickyRollenIds,
+        );
+        const [rollenEntities, count]: Counted<RolleEntity> = await this.findAndCountNonStickyRollen(
+            creationScopeWhere,
+            params,
+        );
+
+        const rollen: Rolle<true>[] = [...stickyRollenEntities, ...rollenEntities].map((entity: RolleEntity) =>
+            mapRolleEntityToAggregate(entity, this.rolleFactory),
+        );
+        return [rollen, count];
+    }
+
+    private createCreationScopeQuery(
+        params: FindRollenAvailableForPersonenkontextCreationParams,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        return {
             istTechnisch: false,
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
-            ...allowedRollenWhere,
+            ...this.createAllowedRollenQuery(params.allowedRollenarten, params.gatedBucket),
         };
-        const stickyFindOptions: RolleFindAllOptions = {
-            where: {
-                id: { $in: params.stickyRollenIds ?? [] },
-                ...creationScopeWhere,
-            },
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ],
-            exclude: ['serviceProvider.serviceProvider.logo'],
-        };
-        const stickyRollenEntities: Array<RolleEntity> = params.stickyRollenIds
-            ? await this.em.findAll(RolleEntity, stickyFindOptions)
-            : [];
+    }
 
-        const where: ObjectQuery<NoInfer<RolleEntity>> = {
-            ...creationScopeWhere,
+    /** Sticky Rollen (e.g. already selected ones) are always returned, independent of search and pagination. */
+    private async findStickyRollen(
+        creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
+        stickyRollenIds: Array<RolleID> | undefined,
+    ): Promise<Array<RolleEntity>> {
+        if (!stickyRollenIds) {
+            return [];
+        }
+
+        const findOptions: RolleFindAllOptions = {
+            where: { id: { $in: stickyRollenIds }, ...creationScopeWhere },
+            ...ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS,
         };
+        return this.em.findAll(RolleEntity, findOptions);
+    }
+
+    private async findAndCountNonStickyRollen(
+        creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
+        params: FindRollenAvailableForPersonenkontextCreationParams,
+    ): Promise<Counted<RolleEntity>> {
+        const where: ObjectQuery<NoInfer<RolleEntity>> = { ...creationScopeWhere };
         if (params.stickyRollenIds) {
             where.id = { $nin: params.stickyRollenIds };
         }
         if (params.searchStr) {
             where.name = { $ilike: `%${params.searchStr}%` };
         }
-        const [rollenEntities, count]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, where, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+
+        return this.em.findAndCount(RolleEntity, where, {
+            ...ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS,
             limit: params.limit,
             offset: params.offset,
         });
+    }
 
-        return [
-            stickyRollenEntities
-                .concat(rollenEntities)
-                .map((entity: RolleEntity) => mapRolleEntityToAggregate(entity, this.rolleFactory)),
-            count,
-        ];
+    private createAllowedRollenQuery(
+        allowedRollenarten: Array<RollenArt>,
+        gatedBucket: GatedRollenBucket | undefined,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        const ungatedRollenQuery: ObjectQuery<NoInfer<RolleEntity>> = this.createUngatedRollenQuery(allowedRollenarten);
+        if (!gatedBucket || gatedBucket.authorizedMerkmale.length === 0) {
+            return ungatedRollenQuery;
+        }
+
+        return { $or: [ungatedRollenQuery, this.createGatedRollenQuery(allowedRollenarten, gatedBucket)] };
+    }
+
+    private createUngatedRollenQuery(allowedRollenarten: Array<RollenArt>): ObjectQuery<NoInfer<RolleEntity>> {
+        return {
+            rollenart: { $in: allowedRollenarten },
+            ...this.hasNoneOfMerkmale(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+        };
+    }
+
+    private createGatedRollenQuery(
+        allowedRollenarten: Array<RollenArt>,
+        gatedBucket: GatedRollenBucket,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        const conditions: ObjectQuery<NoInfer<RolleEntity>>[] = [this.hasAnyOfMerkmale(gatedBucket.authorizedMerkmale)];
+
+        if (gatedBucket.requiredMerkmale?.length) {
+            conditions.push({
+                $or: [{ rollenart: { $in: allowedRollenarten } }, this.hasAnyOfMerkmale(gatedBucket.requiredMerkmale)],
+            });
+        }
+
+        conditions.push(
+            this.hasNoneOfMerkmale(
+                RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(gatedBucket.authorizedMerkmale),
+            ),
+        );
+
+        return {
+            rollenart: { $in: gatedBucket.allowedRollenarten },
+            $and: conditions,
+        };
+    }
+
+    private hasAnyOfMerkmale(merkmale: ReadonlyArray<RollenMerkmal>): ObjectQuery<NoInfer<RolleEntity>> {
+        return { merkmale: { $some: { merkmal: { $in: Array.from(merkmale) } } } };
+    }
+
+    private hasNoneOfMerkmale(merkmale: ReadonlyArray<RollenMerkmal>): ObjectQuery<NoInfer<RolleEntity>> {
+        return { merkmale: { $none: { merkmal: { $in: Array.from(merkmale) } } } };
     }
 
     public async existsForServiceProviderId(
