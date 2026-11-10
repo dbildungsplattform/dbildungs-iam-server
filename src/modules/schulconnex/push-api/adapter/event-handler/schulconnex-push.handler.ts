@@ -20,6 +20,7 @@ import { KafkaLocksForPersonChangedEvent } from '../../../../../shared/events/ka
 import { UserLock } from '../../../../keycloak-administration/domain/user-lock.js';
 import { PersonEmailResponse } from '../../../../person/api/person-email-response.js';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
+import { EntityManager } from '@mikro-orm/core';
 
 @Injectable()
 export class SchulconnexPushHandler {
@@ -30,6 +31,10 @@ export class SchulconnexPushHandler {
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
+        // @ts-expect-error used by EnsureRequestContext decorator
+        // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
+        // to create the request-bound EntityManager context. Removing it would break context creation.
+        private readonly em: EntityManager,
     ) {}
 
     @KafkaEventHandler(KafkaEmailMicroserviceAddressChangedEvent)
