@@ -8,6 +8,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, basename, extname, join } from 'node:path';
 import { needsBase64 } from './ldif-format.mjs';
+import { resolveOuFromEmailAddress } from './email-domains.mjs';
 
 function parseArgs(argv) {
     const args = { file: undefined, includeContainers: false };
@@ -199,11 +200,6 @@ function parseGroupDn(dn) {
     };
 }
 
-const MAIL_DOMAIN_BY_OU = {
-    oeffentlich: 'schule-sh.de',
-    ersatz: 'ersatzschule-sh.de',
-};
-
 // Collects issues without every caller having to thread the array through by hand.
 function createIssueCollector() {
     const issues = [];
@@ -286,17 +282,16 @@ function collectMailAddresses(record) {
 }
 
 function validateMailDomain(record, ou, allMails, addIssue) {
-    if (!ou || !MAIL_DOMAIN_BY_OU[ou]) return;
+    if (!ou) return;
 
-    const expectedDomain = MAIL_DOMAIN_BY_OU[ou];
-    const otherDomain = ou === 'oeffentlich' ? MAIL_DOMAIN_BY_OU.ersatz : MAIL_DOMAIN_BY_OU.oeffentlich;
     for (const { value, attr } of allMails) {
-        if (value.toLowerCase().endsWith(`@${otherDomain}`)) {
+        const mailOu = resolveOuFromEmailAddress(value);
+        if (mailOu && mailOu !== ou) {
             addIssue(
                 'ERROR',
                 record.dn,
                 record.startLine,
-                `Attribut '${attr}' ('${value}') passt nicht zu ou=${ou} (erwartete Domain: ${expectedDomain})`,
+                `Attribut '${attr}' ('${value}') passt nicht zu ou=${ou} (Domain gehoert zu ou=${mailOu})`,
             );
         }
     }
