@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { SchulconnexPushError } from '../../../../../shared/error/index.js';
@@ -20,6 +20,7 @@ import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.
 import { SchulconnexPushRegistryRepo } from '../../persistence/schulconnex-push-registry.repo.js';
 import { SchulconnexPushAdapter } from '../domain/schulconnex-push.adapter.js';
 import { SchulconnexPushHandler } from './schulconnex-push.handler.js';
+import { ConfigTestModule, DatabaseTestModule } from '../../../../../../test/utils/index.js';
 
 describe('SchulconnexPushHandler', () => {
     let module: TestingModule;
@@ -82,6 +83,7 @@ describe('SchulconnexPushHandler', () => {
         };
 
         module = await Test.createTestingModule({
+            imports: [ConfigTestModule, DatabaseTestModule.forRoot()],
             providers: [
                 SchulconnexPushHandler,
                 {
@@ -122,6 +124,10 @@ describe('SchulconnexPushHandler', () => {
         userLockRepoMock.findByPersonId.mockResolvedValue([]);
         emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
         pushAdapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
+    });
+
+    afterAll(async () => {
+        await module.close();
     });
 
     describe('handleEmailAddressChanged', () => {
