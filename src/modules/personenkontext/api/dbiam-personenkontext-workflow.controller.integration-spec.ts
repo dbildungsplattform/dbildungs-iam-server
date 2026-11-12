@@ -891,6 +891,82 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
 
             expect(response.status).toBe(400);
         });
+
+        describe(`when user has only ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, () => {
+            let schule: Organisation<true>;
+            let klasse: Organisation<true>;
+
+            async function postPersonWithRolle(merkmale: RollenMerkmal[], rollenart: RollenArt): Promise<Response> {
+                const rolle: Rolle<true> = await rolleRepo.create(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: schule.id,
+                        rollenart,
+                        merkmale,
+                    }),
+                );
+
+                return request(app.getHttpServer() as App)
+                    .post('/personenkontext-workflow')
+                    .send({
+                        familienname: faker.person.lastName(),
+                        vorname: faker.person.firstName(),
+                        createPersonenkontexte: [
+                            { organisationId: schule.id, rolleId: rolle.id },
+                            { organisationId: klasse.id, rolleId: rolle.id },
+                        ],
+                    });
+            }
+
+            beforeEach(async () => {
+                schule = await organisationRepo.save(
+                    DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+                );
+                klasse = await organisationRepo.save(
+                    DoFactory.createOrganisation(false, { typ: OrganisationsTyp.KLASSE, administriertVon: schule.id }),
+                );
+                personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue(
+                    Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                );
+                personPermissionsMock.hasSystemrechtAtOrganisation.mockImplementation(
+                    (orgaId: OrganisationID, systemrecht: RollenSystemRecht) =>
+                        Promise.resolve(
+                            (orgaId === schule.id || orgaId === klasse.id) &&
+                                systemrecht !== RollenSystemRecht.PERSONEN_ANLEGEN,
+                        ),
+                );
+                escalatedPersonPermissionsMock.canModifyPerson.mockResolvedValue(true);
+            });
+
+            afterEach(() => {
+                personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+            });
+
+            it('should create the person for a role whose Rollenart is in the allowlist', async () => {
+                const response: Response = await postPersonWithRolle([], RollenArt.LERN);
+
+                expect(response.status).toBe(201);
+            });
+
+            it('should reject a Pilot-only role whose Rollenart is not in the allowlist', async () => {
+                const response: Response = await postPersonWithRolle([RollenMerkmal.PILOT_1_ROLLE], RollenArt.LEHR);
+
+                expect(response.status).toBe(404);
+                expect(response.body).toEqual({
+                    code: 404,
+                    i18nKey: 'MISSING_PERMISSIONS',
+                });
+            });
+
+            it('should reject a role without gated Merkmale whose Rollenart is not in the allowlist', async () => {
+                const response: Response = await postPersonWithRolle([], RollenArt.LEHR);
+
+                expect(response.status).toBe(404);
+                expect(response.body).toEqual({
+                    code: 404,
+                    i18nKey: 'MISSING_PERMISSIONS',
+                });
+            });
+        });
     });
 
     describe('/PUT commit', () => {
