@@ -178,7 +178,9 @@ type RolleFindAllOptions = WithUsingOptions<
     never
 >;
 
-const ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS: Pick<RolleFindAllOptions, 'populate' | 'exclude'> = {
+/** Relations loaded for every Rolle that gets mapped to an aggregate. Intentionally `as const` to keep the literal types for MikroORM's `Loaded` typing. */
+// eslint-disable-next-line @typescript-eslint/typedef
+const ROLLE_LOAD_OPTIONS = {
     populate: [
         'merkmale',
         'systemrechte',
@@ -187,7 +189,7 @@ const ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS: Pick<RolleFindAllOptions,
         'serviceProvider.serviceProvider.rollenartenWhitelist',
     ],
     exclude: ['serviceProvider.serviceProvider.logo'],
-};
+} as const;
 
 @Injectable()
 export class RolleRepo {
@@ -207,16 +209,7 @@ export class RolleRepo {
     public async findById(id: RolleID, includeTechnical: boolean = false): Promise<Option<Rolle<true>>> {
         const query: { id: RolleID; istTechnisch?: boolean } = includeTechnical ? { id } : { id, istTechnisch: false };
 
-        const rolle: Option<RolleEntity> = await this.em.findOne(this.entityName, query, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
-        });
+        const rolle: Option<RolleEntity> = await this.em.findOne(this.entityName, query, ROLLE_LOAD_OPTIONS);
 
         return rolle && mapRolleEntityToAggregate(rolle, this.rolleFactory);
     }
@@ -251,20 +244,7 @@ export class RolleRepo {
     }
 
     public async findByIds(ids: RolleID[]): Promise<Map<string, Rolle<true>>> {
-        const rollenEntities: RolleEntity[] = await this.em.find(
-            RolleEntity,
-            { id: { $in: ids } },
-            {
-                populate: [
-                    'merkmale',
-                    'systemrechte',
-                    'serviceProvider.serviceProvider',
-                    'serviceProvider.serviceProvider.merkmale',
-                    'serviceProvider.serviceProvider.rollenartenWhitelist',
-                ] as const,
-                exclude: ['serviceProvider.serviceProvider.logo'] as const,
-            },
-        );
+        const rollenEntities: RolleEntity[] = await this.em.find(RolleEntity, { id: { $in: ids } }, ROLLE_LOAD_OPTIONS);
 
         const rollenMap: Map<string, Rolle<true>> = new Map();
         rollenEntities.forEach((rolleEntity: RolleEntity) => {
@@ -289,18 +269,7 @@ export class RolleRepo {
         const rollen: RolleEntity[] = await this.em.find(
             this.entityName,
             { name: { $ilike: '%' + searchStr + '%' }, ...rollenartQuery, ...technischeQuery },
-            {
-                populate: [
-                    'merkmale',
-                    'systemrechte',
-                    'serviceProvider.serviceProvider',
-                    'serviceProvider.serviceProvider.merkmale',
-                    'serviceProvider.serviceProvider.rollenartenWhitelist',
-                ] as const,
-                exclude: ['serviceProvider.serviceProvider.logo'] as const,
-                limit: limit,
-                offset: offset,
-            },
+            { ...ROLLE_LOAD_OPTIONS, limit: limit, offset: offset },
         );
         return rollen.map((rolle: RolleEntity) => mapRolleEntityToAggregate(rolle, this.rolleFactory));
     }
@@ -316,14 +285,7 @@ export class RolleRepo {
             rollenarten && rollenarten.length > 0 ? { rollenart: { $in: rollenarten } } : {};
 
         const rollen: RolleEntity[] = await this.em.findAll(RolleEntity, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            ...ROLLE_LOAD_OPTIONS,
             where: { ...technischeQuery, ...rollenartQuery },
             limit: limit,
             offset: offset,
@@ -377,14 +339,7 @@ export class RolleRepo {
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
 
         const [rollen, total]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, finalQuery, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            ...ROLLE_LOAD_OPTIONS,
             limit: params.limit,
             offset: params.offset,
             orderBy,
@@ -512,22 +467,9 @@ export class RolleRepo {
     }
 
     public async findBySchulstrukturknoten(administeredBySchulstrukturknoten: OrganisationID): Promise<Rolle<true>[]> {
-        return (
-            await this.em.find(
-                this.entityName,
-                { administeredBySchulstrukturknoten },
-                {
-                    populate: [
-                        'merkmale',
-                        'systemrechte',
-                        'serviceProvider.serviceProvider',
-                        'serviceProvider.serviceProvider.merkmale',
-                        'serviceProvider.serviceProvider.rollenartenWhitelist',
-                    ] as const,
-                    exclude: ['serviceProvider.serviceProvider.logo'] as const,
-                },
-            )
-        ).map((rolleEntity: RolleEntity) => mapRolleEntityToAggregate(rolleEntity, this.rolleFactory));
+        return (await this.em.find(this.entityName, { administeredBySchulstrukturknoten }, ROLLE_LOAD_OPTIONS)).map(
+            (rolleEntity: RolleEntity) => mapRolleEntityToAggregate(rolleEntity, this.rolleFactory),
+        );
     }
 
     public async findByServiceProviderIds(
@@ -619,7 +561,7 @@ export class RolleRepo {
 
         const findOptions: RolleFindAllOptions = {
             where: { id: { $in: stickyRollenIds }, ...creationScopeWhere },
-            ...ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS,
+            ...ROLLE_LOAD_OPTIONS,
         };
         return this.em.findAll(RolleEntity, findOptions);
     }
@@ -637,7 +579,7 @@ export class RolleRepo {
         }
 
         return this.em.findAndCount(RolleEntity, where, {
-            ...ROLLE_FOR_PERSONENKONTEXT_CREATION_LOAD_OPTIONS,
+            ...ROLLE_LOAD_OPTIONS,
             limit: params.limit,
             offset: params.offset,
         });
@@ -865,16 +807,7 @@ export class RolleRepo {
     }
 
     private async update(rolle: Rolle<true>): Promise<Rolle<true>> {
-        const rolleEntity: Loaded<RolleEntity> = await this.em.findOneOrFail(RolleEntity, rolle.id, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
-        });
+        const rolleEntity: Loaded<RolleEntity> = await this.em.findOneOrFail(RolleEntity, rolle.id, ROLLE_LOAD_OPTIONS);
 
         if (rolleEntity.version !== rolle.version) {
             throw new RolleUpdateOutdatedError();
