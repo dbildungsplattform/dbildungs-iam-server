@@ -551,12 +551,12 @@ export class RolleRepo {
     }
 
     /** Sticky Rollen (e.g. already selected ones) are always returned, independent of search and pagination. */
-    private async findStickyRollen(
+    private findStickyRollen(
         creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
         stickyRollenIds: Array<RolleID> | undefined,
     ): Promise<Array<RolleEntity>> {
         if (!stickyRollenIds) {
-            return [];
+            return Promise.resolve([]);
         }
 
         const findOptions: RolleFindAllOptions = {
@@ -566,7 +566,7 @@ export class RolleRepo {
         return this.em.findAll(RolleEntity, findOptions);
     }
 
-    private async findAndCountNonStickyRollen(
+    private findAndCountNonStickyRollen(
         creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<RolleEntity>> {
