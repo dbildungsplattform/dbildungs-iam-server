@@ -28,6 +28,7 @@ import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
 import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { Rolle } from '../domain/rolle.js';
+import { RollenartNotAllowedForSPError } from '../domain/rollenart-not-allowed-for-sp.error.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
@@ -1893,10 +1894,12 @@ describe('RolleRepo', () => {
             const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
             const rolle: Rolle<true> | DomainError = await sut.save(
                 DoFactory.createRolle(false, {
                     administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LEHR,
                     serviceProviderIds: [serviceProvider.id],
                     serviceProviderData: [serviceProvider],
                 }),
@@ -1911,6 +1914,7 @@ describe('RolleRepo', () => {
             const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
 
             const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
@@ -1926,6 +1930,159 @@ describe('RolleRepo', () => {
 
             expectErrResult(rolleResult);
             expect(rolleResult.error).toBeInstanceOf(ServiceProviderNichtNachtraeglichZuweisbarError);
+        });
+
+        it('should not check the rollenart whitelist for already assigned service providers', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [serviceProvider.id],
+                    serviceProviderData: [serviceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [serviceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectOkResult(rolleResult);
+        });
+
+        it('should return error when a newly added service provider does not allow the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectErrResult(rolleResult);
+            expect(rolleResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+        });
+
+        it('should return error when keeping an exempt service provider but adding one that does not allow the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const existingServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [existingServiceProvider.id],
+                    serviceProviderData: [existingServiceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [existingServiceProvider.id, newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectErrResult(rolleResult);
+            expect(rolleResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+        });
+
+        it('should succeed when keeping a violating service provider and adding one that allows the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const existingServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [existingServiceProvider.id],
+                    serviceProviderData: [existingServiceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [existingServiceProvider.id, newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectOkResult(rolleResult);
         });
     });
 

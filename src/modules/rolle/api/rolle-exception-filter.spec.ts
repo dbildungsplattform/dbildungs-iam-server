@@ -3,6 +3,9 @@ import { type Response } from 'express';
 import { type MockedObject } from 'vitest';
 
 import { createArgumentsHostMock, createResponseMock } from '../../../../test/utils/http.mocks.js';
+import { faker } from '@faker-js/faker';
+import { RollenArt } from '../domain/rolle.enums.js';
+import { RollenartNotAllowedForSPError } from '../domain/rollenart-not-allowed-for-sp.error.js';
 import { RolleDomainError } from '../domain/rolle-domain.error.js';
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { DbiamRolleError, RolleErrorI18nTypes } from './dbiam-rolle.error.js';
@@ -35,6 +38,25 @@ describe('RolleExceptionFilter', () => {
 
                 expect(responseMock.status).toHaveBeenCalledWith(500);
                 expect(responseMock.json).toHaveBeenCalledWith(generalBadRequestError);
+            });
+        });
+
+        describe('when the Rollenart is not allowed for the ServiceProvider', () => {
+            it('should return a 400 error with the specific i18n key', () => {
+                const error: RollenartNotAllowedForSPError = new RollenartNotAllowedForSPError(
+                    RollenArt.LERN,
+                    faker.string.uuid(),
+                );
+
+                const expectedError: DbiamRolleError = new DbiamRolleError({
+                    code: 400,
+                    i18nKey: RolleErrorI18nTypes.ROLLENART_NOT_ALLOWED_FOR_SERVICE_PROVIDER,
+                });
+
+                filter.catch(error, argumentsHost);
+
+                expect(responseMock.status).toHaveBeenCalledWith(400);
+                expect(responseMock.json).toHaveBeenCalledWith(expectedError);
             });
         });
 
