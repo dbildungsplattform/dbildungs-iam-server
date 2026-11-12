@@ -23,6 +23,7 @@ import {
     type SetMembershipsResult,
 } from '../adapter/domain/itslearning-membership.adapter.js';
 import { ItslearningPersonAdapter } from '../adapter/domain/itslearning-person.adapter.js';
+import { type StatusInfo } from '../adapter/technical/actions/base-mass-action.js';
 import { rollenartToIMSESInstitutionRole } from '../adapter/domain/role-utils.js';
 import { ItsLearningSyncEventHandler } from './itslearning-sync.event-handler.js';
 import { Err, Ok } from '../../../shared/util/result.js';
@@ -94,6 +95,7 @@ describe('ItsLearning Persons Event Handler', () => {
 
     beforeEach(() => {
         sut.ENABLED = true;
+        personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -311,6 +313,80 @@ describe('ItsLearning Persons Event Handler', () => {
             });
         });
 
+        describe('when itslearning is only given through a Rollenerweiterung', () => {
+            const erweiterterPk: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                rolleId: rolleWithoutItslearning.id,
+                organisationId: schuleWithItslearning.id,
+            });
+
+            beforeEach(() => {
+                personRepoMock.findById.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPerson.mockResolvedValueOnce([erweiterterPk]);
+                personenkontextRepoMock.findErweiterteSPByPersonId.mockResolvedValueOnce([
+                    {
+                        personenkontext: erweiterterPk,
+                        serviceProvider: itslearningProvider,
+                    },
+                ]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolleWithoutItslearning.id, rolleWithoutItslearning]]),
+                );
+                orgaRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[schuleWithItslearning.id, schuleWithItslearning]]),
+                );
+            });
+
+            it('should create the person and set memberships for the extended kontext', async () => {
+                itslearningPersonAdapterMock.createOrUpdatePerson.mockResolvedValueOnce(Ok(undefined));
+                itslearningMembershipAdapterMock.setMemberships.mockResolvedValueOnce({
+                    ok: true,
+                    value: { deleted: 0, updated: 1 },
+                } satisfies Result<SetMembershipsResult, DomainError>);
+
+                const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(person.id);
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(itslearningPersonAdapterMock.createOrUpdatePerson).toHaveBeenCalled();
+                expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                    person.id,
+                    [{ organisationId: schuleWithItslearning.id, role: rolleWithoutItslearning.rollenart }],
+                    `${event.eventID}-SYNC-PERSON-MEMBERSHIPS`,
+                );
+                expect(itslearningPersonAdapterMock.deletePerson).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('when the parent school of a class is not one of the persons organisations', () => {
+            beforeEach(() => {
+                personRepoMock.findById.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPerson.mockResolvedValueOnce([personenkontextAtKlasseWithItslearning]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolleWithItslearning.id, rolleWithItslearning]]),
+                );
+                orgaRepoMock.findByIds
+                    .mockResolvedValueOnce(new Map([[klasseWithItslearning.id, klasseWithItslearning]]))
+                    .mockResolvedValueOnce(new Map([[schuleWithItslearning.id, schuleWithItslearning]]));
+            });
+
+            it('should load the parent school and set memberships for the class', async () => {
+                itslearningPersonAdapterMock.createOrUpdatePerson.mockResolvedValueOnce(Ok(undefined));
+                itslearningMembershipAdapterMock.setMemberships.mockResolvedValueOnce({
+                    ok: true,
+                    value: { deleted: 0, updated: 1 },
+                } satisfies Result<SetMembershipsResult, DomainError>);
+
+                const event: PersonExternalSystemsSyncEvent = new PersonExternalSystemsSyncEvent(person.id);
+                await sut.personExternalSystemSyncEventHandler(event);
+
+                expect(orgaRepoMock.findByIds).toHaveBeenLastCalledWith([schuleWithItslearning.id]);
+                expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                    person.id,
+                    [{ organisationId: klasseWithItslearning.id, role: rolleWithItslearning.rollenart }],
+                    `${event.eventID}-SYNC-PERSON-MEMBERSHIPS`,
+                );
+            });
+        });
+
         describe('invalid person', () => {
             it("should log error, if person doesn't exist", async () => {
                 const personId: string = faker.string.uuid();
@@ -348,6 +424,159 @@ describe('ItsLearning Persons Event Handler', () => {
                     `[EventID: ${event.eventID}] Not enabled, ignoring event.`,
                 );
             });
+        });
+    });
+
+    describe('personExternalSystemSyncBatch', () => {
+        const keepAlive: () => void = vi.fn();
+        const eventId: string = 'batch-event-id';
+
+        const itslearningProvider: ServiceProvider<true> = DoFactory.createServiceProvider(true, {
+            externalSystem: ServiceProviderSystem.ITSLEARNING,
+        });
+        const rolle: Rolle<true> = DoFactory.createRolle(true, { serviceProviderData: [itslearningProvider] });
+        const schule: Organisation<true> = DoFactory.createOrganisation(true, {
+            typ: OrganisationsTyp.SCHULE,
+            itslearningEnabled: true,
+        });
+
+        const successStatus: StatusInfo = { codeMajor: 'success', severity: 'status' };
+        const failureStatus: StatusInfo = {
+            codeMajor: 'failure',
+            severity: 'error',
+            codeMinor: { codeMinorField: [] },
+            description: { language: 'de', text: 'itslearning rejected the person' },
+        };
+
+        const mockRelevantPerson: (person: Person<true>) => void = (person: Person<true>): void => {
+            personRepoMock.findById.mockResolvedValueOnce(person);
+            personenkontextRepoMock.findByPerson.mockResolvedValueOnce([
+                DoFactory.createPersonenkontext(true, { rolleId: rolle.id, organisationId: schule.id }),
+            ]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map([[schule.id, schule]]));
+        };
+
+        const mockPersonWithoutKontext: (person: Person<true>) => void = (person: Person<true>): void => {
+            personRepoMock.findById.mockResolvedValueOnce(person);
+            personenkontextRepoMock.findByPerson.mockResolvedValueOnce([]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+            orgaRepoMock.findByIds.mockResolvedValueOnce(new Map());
+        };
+
+        it('should create or update all persons with one mass request and set memberships per person', async () => {
+            const personA: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            const personB: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(personA);
+            mockRelevantPerson(personB);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Ok({ status: [successStatus, successStatus], value: undefined }),
+            );
+            itslearningMembershipAdapterMock.setMemberships.mockResolvedValue({
+                ok: true,
+                value: { deleted: 0, updated: 1 },
+            });
+
+            await sut.personExternalSystemSyncBatch([personA.id, personB.id], eventId, keepAlive);
+
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).toHaveBeenCalledTimes(1);
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).toHaveBeenCalledWith(
+                [expect.objectContaining({ id: personA.id }), expect.objectContaining({ id: personB.id })],
+                `${eventId}-SYNC-PERSONS`,
+            );
+            expect(itslearningPersonAdapterMock.createOrUpdatePerson).not.toHaveBeenCalled();
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(2);
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                personA.id,
+                expect.any(Array),
+                `${eventId}-SYNC-PERSON-MEMBERSHIPS`,
+            );
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                personB.id,
+                expect.any(Array),
+                `${eventId}-SYNC-PERSON-MEMBERSHIPS`,
+            );
+        });
+
+        it('should not set memberships for persons that failed in the mass request', async () => {
+            const personA: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            const personB: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(personA);
+            mockRelevantPerson(personB);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Ok({ status: [failureStatus, successStatus], value: undefined }),
+            );
+            itslearningMembershipAdapterMock.setMemberships.mockResolvedValue({
+                ok: true,
+                value: { deleted: 0, updated: 1 },
+            });
+
+            await sut.personExternalSystemSyncBatch([personA.id, personB.id], eventId, keepAlive);
+
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledWith(
+                personB.id,
+                expect.any(Array),
+                `${eventId}-SYNC-PERSON-MEMBERSHIPS`,
+            );
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining(`Could not create/update person with ID ${personA.id} in itslearning`),
+            );
+        });
+
+        it('should not set memberships if the mass request itself fails', async () => {
+            const personA: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(personA);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Err(new ItsLearningError('Error Test')),
+            );
+
+            await sut.personExternalSystemSyncBatch([personA.id], eventId, keepAlive);
+
+            expect(itslearningMembershipAdapterMock.setMemberships).not.toHaveBeenCalled();
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalled();
+        });
+
+        it('should delete persons without relevant kontexte with one mass request', async () => {
+            const person: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockPersonWithoutKontext(person);
+            itslearningPersonAdapterMock.deletePersons.mockResolvedValueOnce(
+                Ok({ status: [successStatus], value: undefined }),
+            );
+
+            await sut.personExternalSystemSyncBatch([person.id], eventId, keepAlive);
+
+            expect(itslearningPersonAdapterMock.deletePersons).toHaveBeenCalledWith(
+                [person.id],
+                `${eventId}-DELETE-PERSONS`,
+            );
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).not.toHaveBeenCalled();
+            expect(itslearningMembershipAdapterMock.setMemberships).not.toHaveBeenCalled();
+        });
+
+        it('should continue with the other persons if determining one of them fails', async () => {
+            const failingPersonId: string = faker.string.uuid();
+            const personB: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            personRepoMock.findById.mockRejectedValueOnce(new Error('db down'));
+            mockRelevantPerson(personB);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Ok({ status: [successStatus], value: undefined }),
+            );
+            itslearningMembershipAdapterMock.setMemberships.mockResolvedValue({
+                ok: true,
+                value: { deleted: 0, updated: 1 },
+            });
+
+            await sut.personExternalSystemSyncBatch([failingPersonId, personB.id], eventId, keepAlive);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining(`Could not determine sync target of person ${failingPersonId}`),
+            );
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).toHaveBeenCalledWith(
+                [expect.objectContaining({ id: personB.id })],
+                `${eventId}-SYNC-PERSONS`,
+            );
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
         });
     });
 });

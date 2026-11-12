@@ -19,7 +19,7 @@ import { type OrganisationID, type RolleID, type ServiceProviderID } from '../..
 import { type PermittedOrgas, type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { ServiceProviderMerkmal } from '../../service-provider/domain/service-provider.enum.js';
+import { ServiceProviderMerkmal, ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { type ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
@@ -33,6 +33,7 @@ import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
 import { RolleNameNotUniqueOnSskError } from '../specification/error/rolle-name-not-unique-on-ssk.error.js';
 import { ServiceProviderNichtNachtraeglichZuweisbarError } from '../specification/error/service-provider-nicht-nachtraeglich-zuweisbar.error.js';
+import { ItslearningNichtNachtraeglichZuweisbarError } from '../specification/error/itslearning-nicht-nachtraeglich-zuweisbar.error.js';
 import { type RolleFindByParameters, RolleRepo } from './rolle.repo.js';
 
 describe('RolleRepo', () => {
@@ -1926,6 +1927,45 @@ describe('RolleRepo', () => {
 
             expectErrResult(rolleResult);
             expect(rolleResult.error).toBeInstanceOf(ServiceProviderNichtNachtraeglichZuweisbarError);
+        });
+
+        it('should return error when the itslearning service provider is added to an already assigned rolle, even if it is nachtraeglich zuweisbar', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    serviceProviderIds: [],
+                    serviceProviderData: [],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const itslearningServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                externalSystem: ServiceProviderSystem.ITSLEARNING,
+                merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
+                providedOnSchulstrukturknoten: organisationId,
+            });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [itslearningServiceProvider.id],
+                1,
+                true,
+                permissions,
+            );
+
+            expectErrResult(rolleResult);
+            expect(rolleResult.error).toBeInstanceOf(ItslearningNichtNachtraeglichZuweisbarError);
         });
     });
 

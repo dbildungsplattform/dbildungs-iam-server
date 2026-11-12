@@ -212,10 +212,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
     }
 
     public async publish(event: KafkaEvent): Promise<void> {
-        const eventKey: KafkaEventKey | undefined = Object.keys(KafkaEventMapping).find(
-            (key: string): key is KafkaEventKey =>
-                isKafkaEventKey(key) && KafkaEventMapping[key]?.eventClass === event.constructor,
-        );
+        const eventKey: KafkaEventKey | undefined = this.findEventKey(event);
 
         if (!eventKey) {
             this.logger.error(`(Standard publishing) No mapping found for event: ${event.constructor.name}`);
@@ -225,6 +222,44 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         const topic: KafkaTopic = KafkaEventMapping[eventKey].topic;
         const topicWithPrefix: string = this.kafkaConfig.TOPIC_PREFIX + topic;
         await this.sendEvent(event, eventKey, topicWithPrefix);
+    }
+
+    public async publishMultiple(events: KafkaEvent[]): Promise<void> {
+        const messagesByTopic: Map<string, KafkaJS.Message[]> = new Map();
+
+        for (const event of events) {
+            const eventKey: KafkaEventKey | undefined = this.findEventKey(event);
+            if (!eventKey) {
+                this.logger.error(`(Batch publishing) No mapping found for event: ${event.constructor.name}`);
+                continue;
+            }
+
+            const topicWithPrefix: string = this.kafkaConfig.TOPIC_PREFIX + KafkaEventMapping[eventKey].topic;
+            const messages: KafkaJS.Message[] = messagesByTopic.get(topicWithPrefix) ?? [];
+            messages.push({ key: event.kafkaKey, value: JSON.stringify(event), headers: { eventKey } });
+            messagesByTopic.set(topicWithPrefix, messages);
+        }
+
+        if (messagesByTopic.size === 0) {
+            return;
+        }
+
+        const topicMessages: KafkaJS.TopicMessages[] = [...messagesByTopic].map(
+            ([topic, messages]: [string, KafkaJS.Message[]]) => ({ topic, messages }),
+        );
+        this.logger.info(`Publishing ${events.length} events to Kafka in one batch`);
+        try {
+            await this.producer?.sendBatch({ topicMessages });
+        } catch (err) {
+            this.logger.logUnknownAsError(`Error publishing event batch to Kafka`, err);
+        }
+    }
+
+    private findEventKey(event: KafkaEvent): KafkaEventKey | undefined {
+        return Object.keys(KafkaEventMapping).find(
+            (key: string): key is KafkaEventKey =>
+                isKafkaEventKey(key) && KafkaEventMapping[key]?.eventClass === event.constructor,
+        );
     }
 
     public async publishToDLQ(event: KafkaEvent, error: Error): Promise<void> {

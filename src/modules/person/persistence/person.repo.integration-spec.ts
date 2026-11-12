@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { Collection, EntityManager, MikroORM, ref, type RequiredEntityData } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { beforeEach, vi } from 'vitest';
+import { beforeEach, vi, type MockInstance } from 'vitest';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
     ConfigTestModule,
@@ -314,6 +314,52 @@ describe('PersonRepository Integration', () => {
 
             expect(personen).toHaveLength(0);
             expect(cursor).toBeUndefined();
+        });
+
+        it('should return persons in classes below an itslearning school, but not persons at sub-schools', async () => {
+            const school: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { itslearningEnabled: true, typ: OrganisationsTyp.SCHULE }),
+            );
+            const klasse: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.KLASSE,
+            );
+            const subSchool: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.SCHULE,
+            );
+            const personInKlasse: Person<true> = await savePerson(false, { username: 'klassenperson' });
+            const personInSubSchool: Person<true> = await savePerson(false, { username: 'unterschulperson' });
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                externalSystem: ServiceProviderSystem.ITSLEARNING,
+            });
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, { serviceProviderIds: [serviceProvider.id] }),
+            );
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+            await dbiamPersonenkontextRepoInternal.save(
+                DoFactory.createPersonenkontext(false, {
+                    organisationId: klasse.id,
+                    personId: personInKlasse.id,
+                    rolleId: rolle.id,
+                }),
+            );
+            await dbiamPersonenkontextRepoInternal.save(
+                DoFactory.createPersonenkontext(false, {
+                    organisationId: subSchool.id,
+                    personId: personInSubSchool.id,
+                    rolleId: rolle.id,
+                }),
+            );
+
+            const [personen]: [Person<true>[], string | undefined] =
+                await sut.findWithRolleAndNoOtherItslearningKontexteByCursor(rolle.id, 10);
+
+            expect(personen.map((person: Person<true>) => person.id)).toEqual([personInKlasse.id]);
         });
 
         it('should not return persons that already have itslearning', async () => {
@@ -2112,6 +2158,37 @@ describe('PersonRepository Integration', () => {
                     sut.deletePerson(personGetAllowed.value.id, personPermissionsMock, removedPersonenkontexts),
                 ).rejects.toThrow(PersonHasNoKeycloakId);
             });
+
+            it('should not publish any event when the person could not be deleted from the database', async () => {
+                const person: Person<true> = DoFactory.createPerson(true);
+                const personEntity: PersonEntity = new PersonEntity();
+                await em.persist(personEntity.assign(mapAggregateToData(person))).flush();
+                person.id = personEntity.id;
+                personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+                kcUserServiceMock.findById.mockResolvedValue({
+                    ok: true,
+                    value: {
+                        id: person.keycloakUserId!,
+                        username: person.username ?? '',
+                        enabled: true,
+                        email: faker.internet.email(),
+                        createdDate: new Date(),
+                        externalSystemIDs: {},
+                    },
+                });
+                const nativeDeleteSpy: MockInstance = vi
+                    .spyOn(em, 'nativeDelete')
+                    .mockRejectedValueOnce(new Error('DB delete failed'));
+
+                const removedPersonenkontexts: PersonenkontextEventKontextData[] = [];
+                await expect(
+                    sut.deletePerson(person.id, personPermissionsMock, removedPersonenkontexts),
+                ).rejects.toThrow('DB delete failed');
+
+                expect(eventServiceMock.publish).not.toHaveBeenCalled();
+                expect(await em.count(PersonEntity, { id: person.id })).toBe(1);
+                nativeDeleteSpy.mockRestore();
+            });
         });
     });
 
@@ -2433,6 +2510,37 @@ describe('PersonRepository Integration', () => {
                         removedPersonenkontexts,
                     ),
                 ).rejects.toThrow(PersonHasNoKeycloakId);
+            });
+
+            it('should not publish any event when the person could not be deleted from the database', async () => {
+                const person: Person<true> = DoFactory.createPerson(true);
+                const personEntity: PersonEntity = new PersonEntity();
+                await em.persist(personEntity.assign(mapAggregateToData(person))).flush();
+                person.id = personEntity.id;
+                personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+                kcUserServiceMock.findById.mockResolvedValue({
+                    ok: true,
+                    value: {
+                        id: person.keycloakUserId!,
+                        username: person.username ?? '',
+                        enabled: true,
+                        email: faker.internet.email(),
+                        createdDate: new Date(),
+                        externalSystemIDs: {},
+                    },
+                });
+                const nativeDeleteSpy: MockInstance = vi
+                    .spyOn(em, 'nativeDelete')
+                    .mockRejectedValueOnce(new Error('DB delete failed'));
+
+                const removedPersonenkontexts: PersonenkontextEventKontextData[] = [];
+                await expect(
+                    sut.deletePersonAfterDeadlineExceeded(person.id, personPermissionsMock, removedPersonenkontexts),
+                ).rejects.toThrow('DB delete failed');
+
+                expect(eventServiceMock.publish).not.toHaveBeenCalled();
+                expect(await em.count(PersonEntity, { id: person.id })).toBe(1);
+                nativeDeleteSpy.mockRestore();
             });
         });
     });

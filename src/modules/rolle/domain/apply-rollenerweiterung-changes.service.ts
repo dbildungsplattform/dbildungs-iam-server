@@ -1,6 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { Injectable } from '@nestjs/common';
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { KafkaRollenerweiterungCreatedEvent } from '../../../shared/events/kafka-rollenerweiterung-created.event.js';
+import { KafkaRollenerweiterungDeletedEvent } from '../../../shared/events/kafka-rollenerweiterung-deleted.event.js';
+import { RollenerweiterungCreatedEvent } from '../../../shared/events/rollenerweiterung-created.event.js';
+import { RollenerweiterungDeletedEvent } from '../../../shared/events/rollenerweiterung-deleted.event.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
@@ -77,6 +82,7 @@ export class ApplyRollenerweiterungService {
         private readonly organisationRepo: OrganisationRepository,
         private readonly rolleRepo: RolleRepo,
         private readonly rollenerweiterungRepo: InternalRollenerweiterungRepo,
+        private readonly eventService: EventRoutingLegacyKafkaService,
     ) {}
 
     public async applyRollenerweiterungChangesForRolle(
@@ -328,6 +334,10 @@ export class ApplyRollenerweiterungService {
         const persistedRollenerweiterung: Rollenerweiterung<true> = await this.rollenerweiterungRepo.create(
             createResult.value,
         );
+        this.eventService.publish(
+            new RollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
+            new KafkaRollenerweiterungCreatedEvent(organisation.id, rolle.id, serviceProvider.id),
+        );
 
         return Ok(persistedRollenerweiterung);
     }
@@ -574,6 +584,13 @@ export class ApplyRollenerweiterungService {
             rolleId,
             serviceProviderId,
         });
+
+        if (result.ok) {
+            this.eventService.publish(
+                new RollenerweiterungDeletedEvent(organisationId, rolleId, serviceProviderId),
+                new KafkaRollenerweiterungDeletedEvent(organisationId, rolleId, serviceProviderId),
+            );
+        }
 
         return {
             id: errorId,
