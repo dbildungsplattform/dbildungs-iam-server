@@ -21,9 +21,12 @@ import { UserLock } from '../../../../keycloak-administration/domain/user-lock.j
 import { PersonEmailResponse } from '../../../../person/api/person-email-response.js';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { EntityManager } from '@mikro-orm/core';
+import { Mutex } from 'async-mutex';
 
 @Injectable()
 export class SchulconnexPushHandler {
+    private readonly personUpdateMutexes: Map<PersonID, Mutex> = new Map();
+
     public constructor(
         private readonly logger: ClassLogger,
         private readonly pushAdapter: SchulconnexPushAdapter,
@@ -60,6 +63,22 @@ export class SchulconnexPushHandler {
     }
 
     private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<void> {
+        const mutex: Mutex = this.personUpdateMutexes.get(personId) ?? new Mutex();
+
+        this.personUpdateMutexes.set(personId, mutex);
+
+        try {
+            await mutex.runExclusive(async (): Promise<void> => {
+                await this.updatePersonenkontexteExclusive(personId, eventId);
+            });
+        } finally {
+            if (!mutex.isLocked()) {
+                this.personUpdateMutexes.delete(personId);
+            }
+        }
+    }
+
+    private async updatePersonenkontexteExclusive(personId: PersonID, eventId: string): Promise<void> {
         const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
             UserLock[],
@@ -72,12 +91,14 @@ export class SchulconnexPushHandler {
 
         for (const registry of registries) {
             const kontexte: KontextWithOrgaAndRolle[] =
+                // eslint-disable-next-line no-await-in-loop
                 await this.personenkontextRepo.findByPersonAndServiceProviderWithOrgaAndRolle(
                     personId,
                     registry.serviceProviderId,
                 );
 
             for (const kontext of kontexte) {
+                // eslint-disable-next-line no-await-in-loop
                 const result: Result<void, DomainError> = await this.pushAdapter.upsertPersonenkontext(
                     registry,
                     kontext,

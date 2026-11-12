@@ -448,4 +448,73 @@ describe('SchulconnexPushHandler', () => {
             );
         });
     });
+
+    describe('concurrency handling', () => {
+        it('should serialize email and lock updates for the same person', async () => {
+            const currentLock: UserLock = UserLock.construct(
+                personId,
+                'admin-id',
+                new Date(),
+                PersonLockOccasion.MANUELL_GESPERRT,
+                new Date(),
+            );
+
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]).mockResolvedValueOnce([currentLock]);
+
+            let resolveFirstPush: (() => void) | undefined;
+
+            const firstPush: Promise<ReturnType<typeof Ok>> = new Promise((resolve) => {
+                resolveFirstPush = (): void => resolve(Ok());
+            });
+
+            pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+
+            const emailEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                'new@example.org',
+                undefined,
+                'old@example.org',
+                undefined,
+            );
+
+            const locksEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(
+                personId,
+                [],
+                [
+                    {
+                        locked_until: new Date(),
+                        locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                    },
+                ],
+            );
+
+            const emailHandling: Promise<void> = sut.handleEmailAddressChanged(emailEvent);
+
+            await vi.waitFor(() => {
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+            });
+
+            const locksHandling: Promise<void> = sut.handleLocksForPersonChanged(locksEvent);
+
+            await Promise.resolve();
+
+            expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(1);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+
+            resolveFirstPush?.();
+
+            await Promise.all([emailHandling, locksHandling]);
+
+            expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(2);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(1, registry, kontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                2,
+                registry,
+                kontext,
+                [currentLock],
+                undefined,
+            );
+        });
+    });
 });
