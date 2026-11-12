@@ -195,23 +195,23 @@ describe('SchulconnexPushHandler', () => {
         removedKontext = createKontext('removed-kontext');
         pushKontext = createPushKontext(newKontext);
 
-        registryRepoMock.findAll.mockResolvedValue([registry]);
-        rolleRepoMock.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
-        personRepoMock.findById.mockResolvedValue(person);
-        personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([pushKontext]);
-        userLockRepoMock.findByPersonId.mockResolvedValue(userLocks);
-        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[person.id, email]])));
-        adapterMock.upsertPerson.mockResolvedValue(Ok());
-        adapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
-        adapterMock.deletePersonenkontext.mockResolvedValue(Ok());
-        adapterMock.deletePerson.mockResolvedValue(Ok());
+        registryRepoMock.findAll.mockResolvedValueOnce([registry]);
+        rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
+        personRepoMock.findById.mockResolvedValueOnce(person);
+        personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([pushKontext]);
+        userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks);
+        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Ok(new Map([[person.id, email]])));
+        adapterMock.upsertPerson.mockResolvedValueOnce(Ok());
+        adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
+        adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
+        adapterMock.deletePerson.mockResolvedValueOnce(Ok());
     });
 
     describe('handlePersonenkontextUpdatedEvent', () => {
         describe('registry and context selection', () => {
             it('should log receipt and return without loading roles when no registries exist', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                registryRepoMock.findAll.mockResolvedValueOnce([]);
+                registryRepoMock.findAll.mockReset().mockResolvedValueOnce([]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -231,7 +231,7 @@ describe('SchulconnexPushHandler', () => {
             it('should propagate a failure while loading registries', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: Error = new Error('Registry lookup failed');
-                registryRepoMock.findAll.mockRejectedValueOnce(error);
+                registryRepoMock.findAll.mockReset().mockRejectedValueOnce(error);
 
                 await expect(sut.handlePersonenkontextUpdatedEvent(event)).rejects.toBe(error);
 
@@ -242,7 +242,7 @@ describe('SchulconnexPushHandler', () => {
             it('should propagate a failure while loading roles', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: Error = new Error('Role lookup failed');
-                rolleRepoMock.findByIds.mockRejectedValueOnce(error);
+                rolleRepoMock.findByIds.mockReset().mockRejectedValueOnce(error);
 
                 await expect(sut.handlePersonenkontextUpdatedEvent(event)).rejects.toBe(error);
 
@@ -272,7 +272,7 @@ describe('SchulconnexPushHandler', () => {
                     [removedKontext, createKontext('removed-other', { rolleId: 'rolle-2' })],
                     [newKontext, existingKontext, createKontext('current-other', { rolleId: 'rolle-3' })],
                 );
-                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
+                rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(new Map());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -310,7 +310,7 @@ describe('SchulconnexPushHandler', () => {
                         : new Map([
                               [rolle.id, DoFactory.createRolle(true, { serviceProviderIds: ['other-provider'] })],
                           ]);
-                    rolleRepoMock.findByIds.mockResolvedValueOnce(rollen);
+                    rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(rollen);
 
                     const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -342,10 +342,10 @@ describe('SchulconnexPushHandler', () => {
                 const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
                 const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext);
                 const event: PersonenkontextUpdatedEvent = createEvent([newKontext, secondKontext]);
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
-                    secondPushKontext,
-                    pushKontext,
-                ]);
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockReset()
+                    .mockResolvedValueOnce([secondPushKontext, pushKontext]);
+                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -377,10 +377,9 @@ describe('SchulconnexPushHandler', () => {
 
             it('should only push new contexts without recreating a person with existing access', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent([newKontext], [], [newKontext, existingKontext]);
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
-                    createPushKontext(existingKontext),
-                    pushKontext,
-                ]);
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockReset()
+                    .mockResolvedValueOnce([createPushKontext(existingKontext), pushKontext]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -473,6 +472,7 @@ describe('SchulconnexPushHandler', () => {
                     [removedKontext, secondRemovedKontext],
                     [existingKontext],
                 );
+                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -559,9 +559,9 @@ describe('SchulconnexPushHandler', () => {
                     address: 'microservice@example.org',
                     status: EmailAddressStatus.DISABLED,
                 };
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
-                    Ok(new Map([[person.id, microserviceEmail]])),
-                );
+                emailResolverServiceMock.findEmailsBySpshPersons
+                    .mockReset()
+                    .mockResolvedValueOnce(Ok(new Map([[person.id, microserviceEmail]])));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -577,10 +577,10 @@ describe('SchulconnexPushHandler', () => {
 
             it('should push an undefined email when the email map has no entry for the person', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
-                    Ok(new Map<PersonID, PersonEmailResponse | undefined>()),
-                );
-                userLockRepoMock.findByPersonId.mockResolvedValueOnce([]);
+                emailResolverServiceMock.findEmailsBySpshPersons
+                    .mockReset()
+                    .mockResolvedValueOnce(Ok(new Map<PersonID, PersonEmailResponse | undefined>()));
+                userLockRepoMock.findByPersonId.mockReset().mockResolvedValueOnce([]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -595,9 +595,11 @@ describe('SchulconnexPushHandler', () => {
 
             it('should pass through an undefined email returned by the microservice', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
-                    Ok(new Map<PersonID, PersonEmailResponse | undefined>([[person.id, undefined]])),
-                );
+                emailResolverServiceMock.findEmailsBySpshPersons
+                    .mockReset()
+                    .mockResolvedValueOnce(
+                        Ok(new Map<PersonID, PersonEmailResponse | undefined>([[person.id, undefined]])),
+                    );
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -612,7 +614,7 @@ describe('SchulconnexPushHandler', () => {
 
             it('should fail without pushing when the person no longer exists', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
-                personRepoMock.findById.mockResolvedValueOnce(undefined);
+                personRepoMock.findById.mockReset().mockResolvedValueOnce(undefined);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -637,7 +639,7 @@ describe('SchulconnexPushHandler', () => {
             it('should stop context creation and deletion when resolving emails fails', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent([newKontext], [removedKontext]);
                 const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Err(error));
+                emailResolverServiceMock.findEmailsBySpshPersons.mockReset().mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -651,7 +653,7 @@ describe('SchulconnexPushHandler', () => {
             it('should propagate email microservice errors without pushing', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Err(error));
+                emailResolverServiceMock.findEmailsBySpshPersons.mockReset().mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -663,7 +665,7 @@ describe('SchulconnexPushHandler', () => {
             it('should aggregate unexpected errors thrown while loading push data', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: Error = new Error('Person lookup failed');
-                personRepoMock.findById.mockRejectedValueOnce(error);
+                personRepoMock.findById.mockReset().mockRejectedValueOnce(error);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -681,7 +683,7 @@ describe('SchulconnexPushHandler', () => {
             it('should stop before pushing contexts when creating the person fails', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const error: DomainError = new DomainErrorMock('Person upsert failed');
-                adapterMock.upsertPerson.mockResolvedValueOnce(Err(error));
+                adapterMock.upsertPerson.mockReset().mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -701,12 +703,13 @@ describe('SchulconnexPushHandler', () => {
                     [removedKontext],
                 );
                 const error: DomainError = new DomainErrorMock('Context upsert failed');
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
-                    pushKontext,
-                    secondPushKontext,
-                    createPushKontext(thirdKontext),
-                ]);
-                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok()).mockResolvedValueOnce(Err(error));
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockReset()
+                    .mockResolvedValueOnce([pushKontext, secondPushKontext, createPushKontext(thirdKontext)]);
+                adapterMock.upsertPersonenkontext
+                    .mockReset()
+                    .mockResolvedValueOnce(Ok())
+                    .mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -739,7 +742,10 @@ describe('SchulconnexPushHandler', () => {
                     [],
                 );
                 const error: DomainError = new DomainErrorMock('Context deletion failed');
-                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok()).mockResolvedValueOnce(Err(error));
+                adapterMock.deletePersonenkontext
+                    .mockReset()
+                    .mockResolvedValueOnce(Ok())
+                    .mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -763,7 +769,7 @@ describe('SchulconnexPushHandler', () => {
             it('should propagate a failure when deleting the person', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent([], [removedKontext], []);
                 const error: DomainError = new DomainErrorMock('Person deletion failed');
-                adapterMock.deletePerson.mockResolvedValueOnce(Err(error));
+                adapterMock.deletePerson.mockReset().mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -796,17 +802,26 @@ describe('SchulconnexPushHandler', () => {
                 });
                 const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext);
                 const event: PersonenkontextUpdatedEvent = createEvent([newKontext, secondKontext]);
-                registryRepoMock.findAll.mockResolvedValueOnce([registry, secondRegistry, unrelatedRegistry]);
-                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                registryRepoMock.findAll
+                    .mockReset()
+                    .mockResolvedValueOnce([registry, secondRegistry, unrelatedRegistry]);
+                rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(
                     new Map([
                         [rolle.id, rolle],
                         [secondRolle.id, secondRolle],
                     ]),
                 );
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([
-                    pushKontext,
-                    secondPushKontext,
-                ]);
+                personRepoMock.findById.mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockReset()
+                    .mockResolvedValueOnce([pushKontext, secondPushKontext])
+                    .mockResolvedValueOnce([pushKontext, secondPushKontext]);
+                userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks);
+                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
+                    Ok(new Map([[person.id, email]])),
+                );
+                adapterMock.upsertPerson.mockResolvedValueOnce(Ok());
+                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -832,8 +847,17 @@ describe('SchulconnexPushHandler', () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const returnedError: DomainError = new DomainErrorMock('First registry failed');
                 const thrownError: Error = new Error('Second registry failed');
-                registryRepoMock.findAll.mockResolvedValueOnce([registry, secondRegistry, thirdRegistry]);
+                registryRepoMock.findAll.mockReset().mockResolvedValueOnce([registry, secondRegistry, thirdRegistry]);
+                personRepoMock.findById.mockResolvedValueOnce(person).mockResolvedValueOnce(person);
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockResolvedValueOnce([pushKontext])
+                    .mockResolvedValueOnce([pushKontext]);
+                userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks).mockResolvedValueOnce(userLocks);
+                emailResolverServiceMock.findEmailsBySpshPersons
+                    .mockResolvedValueOnce(Ok(new Map([[person.id, email]])))
+                    .mockResolvedValueOnce(Ok(new Map([[person.id, email]])));
                 adapterMock.upsertPerson
+                    .mockReset()
                     .mockResolvedValueOnce(Err(returnedError))
                     .mockRejectedValueOnce(thrownError)
                     .mockResolvedValueOnce(Ok());
@@ -864,7 +888,7 @@ describe('SchulconnexPushHandler', () => {
             it('should preserve and log rejection reasons that are not Error instances', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent();
                 const reason: string = 'Connection closed';
-                adapterMock.upsertPerson.mockRejectedValueOnce(reason);
+                adapterMock.upsertPerson.mockReset().mockRejectedValueOnce(reason);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
