@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { assert, type Mock } from 'vitest';
 
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
@@ -341,6 +342,30 @@ describe('SchulconnexPushHandler', () => {
         });
 
         describe('creation', () => {
+            it('should keep the handler alive after each creation adapter operation', async () => {
+                const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
+                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, secondKontext]);
+                const keepAlive: Mock<() => void> = vi.fn();
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                    .mockReset()
+                    .mockResolvedValueOnce([pushKontext, createPushKontext(secondKontext, person, registry)]);
+                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
+
+                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
+
+                expect(result).toEqual(Ok());
+                expect(keepAlive).toHaveBeenCalledTimes(3);
+                expect(adapterMock.upsertPerson).toHaveBeenCalledBefore(keepAlive);
+                expect(keepAlive).toHaveBeenCalledBefore(adapterMock.upsertPersonenkontext);
+                const [firstContextUpsert, secondContextUpsert]: number[] =
+                    adapterMock.upsertPersonenkontext.mock.invocationCallOrder;
+                assert.isDefined(firstContextUpsert);
+                assert.isDefined(secondContextUpsert);
+                expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(firstContextUpsert);
+                expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(secondContextUpsert);
+                expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(secondContextUpsert);
+            });
+
             it('should create the person before pushing all current contexts on first access', async () => {
                 const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
                 const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext, person, registry);
@@ -474,6 +499,32 @@ describe('SchulconnexPushHandler', () => {
         });
 
         describe('deletion', () => {
+            it('should keep the handler alive after each deletion adapter operation', async () => {
+                const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
+                const event: PersonenkontextUpdatedEvent = createEvent(
+                    person,
+                    [],
+                    [removedKontext, secondRemovedKontext],
+                    [],
+                );
+                const keepAlive: Mock<() => void> = vi.fn();
+                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
+
+                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
+
+                expect(result).toEqual(Ok());
+                expect(keepAlive).toHaveBeenCalledTimes(3);
+                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledBefore(keepAlive);
+                const [, secondContextDeletion]: number[] = adapterMock.deletePersonenkontext.mock.invocationCallOrder;
+                const [personDeletion]: number[] = adapterMock.deletePerson.mock.invocationCallOrder;
+                assert.isDefined(secondContextDeletion);
+                assert.isDefined(personDeletion);
+                expect(keepAlive.mock.invocationCallOrder[0]).toBeLessThan(secondContextDeletion);
+                expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(secondContextDeletion);
+                expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(personDeletion);
+                expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(personDeletion);
+            });
+
             it('should delete removed contexts but retain a person with remaining relevant contexts', async () => {
                 const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
                 const event: PersonenkontextUpdatedEvent = createEvent(

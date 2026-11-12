@@ -45,6 +45,7 @@ export class SchulconnexPushHandler {
     @EnsureRequestContext((handler: SchulconnexPushHandler) => handler.em)
     public async handlePersonenkontextUpdatedEvent(
         event: PersonenkontextUpdatedEvent,
+        keepAlive?: () => void,
     ): Promise<Result<void, DomainError>> {
         const logPrefix: string = `[EventID: ${event.eventID}] Schulconnex push for person ${event.person.id}`;
         this.logger.info(`${logPrefix}: Received PersonenkontextUpdatedEvent`);
@@ -66,7 +67,7 @@ export class SchulconnexPushHandler {
             registries
                 .filter((registry: SchulconnexPushRegistry<true>) => this.createRegistryKontextFilter(registry, rollen))
                 .map((registry: SchulconnexPushRegistry<true>) =>
-                    this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen),
+                    this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen, keepAlive),
                 ),
         );
         const failures: unknown[] = this.collectAndLogFailures(results, registries, logPrefix);
@@ -100,6 +101,7 @@ export class SchulconnexPushHandler {
         event: PersonenkontextUpdatedEvent,
         registry: SchulconnexPushRegistry<true>,
         rollen: Map<RolleID, Rolle<true>>,
+        keepAlive?: () => void,
     ): Promise<Result<void, DomainError>> {
         const newKontexte: PersonenkontextEventKontextData[] = event.newKontexte.filter(
             this.createRegistryKontextFilter(registry, rollen),
@@ -123,6 +125,7 @@ export class SchulconnexPushHandler {
             kontexteToUpsert,
             hadRelevantKontexte,
             registry,
+            keepAlive,
         );
         if (!creationResult.ok) {
             return creationResult;
@@ -133,6 +136,7 @@ export class SchulconnexPushHandler {
             currentKontexte,
             hadRelevantKontexte,
             registry,
+            keepAlive,
         );
         if (!deletionResult.ok) {
             return deletionResult;
@@ -147,6 +151,7 @@ export class SchulconnexPushHandler {
         currentKontexte: PersonenkontextEventKontextData[],
         hadRelevantKontexte: boolean,
         registry: SchulconnexPushRegistry<true>,
+        keepAlive?: () => void,
     ): Promise<Result<void, DomainError>> {
         for (const pk of removedKontexte) {
             // eslint-disable-next-line no-await-in-loop
@@ -155,12 +160,14 @@ export class SchulconnexPushHandler {
                 event.person.id,
                 pk.id,
             );
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
         }
         if (hadRelevantKontexte && currentKontexte.length === 0) {
             const result: Result<void, DomainError> = await this.adapter.deletePerson(registry, event.person.id);
+            keepAlive?.();
 
             return result;
         }
@@ -173,6 +180,7 @@ export class SchulconnexPushHandler {
         kontexteToUpsert: PersonenkontextEventKontextData[],
         hadRelevantKontexte: boolean,
         registry: SchulconnexPushRegistry<true>,
+        keepAlive?: () => void,
     ): Promise<Result<void, DomainError>> {
         if (kontexteToUpsert.length === 0) {
             return Ok();
@@ -194,6 +202,7 @@ export class SchulconnexPushHandler {
 
         if (!hadRelevantKontexte) {
             const result: Result<void, DomainError> = await this.adapter.upsertPerson(registry, data.value.person);
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
@@ -206,6 +215,7 @@ export class SchulconnexPushHandler {
                 data.value.userLocks,
                 data.value.email,
             );
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
