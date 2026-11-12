@@ -12,7 +12,7 @@ import {
 import { SchulconnexPushRegistryRepo } from '../../persistence/schulconnex-push-registry.repo.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
-import { DomainError } from '../../../../../shared/error/index.js';
+import { DomainError, SchulconnexPushError } from '../../../../../shared/error/index.js';
 import { EventHandler } from '../../../../../core/eventbus/decorators/event-handler.decorator.js';
 import { KafkaEventHandler } from '../../../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
@@ -22,6 +22,7 @@ import { PersonEmailResponse } from '../../../../person/api/person-email-respons
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { EntityManager } from '@mikro-orm/core';
 import { Mutex } from 'async-mutex';
+import { Err, Ok } from '../../../../../shared/util/result.js';
 
 @Injectable()
 export class SchulconnexPushHandler {
@@ -43,34 +44,36 @@ export class SchulconnexPushHandler {
     @KafkaEventHandler(KafkaEmailMicroserviceAddressChangedEvent)
     @EventHandler(EmailMicroserviceAddressChangedEvent)
     @EnsureRequestContext()
-    public async handleEmailAddressChanged(event: EmailMicroserviceAddressChangedEvent): Promise<void> {
+    public async handleEmailAddressChanged(
+        event: EmailMicroserviceAddressChangedEvent,
+    ): Promise<Result<void, DomainError>> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received EmailMicroserviceAddressChangedEvent for person ${event.personId}`,
         );
 
-        await this.updatePersonenkontexte(event.personId, event.eventID);
+        return this.updatePersonenkontexte(event.personId, event.eventID);
     }
 
     @KafkaEventHandler(KafkaLocksForPersonChangedEvent)
     @EventHandler(LocksForPersonChangedEvent)
     @EnsureRequestContext()
-    public async handleLocksForPersonChanged(event: LocksForPersonChangedEvent): Promise<void> {
+    public async handleLocksForPersonChanged(event: LocksForPersonChangedEvent): Promise<Result<void, DomainError>> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received LocksForPersonChangedEvent for person ${event.personId}`,
         );
 
-        await this.updatePersonenkontexte(event.personId, event.eventID);
+        return this.updatePersonenkontexte(event.personId, event.eventID);
     }
 
-    private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<void> {
+    private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<Result<void, DomainError>> {
         const mutex: Mutex = this.personUpdateMutexes.get(personId) ?? new Mutex();
 
         this.personUpdateMutexes.set(personId, mutex);
 
         try {
-            await mutex.runExclusive(async (): Promise<void> => {
-                await this.updatePersonenkontexteExclusive(personId, eventId);
-            });
+            return await mutex.runExclusive(
+                (): Promise<Result<void, DomainError>> => this.updatePersonenkontexteExclusive(personId, eventId),
+            );
         } finally {
             if (!mutex.isLocked()) {
                 this.personUpdateMutexes.delete(personId);
@@ -78,7 +81,10 @@ export class SchulconnexPushHandler {
         }
     }
 
-    private async updatePersonenkontexteExclusive(personId: PersonID, eventId: string): Promise<void> {
+    private async updatePersonenkontexteExclusive(
+        personId: PersonID,
+        eventId: string,
+    ): Promise<Result<void, DomainError>> {
         const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
             UserLock[],
@@ -88,6 +94,8 @@ export class SchulconnexPushHandler {
             this.userLockRepo.findByPersonId(personId),
             this.emailResolverService.findEmailBySpshPerson(personId),
         ]);
+
+        const errors: DomainError[] = [];
 
         for (const registry of registries) {
             const kontexte: KontextWithOrgaAndRolle[] =
@@ -107,6 +115,8 @@ export class SchulconnexPushHandler {
                 );
 
                 if (!result.ok) {
+                    errors.push(result.error);
+
                     this.logger.logUnknownAsError(
                         `[EventID: ${eventId}] Could not update Personenkontext ${kontext.personenkontext.id} for person ${personId}`,
                         result.error,
@@ -114,5 +124,13 @@ export class SchulconnexPushHandler {
                 }
             }
         }
+
+        if (errors.length > 0) {
+            return Err(
+                new SchulconnexPushError(`Could not update all Personenkontexte for person ${personId}`, errors),
+            );
+        }
+
+        return Ok();
     }
 }

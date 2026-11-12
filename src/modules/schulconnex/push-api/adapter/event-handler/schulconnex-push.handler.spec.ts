@@ -1,8 +1,9 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConfigTestModule, DatabaseTestModule } from '../../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
-import { SchulconnexPushError } from '../../../../../shared/error/index.js';
+import { type DomainError, SchulconnexPushError } from '../../../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { LocksForPersonChangedEvent } from '../../../../../shared/events/locks-for-person-changed.event.js';
 import { type PersonID } from '../../../../../shared/types/aggregate-ids.types.js';
@@ -20,7 +21,6 @@ import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.
 import { SchulconnexPushRegistryRepo } from '../../persistence/schulconnex-push-registry.repo.js';
 import { SchulconnexPushAdapter } from '../domain/schulconnex-push.adapter.js';
 import { SchulconnexPushHandler } from './schulconnex-push.handler.js';
-import { ConfigTestModule, DatabaseTestModule } from '../../../../../../test/utils/index.js';
 
 describe('SchulconnexPushHandler', () => {
     let module: TestingModule;
@@ -131,7 +131,7 @@ describe('SchulconnexPushHandler', () => {
     });
 
     describe('handleEmailAddressChanged', () => {
-        it('should update all relevant personenkontexte', async () => {
+        it('should update all relevant personenkontexte and return Ok', async () => {
             const email: PersonEmailResponse = {
                 address: 'new@example.org',
             } as unknown as PersonEmailResponse;
@@ -146,8 +146,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushRegistryRepoMock.findAll).toHaveBeenCalledOnce();
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
             expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
@@ -167,10 +168,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
-            await sut.handleEmailAddressChanged(event);
-
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
         });
 
@@ -185,8 +185,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
         });
 
@@ -205,14 +206,15 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], email);
         });
     });
 
     describe('handleLocksForPersonChanged', () => {
-        it('should update all relevant personenkontexte with current locks', async () => {
+        it('should update all relevant personenkontexte with current locks and return Ok', async () => {
             const currentLocks: UserLock[] = [
                 UserLock.construct(personId, 'admin-id', new Date(), PersonLockOccasion.MANUELL_GESPERRT, new Date()),
             ];
@@ -221,8 +223,9 @@ describe('SchulconnexPushHandler', () => {
 
             const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
 
-            await sut.handleLocksForPersonChanged(event);
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
                 registry,
@@ -255,8 +258,9 @@ describe('SchulconnexPushHandler', () => {
                 ],
             );
 
-            await sut.handleLocksForPersonChanged(event);
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
                 registry,
                 kontext,
@@ -270,13 +274,14 @@ describe('SchulconnexPushHandler', () => {
 
             const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
 
-            await sut.handleLocksForPersonChanged(event);
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
         });
     });
 
-    describe('multiple registries', () => {
+    describe('multiple registries and contexts', () => {
         it('should update relevant personenkontexte for every registry', async () => {
             const secondRegistry: SchulconnexPushRegistry<true> = SchulconnexPushRegistry.construct(
                 'registry-id-2',
@@ -298,11 +303,9 @@ describe('SchulconnexPushHandler', () => {
             personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockImplementation(
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 (_personId: PersonID, serviceProviderId: string) => {
-                    if (serviceProviderId === registry.serviceProviderId) {
-                        return Promise.resolve([kontext]);
-                    }
-
-                    return Promise.resolve([secondKontext]);
+                    return Promise.resolve(
+                        serviceProviderId === registry.serviceProviderId ? [kontext] : [secondKontext],
+                    );
                 },
             );
 
@@ -314,8 +317,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
@@ -338,8 +342,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).not.toHaveBeenCalled();
             expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
         });
@@ -365,8 +370,9 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, secondKontext, [], undefined);
@@ -387,9 +393,11 @@ describe('SchulconnexPushHandler', () => {
 
             let resolveFirstPush: (() => void) | undefined;
 
-            const firstPush: Promise<ReturnType<typeof Ok>> = new Promise((resolve) => {
-                resolveFirstPush = () => resolve(Ok());
-            });
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = (): void => resolve(Ok());
+                },
+            );
 
             pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
 
@@ -401,7 +409,7 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            const handling: Promise<void> = sut.handleEmailAddressChanged(event);
+            const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event);
 
             await vi.waitFor(() => {
                 expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
@@ -411,8 +419,9 @@ describe('SchulconnexPushHandler', () => {
 
             resolveFirstPush?.();
 
-            await handling;
+            const result: Result<void, DomainError> = await handling;
 
+            expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
                 2,
@@ -425,7 +434,7 @@ describe('SchulconnexPushHandler', () => {
     });
 
     describe('error handling', () => {
-        it('should log an error when pushing a personenkontext fails', async () => {
+        it('should return Err when pushing a personenkontext fails', async () => {
             const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
 
             pushAdapterMock.upsertPersonenkontext.mockResolvedValue(Err(error));
@@ -438,14 +447,66 @@ describe('SchulconnexPushHandler', () => {
                 undefined,
             );
 
-            await sut.handleEmailAddressChanged(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
+            expect(result.ok).toBe(false);
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
                 expect.stringContaining(
                     `Could not update Personenkontext ${kontext.personenkontext.id} for person ${personId}`,
                 ),
                 error,
             );
+        });
+
+        it('should propagate push failures from the locks handler', async () => {
+            const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
+
+            pushAdapterMock.upsertPersonenkontext.mockResolvedValue(Err(error));
+
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
+
+            expect(result.ok).toBe(false);
+        });
+
+        it('should continue pushing remaining personenkontexte and return Err', async () => {
+            const secondKontext: KontextWithOrgaAndRolle = {
+                personenkontext: {
+                    id: 'kontext-id-2',
+                    personId,
+                },
+            } as KontextWithOrgaAndRolle;
+
+            const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
+
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([
+                kontext,
+                secondKontext,
+            ]);
+
+            pushAdapterMock.upsertPersonenkontext.mockResolvedValueOnce(Err(error)).mockResolvedValueOnce(Ok());
+
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result.ok).toBe(false);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                2,
+                registry,
+                secondKontext,
+                [],
+                undefined,
+            );
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledOnce();
         });
     });
 
@@ -463,9 +524,11 @@ describe('SchulconnexPushHandler', () => {
 
             let resolveFirstPush: (() => void) | undefined;
 
-            const firstPush: Promise<ReturnType<typeof Ok>> = new Promise((resolve) => {
-                resolveFirstPush = (): void => resolve(Ok());
-            });
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = (): void => resolve(Ok());
+                },
+            );
 
             pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
 
@@ -488,13 +551,13 @@ describe('SchulconnexPushHandler', () => {
                 ],
             );
 
-            const emailHandling: Promise<void> = sut.handleEmailAddressChanged(emailEvent);
+            const emailHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(emailEvent);
 
             await vi.waitFor(() => {
                 expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
             });
 
-            const locksHandling: Promise<void> = sut.handleLocksForPersonChanged(locksEvent);
+            const locksHandling: Promise<Result<void, DomainError>> = sut.handleLocksForPersonChanged(locksEvent);
 
             await Promise.resolve();
 
@@ -503,8 +566,11 @@ describe('SchulconnexPushHandler', () => {
 
             resolveFirstPush?.();
 
-            await Promise.all([emailHandling, locksHandling]);
+            const [emailResult, locksResult]: [Result<void, DomainError>, Result<void, DomainError>] =
+                await Promise.all([emailHandling, locksHandling]);
 
+            expect(emailResult).toEqual(Ok());
+            expect(locksResult).toEqual(Ok());
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(1, registry, kontext, [], undefined);
