@@ -72,6 +72,16 @@ export class SchulconnexPushHandler {
                     this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen),
                 ),
         );
+        const failures: unknown[] = this.collectAndLogFailures(results, registries, logPrefix);
+
+        return failures.length > 0 ? Err(new SchulconnexPushError(`${logPrefix} failed`, failures)) : Ok();
+    }
+
+    private collectAndLogFailures(
+        results: PromiseSettledResult<Result<void, DomainError>>[],
+        registries: SchulconnexPushRegistry<true>[],
+        logPrefix: string,
+    ): unknown[] {
         const failures: unknown[] = [];
         results.forEach((result: PromiseSettledResult<Result<void, DomainError>>, index: number) => {
             let error: unknown;
@@ -86,7 +96,7 @@ export class SchulconnexPushHandler {
             this.logger.logUnknownAsError(`${logPrefix}: Registry ${registries[index]?.id} failed`, error);
         });
 
-        return failures.length > 0 ? Err(new SchulconnexPushError(`${logPrefix} failed`, failures)) : Ok();
+        return failures;
     }
 
     private async pushPersonenkontextUpdatedEventToRegistry(
