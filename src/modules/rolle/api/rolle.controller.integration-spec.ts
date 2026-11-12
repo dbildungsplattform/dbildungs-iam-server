@@ -21,7 +21,7 @@ import { createAndPersistServiceProvider } from '../../../../test/utils/service-
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
-import { type PagedResponse, type RawPagedResponse } from '../../../shared/paging/index.js';
+import { type PagedResponse } from '../../../shared/paging/index.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
@@ -2560,7 +2560,7 @@ describe('Rolle API', () => {
                 } as FindAvailableRollenForPKCreationQueryParams)
                 .send();
 
-            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+            const body: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
             expect(response.status).toBe(200);
             expect(body.total).toBe(2);
@@ -2629,7 +2629,7 @@ describe('Rolle API', () => {
                 } as FindAvailableRollenForPKCreationQueryParams)
                 .send();
 
-            const body: RawPagedResponse<RolleResponse> = response.body as RawPagedResponse<RolleResponse>;
+            const body: PagedResponse<RolleResponse> = response.body as PagedResponse<RolleResponse>;
 
             expect(response.status).toBe(200);
             expect(body.total).toBe(1);

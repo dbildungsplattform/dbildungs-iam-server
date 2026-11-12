@@ -31,12 +31,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import {
-    ApiOkResponsePaginated,
-    PagedResponse,
-    PagingHeadersObject,
-    RawPagedResponse,
-} from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
@@ -274,7 +269,7 @@ export class RolleController {
     public async findRollenAvailableForPersonAdministration(
         @Query() queryParams: FindRollenForPersonAdministrationQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<RolleResponse>> {
+    ): Promise<PagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonAdministration({
                 permissions,
@@ -287,7 +282,7 @@ export class RolleController {
                 ),
             });
 
-        return RawPagedResponse.fromItemsAndQuery(
+        return PagedResponse.fromItemsAndQuery(
             {
                 total,
                 items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
@@ -326,7 +321,7 @@ export class RolleController {
     public async findAvailableRollenForPersonenkontextCreation(
         @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<RolleResponse>> {
+    ): Promise<PagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
                 permissions,
@@ -340,7 +335,7 @@ export class RolleController {
                 limit: queryParams.limit,
                 offset: queryParams.offset,
             });
-        return RawPagedResponse.fromItemsAndQuery(
+        return PagedResponse.fromItemsAndQuery(
             {
                 items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
                 total,
