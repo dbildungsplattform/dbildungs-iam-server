@@ -130,6 +130,7 @@ export class SchulconnexPushHandler {
         if (!deletionResult.ok) {
             return deletionResult;
         }
+
         return Ok();
     }
 
@@ -153,8 +154,10 @@ export class SchulconnexPushHandler {
         }
         if (hadRelevantKontexte && currentKontexte.length === 0) {
             const result: Result<void, DomainError> = await this.adapter.deletePerson(registry, event.person.id);
+
             return result;
         }
+
         return Ok();
     }
 
@@ -200,6 +203,7 @@ export class SchulconnexPushHandler {
                 return result;
             }
         }
+
         return Ok();
     }
 
@@ -211,6 +215,7 @@ export class SchulconnexPushHandler {
         const hadRelevantKontexte: boolean =
             removedKontexte.length > 0 ||
             currentKontexte.some((pk: PersonenkontextEventKontextData) => !newIds.has(pk.id));
+
         return hadRelevantKontexte;
     }
 
@@ -241,6 +246,7 @@ export class SchulconnexPushHandler {
         if (!emails.ok) {
             return emails;
         }
+
         return Ok({ person, kontexteWithOrgaAndRolle, userLocks, email: emails.value.get(personId) });
     }
 }
