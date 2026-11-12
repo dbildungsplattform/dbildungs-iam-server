@@ -122,6 +122,9 @@ export class DbSeedConsole extends CommandRunner {
             case 'Organisation':
                 await this.dbSeedService.seedOrganisation(fileContentAsStr);
                 break;
+            case 'Organisationsbeziehung':
+                await this.dbSeedService.seedOrganisationsbeziehung(fileContentAsStr);
+                break;
             case 'Person':
                 await this.dbSeedService.seedPerson(fileContentAsStr);
                 break;

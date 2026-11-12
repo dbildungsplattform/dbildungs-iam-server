@@ -23,7 +23,9 @@ import { GleicheRolleAnKlasseWieSchuleError } from '../../../modules/personenkon
 import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/personenkontext.factory.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { KeycloakGroupRoleService } from '../../../modules/keycloak-administration/domain/keycloak-group-role.service.js';
-import { type Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { Organisation, type Organisationsbeziehung } from '../../../modules/organisation/domain/organisation.js';
+import { OrganisationsbeziehungsTyp } from '../../../modules/organisation/domain/organisationsbeziehungs-typ.enum.js';
+import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
 import { NameForOrganisationWithTrailingSpaceError } from '../../../modules/organisation/specification/error/name-with-trailing-space.error.js';
 import { NameForRolleWithTrailingSpaceError } from '../../../modules/rolle/domain/name-with-trailing-space.error.js';
 import { RollenArt, RollenMerkmal } from '../../../modules/rolle/domain/rolle.enums.js';
@@ -550,6 +552,91 @@ describe('DbSeedService', () => {
         });
     });
 
+    describe('seedOrganisationsbeziehung', () => {
+        const fileContentAsStr: string = fs.readFileSync(
+            './seeding/seeding-integration-test/organisationsbeziehung/01_organisationsbeziehung.json',
+            'utf-8',
+        );
+
+        function createQuelle(): Organisation<true, true> {
+            return Organisation.construct<true, true>(
+                faker.string.uuid(),
+                faker.date.past(),
+                faker.date.recent(),
+                1,
+                faker.company.name(),
+                OrganisationsTyp.SCHULE,
+                [],
+            );
+        }
+
+        it('should create an Organisationsbeziehung from the referenced Quelle to the referenced Ziel', async () => {
+            const quelle: Organisation<true, true> = createQuelle();
+            const ziel: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.BEHOERDE });
+
+            dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(ziel.id);
+            organisationRepositoryMock.findById
+                .mockResolvedValueOnce(quelle as Organisation<true>)
+                .mockResolvedValueOnce(ziel);
+            organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(quelle);
+            organisationRepositoryMock.createOrganisationsbeziehung.mockResolvedValueOnce(
+                DoFactory.createOrganisationsbeziehung(true),
+            );
+
+            await expect(dbSeedService.seedOrganisationsbeziehung(fileContentAsStr)).resolves.not.toThrow();
+
+            expect(organisationRepositoryMock.findByIdWithRelationships).toHaveBeenCalledWith(quelle.id);
+            expect(organisationRepositoryMock.createOrganisationsbeziehung).toHaveBeenCalledOnce();
+            const created: Organisationsbeziehung<false> =
+                organisationRepositoryMock.createOrganisationsbeziehung.mock.calls[0]![0];
+            expect(created).toEqual({
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
+                quellOrganisationId: quelle.id,
+                zielOrganisationId: ziel.id,
+                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+            });
+        });
+
+        it('should throw EntityNotFoundError if the Quelle cannot be referenced', async () => {
+            dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(undefined);
+
+            await expect(dbSeedService.seedOrganisationsbeziehung(fileContentAsStr)).rejects.toThrow(
+                EntityNotFoundError,
+            );
+            expect(organisationRepositoryMock.createOrganisationsbeziehung).not.toHaveBeenCalled();
+        });
+
+        it('should throw EntityNotFoundError if the Ziel cannot be referenced', async () => {
+            const quelle: Organisation<true, true> = createQuelle();
+
+            dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(undefined);
+            organisationRepositoryMock.findById.mockResolvedValueOnce(quelle as Organisation<true>);
+
+            await expect(dbSeedService.seedOrganisationsbeziehung(fileContentAsStr)).rejects.toThrow(
+                EntityNotFoundError,
+            );
+            expect(organisationRepositoryMock.createOrganisationsbeziehung).not.toHaveBeenCalled();
+        });
+
+        it('should throw EntityNotFoundError if the Quelle cannot be loaded with its relationships', async () => {
+            const quelle: Organisation<true, true> = createQuelle();
+            const ziel: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.BEHOERDE });
+
+            dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(ziel.id);
+            organisationRepositoryMock.findById
+                .mockResolvedValueOnce(quelle as Organisation<true>)
+                .mockResolvedValueOnce(ziel);
+            organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(undefined);
+
+            await expect(dbSeedService.seedOrganisationsbeziehung(fileContentAsStr)).rejects.toThrow(
+                EntityNotFoundError,
+            );
+            expect(organisationRepositoryMock.createOrganisationsbeziehung).not.toHaveBeenCalled();
+        });
+    });
+
     describe('seedServiceProvider', () => {
         describe('seedServiceProvider with two entities', () => {
             it('should not throw an error', async () => {
@@ -911,7 +998,7 @@ describe('DbSeedService', () => {
                     'seeding-integration-test/all',
                     '01',
                 );
-                expect(entityFileNames).toHaveLength(9);
+                expect(entityFileNames).toHaveLength(11);
             });
         });
     });
