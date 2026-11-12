@@ -3,9 +3,9 @@ import { type PathLike } from 'node:fs';
 import 'reflect-metadata'; // some decorators use reflect-metadata in the background
 import { type Mock } from 'vitest';
 import { type DeepPartial } from '../../../test/utils/index.js';
+import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { JsonConfig, loadConfigFiles, loadEmailAppConfigFiles } from './index.js';
-import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 
 describe('configloader', () => {
     describe('loadConfigFiles', () => {
@@ -135,7 +135,10 @@ describe('configloader', () => {
                     SSL_KEY_PATH: '/tls/client-key.pem',
                 },
                 PORTAL: {
-                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                    ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
+                        RollenArt.LERN,
+                        RollenArt.EXTERN,
+                    ],
                 },
                 CRON: {
                     PERSON_WITHOUT_ORG_LIMIT: 30,
@@ -326,7 +329,10 @@ describe('configloader', () => {
                     SSL_KEY_PATH: undefined,
                 },
                 PORTAL: {
-                    LIMITED_ROLLENART_ALLOWLIST: [RollenArt.LERN, RollenArt.EXTERN],
+                    ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN: [
+                        RollenArt.LERN,
+                        RollenArt.EXTERN,
+                    ],
                 },
                 CRON: {
                     PERSON_WITHOUT_ORG_LIMIT: 30,

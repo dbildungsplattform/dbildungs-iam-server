@@ -9,8 +9,7 @@ import { type PermittedOrgas } from '../../authentication/domain/person-permissi
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { RollenMerkmal, type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
@@ -245,15 +244,16 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         const rollen: Map<RolleID, Rolle<true>> = await this.rolleRepo.findByIds(rolleIds);
-        const hasUnauthorizedGatedRolle: boolean = (
-            await Promise.all(
-                Array.from(rollen.values()).map((rolle: Rolle<true>) =>
-                    permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
-                ),
-            )
-        ).some((hasPermission: boolean) => !hasPermission);
-        if (hasUnauthorizedGatedRolle) {
-            return Err(new MissingPermissionsError('Unauthorized to assign MPT/Pilot-Rollen at the organisation'));
+        const rollenList: Rolle<true>[] = Array.from(rollen.values());
+        const hasPermissionsForRollenmerkmalePromises: Promise<boolean>[] = rollenList.map((rolle: Rolle<true>) =>
+            permissions.hasPermissionForRolleMerkmale(rolle.merkmale, organisationId),
+        );
+        const hasPermissionsForRollenmerkmale: boolean[] = await Promise.all(hasPermissionsForRollenmerkmalePromises);
+        const hasMissingRollenmerkmalPermission: boolean = hasPermissionsForRollenmerkmale.some(
+            (hasPermission: boolean) => !hasPermission,
+        );
+        if (hasMissingRollenmerkmalPermission) {
+            return Err(new MissingPermissionsError('Unauthorized to assign Rollenmerkmal at the organisation'));
         }
 
         if (hasAnlegenPermissionAtOrga) {
@@ -269,8 +269,13 @@ export class PersonenkontextWorkflowAggregate {
         }
 
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-        const allowedRollenArten: RollenArt[] = portalConfig.LIMITED_ROLLENART_ALLOWLIST;
-        if (!this.isLimitedCreationAllowedForRollen(rollen.values(), allowedRollenArten)) {
+        const allowedRollenArten: RollenArt[] =
+            portalConfig.ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN;
+        const isLimitedCreationAllowedForRollen: boolean = this.isLimitedCreationAllowedForRollen(
+            rollenList,
+            allowedRollenArten,
+        );
+        if (!isLimitedCreationAllowedForRollen) {
             return Err(new MissingPermissionsError('Unauthorized to manage rollenart at the organisation'));
         }
 
@@ -280,8 +285,7 @@ export class PersonenkontextWorkflowAggregate {
     private isLimitedCreationAllowedForRollen(rollen: Iterable<Rolle<true>>, allowedRollenArten: RollenArt[]): boolean {
         return Array.from(rollen).every(
             (rolle: Rolle<true>) =>
-                allowedRollenArten.includes(rolle.rollenart) ||
-                RollenmerkmalSystemrechtPaar.gatedMerkmaleOf(rolle.merkmale).length > 0,
+                allowedRollenArten.includes(rolle.rollenart) || rolle.merkmale.includes(RollenMerkmal.MPT_ROLLE),
         );
     }
 }
