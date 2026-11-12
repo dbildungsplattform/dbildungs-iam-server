@@ -37,15 +37,12 @@ export class SchulconnexPushHandler {
         private readonly userLockRepo: UserLockRepository,
         private readonly emailResolverService: EmailResolverService,
         private readonly adapter: SchulconnexPushAdapter,
-        // @ts-expect-error used by EnsureRequestContext decorator
-        // Although not accessed directly, MikroORM's @EnsureRequestContext() uses this.em internally
-        // to create the request-bound EntityManager context. Removing it would break context creation.
         private readonly em: EntityManager,
     ) {}
 
     @EventHandler(PersonenkontextUpdatedEvent)
     @KafkaEventHandler(KafkaPersonenkontextUpdatedEvent)
-    @EnsureRequestContext()
+    @EnsureRequestContext((handler: SchulconnexPushHandler) => handler.em)
     public async handlePersonenkontextUpdatedEvent(
         event: PersonenkontextUpdatedEvent,
     ): Promise<Result<void, DomainError>> {
