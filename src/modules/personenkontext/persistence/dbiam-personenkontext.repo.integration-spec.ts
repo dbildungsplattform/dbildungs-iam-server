@@ -795,6 +795,184 @@ describe('dbiam Personenkontext Repo', () => {
         });
     });
 
+    describe('findByPersonAndServiceProviderWithOrgaAndRolle', () => {
+        it('should return personenkontexte for the person and serviceprovider', async () => {
+            const person: Person<true> = await createPerson();
+            const serviceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> = await createRolle({ serviceProviderIds: [serviceprovider.id] });
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+
+            const personenkontext: Personenkontext<true> = await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: person.id,
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                }),
+            );
+
+            const result: KontextWithOrgaAndRolle[] = await sut.findByPersonAndServiceProviderWithOrgaAndRolle(
+                person.id,
+                serviceprovider.id,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.personenkontext.id).toBe(personenkontext.id);
+            expect(result[0]?.organisation.id).toBe(organisation.id);
+            expect(result[0]?.rolle.id).toBe(rolle.id);
+        });
+
+        it('should return personenkontexte assigned through a rollenerweiterung', async () => {
+            const person: Person<true> = await createPerson();
+            const serviceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> = await createRolle();
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                    serviceProviderId: serviceprovider.id,
+                }),
+            );
+
+            const personenkontext: Personenkontext<true> = await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: person.id,
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                }),
+            );
+
+            const result: KontextWithOrgaAndRolle[] = await sut.findByPersonAndServiceProviderWithOrgaAndRolle(
+                person.id,
+                serviceprovider.id,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.personenkontext.id).toBe(personenkontext.id);
+        });
+
+        it('should return an empty array when no personenkontexte match the serviceprovider', async () => {
+            const person: Person<true> = await createPerson();
+            const assignedServiceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const requestedServiceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> = await createRolle({
+                serviceProviderIds: [assignedServiceprovider.id],
+            });
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false),
+            );
+
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: person.id,
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                }),
+            );
+
+            const result: KontextWithOrgaAndRolle[] = await sut.findByPersonAndServiceProviderWithOrgaAndRolle(
+                person.id,
+                requestedServiceprovider.id,
+            );
+
+            expect(result).toEqual([]);
+        });
+
+        it('should return a personenkontext only once when serviceprovider is assigned directly and through rollenerweiterung', async () => {
+            const person: Person<true> = await createPerson();
+            const serviceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> = await createRolle({
+                serviceProviderIds: [serviceprovider.id],
+            });
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false),
+            );
+
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                    serviceProviderId: serviceprovider.id,
+                }),
+            );
+
+            const personenkontext: Personenkontext<true> = await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    personId: person.id,
+                    rolleId: rolle.id,
+                    organisationId: organisation.id,
+                }),
+            );
+
+            const result: KontextWithOrgaAndRolle[] = await sut.findByPersonAndServiceProviderWithOrgaAndRolle(
+                person.id,
+                serviceprovider.id,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.personenkontext.id).toBe(personenkontext.id);
+        });
+
+        it('should not return klassenkontexte', async () => {
+            const person: Person<true> = await createPerson();
+            const serviceprovider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+
+            const rolle: Rolle<true> = await createRolle({
+                serviceProviderIds: [serviceprovider.id],
+            });
+
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+
+            const klasse: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.KLASSE,
+                    administriertVon: organisation.id,
+                }),
+            );
+
+            const [schulKontext, klassenKontext]: Personenkontext<true>[] = await Promise.all([
+                personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: person.id,
+                        rolleId: rolle.id,
+                        organisationId: organisation.id,
+                    }),
+                ),
+                personenkontextRepoInternal.save(
+                    createPersonenkontext(false, {
+                        personId: person.id,
+                        rolleId: rolle.id,
+                        organisationId: klasse.id,
+                    }),
+                ),
+            ]);
+
+            const result: KontextWithOrgaAndRolle[] = await sut.findByPersonAndServiceProviderWithOrgaAndRolle(
+                person.id,
+                serviceprovider.id,
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.personenkontext.id).toBe(schulKontext?.id);
+            expect(
+                result.map((resultKontext: KontextWithOrgaAndRolle) => resultKontext.personenkontext.id),
+            ).not.toContain(klassenKontext?.id);
+        });
+    });
+
     describe('findByRolle', () => {
         it('should return all personenkontexte for a rolle', async () => {
             const person: Person<true> = await createPerson();
