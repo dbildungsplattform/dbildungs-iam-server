@@ -49,9 +49,19 @@ import { MapperModule } from '../modules/person/mapper/mapper.module.js';
 import { LandesbediensteterModule } from '../modules/landesbediensteter/landesbediensteter.module.js';
 import { SchulconnexModule } from '../modules/schulconnex/schulconnex.module.js';
 import { CacheModule } from '@nestjs/cache-manager';
-import KeyvRedis, { RedisClientOptions, RedisClusterOptions } from '@keyv/redis';
+import KeyvRedis, {
+    createSentinel,
+    type RedisClientOptions,
+    type RedisClusterOptions,
+    type RedisSentinelType,
+} from '@keyv/redis';
 import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { PermissionModule } from '../modules/permission/permission.module.js';
+import {
+    createRedisSentinelOptions,
+    createSentinelSessionStoreClient,
+    type SentinelConnectionOptions,
+} from '../core/redis/redis-client.js';
 
 @Module({
     imports: [
@@ -94,10 +104,11 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
                 const redisConfig: RedisConfig = config.REDIS;
                 const defaultTtlMs: number = 10_000;
 
-                let clientOptions: RedisClientOptions | RedisClusterOptions;
+                let clientOptions: RedisClientOptions | RedisClusterOptions | SentinelConnectionOptions;
 
-                /* istanbul ignore next */
-                if (redisConfig.CLUSTERED) {
+                if (redisConfig.SENTINEL_ENABLED) {
+                    clientOptions = createRedisSentinelOptions(redisConfig);
+                } else if (redisConfig.CLUSTERED) {
                     clientOptions = {
                         defaults: {
                             username: redisConfig.USERNAME,
@@ -194,9 +205,10 @@ export class ServerModule implements NestModule {
 
     public async configure(consumer: MiddlewareConsumer): Promise<void> {
         const redisConfig: RedisConfig = this.configService.getOrThrow<RedisConfig>('REDIS');
-        let redisClient: RedisClientType | RedisClusterType;
-        /* istanbul ignore next */
-        if (redisConfig.CLUSTERED) {
+        let redisClient: RedisClientType | RedisClusterType | RedisSentinelType;
+        if (redisConfig.SENTINEL_ENABLED) {
+            redisClient = createSentinel(createRedisSentinelOptions(redisConfig));
+        } else if (redisConfig.CLUSTERED) {
             redisClient = createCluster({
                 defaults: {
                     username: redisConfig.USERNAME,
@@ -242,7 +254,7 @@ export class ServerModule implements NestModule {
         this.logger.info('Redis-connection made');
 
         const redisStore: RedisStore = new RedisStore({
-            client: redisClient,
+            client: 'getSentinelNode' in redisClient ? createSentinelSessionStoreClient(redisClient) : redisClient,
         });
 
         consumer

@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync, type ValidationError } from 'class-validator';
 import fs from 'fs';
-import { merge } from 'lodash-es';
+import { merge, mergeWith } from 'lodash-es';
 import EnvConfig from './config.env.js';
 import { EmailAppConfig } from './email-app.config.js';
 import { getEmailConfig } from './email-config.env.js';
@@ -12,6 +12,10 @@ import { JsonConfig } from './json.config.js';
 export function parseFileToJSON(path: string): any {
     const file: string = fs.readFileSync(path, { encoding: 'utf8' });
     return JSON.parse(file);
+}
+
+function replaceSentinelNodes(_target: unknown, source: unknown, key: string): unknown {
+    return key === 'SENTINEL_NODES' ? source : undefined;
 }
 
 export function loadConfigFiles(): JsonConfig {
@@ -31,9 +35,9 @@ export function loadConfigFiles(): JsonConfig {
 
     let merged: unknown;
     if (secrets != null) {
-        merged = merge(json, secrets, env);
+        merged = mergeWith(json, secrets, env, replaceSentinelNodes);
     } else {
-        merged = merge(json, env);
+        merged = mergeWith(json, env, replaceSentinelNodes);
     }
 
     const mergedConfig: JsonConfig = plainToInstance(JsonConfig, merged, {
