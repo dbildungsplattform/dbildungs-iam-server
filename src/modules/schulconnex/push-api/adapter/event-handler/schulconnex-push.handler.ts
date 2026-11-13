@@ -24,6 +24,10 @@ import { EntityManager } from '@mikro-orm/core';
 import { Mutex } from 'async-mutex';
 import { Err, Ok } from '../../../../../shared/util/result.js';
 
+export type KeepAliveFn = () => void;
+
+const noopKeepAlive: KeepAliveFn = (): void => {};
+
 @Injectable()
 export class SchulconnexPushHandler {
     private readonly personUpdateMutexes: Map<PersonID, Mutex> = new Map();
@@ -46,35 +50,49 @@ export class SchulconnexPushHandler {
     @EnsureRequestContext()
     public async handleEmailAddressChanged(
         event: EmailMicroserviceAddressChangedEvent,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received EmailMicroserviceAddressChangedEvent for person ${event.personId}`,
         );
 
-        return this.updatePersonenkontexte(event.personId, event.eventID);
+        return this.updatePersonenkontexte(event.personId, event.eventID, keepAlive);
     }
 
     @KafkaEventHandler(KafkaLocksForPersonChangedEvent)
     @EventHandler(LocksForPersonChangedEvent)
     @EnsureRequestContext()
-    public async handleLocksForPersonChanged(event: LocksForPersonChangedEvent): Promise<Result<void, DomainError>> {
+    public async handleLocksForPersonChanged(
+        event: LocksForPersonChangedEvent,
+        keepAlive?: KeepAliveFn,
+    ): Promise<Result<void, DomainError>> {
         this.logger.info(
             `[EventID: ${event.eventID}] Received LocksForPersonChangedEvent for person ${event.personId}`,
         );
 
-        return this.updatePersonenkontexte(event.personId, event.eventID);
+        return this.updatePersonenkontexte(event.personId, event.eventID, keepAlive);
     }
 
-    private async updatePersonenkontexte(personId: PersonID, eventId: string): Promise<Result<void, DomainError>> {
+    private async updatePersonenkontexte(
+        personId: PersonID,
+        eventId: string,
+        keepAlive: KeepAliveFn = noopKeepAlive,
+    ): Promise<Result<void, DomainError>> {
         const mutex: Mutex = this.personUpdateMutexes.get(personId) ?? new Mutex();
 
         this.personUpdateMutexes.set(personId, mutex);
 
+        const waitInterval: NodeJS.Timeout = setInterval(() => {
+            keepAlive();
+        }, 30_000);
+
         try {
-            return await mutex.runExclusive(
-                (): Promise<Result<void, DomainError>> => this.updatePersonenkontexteExclusive(personId, eventId),
-            );
+            return await mutex.runExclusive((): Promise<Result<void, DomainError>> => {
+                clearInterval(waitInterval);
+                return this.updatePersonenkontexteExclusive(personId, eventId, keepAlive);
+            });
         } finally {
+            clearInterval(waitInterval);
             if (!mutex.isLocked()) {
                 this.personUpdateMutexes.delete(personId);
             }
@@ -84,6 +102,7 @@ export class SchulconnexPushHandler {
     private async updatePersonenkontexteExclusive(
         personId: PersonID,
         eventId: string,
+        keepAlive: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
@@ -95,6 +114,8 @@ export class SchulconnexPushHandler {
             this.emailResolverService.findEmailBySpshPerson(personId),
         ]);
 
+        keepAlive();
+
         const errors: DomainError[] = [];
 
         for (const registry of registries) {
@@ -104,6 +125,8 @@ export class SchulconnexPushHandler {
                     personId,
                     registry.serviceProviderId,
                 );
+
+            keepAlive();
 
             for (const kontext of kontexte) {
                 // eslint-disable-next-line no-await-in-loop
@@ -116,12 +139,13 @@ export class SchulconnexPushHandler {
 
                 if (!result.ok) {
                     errors.push(result.error);
-
                     this.logger.logUnknownAsError(
                         `[EventID: ${eventId}] Could not update Personenkontext ${kontext.personenkontext.id} for person ${personId}`,
                         result.error,
                     );
                 }
+
+                keepAlive();
             }
         }
 
