@@ -209,14 +209,20 @@ export class OrganisationRepository {
         return !!organisation;
     }
 
-    public async findChildOrgasForIds(ids: OrganisationID[]): Promise<Organisation<true>[]> {
+    public async findChildOrgasForIds(
+        ids: OrganisationID[],
+        excludeKlassen: boolean = false,
+    ): Promise<Organisation<true>[]> {
         let rawResult: OrganisationEntity[];
 
         if (ids.length === 0) {
             return [];
         } else if (ids.some((id: OrganisationID) => id === this.ROOT_ORGANISATION_ID)) {
             // If id is the root, perform a simple SELECT * except root for performance enhancement.
-            rawResult = await this.em.find(OrganisationEntity, { id: { $ne: this.ROOT_ORGANISATION_ID } });
+            rawResult = await this.em.find(OrganisationEntity, {
+                id: { $ne: this.ROOT_ORGANISATION_ID },
+                ...(excludeKlassen ? { typ: { $ne: OrganisationsTyp.KLASSE } } : {}),
+            });
         } else {
             // Otherwise, perform the recursive CTE query.
             const query: string = `
@@ -228,10 +234,14 @@ export class OrganisationRepository {
                                                      FROM public.organisation o
                                                               INNER JOIN sub_organisations so ON o.administriert_von = so.id)
                 SELECT DISTINCT ON (id) *
-                FROM sub_organisations;
+                FROM sub_organisations
+                ${excludeKlassen ? 'WHERE typ <> ?' : ''};
             `;
 
-            const rawEntities: EntityDictionary<OrganisationEntity>[] = await this.em.execute(query, [ids]);
+            const rawEntities: EntityDictionary<OrganisationEntity>[] = await this.em.execute(
+                query,
+                excludeKlassen ? [ids, OrganisationsTyp.KLASSE] : [ids],
+            );
             rawResult = rawEntities.map((data: EntityDictionary<OrganisationEntity>) =>
                 this.em.map(OrganisationEntity, data),
             );

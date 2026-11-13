@@ -28,8 +28,8 @@ export class DBiamPersonenzuordnungResponse {
     @ApiProperty({ type: String })
     public readonly administriertVon?: string;
 
-    @ApiProperty({ enum: OrganisationsTyp, enumName: OrganisationsTypName, nullable: true })
-    public readonly typ?: OrganisationsTyp;
+    @ApiProperty({ enum: OrganisationsTyp, enumName: OrganisationsTypName })
+    public readonly typ: OrganisationsTyp;
 
     @ApiProperty({ type: Boolean })
     public readonly editable: boolean;
