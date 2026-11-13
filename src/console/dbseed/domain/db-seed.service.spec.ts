@@ -576,7 +576,7 @@ describe('DbSeedService', () => {
 
             dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(ziel.id);
             organisationRepositoryMock.findById
-                .mockResolvedValueOnce(quelle as Organisation<true>)
+                .mockResolvedValueOnce(DoFactory.createOrganisation(true, { id: quelle.id }))
                 .mockResolvedValueOnce(ziel);
             organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(quelle);
             organisationRepositoryMock.createOrganisationsbeziehung.mockResolvedValueOnce(
@@ -612,7 +612,9 @@ describe('DbSeedService', () => {
             const quelle: Organisation<true, true> = createQuelle();
 
             dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(undefined);
-            organisationRepositoryMock.findById.mockResolvedValueOnce(quelle as Organisation<true>);
+            organisationRepositoryMock.findById.mockResolvedValueOnce(
+                DoFactory.createOrganisation(true, { id: quelle.id }),
+            );
 
             await expect(dbSeedService.seedOrganisationsbeziehung(fileContentAsStr)).rejects.toThrow(
                 EntityNotFoundError,
@@ -626,7 +628,7 @@ describe('DbSeedService', () => {
 
             dbSeedReferenceRepoMock.findUUID.mockResolvedValueOnce(quelle.id).mockResolvedValueOnce(ziel.id);
             organisationRepositoryMock.findById
-                .mockResolvedValueOnce(quelle as Organisation<true>)
+                .mockResolvedValueOnce(DoFactory.createOrganisation(true, { id: quelle.id }))
                 .mockResolvedValueOnce(ziel);
             organisationRepositoryMock.findByIdWithRelationships.mockResolvedValueOnce(undefined);
 
