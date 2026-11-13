@@ -15,10 +15,13 @@ import { type OxServerConfig } from './ox-server.config.js';
 import { type PortalConfig } from './portal.config.js';
 import { type PrivacyIdeaConfig } from './privacyidea.config.js';
 import { type RedisConfig } from './redis.config.js';
+import { RedisSentinelNodeConfig } from './redis-sentinel-node.config.js';
 import { type SchulconnexConfig } from './schulconnex.config.js';
 import { type SystemConfig } from './system.config.js';
 import { envToEnumArray, envToOptionalBoolean, envToOptionalInteger } from './utils.js';
 import { type VidisConfig } from './vidis.config.js';
+import { plainToInstance } from 'class-transformer';
+import { SharedDomainError } from '../error/shared-domain.error.js';
 
 export type Config = {
     DB: Partial<DbConfig>;
@@ -41,6 +44,20 @@ export type Config = {
     EMAIL_MICROSERVICE: Partial<EmailMicroserviceConfig>;
     SCHULCONNEX: Partial<SchulconnexConfig>;
 };
+
+function sentinelNodesFromEnv(): RedisSentinelNodeConfig[] | undefined {
+    const value: string | undefined = process.env['REDIS_SENTINEL_NODES'];
+    if (!value) {
+        return undefined;
+    }
+
+    const nodes: unknown = JSON.parse(value);
+    if (!Array.isArray(nodes)) {
+        throw new SharedDomainError('REDIS_SENTINEL_NODES must be a JSON array', 'REDIS_CONFIGURATION_ERROR');
+    }
+
+    return plainToInstance(RedisSentinelNodeConfig, nodes);
+}
 
 export default (): Config => ({
     DB: {
@@ -84,6 +101,12 @@ export default (): Config => ({
     REDIS: {
         PASSWORD: process.env['REDIS_PASSWORD'],
         HOST: process.env['REDIS_HOST'],
+        SENTINEL_ENABLED: envToOptionalBoolean('REDIS_SENTINEL_ENABLED'),
+        SENTINEL_MASTER_NAME: process.env['REDIS_SENTINEL_MASTER_NAME'],
+        SENTINEL_NODES: sentinelNodesFromEnv(),
+        SENTINEL_USE_TLS: envToOptionalBoolean('REDIS_SENTINEL_USE_TLS'),
+        SENTINEL_USERNAME: process.env['REDIS_SENTINEL_USERNAME'],
+        SENTINEL_PASSWORD: process.env['REDIS_SENTINEL_PASSWORD'],
     },
     ITSLEARNING: {
         ENABLED: envToOptionalBoolean('ITSLEARNING_ENABLED'),

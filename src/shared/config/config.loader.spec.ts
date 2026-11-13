@@ -180,6 +180,7 @@ describe('configloader', () => {
 
             afterEach(() => {
                 vi.clearAllMocks();
+                vi.unstubAllEnvs();
             });
 
             it('should return validated JsonConfig', () => {
@@ -187,6 +188,54 @@ describe('configloader', () => {
                 const validatedConfig: JsonConfig = loadConfigFiles();
                 expect(validatedConfig).toBeInstanceOf(JsonConfig);
                 expect(readFileSyncSpy).toHaveBeenCalledTimes(2);
+            });
+
+            it('should replace the complete Sentinel endpoint list with an environment override', () => {
+                const sentinelConfig: DeepPartial<JsonConfig> = {
+                    ...config,
+                    REDIS: {
+                        ...config.REDIS,
+                        SENTINEL_ENABLED: true,
+                        SENTINEL_MASTER_NAME: 'test-master',
+                        SENTINEL_USE_TLS: false,
+                        SENTINEL_NODES: [
+                            { HOST: 'old-sentinel-1.example', PORT: 26379 },
+                            { HOST: 'old-sentinel-2.example', PORT: 26379 },
+                        ],
+                    },
+                };
+                readFileSyncSpy
+                    .mockReset()
+                    .mockReturnValueOnce(JSON.stringify(sentinelConfig))
+                    .mockReturnValueOnce(JSON.stringify(secrets));
+                vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+                vi.stubEnv('REDIS_SENTINEL_NODES', '[{"HOST":"new-sentinel.example","PORT":26379}]');
+
+                const validatedConfig: JsonConfig = loadConfigFiles();
+
+                expect(validatedConfig.REDIS.SENTINEL_NODES).toEqual([{ HOST: 'new-sentinel.example', PORT: 26379 }]);
+            });
+
+            it('should preserve Sentinel endpoints when no environment override is provided', () => {
+                const sentinelConfig: DeepPartial<JsonConfig> = {
+                    ...config,
+                    REDIS: {
+                        ...config.REDIS,
+                        SENTINEL_ENABLED: true,
+                        SENTINEL_MASTER_NAME: 'test-master',
+                        SENTINEL_USE_TLS: false,
+                        SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+                    },
+                };
+                readFileSyncSpy
+                    .mockReset()
+                    .mockReturnValueOnce(JSON.stringify(sentinelConfig))
+                    .mockReturnValueOnce(JSON.stringify(secrets));
+                vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+                const validatedConfig: JsonConfig = loadConfigFiles();
+
+                expect(validatedConfig.REDIS.SENTINEL_NODES).toEqual([{ HOST: 'sentinel.example', PORT: 26379 }]);
             });
         });
 
