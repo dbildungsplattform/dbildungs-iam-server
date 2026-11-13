@@ -161,9 +161,8 @@ export class DbSeedService {
         for (const file of files) {
             const referencedQuelle: Organisation<true> = await this.getReferencedOrganisation(file.quellOrganisationId);
             const ziel: Organisation<true> = await this.getReferencedOrganisation(file.zielOrganisationId);
-            const quelle: Option<Organisation<true, true>> = await this.organisationRepository.findByIdWithRelationships(
-                referencedQuelle.id,
-            );
+            const quelle: Option<Organisation<true, true>> =
+                await this.organisationRepository.findByIdWithRelationships(referencedQuelle.id);
             if (!quelle) {
                 throw new EntityNotFoundError('Organisation', file.quellOrganisationId.toString());
             }
