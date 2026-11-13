@@ -4,6 +4,8 @@ import {
     FilterQuery,
     Loaded,
     QueryBuilder,
+    QueryOrderMap,
+    raw,
     RawQueryFragment,
     RequiredEntityData,
     sql,
@@ -35,7 +37,13 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation, Organisationsbeziehung, Organisationsbeziehungen } from '../domain/organisation.js';
+import {
+    Organisation,
+    Organisationsbeziehung,
+    Organisationsbeziehungen,
+    OrganisationsbeziehungWithOrganisationen,
+} from '../domain/organisation.js';
+import { SortFieldOrganisationsbeziehung } from '../domain/sort-field-organisationsbeziehung.enum.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { OrganisationEntity } from './organisation.entity.js';
 import { OrganisationScope } from './organisation.scope.js';
@@ -88,8 +96,8 @@ export function mapOrganisationsbeziehungEntityToAggregate(
         id: entity.id,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
-        quellOrganisationId: entity.quellOrganisationId,
-        zielOrganisationId: entity.zielOrganisationId,
+        quellOrganisationId: entity.quellOrganisationId.id,
+        zielOrganisationId: entity.zielOrganisationId.id,
         typ: entity.typ,
     };
 }
@@ -133,6 +141,31 @@ export type OrganisationSearchOptions = {
     readonly sortOrder?: ScopeOrder;
     readonly getChildrenRecursively?: boolean;
     readonly matchAllSystemrechte?: boolean;
+};
+
+export type OrganisationsbeziehungSearchOptions = {
+    readonly searchString?: string;
+    readonly offset?: number;
+    readonly limit?: number;
+    readonly sortField?: SortFieldOrganisationsbeziehung;
+    readonly sortOrder?: ScopeOrder;
+};
+
+type OrderDirection = 'asc' | 'desc';
+
+const ORGANISATIONSBEZIEHUNG_ORDER_BY: Record<
+    SortFieldOrganisationsbeziehung,
+    (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>
+> = {
+    [SortFieldOrganisationsbeziehung.TYP]: (direction: OrderDirection) => ({
+        [raw('cast(b.typ as text)')]: direction,
+    }),
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME]: (direction: OrderDirection) => ({
+        [raw('coalesce(q.name, z.name)')]: direction,
+    }),
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
+        [raw('coalesce(q.kennung, z.kennung)')]: direction,
+    }),
 };
 
 @Injectable()
@@ -862,6 +895,51 @@ export class OrganisationRepository {
         }
 
         return mapOrganisationsbeziehungEntityToAggregate(entity);
+    }
+
+    public async findOrganisationsbeziehungen(
+        organisationId: OrganisationID,
+        options: OrganisationsbeziehungSearchOptions,
+    ): Promise<Counted<OrganisationsbeziehungWithOrganisationen>> {
+        const direction: OrderDirection = options.sortOrder === ScopeOrder.DESC ? 'desc' : 'asc';
+        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
+            ORGANISATIONSBEZIEHUNG_ORDER_BY[options.sortField ?? SortFieldOrganisationsbeziehung.TYP](direction);
+
+        const pattern: string = `%${options.searchString ?? ''}%`;
+
+        // Only one of q and z is joined per row, so searching never matches the organisation in the param.
+        const [entities, total]: Counted<OrganisationsbeziehungEntity> = await this.em
+            .createQueryBuilder(OrganisationsbeziehungEntity, 'b')
+            .leftJoin('b.quellOrganisationId', 'q', { id: { $ne: organisationId } })
+            .leftJoin('b.zielOrganisationId', 'z', { id: { $ne: organisationId } })
+            .where({ $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }] })
+            .andWhere(
+                options.searchString
+                    ? {
+                          $or: [
+                              { 'q.name': { $ilike: pattern } },
+                              { 'q.kennung': { $ilike: pattern } },
+                              { 'z.name': { $ilike: pattern } },
+                              { 'z.kennung': { $ilike: pattern } },
+                          ],
+                      }
+                    : {},
+            )
+            .orderBy([orderBy, { 'b.id': 'asc' }])
+            .limit(options.limit)
+            .offset(options.offset)
+            .getResultAndCount();
+        await this.em.populate(entities, ['quellOrganisationId', 'zielOrganisationId']);
+
+        const items: OrganisationsbeziehungWithOrganisationen[] = entities.map(
+            (entity: OrganisationsbeziehungEntity): OrganisationsbeziehungWithOrganisationen => ({
+                organisationsbeziehung: mapOrganisationsbeziehungEntityToAggregate(entity),
+                quelle: mapOrgaEntityToAggregate(entity.quellOrganisationId.unwrap()),
+                ziel: mapOrgaEntityToAggregate(entity.zielOrganisationId.unwrap()),
+            }),
+        );
+
+        return [items, total];
     }
 
     public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {

@@ -1,0 +1,10 @@
+{
+    "entityName": "Organisationsbeziehung",
+    "entities": [
+        {
+            "quellOrganisationId": 1,
+            "zielOrganisationId": 2,
+            "typ": "SCHULAUFSICHT"
+        }
+    ]
+}

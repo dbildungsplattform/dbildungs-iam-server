@@ -1,0 +1,10 @@
+{
+    "entityName": "Organisation",
+    "entities": [
+        {
+            "id": 2,
+            "name": "Schulaufsicht",
+            "typ": "BEHOERDE"
+        }
+    ]
+}

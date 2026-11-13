@@ -28,7 +28,13 @@ import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
-import { Organisation, type Organisationsbeziehung, type Organisationsbeziehungen } from '../domain/organisation.js';
+import {
+    Organisation,
+    type Organisationsbeziehung,
+    type Organisationsbeziehungen,
+    type OrganisationsbeziehungWithOrganisationen,
+} from '../domain/organisation.js';
+import { SortFieldOrganisationsbeziehung } from '../domain/sort-field-organisationsbeziehung.enum.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
@@ -2918,8 +2924,8 @@ describe('OrganisationRepository', () => {
             );
 
             expect(persistedEntity).not.toBeNull();
-            expect(persistedEntity?.quellOrganisationId).toBe(quellOrganisation.id);
-            expect(persistedEntity?.zielOrganisationId).toBe(zielOrganisation.id);
+            expect(persistedEntity?.quellOrganisationId.id).toBe(quellOrganisation.id);
+            expect(persistedEntity?.zielOrganisationId.id).toBe(zielOrganisation.id);
             expect(persistedEntity?.typ).toBe(OrganisationsbeziehungsTyp.SCHULTRAEGER);
         });
 
@@ -3135,6 +3141,253 @@ describe('OrganisationRepository', () => {
             );
 
             expect(result).toBeUndefined();
+        });
+    });
+
+    describe('findOrganisationsbeziehungen', () => {
+        it('should return relationships where the organisation is quelle or ziel, including both organisations', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const other1: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            const other2: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            const unrelated1: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            const unrelated2: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            const asQuelle: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: organisation.id,
+                    zielOrganisationId: other1.id,
+                }),
+            );
+            const asZiel: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: other2.id,
+                    zielOrganisationId: organisation.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: unrelated1.id,
+                    zielOrganisationId: unrelated2.id,
+                }),
+            );
+
+            const [items, total]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, {});
+
+            expect(total).toBe(2);
+            expect(items).toHaveLength(2);
+            expect(items).toEqual(
+                expect.arrayContaining([
+                    { organisationsbeziehung: asQuelle, quelle: organisation, ziel: other1 },
+                    { organisationsbeziehung: asZiel, quelle: other2, ziel: organisation },
+                ]),
+            );
+        });
+
+        it('should return an empty result if the organisation has no relationships', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+
+            await expect(sut.findOrganisationsbeziehungen(organisation.id, {})).resolves.toEqual([[], 0]);
+        });
+
+        it('should apply offset and limit and still report the total', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            for (const name of ['A', 'B', 'C']) {
+                const ziel: Organisation<true, false> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, { name, typ: OrganisationsTyp.SONSTIGE }),
+                );
+                await sut.createOrganisationsbeziehung(
+                    DoFactory.createOrganisationsbeziehung(false, {
+                        quellOrganisationId: organisation.id,
+                        zielOrganisationId: ziel.id,
+                    }),
+                );
+            }
+
+            const [items, total]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, {
+                    sortField: SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME,
+                    offset: 1,
+                    limit: 1,
+                });
+
+            expect(total).toBe(3);
+            expect(items.map((item: OrganisationsbeziehungWithOrganisationen) => item.ziel.name)).toEqual(['B']);
+        });
+
+        it('should filter by search string on name and kennung of both organisations', async () => {
+            const organisation: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'Zentrale',
+                    kennung: '0000000',
+                    typ: OrganisationsTyp.SONSTIGE,
+                }),
+            );
+            const byName: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'Stadt Musterstadt',
+                    kennung: '1111111',
+                    typ: OrganisationsTyp.SONSTIGE,
+                }),
+            );
+            const byKennung: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'Andere',
+                    kennung: '9999999',
+                    typ: OrganisationsTyp.SONSTIGE,
+                }),
+            );
+            const noMatch: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'Nichts',
+                    kennung: '2222222',
+                    typ: OrganisationsTyp.SONSTIGE,
+                }),
+            );
+            const relationByName: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: organisation.id,
+                    zielOrganisationId: byName.id,
+                }),
+            );
+            const relationByKennung: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: byKennung.id,
+                    zielOrganisationId: organisation.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: organisation.id,
+                    zielOrganisationId: noMatch.id,
+                }),
+            );
+
+            const [byNameItems, byNameTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: 'muster' });
+            const [byKennungItems, byKennungTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: '9999' });
+            const [ownNameItems, ownNameTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: 'Zentrale' });
+            const [ownKennungItems, ownKennungTotal]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                await sut.findOrganisationsbeziehungen(organisation.id, { searchString: '0000000' });
+
+            // the requested organisation itself is never matched by the search string
+            expect(ownNameTotal).toBe(0);
+            expect(ownNameItems).toEqual([]);
+            expect(ownKennungTotal).toBe(0);
+            expect(ownKennungItems).toEqual([]);
+
+            expect(byNameTotal).toBe(1);
+            expect(byNameItems.map((i: OrganisationsbeziehungWithOrganisationen) => i.organisationsbeziehung)).toEqual([
+                relationByName,
+            ]);
+            expect(byKennungTotal).toBe(1);
+            expect(
+                byKennungItems.map((i: OrganisationsbeziehungWithOrganisationen) => i.organisationsbeziehung),
+            ).toEqual([relationByKennung]);
+        });
+
+        describe('sorting', () => {
+            let organisation: Organisation<true, false>;
+            let relationToB: Organisationsbeziehung<true>;
+            let relationToA: Organisationsbeziehung<true>;
+
+            beforeEach(async () => {
+                organisation = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        name: 'Zentrale',
+                        kennung: '5555555',
+                        typ: OrganisationsTyp.SONSTIGE,
+                    }),
+                );
+                const zielA: Organisation<true, false> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        name: 'A-Ziel',
+                        kennung: '2222222',
+                        typ: OrganisationsTyp.SONSTIGE,
+                    }),
+                );
+                const zielB: Organisation<true, false> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        name: 'B-Ziel',
+                        kennung: '1111111',
+                        typ: OrganisationsTyp.SONSTIGE,
+                    }),
+                );
+                relationToB = await sut.createOrganisationsbeziehung(
+                    DoFactory.createOrganisationsbeziehung(false, {
+                        quellOrganisationId: organisation.id,
+                        zielOrganisationId: zielB.id,
+                        typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                    }),
+                );
+                relationToA = await sut.createOrganisationsbeziehung(
+                    DoFactory.createOrganisationsbeziehung(false, {
+                        quellOrganisationId: organisation.id,
+                        zielOrganisationId: zielA.id,
+                        typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                    }),
+                );
+            });
+
+            async function findIds(
+                sortField?: SortFieldOrganisationsbeziehung,
+                sortOrder?: ScopeOrder,
+            ): Promise<string[]> {
+                const [items]: Counted<OrganisationsbeziehungWithOrganisationen> =
+                    await sut.findOrganisationsbeziehungen(organisation.id, { sortField, sortOrder });
+
+                return items.map((item: OrganisationsbeziehungWithOrganisationen) => item.organisationsbeziehung.id);
+            }
+
+            it.each([
+                [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME, 'A'],
+                [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER, 'B'],
+                [SortFieldOrganisationsbeziehung.TYP, 'B'],
+            ])('should sort ascending by %s', async (sortField: SortFieldOrganisationsbeziehung, first: string) => {
+                const expected: string[] =
+                    first === 'A' ? [relationToA.id, relationToB.id] : [relationToB.id, relationToA.id];
+
+                await expect(findIds(sortField, ScopeOrder.ASC)).resolves.toEqual(expected);
+                await expect(findIds(sortField, ScopeOrder.DESC)).resolves.toEqual([...expected].reverse());
+            });
+
+            it('should sort by the other organisation regardless of the direction of the relation', async () => {
+                const quelleAA: Organisation<true, false> = await sut.save(
+                    DoFactory.createOrganisationAggregate(false, {
+                        name: 'AA-Quelle',
+                        kennung: '3333333',
+                        typ: OrganisationsTyp.SONSTIGE,
+                    }),
+                );
+                const relationFromAA: Organisationsbeziehung<true> = await sut.createOrganisationsbeziehung(
+                    DoFactory.createOrganisationsbeziehung(false, {
+                        quellOrganisationId: quelleAA.id,
+                        zielOrganisationId: organisation.id,
+                    }),
+                );
+
+                // A-Ziel, AA-Quelle (organisation is ziel), B-Ziel
+                await expect(findIds(SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME)).resolves.toEqual([
+                    relationToA.id,
+                    relationFromAA.id,
+                    relationToB.id,
+                ]);
+                // 1111111 (B-Ziel), 2222222 (A-Ziel), 3333333 (AA-Quelle)
+                await expect(
+                    findIds(SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER),
+                ).resolves.toEqual([relationToB.id, relationToA.id, relationFromAA.id]);
+            });
+
+            it('should default to sorting by typ ascending', async () => {
+                await expect(findIds()).resolves.toEqual(await findIds(SortFieldOrganisationsbeziehung.TYP));
+            });
         });
     });
 

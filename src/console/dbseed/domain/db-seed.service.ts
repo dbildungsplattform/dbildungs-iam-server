@@ -8,7 +8,7 @@ import { EmailDomain } from '../../../email/modules/core/domain/email-domain.js'
 import { EmailDomainRepo } from '../../../email/modules/core/persistence/email-domain.repo.js';
 import { FindUserFilter, KeycloakUserService, User } from '../../../modules/keycloak-administration/index.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
-import { Organisation } from '../../../modules/organisation/domain/organisation.js';
+import { Organisation, Organisationsbeziehung } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
 import { PersonFactory } from '../../../modules/person/domain/person.factory.js';
 import { Person, PersonCreationParams } from '../../../modules/person/domain/person.js';
@@ -34,6 +34,7 @@ import { ConstructorCall, EntityFile } from '../db-seed.console.js';
 import { DataProviderFile } from '../file/data-provider-file.js';
 import { EmailDomainFile } from '../file/email-domain-file.js';
 import { OrganisationFile } from '../file/organisation-file.js';
+import { OrganisationsbeziehungFile } from '../file/organisationsbeziehung-file.js';
 import { PersonFile } from '../file/person-file.js';
 import { PersonenkontextFile } from '../file/personenkontext-file.js';
 import { RolleFile } from '../file/rolle-file.js';
@@ -145,6 +146,34 @@ export class DbSeedService {
             await this.constructAndPersistOrganisation(organisation);
         }
         this.logger.info(`Insert ${entities.length} entities of type Organisation`);
+    }
+
+    public async seedOrganisationsbeziehung(fileContentAsStr: string): Promise<void> {
+        const organisationsbeziehungFile: EntityFile<OrganisationsbeziehungFile> = JSON.parse(
+            fileContentAsStr,
+        ) as EntityFile<OrganisationsbeziehungFile>;
+        const files: OrganisationsbeziehungFile[] = plainToInstance(
+            OrganisationsbeziehungFile,
+            organisationsbeziehungFile.entities,
+        );
+
+        /* eslint-disable no-await-in-loop */
+        for (const file of files) {
+            const referencedQuelle: Organisation<true> = await this.getReferencedOrganisation(file.quellOrganisationId);
+            const ziel: Organisation<true> = await this.getReferencedOrganisation(file.zielOrganisationId);
+            const quelle: Option<Organisation<true, true>> =
+                await this.organisationRepository.findByIdWithRelationships(referencedQuelle.id);
+            if (!quelle) {
+                throw new EntityNotFoundError('Organisation', file.quellOrganisationId.toString());
+            }
+
+            const organisationsbeziehung: Organisationsbeziehung<false> = quelle.addOrganisationsbeziehung(
+                ziel.id,
+                file.typ,
+            );
+            await this.organisationRepository.createOrganisationsbeziehung(organisationsbeziehung);
+        }
+        this.logger.info(`Insert ${files.length} entities of type Organisationsbeziehung`);
     }
 
     public async seedRolle(fileContentAsStr: string): Promise<void> {

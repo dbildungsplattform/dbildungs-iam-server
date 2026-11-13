@@ -13,7 +13,10 @@ import { ScopeOperator } from '../../../shared/persistence/index.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import {
+    OrganisationRepository,
+    type OrganisationsbeziehungSearchOptions,
+} from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
 import { BehoerdeAdministriertVon } from '../specification/behoerde-administriert-von.js';
 import { BehoerdeNameUnique } from '../specification/behoerde-name-eindeutig.js';
@@ -48,7 +51,7 @@ import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child
 import { ZyklusInOrganisationen } from '../specification/zyklus-in-organisationen.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
-import { Organisation, Organisationsbeziehung } from './organisation.js';
+import { Organisation, Organisationsbeziehung, OrganisationsbeziehungWithOrganisationen } from './organisation.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 import { SchulaufsichtQuelleSchuleZielBehoerde } from '../specification/relations/schulaufsicht-quelle-schule-ziel-behoerde.js';
 import { SchulaufsichtSchuleUndAufsichtSelberBaum } from '../specification/relations/schulaufsicht-schule-und-aufsicht-selber-baum.js';
@@ -746,6 +749,29 @@ export class OrganisationService {
         } else {
             return { ok: false, error: new MissingPermissionsError('Not permitted to manage organisation') };
         }
+    }
+
+    public async findOrganisationsbeziehungen(
+        organisationId: OrganisationID,
+        options: OrganisationsbeziehungSearchOptions,
+    ): Promise<Result<Paged<OrganisationsbeziehungWithOrganisationen>, DomainError>> {
+        if (!(await this.organisationRepo.exists(organisationId))) {
+            return { ok: false, error: new EntityNotFoundError('Organisation', organisationId) };
+        }
+
+        const [items, total]: Counted<OrganisationsbeziehungWithOrganisationen> =
+            await this.organisationRepo.findOrganisationsbeziehungen(organisationId, options);
+
+        return {
+            ok: true,
+            value: {
+                total,
+                offset: options.offset ?? 0,
+                limit: options.limit ?? total,
+                items,
+                pageTotal: items.length,
+            },
+        };
     }
 
     public async createOrganisationsbeziehung(
