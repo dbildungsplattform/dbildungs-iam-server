@@ -37,5 +37,5 @@ export enum SichtfreigabeType {
 export enum OperationContext {
     PERSON_ANLEGEN = 'PERSON_ANLEGEN',
     PERSON_BEARBEITEN = 'PERSON_BEARBEITEN',
-    PERSON_HINZUFÜGEN = 'PERSON_HINZUFÜGEN'
+    PERSON_HINZUFÜGEN = 'PERSON_HINZUFÜGEN',
 }
