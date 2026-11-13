@@ -2,7 +2,7 @@ import { type Observable, from, lastValueFrom } from 'rxjs';
 import { type ArgumentsHost, type CallHandler, type ExecutionContext } from '@nestjs/common';
 import { DISABLE_PAGING_INTERCEPTOR, GlobalPagingHeadersInterceptor } from './global-paging-headers.interceptor.js';
 import { type Response } from 'express';
-import { PagedResponse } from './paged.response.js';
+import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
 
 type HttpArgumentsHost = ReturnType<ArgumentsHost['switchToHttp']>;
@@ -27,7 +27,16 @@ describe('GlobalPagingHeadersInterceptor', () => {
                     getHandler: vi.fn(() => (): void => {}),
                 };
                 callHandlerMock = {
-                    handle: vi.fn(() => from([new PagedResponse({ offset: 0, limit: 0, total: 0, items: [] })])),
+                    handle: vi.fn(() =>
+                        from([
+                            new SchulconnexPagedResponse({
+                                offset: 0,
+                                limit: 0,
+                                total: 0,
+                                items: [],
+                            }),
+                        ]),
+                    ),
                 } as CallHandler;
             });
 
@@ -40,10 +49,10 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 // is needed to execute the observable pipeline
                 await lastValueFrom(observable);
 
-                expect(responseMock.setHeader).toBeCalledTimes(4);
-                expect(responseMock.setHeader).toBeCalledWith(PagingHeaders.OFFSET, 0);
-                expect(responseMock.setHeader).toBeCalledWith(PagingHeaders.LIMIT, 0);
-                expect(responseMock.setHeader).toBeCalledWith(PagingHeaders.TOTAL, 0);
+                expect(responseMock.setHeader).toHaveBeenCalledTimes(3);
+                expect(responseMock.setHeader).toHaveBeenCalledWith(PagingHeaders.OFFSET, 0);
+                expect(responseMock.setHeader).toHaveBeenCalledWith(PagingHeaders.LIMIT, 0);
+                expect(responseMock.setHeader).toHaveBeenCalledWith(PagingHeaders.TOTAL, 0);
             });
 
             it('should change response type to list', async () => {
@@ -82,7 +91,7 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 // is needed to execute the observable pipeline
                 await lastValueFrom(observable);
 
-                expect(responseMock.setHeader).toBeCalledTimes(0);
+                expect(responseMock.setHeader).not.toHaveBeenCalled();
             });
 
             it('should not change response type', async () => {
@@ -105,13 +114,22 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 };
                 const handlerMock = (): void => {};
                 Reflect.defineMetadata(DISABLE_PAGING_INTERCEPTOR, true, handlerMock);
-                Reflect.defineMetadata(DISABLE_PAGING_INTERCEPTOR, true, handlerMock);
+
                 contextMock = {
-                    getHandler: (): (() => void) => handlerMock, // <-- return the same function
+                    getHandler: (): (() => void) => handlerMock,
                     switchToHttp: (): HttpArgumentsHost => httpArgumentsHostMock as HttpArgumentsHost,
                 };
                 callHandlerMock = {
-                    handle: vi.fn(() => from([new PagedResponse({ offset: 0, limit: 0, total: 0, items: [] })])),
+                    handle: vi.fn(() =>
+                        from([
+                            new SchulconnexPagedResponse({
+                                offset: 0,
+                                limit: 0,
+                                total: 0,
+                                items: [],
+                            }),
+                        ]),
+                    ),
                 } as CallHandler;
             });
 
@@ -124,7 +142,7 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 // is needed to execute the observable pipeline
                 await lastValueFrom(observable);
 
-                expect(responseMock.setHeader).toBeCalledTimes(0);
+                expect(responseMock.setHeader).not.toHaveBeenCalled();
             });
 
             it('should not change response type', async () => {
@@ -134,7 +152,12 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 );
 
                 await expect(lastValueFrom(observable)).resolves.toStrictEqual(
-                    new PagedResponse({ offset: 0, limit: 0, total: 0, items: [] }),
+                    new SchulconnexPagedResponse({
+                        offset: 0,
+                        limit: 0,
+                        total: 0,
+                        items: [],
+                    }),
                 );
             });
         });

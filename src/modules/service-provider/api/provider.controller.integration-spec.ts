@@ -23,7 +23,6 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
 import { type PagedResponse } from '../../../shared/paging/index.js';
-import { type RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
 import { GlobalValidationPipe } from '../../../shared/validation/global-validation.pipe.js';
 import { AuthenticationExceptionFilter } from '../../authentication/api/authentication-exception-filter.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
@@ -425,8 +424,8 @@ describe('ServiceProvider API', () => {
                 .query(params)
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
             expect(response.status).toBe(200);
             expect(body.items).toBeInstanceOf(Array);
             expect(body.items.length).toBeGreaterThanOrEqual(2);
@@ -481,8 +480,8 @@ describe('ServiceProvider API', () => {
                 .query({ kategorien: [ServiceProviderKategorie.EMAIL, ServiceProviderKategorie.UNTERRICHT] })
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
             expect(response.status).toBe(200);
             expect(body.total).toBe(2);
@@ -512,8 +511,8 @@ describe('ServiceProvider API', () => {
                 .query({ kategorien: allKategorien })
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
             expect(response.status).toBe(200);
             expect(body.total).toBe(serviceProviders.length);
@@ -542,8 +541,8 @@ describe('ServiceProvider API', () => {
                 .query({ kategorien: [ServiceProviderKategorie.EMAIL] })
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
             expect(response.status).toBe(200);
             expect(body.total).toBe(0);
@@ -578,8 +577,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'alpha' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -605,8 +604,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'Gamma' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -639,8 +638,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'alpha', kategorien: [ServiceProviderKategorie.EMAIL] })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -662,8 +661,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'nonexistent' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(0);
@@ -688,8 +687,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'A_B' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -715,8 +714,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: '50%' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -742,8 +741,8 @@ describe('ServiceProvider API', () => {
                     .query({ searchFilter: 'C:\\Temp' })
                     .send();
 
-                const body: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
-                    response.body as RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
+                const body: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                    response.body as PagedResponse<ManageableServiceProviderSimpleListEntryResponse>;
 
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
@@ -824,11 +823,11 @@ describe('ServiceProvider API', () => {
                 .query({ organisationId: organisation.id })
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderListEntryResponse>;
             expect(response.status).toBe(200);
 
-            expect(body).toEqual<RawPagedResponse<ManageableServiceProviderListEntryResponse>>({
+            expect(body).toEqual<PagedResponse<ManageableServiceProviderListEntryResponse>>({
                 items: [
                     {
                         id: serviceProvider.id,
@@ -888,11 +887,11 @@ describe('ServiceProvider API', () => {
                 .query({ organisationId: faker.string.uuid() })
                 .send();
 
-            const body: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
-                response.body as RawPagedResponse<ManageableServiceProviderListEntryResponse>;
+            const body: PagedResponse<ManageableServiceProviderListEntryResponse> =
+                response.body as PagedResponse<ManageableServiceProviderListEntryResponse>;
             expect(response.status).toBe(200);
 
-            expect(body).toEqual<RawPagedResponse<ManageableServiceProviderListEntryResponse>>({
+            expect(body).toEqual<PagedResponse<ManageableServiceProviderListEntryResponse>>({
                 items: [],
                 limit: 0,
                 offset: 0,
@@ -1320,8 +1319,8 @@ describe('ServiceProvider API', () => {
                     .get(url)
                     .send();
 
-                const body: RawPagedResponse<ServiceProviderResponse> =
-                    response.body as RawPagedResponse<ServiceProviderResponse>;
+                const body: PagedResponse<ServiceProviderResponse> =
+                    response.body as PagedResponse<ServiceProviderResponse>;
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(4);
                 expect(body.items.map((item: ServiceProviderResponse) => item.id)).toEqual(
@@ -1348,8 +1347,8 @@ describe('ServiceProvider API', () => {
                     .query(params)
                     .send();
 
-                const body: RawPagedResponse<ServiceProviderResponse> =
-                    response.body as RawPagedResponse<ServiceProviderResponse>;
+                const body: PagedResponse<ServiceProviderResponse> =
+                    response.body as PagedResponse<ServiceProviderResponse>;
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(1);
                 expect(body.items[0]!.id).toBe(matchingServiceProvider.id);
@@ -1364,8 +1363,8 @@ describe('ServiceProvider API', () => {
                     .query(params)
                     .send();
 
-                const body: RawPagedResponse<ServiceProviderResponse> =
-                    response.body as RawPagedResponse<ServiceProviderResponse>;
+                const body: PagedResponse<ServiceProviderResponse> =
+                    response.body as PagedResponse<ServiceProviderResponse>;
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(3);
                 expect(body.limit).toBe(2);
@@ -1384,8 +1383,8 @@ describe('ServiceProvider API', () => {
                     .query(params)
                     .send();
 
-                const body: RawPagedResponse<ServiceProviderResponse> =
-                    response.body as RawPagedResponse<ServiceProviderResponse>;
+                const body: PagedResponse<ServiceProviderResponse> =
+                    response.body as PagedResponse<ServiceProviderResponse>;
                 expect(response.status).toBe(200);
                 expect(body.total).toBe(3);
                 expect(body.offset).toBe(2);

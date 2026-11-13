@@ -33,8 +33,7 @@ import { uniq } from 'lodash-es';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { DomainError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged } from '../../../shared/paging/index.js';
-import { ApiOkResponsePaginated, RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
+import { ApiOkResponsePaginated, Paged, PagedResponse } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
 import { StreamableFileFactory } from '../../../shared/util/streamable-file.factory.js';
@@ -146,7 +145,7 @@ export class ProviderController {
     public async getAvailableServiceProviders(
         @Query() queryParams: FindAngeboteQueryParams,
         @Permissions() permissions: PersonPermissions,
-    ): Promise<RawPagedResponse<ServiceProviderResponse>> {
+    ): Promise<PagedResponse<ServiceProviderResponse>> {
         let angeboteAndTotal: [ServiceProvider<true>[], number] = [[], 0];
         if (
             queryParams.systemrechte?.length === 1 &&
@@ -174,7 +173,7 @@ export class ProviderController {
             items: serviceProviderResponses,
         };
 
-        return new RawPagedResponse(pagedResponse);
+        return new PagedResponse(pagedResponse);
     }
 
     @Get(':angebotId/logo')
@@ -225,7 +224,7 @@ export class ProviderController {
         @Permissions() permissions: IPersonPermissions,
         @Param() pathParams: RollenerweiterungByServiceProvidersIdPathParams,
         @Query() queryParams: RollenerweiterungByServiceProvidersIdQueryParams,
-    ): Promise<RawPagedResponse<RollenerweiterungWithExtendedDataResponse>> {
+    ): Promise<PagedResponse<RollenerweiterungWithExtendedDataResponse>> {
         const rollenerweiterungenResult: Result<
             Counted<Rollenerweiterung<true>>,
             MissingPermissionsError
@@ -271,7 +270,7 @@ export class ProviderController {
                 ),
         );
 
-        return new RawPagedResponse({
+        return new PagedResponse({
             offset: queryParams.offset ?? 0,
             limit: queryParams.limit ?? total,
             total,
@@ -292,7 +291,7 @@ export class ProviderController {
     public async getManageableServiceProviders(
         @Permissions() permissions: IPersonPermissions,
         @Query() params: ManageableServiceProvidersParams,
-    ): Promise<RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse>> {
+    ): Promise<PagedResponse<ManageableServiceProviderSimpleListEntryResponse>> {
         const [
             enrichedServiceProviders,
             total,
@@ -304,7 +303,7 @@ export class ProviderController {
                 offset: params.offset,
             });
 
-        return new RawPagedResponse({
+        return new PagedResponse({
             offset: params.offset ?? 0,
             limit: params.limit ?? total,
             total,
@@ -333,7 +332,7 @@ export class ProviderController {
     public async getManageableLandRootServiceProviders(
         @Permissions() permissions: IPersonPermissions,
         @Query() params: ManageableLandRootServiceProvidersQueryParams,
-    ): Promise<RawPagedResponse<ServiceProviderResponse>> {
+    ): Promise<PagedResponse<ServiceProviderResponse>> {
         const result: Result<
             Counted<ServiceProvider<true>>,
             MissingPermissionsError
@@ -350,7 +349,7 @@ export class ProviderController {
 
         const [serviceProviders, total]: Counted<ServiceProvider<true>> = result.value;
 
-        return new RawPagedResponse({
+        return new PagedResponse({
             offset: params.offset ?? 0,
             limit: params.limit ?? total,
             total,
@@ -371,7 +370,7 @@ export class ProviderController {
     public async getManageableServiceProvidersForOrganisationId(
         @Permissions() permissions: IPersonPermissions,
         @Query() params: ManageableServiceProvidersForOrganisationParams,
-    ): Promise<RawPagedResponse<ManageableServiceProviderListEntryResponse>> {
+    ): Promise<PagedResponse<ManageableServiceProviderListEntryResponse>> {
         const result: Result<
             Counted<ManageableServiceProviderWithReferencedObjects>,
             MissingPermissionsError
@@ -391,7 +390,7 @@ export class ProviderController {
             number,
         ] = result.value;
 
-        return new RawPagedResponse({
+        return new PagedResponse({
             offset: params.offset ?? 0,
             limit: params.limit ?? total,
             total,

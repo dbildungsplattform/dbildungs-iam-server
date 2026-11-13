@@ -7,7 +7,7 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ApiOkResponsePaginated, DisablePagingInterceptor, RawPagedResponse } from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/index.js';
 import { PersonenQueryParams } from './personen-query.param.js';
 import { Person } from '../domain/person.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
@@ -35,7 +35,6 @@ export class PersonFrontendController {
     }
 
     @Get()
-    @DisablePagingInterceptor()
     @ApiOkResponsePaginated(PersonendatensatzResponse, {
         description:
             'The persons were successfully returned. WARNING: This endpoint returns all persons as default when no paging parameters were set.',
@@ -46,7 +45,7 @@ export class PersonFrontendController {
     public async findPersons(
         @Query() queryParams: PersonenQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<PersonendatensatzResponse>> {
+    ): Promise<PagedResponse<PersonendatensatzResponse>> {
         // Find all organisations where user has permission
         const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
             [RollenSystemRecht.PERSONEN_VERWALTEN],
@@ -62,7 +61,7 @@ export class PersonFrontendController {
             permittedOrgas,
         );
 
-        const response: RawPagedResponse<PersonendatensatzResponse> = new RawPagedResponse({
+        const response: PagedResponse<PersonendatensatzResponse> = new PagedResponse({
             offset: queryParams.offset ?? 0,
             limit: queryParams.limit ?? total,
             total: total,

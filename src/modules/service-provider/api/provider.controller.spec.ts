@@ -12,7 +12,7 @@ import { DEFAULT_TIMEOUT_FOR_TESTCONTAINERS } from '../../../../test/utils/timeo
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EntityNotFoundError, MissingAttributeError } from '../../../shared/error/index.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { RawPagedResponse } from '../../../shared/paging/raw-paged.response.js';
+import { PagedResponse } from '../../../shared/paging/index.js';
 import { type OrganisationID, type ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { StreamableFileFactory } from '../../../shared/util/streamable-file.factory.js';
@@ -238,7 +238,7 @@ describe('Provider Controller Test', () => {
                 ]),
             );
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     {
@@ -259,7 +259,7 @@ describe('Provider Controller Test', () => {
                 offset,
                 limit,
             );
-            expect(result).toBeInstanceOf(RawPagedResponse);
+            expect(result).toBeInstanceOf(PagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
             expect(result.total).toBe(1);
@@ -318,7 +318,7 @@ describe('Provider Controller Test', () => {
                 ]),
             );
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     {
@@ -340,7 +340,7 @@ describe('Provider Controller Test', () => {
                 offset,
                 limit,
             );
-            expect(result).toBeInstanceOf(RawPagedResponse);
+            expect(result).toBeInstanceOf(PagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
             expect(result.total).toBe(1);
@@ -449,7 +449,7 @@ describe('Provider Controller Test', () => {
                 limit,
             });
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
@@ -465,7 +465,7 @@ describe('Provider Controller Test', () => {
                 limit,
             );
 
-            expect(result).toBeInstanceOf(RawPagedResponse);
+            expect(result).toBeInstanceOf(PagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
             expect(result.total).toBe(1);
@@ -513,14 +513,14 @@ describe('Provider Controller Test', () => {
                 limit,
             });
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
                     queryParams,
                 );
 
-            expect(result).toBeInstanceOf(RawPagedResponse);
+            expect(result).toBeInstanceOf(PagedResponse);
             expect(result.offset).toBe(offset);
             expect(result.limit).toBe(limit);
             expect(result.total).toBe(1);
@@ -575,7 +575,7 @@ describe('Provider Controller Test', () => {
             const queryParams: RollenerweiterungByServiceProvidersIdQueryParams =
                 new RollenerweiterungByServiceProvidersIdQueryParams();
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     pathParams,
@@ -603,7 +603,7 @@ describe('Provider Controller Test', () => {
                 Ok([[], 0]),
             );
 
-            const result: RawPagedResponse<RollenerweiterungWithExtendedDataResponse> =
+            const result: PagedResponse<RollenerweiterungWithExtendedDataResponse> =
                 await providerController.findRollenerweiterungenByServiceProviderId(
                     permissionsMock,
                     {
@@ -721,7 +721,7 @@ describe('Provider Controller Test', () => {
                     1,
                 ]);
 
-                const result: RawPagedResponse<ServiceProviderResponse> =
+                const result: PagedResponse<ServiceProviderResponse> =
                     await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
 
                 expect(serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga).toHaveBeenCalledWith(
@@ -731,7 +731,7 @@ describe('Provider Controller Test', () => {
                     queryParams.limit,
                     queryParams.offset,
                 );
-                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result).toBeInstanceOf(PagedResponse);
                 expect(result.total).toBe(1);
                 expect(result.offset).toBe(3);
                 expect(result.limit).toBe(25);
@@ -754,13 +754,13 @@ describe('Provider Controller Test', () => {
                     limit: 12,
                 });
 
-                const result: RawPagedResponse<ServiceProviderResponse> =
+                const result: PagedResponse<ServiceProviderResponse> =
                     await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
 
                 expect(
                     serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
                 ).not.toHaveBeenCalled();
-                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result).toBeInstanceOf(PagedResponse);
                 expect(result.total).toBe(0);
                 expect(result.offset).toBe(4);
                 expect(result.limit).toBe(12);
@@ -776,13 +776,13 @@ describe('Provider Controller Test', () => {
             it('should not use the organisation-scoped rollenerweiterung lookup and should apply default paging', async () => {
                 const queryParams: FindAngeboteQueryParams = new FindAngeboteQueryParams();
 
-                const result: RawPagedResponse<ServiceProviderResponse> =
+                const result: PagedResponse<ServiceProviderResponse> =
                     await providerController.getAvailableServiceProviders(queryParams, personPermissionsMock);
 
                 expect(
                     serviceProviderServiceMock.findAllowedProvidersForRollenerweiterungAtOrga,
                 ).not.toHaveBeenCalled();
-                expect(result).toBeInstanceOf(RawPagedResponse);
+                expect(result).toBeInstanceOf(PagedResponse);
                 expect(result.total).toBe(0);
                 expect(result.offset).toBe(0);
                 expect(result.limit).toBe(0);
@@ -828,7 +828,7 @@ describe('Provider Controller Test', () => {
                 serviceProviderServiceMock.findAuthorized.mockResolvedValue([manageableObjects, total]);
 
                 const params: ManageableServiceProvidersParams = { kategorien: [], ...pagingParams };
-                const result: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                const result: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
                     await providerController.getManageableServiceProviders(personPermissionsMock, params);
 
                 expect(serviceProviderServiceMock.findAuthorized).toHaveBeenCalledWith(personPermissionsMock, {
@@ -866,7 +866,7 @@ describe('Provider Controller Test', () => {
                 serviceProviderServiceMock.findAuthorized.mockResolvedValue([manageableObjects, 1]);
 
                 const params: ManageableServiceProvidersParams = { kategorien: [kategorie], limit: 10, offset: 0 };
-                const result: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+                const result: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
                     await providerController.getManageableServiceProviders(personPermissionsMock, params);
 
                 expect(serviceProviderServiceMock.findAuthorized).toHaveBeenCalledWith(personPermissionsMock, {
@@ -925,7 +925,7 @@ describe('Provider Controller Test', () => {
                 Ok([manageableObjects, total]),
             );
 
-            const result: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
+            const result: PagedResponse<ManageableServiceProviderListEntryResponse> =
                 await providerController.getManageableServiceProvidersForOrganisationId(personPermissionsMock, params);
 
             expect(result.offset).toBe(0);
@@ -965,7 +965,7 @@ describe('Provider Controller Test', () => {
                 Ok([manageableObjects, total]),
             );
 
-            const result: RawPagedResponse<ManageableServiceProviderListEntryResponse> =
+            const result: PagedResponse<ManageableServiceProviderListEntryResponse> =
                 await providerController.getManageableServiceProvidersForOrganisationId(personPermissionsMock, params);
 
             expect(result).toBeDefined();
@@ -1005,7 +1005,7 @@ describe('Provider Controller Test', () => {
 
             serviceProviderServiceMock.findAuthorized.mockResolvedValue([manageableObjects, total]);
 
-            const result: RawPagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
+            const result: PagedResponse<ManageableServiceProviderSimpleListEntryResponse> =
                 await providerController.getManageableServiceProviders(personPermissionsMock, params);
 
             expect(result).toBeDefined();
