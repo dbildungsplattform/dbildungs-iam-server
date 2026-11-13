@@ -11,7 +11,6 @@ import { RolleModule } from '../rolle/rolle.module.js';
 import { DbiamPersonenkontextFactory } from './domain/dbiam-personenkontext.factory.js';
 import { DBiamPersonenkontextService } from './domain/dbiam-personenkontext.service.js';
 import { PersonenkontextCreationService } from './domain/personenkontext-creation.service.js';
-import { PersonenkontextWorkflowSharedKernel } from './domain/personenkontext-workflow-shared-kernel.js';
 import { PersonenkontextWorkflowFactory } from './domain/personenkontext-workflow.factory.js';
 import { PersonenkontextFactory } from './domain/personenkontext.factory.js';
 import { DBiamPersonenkontextRepo } from './persistence/dbiam-personenkontext.repo.js';
@@ -37,7 +36,6 @@ import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-p
         PersonenkontextCreationService,
         PersonenkontextWorkflowFactory,
         EntityAggregateMapper,
-        PersonenkontextWorkflowSharedKernel,
     ],
     exports: [
         PersonenkontextService,
@@ -48,7 +46,6 @@ import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-p
         PersonenkontextFactory,
         PersonenkontextCreationService,
         PersonenkontextWorkflowFactory,
-        PersonenkontextWorkflowSharedKernel,
     ],
 })
 export class PersonenKontextModule {}

@@ -1,6 +1,7 @@
 import { type ConfigService } from '@nestjs/config';
 import { type PortalConfig } from '../../../shared/config/portal.config.js';
 import { type DomainError } from '../../../shared/error/domain.error.js';
+import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { type PersonID, type RolleID } from '../../../shared/types/index.js';
@@ -9,15 +10,19 @@ import { type PermittedOrgas } from '../../authentication/domain/person-permissi
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { type EscalatedPermissionAtOrga } from '../../permission/escalated-person-permissions.js';
 import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
+import { OrganisationMatchesRollenartError } from '../../rolle/domain/specification/error/organisation-matches-rollenart.error.js';
+import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
 import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
+import { type DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { RolleNurAnPassendeOrganisationError } from '../specification/error/rolle-nur-an-passende-organisation.js';
 import { type DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { type PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { OperationContext } from './personenkontext.enums.js';
 import { type Personenkontext } from './personenkontext.js';
 import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
@@ -34,7 +39,8 @@ export class PersonenkontextWorkflowAggregate {
         private readonly organisationRepository: OrganisationRepository,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly configService: ConfigService,
-        private readonly personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
+        private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
+        private readonly personenkontextRepo: DBiamPersonenkontextRepo,
     ) {}
 
     public static createNew(
@@ -42,14 +48,16 @@ export class PersonenkontextWorkflowAggregate {
         organisationRepository: OrganisationRepository,
         dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         configService: ConfigService,
-        personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
+        escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
+        personenkontextRepo: DBiamPersonenkontextRepo,
     ): PersonenkontextWorkflowAggregate {
         return new PersonenkontextWorkflowAggregate(
             rolleRepo,
             organisationRepository,
             dbiamPersonenkontextFactory,
             configService,
-            personenkontextWorkflowSharedKernel,
+            escalatedPersonPermissionsFactory,
+            personenkontextRepo,
         );
     }
 
@@ -162,30 +170,103 @@ export class PersonenkontextWorkflowAggregate {
         return Ok(undefined);
     }
 
-    // Takes in the list of personenkontexte and decides whether to add or delete the personenkontexte for a specific PersonId
-    // This will only be used during "bearbeiten".
+    /**
+     * Commits personenkontexte updates with escalated permissions for add operations.
+     *
+     * For OperationContext.PERSON_HINZUFÜGEN, escalates permissions with PERSONEN_VERWALTEN at ROOT
+     * before executing the update. For other operations, uses the provided permissions as-is.
+     *
+     * @param personId The ID of the person being modified
+     * @param lastModified The last modified timestamp
+     * @param count Current personenkontext count
+     * @param personenkontexte The list of personenkontexte to update
+     * @param permissions The caller's permissions
+     * @param operationContext The context of the operation
+     * @param personalnummer Optional personalnummer
+     * @returns Updated personenkontexte or an error
+     */
     public async commit(
         personId: string,
         lastModified: Date | undefined,
         count: number,
         personenkontexte: DbiamPersonenkontextBodyParams[],
         permissions: IPersonPermissions,
+        operationContext: OperationContext = OperationContext.PERSON_ANLEGEN,
         personalnummer?: string,
     ): Promise<Personenkontext<true>[] | PersonenkontexteUpdateError> {
+        const permissionsToUse: IPersonPermissions = await this.applyEscalatedPermissionsIfNeeded(
+            operationContext,
+            permissions,
+        );
+
+        const consolidatedPersonenkontexte: DbiamPersonenkontextBodyParams[] = await this.mergePersonenkontexteIfNeeded(
+            operationContext,
+            personId,
+            personenkontexte,
+        );
+
         const pkUpdate: PersonenkontexteUpdate = this.dbiamPersonenkontextFactory.createNewPersonenkontexteUpdate(
             personId,
             lastModified,
             count,
-            personenkontexte,
-            permissions,
+            consolidatedPersonenkontexte,
+            permissionsToUse,
             personalnummer,
         );
         return pkUpdate.update();
     }
 
+    private async mergePersonenkontexteIfNeeded(
+        operationContext: OperationContext,
+        personId: string,
+        personenkontexte: DbiamPersonenkontextBodyParams[],
+    ): Promise<DbiamPersonenkontextBodyParams[]> {
+        let mergedPersonenkontexte: DbiamPersonenkontextBodyParams[] = personenkontexte;
+        if (operationContext === OperationContext.PERSON_HINZUFÜGEN) {
+            const existingPKs: DbiamPersonenkontextBodyParams[] = await this.personenkontextRepo.findByPerson(personId);
+            mergedPersonenkontexte = existingPKs.concat(personenkontexte);
+        }
+        return mergedPersonenkontexte;
+    }
+
+    private async applyEscalatedPermissionsIfNeeded(
+        operationContext: OperationContext,
+        permissions: IPersonPermissions,
+    ): Promise<IPersonPermissions> {
+        return operationContext === OperationContext.PERSON_HINZUFÜGEN
+            ? this.escalatedPersonPermissionsFactory.fromPermissions(permissions, [
+                  {
+                      orgaId: 'ROOT',
+                      systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN],
+                  } satisfies EscalatedPermissionAtOrga,
+              ])
+            : permissions;
+    }
+
     // Checks if the rolle can be assigned to the target organisation
     public async checkReferences(organisationId: string, rolleId: string): Promise<Result<void, DomainError>> {
-        return this.personenkontextWorkflowSharedKernel.checkReferences(organisationId, rolleId);
+        const [orga, rolle]: [Option<Organisation<true>>, Option<Rolle<true>>] = await Promise.all([
+            this.organisationRepository.findById(organisationId),
+            this.rolleRepo.findById(rolleId),
+        ]);
+        if (!orga) {
+            return Err(new EntityNotFoundError('Organisation', organisationId));
+        }
+
+        if (!rolle) {
+            return Err(new EntityNotFoundError('Rolle', rolleId));
+        }
+        // Can rolle be assigned at target orga
+        const canAssignRolle: Result<void, EntityNotFoundError | OrganisationMatchesRollenartError> =
+            await rolle.canBeAssignedToOrga(orga);
+        if (!canAssignRolle.ok) {
+            if (canAssignRolle.error instanceof OrganisationMatchesRollenartError) {
+                return Err(new RolleNurAnPassendeOrganisationError());
+            }
+            return Err(new EntityNotFoundError('Rolle', rolleId)); // Rolle does not exist for the chosen organisation
+        }
+
+        return Ok();
     }
 
     public async checkPermissions(
@@ -217,7 +298,33 @@ export class PersonenkontextWorkflowAggregate {
                 return this.checkCreatePermissions(permissions, organisationId, rolleIds);
             case OperationContext.PERSON_BEARBEITEN:
                 return this.checkEditPermissions(permissions, organisationId);
+            case OperationContext.PERSON_HINZUFÜGEN:
+                return this.checkAddPermissions(permissions, organisationId);
+            default:
+                return Err(new MissingPermissionsError('Unauthorized operation'));
         }
+    }
+
+    /**
+     * Checks if the provided permissions are sufficient to add persons to the organisation.
+     *
+     * @param permissions The caller's permissions
+     * @param organisationId The target organisation ID
+     * @returns Success or a permission error
+     */
+    public async checkAddPermissions(
+        permissions: IPersonPermissions,
+        organisationId: string,
+    ): Promise<Result<void, DomainError>> {
+        const hasPermissionAtOrga: boolean = await permissions.hasSystemrechteAtOrganisation(organisationId, [
+            RollenSystemRecht.LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN,
+        ]);
+
+        if (!hasPermissionAtOrga) {
+            return Err(new MissingPermissionsError('Unauthorized to add persons to the organisation'));
+        }
+
+        return Ok(undefined);
     }
 
     private async checkEditPermissions(

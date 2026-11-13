@@ -160,6 +160,7 @@ export class DbiamPersonenkontextWorkflowController {
                     bodyParams.count,
                     bodyParams.personenkontexte,
                     permissions,
+                    bodyParams.operationContext,
                     queryParams.personalnummer || undefined,
                 );
 
