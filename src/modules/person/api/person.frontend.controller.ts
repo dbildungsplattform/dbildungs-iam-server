@@ -7,7 +7,7 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ApiOkResponsePaginated, DisablePagingInterceptor, PagedResponse } from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/index.js';
 import { PersonenQueryParams } from './personen-query.param.js';
 import { Person } from '../domain/person.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
@@ -35,7 +35,6 @@ export class PersonFrontendController {
     }
 
     @Get()
-    @DisablePagingInterceptor()
     @ApiOkResponsePaginated(PersonendatensatzResponse, {
         description:
             'The persons were successfully returned. WARNING: This endpoint returns all persons as default when no paging parameters were set.',
