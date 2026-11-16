@@ -26,7 +26,9 @@ import { Err, Ok } from '../../../../../shared/util/result.js';
 
 export type KeepAliveFn = () => void;
 
-const noopKeepAlive: KeepAliveFn = (): void => {};
+const noopKeepAlive: KeepAliveFn = (): void => {
+    /* empty */
+};
 
 @Injectable()
 export class SchulconnexPushHandler {
@@ -82,17 +84,17 @@ export class SchulconnexPushHandler {
 
         this.personUpdateMutexes.set(personId, mutex);
 
-        const waitInterval: NodeJS.Timeout = setInterval(() => {
+        const keepAliveInterval: NodeJS.Timeout = setInterval((): void => {
             keepAlive();
         }, 30_000);
 
         try {
-            return await mutex.runExclusive((): Promise<Result<void, DomainError>> => {
-                clearInterval(waitInterval);
-                return this.updatePersonenkontexteExclusive(personId, eventId, keepAlive);
-            });
+            return await mutex.runExclusive(
+                (): Promise<Result<void, DomainError>> => this.updatePersonenkontexteExclusive(personId, eventId),
+            );
         } finally {
-            clearInterval(waitInterval);
+            clearInterval(keepAliveInterval);
+
             if (!mutex.isLocked()) {
                 this.personUpdateMutexes.delete(personId);
             }
@@ -102,7 +104,6 @@ export class SchulconnexPushHandler {
     private async updatePersonenkontexteExclusive(
         personId: PersonID,
         eventId: string,
-        keepAlive: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
@@ -114,8 +115,6 @@ export class SchulconnexPushHandler {
             this.emailResolverService.findEmailBySpshPerson(personId),
         ]);
 
-        keepAlive();
-
         const errors: DomainError[] = [];
 
         for (const registry of registries) {
@@ -125,8 +124,6 @@ export class SchulconnexPushHandler {
                     personId,
                     registry.serviceProviderId,
                 );
-
-            keepAlive();
 
             for (const kontext of kontexte) {
                 // eslint-disable-next-line no-await-in-loop
@@ -144,8 +141,6 @@ export class SchulconnexPushHandler {
                         result.error,
                     );
                 }
-
-                keepAlive();
             }
         }
 

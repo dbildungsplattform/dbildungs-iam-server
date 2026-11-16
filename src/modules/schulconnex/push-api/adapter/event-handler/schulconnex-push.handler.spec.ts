@@ -510,6 +510,84 @@ describe('SchulconnexPushHandler', () => {
         });
     });
 
+    describe('keepAlive', () => {
+        it('should call keepAlive periodically while processing an event', async () => {
+            vi.useFakeTimers();
+
+            try {
+                const keepAlive: ReturnType<typeof vi.fn> = vi.fn();
+
+                let resolvePush: (() => void) | undefined;
+
+                const pendingPush: Promise<Result<void, DomainError>> = new Promise(
+                    (resolve: (value: Result<void, DomainError>) => void): void => {
+                        resolvePush = (): void => resolve(Ok());
+                    },
+                );
+
+                pushAdapterMock.upsertPersonenkontext.mockReturnValue(pendingPush);
+
+                const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                    personId,
+                    'new@example.org',
+                    undefined,
+                    undefined,
+                    undefined,
+                );
+
+                const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
+
+                await vi.waitFor(() => {
+                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+                });
+
+                expect(keepAlive).not.toHaveBeenCalled();
+
+                await vi.advanceTimersByTimeAsync(30_000);
+
+                expect(keepAlive).toHaveBeenCalledOnce();
+
+                await vi.advanceTimersByTimeAsync(30_000);
+
+                expect(keepAlive).toHaveBeenCalledTimes(2);
+
+                resolvePush?.();
+
+                const result: Result<void, DomainError> = await handling;
+
+                expect(result).toEqual(Ok());
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('should stop calling keepAlive after processing has finished', async () => {
+            vi.useFakeTimers();
+
+            try {
+                const keepAlive: ReturnType<typeof vi.fn> = vi.fn();
+
+                const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                    personId,
+                    'new@example.org',
+                    undefined,
+                    undefined,
+                    undefined,
+                );
+
+                const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event, keepAlive);
+
+                expect(result).toEqual(Ok());
+
+                await vi.advanceTimersByTimeAsync(60_000);
+
+                expect(keepAlive).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
+
     describe('concurrency handling', () => {
         it('should serialize email and lock updates for the same person', async () => {
             const currentLock: UserLock = UserLock.construct(
