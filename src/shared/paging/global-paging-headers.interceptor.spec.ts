@@ -1,6 +1,10 @@
 import { type Observable, from, lastValueFrom } from 'rxjs';
 import { type ArgumentsHost, type CallHandler, type ExecutionContext } from '@nestjs/common';
-import { DISABLE_PAGING_INTERCEPTOR, GlobalPagingHeadersInterceptor } from './global-paging-headers.interceptor.js';
+import {
+    DISABLE_PAGING_INTERCEPTOR,
+    DisablePagingInterceptor,
+    GlobalPagingHeadersInterceptor,
+} from './global-paging-headers.interceptor.js';
 import { type Response } from 'express';
 import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
@@ -12,6 +16,22 @@ describe('GlobalPagingHeadersInterceptor', () => {
     let responseMock: Partial<Response>;
     let contextMock: Partial<ExecutionContext>;
     let callHandlerMock: Partial<CallHandler>;
+
+    describe('DisablePagingInterceptor', () => {
+        it('should set metadata to disable paging transformation', () => {
+            class TestController {
+                @DisablePagingInterceptor()
+                public testHandler(): void {}
+            }
+
+            const metadata: unknown = Reflect.getMetadata(
+                DISABLE_PAGING_INTERCEPTOR,
+                TestController.prototype.testHandler,
+            );
+
+            expect(metadata).toBe(true);
+        });
+    });
 
     describe('intercept', () => {
         describe('when intercepting a paged response', () => {
@@ -62,6 +82,31 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 );
 
                 await expect(lastValueFrom(observable)).resolves.toStrictEqual([]);
+            });
+            it('should set page total header when pageTotal is provided', async () => {
+                callHandlerMock = {
+                    handle: vi.fn(() =>
+                        from([
+                            new SchulconnexPagedResponse({
+                                offset: 0,
+                                limit: 10,
+                                total: 20,
+                                pageTotal: 2,
+                                items: [],
+                            }),
+                        ]),
+                    ),
+                } as CallHandler;
+
+                const observable: Observable<unknown> = sut.intercept(
+                    contextMock as ExecutionContext,
+                    callHandlerMock as CallHandler,
+                );
+
+                await lastValueFrom(observable);
+
+                expect(responseMock.setHeader).toHaveBeenCalledTimes(4);
+                expect(responseMock.setHeader).toHaveBeenCalledWith(PagingHeaders.PAGE_TOTAL, 2);
             });
         });
 
