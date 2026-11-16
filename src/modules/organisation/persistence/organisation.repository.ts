@@ -168,6 +168,23 @@ const ORGANISATIONSBEZIEHUNG_ORDER_BY: Record<
     }),
 };
 
+function getOrganisationsbeziehungOrderByFactory(
+    sortField: SortFieldOrganisationsbeziehung,
+): (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity> {
+    switch (sortField) {
+        case SortFieldOrganisationsbeziehung.TYP:
+            return ORGANISATIONSBEZIEHUNG_ORDER_BY[SortFieldOrganisationsbeziehung.TYP];
+        case SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME:
+            return ORGANISATIONSBEZIEHUNG_ORDER_BY[SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME];
+        case SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER:
+            return ORGANISATIONSBEZIEHUNG_ORDER_BY[
+                SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER
+            ];
+        default:
+            return ORGANISATIONSBEZIEHUNG_ORDER_BY[SortFieldOrganisationsbeziehung.TYP];
+    }
+}
+
 @Injectable()
 export class OrganisationRepository {
     public readonly ROOT_ORGANISATION_ID: string;
@@ -902,8 +919,11 @@ export class OrganisationRepository {
         options: OrganisationsbeziehungSearchOptions,
     ): Promise<Counted<OrganisationsbeziehungWithOrganisationen>> {
         const direction: OrderDirection = options.sortOrder === ScopeOrder.DESC ? 'desc' : 'asc';
-        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
-            ORGANISATIONSBEZIEHUNG_ORDER_BY[options.sortField ?? SortFieldOrganisationsbeziehung.TYP](direction);
+        const sortField: SortFieldOrganisationsbeziehung =
+            options.sortField ?? SortFieldOrganisationsbeziehung.TYP;
+        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> = getOrganisationsbeziehungOrderByFactory(sortField)(
+            direction,
+        );
 
         const pattern: string = `%${options.searchString ?? ''}%`;
 
