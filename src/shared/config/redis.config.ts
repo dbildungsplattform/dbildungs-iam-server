@@ -72,15 +72,17 @@ export class RedisConfig {
     @Type(() => RedisSentinelNodeConfig)
     public readonly SENTINEL_NODES?: RedisSentinelNodeConfig[];
 
-    @IsOptional()
+    @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
     @IsBoolean()
     public readonly SENTINEL_USE_TLS?: boolean;
 
-    @IsOptional()
+    @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
     @IsString()
+    @IsNotEmpty()
     public readonly SENTINEL_USERNAME?: string;
 
-    @IsOptional()
+    @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
     @IsString()
+    @IsNotEmpty()
     public readonly SENTINEL_PASSWORD?: string;
 }

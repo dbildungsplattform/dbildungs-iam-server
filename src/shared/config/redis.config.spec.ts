@@ -7,6 +7,9 @@ const sentinelConfig: Record<string, unknown> = {
     SENTINEL_ENABLED: true,
     SENTINEL_MASTER_NAME: 'test-master',
     SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+    SENTINEL_USERNAME: 'sentinel-user',
+    SENTINEL_PASSWORD: 'sentinel-test-password',
+    SENTINEL_USE_TLS: false,
 };
 
 function validateConfig(overrides: Record<string, unknown> = {}): ValidationError[] {
@@ -30,6 +33,12 @@ describe('RedisConfig', () => {
     describe('standalone configuration', () => {
         it('should preserve standalone configuration without Sentinel settings', () => {
             const errors: ValidationError[] = validateConfig();
+
+            expect(errors).toEqual([]);
+        });
+
+        it('should not require Sentinel settings when Sentinel is explicitly disabled', () => {
+            const errors: ValidationError[] = validateConfig({ SENTINEL_ENABLED: false });
 
             expect(errors).toEqual([]);
         });
@@ -64,14 +73,17 @@ describe('RedisConfig', () => {
             expect(errors).toEqual([]);
         });
 
-        it.each(['SENTINEL_MASTER_NAME', 'SENTINEL_NODES'])(
-            'should require %s when Sentinel is enabled',
-            (property: string) => {
-                const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: undefined });
+        it.each([
+            'SENTINEL_MASTER_NAME',
+            'SENTINEL_NODES',
+            'SENTINEL_USERNAME',
+            'SENTINEL_PASSWORD',
+            'SENTINEL_USE_TLS',
+        ])('should require %s when Sentinel is enabled', (property: string) => {
+            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: undefined });
 
-                expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
-            },
-        );
+            expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
+        });
 
         it('should reject an empty master name', () => {
             const errors: ValidationError[] = validateConfig({ ...sentinelConfig, SENTINEL_MASTER_NAME: '' });
@@ -97,25 +109,31 @@ describe('RedisConfig', () => {
             expect(errors.some((error: ValidationError) => error.property === 'SENTINEL_NODES')).toBe(true);
         });
 
-        it('should accept optional Sentinel credentials and TLS', () => {
+        it.each([false, true])('should accept explicit Sentinel TLS %s', (useTls: boolean) => {
             const errors: ValidationError[] = validateConfig({
                 ...sentinelConfig,
-                SENTINEL_USERNAME: 'sentinel-user',
-                SENTINEL_PASSWORD: 'sentinel-test-password',
-                SENTINEL_USE_TLS: true,
+                USE_TLS: !useTls,
+                SENTINEL_USE_TLS: useTls,
             });
 
             expect(errors).toEqual([]);
         });
 
-        it('should accept explicitly unauthenticated Sentinel connections', () => {
-            const errors: ValidationError[] = validateConfig({
-                ...sentinelConfig,
-                SENTINEL_USERNAME: '',
-                SENTINEL_PASSWORD: '',
-            });
+        it.each(['SENTINEL_USERNAME', 'SENTINEL_PASSWORD'])('should reject empty %s', (property: string) => {
+            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: '' });
 
-            expect(errors).toEqual([]);
+            expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
+        });
+
+        it.each([
+            ['SENTINEL_USERNAME', null],
+            ['SENTINEL_PASSWORD', null],
+            ['SENTINEL_USE_TLS', null],
+            ['SENTINEL_USE_TLS', 'false'],
+        ])('should reject invalid %s value %s', (property: string, value: unknown) => {
+            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: value });
+
+            expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
         });
 
         it('should reject a non-boolean Sentinel flag', () => {

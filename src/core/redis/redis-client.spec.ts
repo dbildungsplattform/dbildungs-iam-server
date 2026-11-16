@@ -19,6 +19,9 @@ function config(overrides: Partial<RedisConfig> = {}): RedisConfig {
         SENTINEL_ENABLED: true,
         SENTINEL_MASTER_NAME: 'test-master',
         SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+        SENTINEL_USERNAME: 'sentinel-user',
+        SENTINEL_PASSWORD: 'sentinel-test-password',
+        SENTINEL_USE_TLS: false,
         ...overrides,
     });
 }
@@ -29,23 +32,24 @@ describe('Redis Sentinel', () => {
     });
 
     describe('createRedisSentinelOptions', () => {
-        it('should discover the master and reuse Redis credentials without using the static host', () => {
+        it('should discover the master and use separate Sentinel credentials without using the static host', () => {
             const options: SentinelConnectionOptions = createRedisSentinelOptions(config());
 
             expect(options).toEqual({
                 name: 'test-master',
                 sentinelRootNodes: [{ host: 'sentinel.example', port: 26379 }],
                 nodeClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
-                sentinelClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
+                sentinelClientOptions: { username: 'sentinel-user', password: 'sentinel-test-password', socket: {} },
                 replicaPoolSize: 0,
                 passthroughClientErrorEvents: true,
             });
         });
 
-        it('should reuse Redis TLS settings and certificates', () => {
+        it('should share certificates when Redis and Sentinel TLS are explicitly enabled', () => {
             const options: SentinelConnectionOptions = createRedisSentinelOptions(
                 config({
                     USE_TLS: true,
+                    SENTINEL_USE_TLS: true,
                     PRIVATE_KEY: 'node-key',
                     CERT_CHAINS: 'node-certificate',
                     CERTIFICATE_AUTHORITIES: 'node-ca',
@@ -78,25 +82,47 @@ describe('Redis Sentinel', () => {
             expect(options.nodeClientOptions?.socket).toEqual({});
         });
 
-        it('should allow explicitly disabling Sentinel authentication and TLS', () => {
+        it.each([
+            ['SENTINEL_USERNAME', 'username'],
+            ['SENTINEL_PASSWORD', 'password'],
+        ])('should not inherit Redis credentials when %s is missing', (property: string, option: string) => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(config({ [property]: undefined }));
+
+            expect(options.sentinelClientOptions).toMatchObject({ [option]: undefined });
+        });
+
+        it('should not inherit Redis TLS when Sentinel TLS is missing', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({ USE_TLS: true, SENTINEL_USE_TLS: undefined }),
+            );
+
+            expect(options.sentinelClientOptions?.socket).toEqual({});
+        });
+
+        it('should not enable Sentinel TLS from Redis TLS settings', () => {
             const options: SentinelConnectionOptions = createRedisSentinelOptions(
                 config({
                     USE_TLS: true,
-                    SENTINEL_USERNAME: '',
-                    SENTINEL_PASSWORD: '',
                     SENTINEL_USE_TLS: false,
                 }),
             );
 
-            expect(options.sentinelClientOptions).toEqual({ username: '', password: '', socket: {} });
+            expect(options.sentinelClientOptions).toEqual({
+                username: 'sentinel-user',
+                password: 'sentinel-test-password',
+                socket: {},
+            });
             expect(options.nodeClientOptions?.socket).toMatchObject({ tls: true });
         });
 
         it.each([false, true])('should apply health-check socket settings with TLS %s', (useTls: boolean) => {
-            const options: SentinelConnectionOptions = createRedisSentinelOptions(config({ USE_TLS: useTls }), {
-                connectTimeout: 1000,
-                reconnectStrategy: false,
-            });
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({ USE_TLS: useTls, SENTINEL_USE_TLS: useTls }),
+                {
+                    connectTimeout: 1000,
+                    reconnectStrategy: false,
+                },
+            );
 
             expect(options.nodeClientOptions?.socket).toMatchObject({
                 connectTimeout: 1000,

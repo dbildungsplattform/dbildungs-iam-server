@@ -65,6 +65,9 @@ describe('RedisHealthIndicator', () => {
             SENTINEL_ENABLED: true,
             SENTINEL_MASTER_NAME: 'test-master',
             SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+            SENTINEL_USERNAME: 'sentinel-user',
+            SENTINEL_PASSWORD: 'sentinel-test-password',
+            SENTINEL_USE_TLS: false,
         });
         const sentinel: keyvRedis.RedisSentinelType = actualKeyvRedis.createSentinel(
             createRedisSentinelOptions(config),
