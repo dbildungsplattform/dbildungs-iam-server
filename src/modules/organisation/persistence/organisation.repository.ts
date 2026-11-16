@@ -919,11 +919,9 @@ export class OrganisationRepository {
         options: OrganisationsbeziehungSearchOptions,
     ): Promise<Counted<OrganisationsbeziehungWithOrganisationen>> {
         const direction: OrderDirection = options.sortOrder === ScopeOrder.DESC ? 'desc' : 'asc';
-        const sortField: SortFieldOrganisationsbeziehung =
-            options.sortField ?? SortFieldOrganisationsbeziehung.TYP;
-        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> = getOrganisationsbeziehungOrderByFactory(sortField)(
-            direction,
-        );
+        const sortField: SortFieldOrganisationsbeziehung = options.sortField ?? SortFieldOrganisationsbeziehung.TYP;
+        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
+            getOrganisationsbeziehungOrderByFactory(sortField)(direction);
 
         const pattern: string = `%${options.searchString ?? ''}%`;
 
