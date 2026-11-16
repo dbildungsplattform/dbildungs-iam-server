@@ -31,7 +31,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import { ApiOkResponsePaginated, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
@@ -90,10 +90,8 @@ export class RolleController {
 
     @Get()
     @ApiOperation({ description: 'List all rollen.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -120,10 +118,8 @@ export class RolleController {
 
     @Get('available-for-erweiterung')
     @ApiOperation({ description: 'List all rollen that are available for the Rollenerweiterung workflow.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -149,10 +145,8 @@ export class RolleController {
 
     @Get('available-for-import')
     @ApiOperation({ description: 'List all rollen that are available for the Personen-Import workflow.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -176,10 +170,8 @@ export class RolleController {
 
     @Get('available-for-mpt-zuordnung')
     @ApiOperation({ description: 'List all MPT rollen the user is allowed to administer.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })

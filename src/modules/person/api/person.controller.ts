@@ -42,7 +42,7 @@ import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafk
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import { ApiOkResponsePaginated, Paged, PagedResponse, PagingHeadersObject } from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, Paged, PagedResponse } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { ResultInterceptor } from '../../../shared/util/result-interceptor.js';
@@ -223,7 +223,6 @@ export class PersonController {
     @Get(':personId/personenkontexte')
     @ApiOkResponsePaginated(PersonenkontextResponse, {
         description: 'The personenkontexte were successfully pulled.',
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get personenkontexte.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get personenkontexte.' })
