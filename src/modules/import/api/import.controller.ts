@@ -45,7 +45,6 @@ import { ImportExceptionFilter } from './import-exception-filter.js';
 import { ImportvorgangByIdParams } from './importvorgang-by-id.params.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { ImportvorgangQueryParams } from './importvorgang-query.params.js';
-import { PagingHeadersObject } from '../../../shared/paging/paging.enums.js';
 import { ImportVorgangResponse } from './importvorgang.response.js';
 import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/paged.response.js';
 import { ImportVorgangRepository } from '../persistence/import-vorgang.repository.js';
@@ -298,7 +297,6 @@ export class ImportController {
     @ApiOkResponse({
         description: 'The list of imported users was successfully returned.',
         type: ImportResultResponse,
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get the list of imported users.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get list of imported users.' })

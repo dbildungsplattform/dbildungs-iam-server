@@ -19,7 +19,7 @@ import { DBiamPersonenkontextRepo } from '../../../personenkontext/persistence/d
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
 import { OrganisationID, PersonID, RolleID } from '../../../../shared/types/aggregate-ids.types.js';
 import { Rolle } from '../../../rolle/domain/rolle.js';
-import { ApiOkResponsePaginated, PagingHeadersObject } from '../../../../shared/paging/index.js';
+import { ApiOkResponsePaginated } from '../../../../shared/paging/index.js';
 import { PersonenuebersichtBodyParams } from './personenuebersicht-body.params.js';
 import { Permissions } from '../../../authentication/api/permissions.decorator.js';
 import { ConfigService } from '@nestjs/config';
@@ -49,7 +49,6 @@ export class DBiamPersonenuebersichtController {
     @Post('')
     @ApiOkResponsePaginated(DBiamPersonenuebersichtResponse, {
         description: 'The personenuebersichten were successfully returned.',
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get personenuebersichten.' })
     @ApiForbiddenResponse({ description: 'Insufficient permission to get personenuebersichten.' })
