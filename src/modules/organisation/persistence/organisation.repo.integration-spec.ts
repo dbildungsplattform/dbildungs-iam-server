@@ -3390,11 +3390,13 @@ describe('OrganisationRepository', () => {
             });
 
             it('should fall back to typ sorting for unknown sort field values', async () => {
-                const invalidSortField = 'invalid-sort-field' as unknown as SortFieldOrganisationsbeziehung;
+                const invalidSortField: SortFieldOrganisationsbeziehung =
+                    'invalid-sort-field' as unknown as SortFieldOrganisationsbeziehung;
 
-                await expect(findIds(invalidSortField)).resolves.toEqual(
-                    await findIds(SortFieldOrganisationsbeziehung.TYP),
-                );
+                await expect(findIds(invalidSortField, ScopeOrder.ASC)).resolves.toEqual([
+                    relationToB.id,
+                    relationToA.id,
+                ]);
             });
         });
     });
