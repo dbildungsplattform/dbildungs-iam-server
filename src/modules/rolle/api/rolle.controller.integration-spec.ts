@@ -931,6 +931,76 @@ describe('Rolle API', () => {
         });
     });
 
+    describe('/GET rolle/available-for-mpt-zuordnung/:rolleId', () => {
+        it('should return the MPT rolle by id', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.SCHB,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                }),
+            );
+            if (mptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/available-for-mpt-zuordnung/${mptRolle.id}`)
+                .send();
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(expect.objectContaining({ id: mptRolle.id, rollenart: RollenArt.SCHB }));
+        });
+
+        it('should return 404 if the rolle is not an MPT rolle', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const nonMptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.LEHR,
+                }),
+            );
+            if (nonMptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/available-for-mpt-zuordnung/${nonMptRolle.id}`)
+                .send();
+
+            expect(response.status).toBe(404);
+        });
+
+        it('should return 404 if the rolle is not administered by the given organisation', async () => {
+            const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const otherOrga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> | DomainError = await rolleRepo.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: orga.id,
+                    rollenart: RollenArt.SCHB,
+                    merkmale: [RollenMerkmal.MPT_ROLLE],
+                }),
+            );
+            if (mptRolle instanceof DomainError) {
+                throw Error();
+            }
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get(`/rolle/available-for-mpt-zuordnung/${mptRolle.id}`)
+                .query({ organisationId: otherOrga.id })
+                .send();
+
+            expect(response.status).toBe(404);
+        });
+    });
+
     describe('/GET rolle/for-person-administration', () => {
         const url: string = '/rolle/available-for-person-administration';
         const createQueryWithPaginationDefaults: (

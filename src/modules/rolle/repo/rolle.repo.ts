@@ -2,12 +2,10 @@ import {
     EntityName,
     FilterQuery,
     ForeignKeyConstraintViolationException,
-    FindAllOptions,
     Loaded,
     ObjectQuery,
     OrderDefinition,
     PopulatePath,
-    WithUsingOptions,
 } from '@mikro-orm/core';
 import { EntityManager, RawQueryFragment, sql } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
@@ -154,25 +152,9 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
         authorizedMerkmale: Array<RollenMerkmal>;
     };
     searchStr?: string;
-    stickyRollenIds?: Array<RolleID>;
     limit?: number;
     offset?: number;
 }
-
-type RolleFindAllOptions = WithUsingOptions<
-    FindAllOptions<
-        NoInfer<RolleEntity>,
-        | 'merkmale'
-        | 'systemrechte'
-        | 'serviceProvider.serviceProvider'
-        | 'serviceProvider.serviceProvider.merkmale'
-        | 'serviceProvider.serviceProvider.rollenartenWhitelist',
-        never,
-        'serviceProvider.serviceProvider.logo'
-    >,
-    NoInfer<RolleEntity>,
-    never
->;
 
 @Injectable()
 export class RolleRepo {
@@ -337,27 +319,13 @@ export class RolleRepo {
             queries.push({ serviceProvider: { serviceProvider: { id: { $in: params.serviceProviderIds } } } });
         }
 
+        if (params.rolleIds) {
+            queries.push({ id: { $in: params.rolleIds } });
+        }
+
         const roleScopeQuery: FilterQuery<NoInfer<RolleEntity>> = this.createRoleScopeQuery(params);
         queries.push(roleScopeQuery);
-        const baseQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
-
-        // TODO: this can fail if there are more rollen than limit
-        const finalQuery: FilterQuery<NoInfer<RolleEntity>> = params.rolleIds?.length
-            ? {
-                  $or: [
-                      baseQuery,
-                      {
-                          $and: [
-                              { id: { $in: params.rolleIds } },
-                              roleScopeQuery,
-                              ...(params.requireMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
-                                  merkmale: { $some: { merkmal } },
-                              })),
-                          ],
-                      },
-                  ],
-              }
-            : baseQuery;
+        const finalQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
 
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
 
@@ -461,7 +429,6 @@ export class RolleRepo {
         limit?: number,
         offset?: number,
         organisationIds?: OrganisationID[],
-        rolleIds?: RolleID[],
         merkmale?: RollenMerkmal[],
         rollenArten?: RollenArt[],
         serviceProviderIds?: ServiceProviderID[],
@@ -488,7 +455,6 @@ export class RolleRepo {
             limit,
             offset,
             allowedOrganisationIds,
-            rolleIds,
             orderBy: 'artAndName',
             merkmale,
             rollenArten,
@@ -607,30 +573,9 @@ export class RolleRepo {
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
             ...allowedRollenWhere,
         };
-        const stickyFindOptions: RolleFindAllOptions = {
-            where: {
-                id: { $in: params.stickyRollenIds ?? [] },
-                ...creationScopeWhere,
-            },
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ],
-            exclude: ['serviceProvider.serviceProvider.logo'],
-        };
-        const stickyRollenEntities: Array<RolleEntity> = params.stickyRollenIds
-            ? await this.em.findAll(RolleEntity, stickyFindOptions)
-            : [];
-
         const where: ObjectQuery<NoInfer<RolleEntity>> = {
             ...creationScopeWhere,
         };
-        if (params.stickyRollenIds) {
-            where.id = { $nin: params.stickyRollenIds };
-        }
         if (params.searchStr) {
             where.name = { $ilike: `%${params.searchStr}%` };
         }
@@ -648,9 +593,7 @@ export class RolleRepo {
         });
 
         return [
-            stickyRollenEntities
-                .concat(rollenEntities)
-                .map((entity: RolleEntity) => mapRolleEntityToAggregate(entity, this.rolleFactory)),
+            rollenEntities.map((entity: RolleEntity) => mapRolleEntityToAggregate(entity, this.rolleFactory)),
             count,
         ];
     }

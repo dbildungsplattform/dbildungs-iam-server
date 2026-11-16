@@ -51,6 +51,7 @@ import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js'
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { OrganisationsByIdsBodyParams } from './organisations-by-ids.body.params.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { OrganisationResponse } from './organisation.response.js';
@@ -211,6 +212,34 @@ export class OrganisationController {
             body.organisationIds,
         );
         return new ParentOrganisationenResponse(organisationen);
+    }
+
+    @Post('by-ids')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({
+        description: 'The permitted organizations with the given ids were successfully returned.',
+        type: [OrganisationResponse],
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting organizations.' })
+    public async findOrganisationsByIds(
+        @Body() body: OrganisationsByIdsBodyParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<OrganisationResponse[]> {
+        if (body.organisationIds.length === 0) {
+            return [];
+        }
+
+        const [organisations]: [Organisation<true>[], number, number] =
+            await this.organisationRepository.findAuthorized(permissions, [RollenSystemRecht.KLASSEN_VERWALTEN], {
+                organisationIds: body.organisationIds,
+                limit: body.organisationIds.length,
+                offset: 0,
+                matchAllSystemrechte: false,
+            });
+
+        return organisations.map((organisation: Organisation<true>) => new OrganisationResponse(organisation));
     }
 
     @Get(':organisationId')
