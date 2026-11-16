@@ -23,6 +23,7 @@ import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { EntityManager } from '@mikro-orm/core';
 import { Mutex } from 'async-mutex';
 import { Err, Ok } from '../../../../../shared/util/result.js';
+import { EmailAddressStatus } from '../../../../email/domain/email-address.js';
 
 type EmailSource =
     | {
@@ -68,7 +69,10 @@ export class SchulconnexPushHandler {
         );
 
         const email: Option<PersonEmailResponse> = event.newPrimaryAddress
-            ? ({ address: event.newPrimaryAddress } as PersonEmailResponse)
+            ? {
+                  address: event.newPrimaryAddress,
+                  status: EmailAddressStatus.ENABLED,
+              }
             : undefined;
 
         return this.updatePersonenkontexte(

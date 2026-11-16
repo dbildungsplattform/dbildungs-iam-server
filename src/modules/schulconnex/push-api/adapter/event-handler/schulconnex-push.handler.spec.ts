@@ -21,6 +21,7 @@ import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.
 import { SchulconnexPushRegistryRepo } from '../../persistence/schulconnex-push-registry.repo.js';
 import { SchulconnexPushAdapter } from '../domain/schulconnex-push.adapter.js';
 import { SchulconnexPushHandler, type KeepAliveFn } from './schulconnex-push.handler.js';
+import { EmailAddressStatus } from '../../../../email/domain/email-address.js';
 
 describe('SchulconnexPushHandler', () => {
     let module: TestingModule;
@@ -49,7 +50,8 @@ describe('SchulconnexPushHandler', () => {
     const personId: PersonID = 'person-id';
     const newPrimaryEmail: PersonEmailResponse = {
         address: 'new@example.org',
-    } as PersonEmailResponse;
+        status: EmailAddressStatus.ENABLED,
+    };
     const registry: SchulconnexPushRegistry<true> = SchulconnexPushRegistry.construct(
         'registry-id',
         new Date(),
@@ -650,7 +652,8 @@ describe('SchulconnexPushHandler', () => {
 
             const currentEmail: PersonEmailResponse = {
                 address: 'current@example.org',
-            } as PersonEmailResponse;
+                status: EmailAddressStatus.ENABLED,
+            };
 
             userLockRepoMock.findByPersonId.mockResolvedValueOnce([]).mockResolvedValueOnce([currentLock]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(currentEmail);
