@@ -20,7 +20,7 @@ import {
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 import { SchulconnexPushRegistryRepo } from '../../persistence/schulconnex-push-registry.repo.js';
 import { SchulconnexPushAdapter } from '../domain/schulconnex-push.adapter.js';
-import { SchulconnexPushHandler } from './schulconnex-push.handler.js';
+import { SchulconnexPushHandler, type KeepAliveFn } from './schulconnex-push.handler.js';
 
 describe('SchulconnexPushHandler', () => {
     let module: TestingModule;
@@ -515,7 +515,7 @@ describe('SchulconnexPushHandler', () => {
             vi.useFakeTimers();
 
             try {
-                const keepAlive: ReturnType<typeof vi.fn> = vi.fn();
+                const keepAlive: KeepAliveFn = vi.fn();
 
                 let resolvePush: (() => void) | undefined;
 
@@ -565,7 +565,7 @@ describe('SchulconnexPushHandler', () => {
             vi.useFakeTimers();
 
             try {
-                const keepAlive: ReturnType<typeof vi.fn> = vi.fn();
+                const keepAlive: KeepAliveFn = vi.fn();
 
                 const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                     personId,
@@ -582,6 +582,66 @@ describe('SchulconnexPushHandler', () => {
                 await vi.advanceTimersByTimeAsync(60_000);
 
                 expect(keepAlive).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('should call keepAlive while waiting for another update of the same person', async () => {
+            vi.useFakeTimers();
+
+            try {
+                const firstKeepAlive: KeepAliveFn = vi.fn();
+                const secondKeepAlive: KeepAliveFn = vi.fn();
+
+                let resolveFirstPush: (() => void) | undefined;
+
+                const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                    (resolve: (value: Result<void, DomainError>) => void): void => {
+                        resolveFirstPush = (): void => resolve(Ok());
+                    },
+                );
+
+                pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+
+                const firstEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                    personId,
+                    'first@example.org',
+                    undefined,
+                    undefined,
+                    undefined,
+                );
+
+                const secondEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
+
+                const firstHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(
+                    firstEvent,
+                    firstKeepAlive,
+                );
+
+                await vi.waitFor(() => {
+                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+                });
+
+                const secondHandling: Promise<Result<void, DomainError>> = sut.handleLocksForPersonChanged(
+                    secondEvent,
+                    secondKeepAlive,
+                );
+
+                await vi.advanceTimersByTimeAsync(30_000);
+
+                expect(firstKeepAlive).toHaveBeenCalledOnce();
+                expect(secondKeepAlive).toHaveBeenCalledOnce();
+
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+
+                resolveFirstPush?.();
+
+                const [firstResult, secondResult]: [Result<void, DomainError>, Result<void, DomainError>] =
+                    await Promise.all([firstHandling, secondHandling]);
+
+                expect(firstResult).toEqual(Ok());
+                expect(secondResult).toEqual(Ok());
             } finally {
                 vi.useRealTimers();
             }
