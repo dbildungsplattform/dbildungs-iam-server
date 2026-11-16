@@ -50,8 +50,6 @@ import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PermittedOrgas, PersonFields } from '../../authentication/domain/person-permissions.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
-import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
-import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';
 import { PersonenkontextResponse } from '../../personenkontext/api/response/personenkontext.response.js';
 import { DBiamPersonenkontextService } from '../../personenkontext/domain/dbiam-personenkontext.service.js';
@@ -59,11 +57,10 @@ import { Personenkontext } from '../../personenkontext/domain/personenkontext.js
 import { PersonenkontextService } from '../../personenkontext/domain/personenkontext.service.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { PersonDomainError } from '../domain/person-domain.error.js';
-import { DownstreamKeycloakError } from '../domain/person-keycloak.error.js';
 import { NotFoundOrNoPermissionError } from '../domain/person-not-found-or-no-permission.error.js';
 import { PersonUserPasswordModificationError } from '../domain/person-user-password-modification.error.js';
-import { PersonLockOccasion } from '../domain/person.enums.js';
 import { Person } from '../domain/person.js';
+import { PersonService } from '../domain/person.service.js';
 import { PersonApiMapper } from '../mapper/person-api.mapper.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import { PersonDeleteService } from '../person-deletion/person-delete.service.js';
@@ -95,7 +92,7 @@ export class PersonController {
         private readonly personDeleteService: PersonDeleteService,
         private readonly personLandesbediensteterSearchService: PersonLandesbediensteterSearchService,
         private readonly logger: ClassLogger,
-        private keycloakUserService: KeycloakUserService,
+        private readonly personService: PersonService,
         private readonly dBiamPersonenkontextService: DBiamPersonenkontextService,
         private readonly ldapClientAdapter: LdapAdapter,
         private readonly personApiMapper: PersonApiMapper,
@@ -358,80 +355,18 @@ export class PersonController {
         @Body() lockUserBodyParams: LockUserBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PersonLockResponse> {
-        const personResult: Result<Person<true>> = await this.personRepository.getPersonIfAllowed(
+        const result: Result<void, DomainError> = await this.personService.lockPerson(
             personId,
             permissions,
-        );
-
-        if (!personResult.ok) {
-            const error: NotFoundOrNoPermissionError = new NotFoundOrNoPermissionError(personId);
-            if (lockUserBodyParams.lock) {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht einen Benutzer (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
-                );
-            } else {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht einen Benutzer (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
-                );
-            }
-            throw error;
-        }
-
-        if (!personResult.value?.keycloakUserId) {
-            const error: PersonDomainError = new PersonDomainError(
-                `Person with id ${personId} has no keycloak id`,
-                personId,
-            );
-            if (lockUserBodyParams.lock) {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer ${personResult.value.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
-                );
-            } else {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}) hat versucht den Benutzer ${personResult.value.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
-                );
-            }
-            throw error;
-        }
-
-        const userLock: UserLock = {
-            person: personId,
-            locked_by: lockUserBodyParams.locked_by,
-            locked_until: lockUserBodyParams.locked_until,
-            locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
-            created_at: undefined,
-        };
-
-        const result: Result<void, DomainError> = await this.keycloakUserService.updateKeycloakUserStatus(
-            personId,
-            personResult.value.keycloakUserId,
-            userLock,
             lockUserBodyParams.lock,
+            lockUserBodyParams.locked_by,
+            lockUserBodyParams.locked_until,
         );
+
         if (!result.ok) {
-            const error: DownstreamKeycloakError = new DownstreamKeycloakError(result.error.message, personId, [
-                result.error.details,
-            ]);
-            if (lockUserBodyParams.lock) {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}, Sperrende Organisation: ${userLock.locked_by}) hat versucht den Benutzer ${personResult.value.username} (BenutzerId: ${personId}) zu sperren. Fehler: ${error.message}.`,
-                );
-            } else {
-                this.logger.error(
-                    `Admin ${permissions.personFields.username} (AdmindId: ${permissions.personFields.id}, Sperrende Organisation: ${userLock.locked_by}) hat versucht den Benutzer ${personResult.value.username} (BenutzerId: ${personId}) zu entsperren. Fehler: ${error.message}.`,
-                );
-            }
-            throw error;
+            throw result.error;
         }
-        if (lockUserBodyParams.lock) {
-            this.logger.info(
-                `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${userLock.locked_by}) hat Benutzer ${personResult.value.username} (BenutzerId: ${personId})) gesperrt (Befristung: ${userLock.locked_until?.toString() ?? 'unbefristet'}).`,
-            );
-        } else {
-            this.logger.info(
-                `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${userLock.locked_by}) hat Benutzer ${personResult.value.username} (BenutzerId: ${personId})) entsperrt (Befristung: ${userLock.locked_until?.toString() ?? 'unbefristet'}).`,
-            );
-        }
+
         return new PersonLockResponse(`User has been successfully ${lockUserBodyParams.lock ? '' : 'un'}locked.`);
     }
 
