@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import {
     EmailResolverService,
@@ -75,7 +76,7 @@ export class PersonLandesbediensteterSearchService {
 
         const person: Person<true> = persons.at(0)!;
 
-        const searchableResult: Result<void, DomainError> = await this.personIsSearchable(person);
+        const searchableResult: Result<void, DomainError> = await this.personIsSearchable(person.id);
         if (!searchableResult.ok) {
             throw searchableResult.error;
         }
@@ -94,13 +95,16 @@ export class PersonLandesbediensteterSearchService {
         return [result];
     }
 
-    public async personIsSearchable(person: Person<true>): Promise<Result<void, DomainError>> {
-        const locks: UserLock[] = await this.userLockRepository.findByPersonId(person.id);
+    public async personIsSearchable(personId: PersonID): Promise<Result<void, DomainError>> {
+        const locks: UserLock[] = await this.userLockRepository.findByPersonId(personId);
 
-        if (person.personalnummer == null) {
+        if (locks.findIndex((lock: UserLock) => lock.locked_occasion === PersonLockOccasion.MANUELL_GESPERRT) !== -1) {
             return Err(new LandesbediensteterSearchNoPersonFoundError());
         }
-        if (locks.findIndex((lock: UserLock) => lock.locked_occasion === PersonLockOccasion.MANUELL_GESPERRT) !== -1) {
+
+        const person: Option<Person<true>> = await this.personRepository.findById(personId);
+
+        if (!person || person.personalnummer == null) {
             return Err(new LandesbediensteterSearchNoPersonFoundError());
         }
 

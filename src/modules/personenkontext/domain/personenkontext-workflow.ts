@@ -12,6 +12,7 @@ import { type Organisation } from '../../organisation/domain/organisation.js';
 import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { type EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { type EscalatedPermissionAtOrga } from '../../permission/escalated-person-permissions.js';
+import { type PersonLandesbediensteterSearchService } from '../../person/person-landesbedienstete-search/person-landesbediensteter-search.service.js';
 import { type RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../rolle/domain/rolle.js';
 import { RollenmerkmalSystemrechtPaar } from '../../rolle/domain/rollenmerkmal-systemrecht-paar.js';
@@ -41,6 +42,7 @@ export class PersonenkontextWorkflowAggregate {
         private readonly configService: ConfigService,
         private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
+        private readonly landesbediensteteSearchService: PersonLandesbediensteterSearchService,
     ) {}
 
     public static createNew(
@@ -50,6 +52,7 @@ export class PersonenkontextWorkflowAggregate {
         configService: ConfigService,
         escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
         personenkontextRepo: DBiamPersonenkontextRepo,
+        landesbediensteteSearchService: PersonLandesbediensteterSearchService,
     ): PersonenkontextWorkflowAggregate {
         return new PersonenkontextWorkflowAggregate(
             rolleRepo,
@@ -58,6 +61,7 @@ export class PersonenkontextWorkflowAggregate {
             configService,
             escalatedPersonPermissionsFactory,
             personenkontextRepo,
+            landesbediensteteSearchService,
         );
     }
 
@@ -173,8 +177,7 @@ export class PersonenkontextWorkflowAggregate {
     /**
      * Commits personenkontexte updates with escalated permissions for add operations.
      *
-     * For OperationContext.PERSON_HINZUFÜGEN, escalates permissions with PERSONEN_VERWALTEN at ROOT
-     * before executing the update. For other operations, uses the provided permissions as-is.
+     * For OperationContext.PERSONEN_KONTEXT_ERWEITERN, escalates permissions with PERSONEN_VERWALTEN at ROOT     * before executing the update. For other operations, uses the provided permissions as-is.
      *
      * @param personId The ID of the person being modified
      * @param lastModified The last modified timestamp
@@ -194,6 +197,12 @@ export class PersonenkontextWorkflowAggregate {
         operationContext: OperationContext = OperationContext.PERSON_ANLEGEN,
         personalnummer?: string,
     ): Promise<Personenkontext<true>[] | PersonenkontexteUpdateError> {
+        const personenkontextPermissionsError: DomainError | void =
+            await this.checkPermissionsForPersonenkontextExtension(personenkontexte, permissions, operationContext);
+        if (personenkontextPermissionsError) {
+            return personenkontextPermissionsError;
+        }
+
         const permissionsToUse: IPersonPermissions = await this.applyEscalatedPermissionsIfNeeded(
             operationContext,
             permissions,
@@ -216,13 +225,45 @@ export class PersonenkontextWorkflowAggregate {
         return pkUpdate.update();
     }
 
+    private async checkPermissionsForPersonenkontextExtension(
+        personId: string,
+        personenkontexte: DbiamPersonenkontextBodyParams[],
+        permissions: IPersonPermissions,
+        operationContext: OperationContext,
+    ): Promise<DomainError | void> {
+        if (operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
+            if (personenkontexte.length === 0) {
+                return new MissingPermissionsError('No target organisation provided for context expansion');
+            }
+
+            const canExpandContextFromLandesbediensteter: Result<void, DomainError> =
+                await this.landesbediensteteSearchService.personIsSearchable(personId);
+
+            if (!canExpandContextFromLandesbediensteter.ok) {
+                return canExpandContextFromLandesbediensteter.error;
+            }
+
+            const permissionChecks: Result<void, DomainError>[] = await Promise.all(
+                personenkontexte.map((pk: DbiamPersonenkontextBodyParams) =>
+                    this.checkContextExpansionPermissions(permissions, pk.organisationId),
+                ),
+            );
+            const failedCheck: Result<void, DomainError> | undefined = permissionChecks.find(
+                (check: Result<void, DomainError>) => !check.ok,
+            );
+            if (failedCheck && !failedCheck.ok) {
+                return failedCheck.error;
+            }
+        }
+    }
+
     private async mergePersonenkontexteIfNeeded(
         operationContext: OperationContext,
         personId: string,
         personenkontexte: DbiamPersonenkontextBodyParams[],
     ): Promise<DbiamPersonenkontextBodyParams[]> {
         let mergedPersonenkontexte: DbiamPersonenkontextBodyParams[] = personenkontexte;
-        if (operationContext === OperationContext.PERSON_HINZUFÜGEN) {
+        if (operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
             const existingPKs: DbiamPersonenkontextBodyParams[] = await this.personenkontextRepo.findByPerson(personId);
             mergedPersonenkontexte = existingPKs.concat(personenkontexte);
         }
@@ -233,7 +274,7 @@ export class PersonenkontextWorkflowAggregate {
         operationContext: OperationContext,
         permissions: IPersonPermissions,
     ): Promise<IPersonPermissions> {
-        return operationContext === OperationContext.PERSON_HINZUFÜGEN
+        return operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN
             ? this.escalatedPersonPermissionsFactory.fromPermissions(permissions, [
                   {
                       orgaId: 'ROOT',
@@ -298,21 +339,20 @@ export class PersonenkontextWorkflowAggregate {
                 return this.checkCreatePermissions(permissions, organisationId, rolleIds);
             case OperationContext.PERSON_BEARBEITEN:
                 return this.checkEditPermissions(permissions, organisationId);
-            case OperationContext.PERSON_HINZUFÜGEN:
-                return this.checkAddPermissions(permissions, organisationId);
+            case OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN:
+                return this.checkContextExpansionPermissions(permissions, organisationId);
             default:
                 return Err(new MissingPermissionsError('Unauthorized operation'));
         }
     }
 
     /**
-     * Checks if the provided permissions are sufficient to add persons to the organisation.
-     *
+     * Checks if the provided permissions are sufficient to expand a person's context to the organisation.     *
      * @param permissions The caller's permissions
      * @param organisationId The target organisation ID
      * @returns Success or a permission error
      */
-    public async checkAddPermissions(
+    public async checkContextExpansionPermissions(
         permissions: IPersonPermissions,
         organisationId: string,
     ): Promise<Result<void, DomainError>> {
@@ -321,7 +361,7 @@ export class PersonenkontextWorkflowAggregate {
         ]);
 
         if (!hasPermissionAtOrga) {
-            return Err(new MissingPermissionsError('Unauthorized to add persons to the organisation'));
+            return Err(new MissingPermissionsError('Unauthorized to expand person context'));
         }
 
         return Ok(undefined);

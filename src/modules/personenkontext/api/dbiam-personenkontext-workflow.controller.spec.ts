@@ -232,6 +232,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
                         count: 0,
                         personenkontexte: [],
+                        operationContext: OperationContext.PERSON_BEARBEITEN,
                     };
                     const error: MissingPermissionsError = new MissingPermissionsError(
                         'Unauthorized to modify MPT-Rollen at the organisation',

@@ -567,6 +567,45 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(body.canCommit).toBe(false);
             });
         });
+
+        describe.skip(`when context is ${OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN}`, () => {
+            const setup = async () => {
+                const organisation: Organisation<true> = await organisationRepo.save(
+                    DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+                );
+                const rolle: Rolle<true> = await rolleRepo.create(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: organisation.id,
+                        rollenart: RollenArt.LERN,
+                    }),
+                );
+                const existingPerson: Person<true> = await createPerson();
+                const personenkontext: Personenkontext<true> = await personenkontextRepoInternal.create(
+                    DoFactory.createPersonenkontext(false, {
+                        organisationId: organisation.id,
+                        rolleId: rolle.id,
+                        personId: existingPerson.id,
+                    }),
+                );
+                return { organisation, rolle, existingPerson, personenkontext };
+            };
+
+            it('should return canCommit=true for a valid combination', async () => {
+                const { organisation, rolle, existingPerson } = await setup();
+                const response: Response = await request(app.getHttpServer() as App)
+                    .get(`/personenkontext-workflow/step`)
+                    .query({
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                        organisationId: organisation.id,
+                        rollenIds: [rolle.id],
+                        personId: existingPerson.id,
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                    .send();
+                expect(response.status).toBe(200);
+                const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
+                expect(body.canCommit).toBe(true);
+            });
+        });
     });
 
     describe('/POST create person with personenkontexte', () => {
@@ -929,6 +968,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             organisationId: organisation.id,
                             rolleId: rolle.id,
                         })),
+                        operationContext: OperationContext.PERSON_BEARBEITEN,
                     };
                     personPermissionsMock.canModifyPerson.mockResolvedValue(true);
                     personPermissionsMock.getPermittedMerkmaleForOrga.mockImplementation(
@@ -991,6 +1031,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     count: 1,
                     lastModified: savedPK.updatedAt,
                     personenkontexte: [],
+                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
@@ -1026,6 +1067,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     count: 0,
                     lastModified: savedPK.updatedAt,
                     personenkontexte: [],
+                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 const response: Response = await request(app.getHttpServer() as App)
@@ -1083,6 +1125,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             organisationId: schule.id,
                         },
                     ],
+                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
@@ -1130,6 +1173,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                             organisationId: orga.id,
                         },
                     ],
+                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);

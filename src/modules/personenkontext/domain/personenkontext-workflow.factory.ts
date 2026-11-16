@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
+import { PersonLandesbediensteterSearchService } from '../../person/person-landesbedienstete-search/person-landesbediensteter-search.service.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
@@ -16,6 +17,7 @@ export class PersonenkontextWorkflowFactory {
         private readonly configService: ConfigService,
         private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
+        private readonly landesbediensteteSearchService: PersonLandesbediensteterSearchService,
     ) {}
 
     public createNew(): PersonenkontextWorkflowAggregate {
@@ -26,6 +28,7 @@ export class PersonenkontextWorkflowFactory {
             this.configService,
             this.escalatedPersonPermissionsFactory,
             this.personenkontextRepo,
+            this.landesbediensteteSearchService,
         );
     }
 }
