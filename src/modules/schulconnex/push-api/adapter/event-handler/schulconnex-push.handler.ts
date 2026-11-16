@@ -24,6 +24,15 @@ import { EntityManager } from '@mikro-orm/core';
 import { Mutex } from 'async-mutex';
 import { Err, Ok } from '../../../../../shared/util/result.js';
 
+type EmailSource =
+    | {
+          type: 'event';
+          email: Option<PersonEmailResponse>;
+      }
+    | {
+          type: 'resolver';
+      };
+
 export type KeepAliveFn = () => void;
 
 const noopKeepAlive: KeepAliveFn = (): void => {
@@ -58,7 +67,19 @@ export class SchulconnexPushHandler {
             `[EventID: ${event.eventID}] Received EmailMicroserviceAddressChangedEvent for person ${event.personId}`,
         );
 
-        return this.updatePersonenkontexte(event.personId, event.eventID, keepAlive);
+        const email: Option<PersonEmailResponse> = event.newPrimaryAddress
+            ? ({ address: event.newPrimaryAddress } as PersonEmailResponse)
+            : undefined;
+
+        return this.updatePersonenkontexte(
+            event.personId,
+            event.eventID,
+            {
+                type: 'event',
+                email,
+            },
+            keepAlive,
+        );
     }
 
     @KafkaEventHandler(KafkaLocksForPersonChangedEvent)
@@ -72,12 +93,20 @@ export class SchulconnexPushHandler {
             `[EventID: ${event.eventID}] Received LocksForPersonChangedEvent for person ${event.personId}`,
         );
 
-        return this.updatePersonenkontexte(event.personId, event.eventID, keepAlive);
+        return this.updatePersonenkontexte(
+            event.personId,
+            event.eventID,
+            {
+                type: 'resolver',
+            },
+            keepAlive,
+        );
     }
 
     private async updatePersonenkontexte(
         personId: PersonID,
         eventId: string,
+        emailSource: EmailSource,
         keepAlive: KeepAliveFn = noopKeepAlive,
     ): Promise<Result<void, DomainError>> {
         const mutex: Mutex = this.personUpdateMutexes.get(personId) ?? new Mutex();
@@ -90,7 +119,8 @@ export class SchulconnexPushHandler {
 
         try {
             return await mutex.runExclusive(
-                (): Promise<Result<void, DomainError>> => this.updatePersonenkontexteExclusive(personId, eventId),
+                (): Promise<Result<void, DomainError>> =>
+                    this.updatePersonenkontexteExclusive(personId, eventId, emailSource),
             );
         } finally {
             clearInterval(keepAliveInterval);
@@ -104,7 +134,13 @@ export class SchulconnexPushHandler {
     private async updatePersonenkontexteExclusive(
         personId: PersonID,
         eventId: string,
+        emailSource: EmailSource,
     ): Promise<Result<void, DomainError>> {
+        const emailPromise: Promise<Option<PersonEmailResponse>> =
+            emailSource.type === 'event'
+                ? Promise.resolve(emailSource.email)
+                : this.emailResolverService.findEmailBySpshPerson(personId);
+
         const [registries, userLocks, email]: [
             SchulconnexPushRegistry<true>[],
             UserLock[],
@@ -112,7 +148,7 @@ export class SchulconnexPushHandler {
         ] = await Promise.all([
             this.pushRegistryRepo.findAll(),
             this.userLockRepo.findByPersonId(personId),
-            this.emailResolverService.findEmailBySpshPerson(personId),
+            emailPromise,
         ]);
 
         const errors: DomainError[] = [];

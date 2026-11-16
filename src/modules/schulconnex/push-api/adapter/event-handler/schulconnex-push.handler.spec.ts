@@ -47,6 +47,9 @@ describe('SchulconnexPushHandler', () => {
     };
 
     const personId: PersonID = 'person-id';
+    const newPrimaryEmail: PersonEmailResponse = {
+        address: 'new@example.org',
+    } as PersonEmailResponse;
     const registry: SchulconnexPushRegistry<true> = SchulconnexPushRegistry.construct(
         'registry-id',
         new Date(),
@@ -131,16 +134,10 @@ describe('SchulconnexPushHandler', () => {
     });
 
     describe('handleEmailAddressChanged', () => {
-        it('should update all relevant personenkontexte and return Ok', async () => {
-            const email: PersonEmailResponse = {
-                address: 'new@example.org',
-            } as unknown as PersonEmailResponse;
-
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
-
+        it('should update all relevant personenkontexte with the primary email from the event and return Ok', async () => {
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
-                'new@example.org',
+                newPrimaryEmail.address,
                 undefined,
                 'old@example.org',
                 undefined,
@@ -151,15 +148,15 @@ describe('SchulconnexPushHandler', () => {
             expect(result).toEqual(Ok());
             expect(pushRegistryRepoMock.findAll).toHaveBeenCalledOnce();
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledWith(personId);
-            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledWith(
                 personId,
                 registry.serviceProviderId,
             );
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], email);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], newPrimaryEmail);
         });
 
-        it('should push no email when person has no current email', async () => {
+        it('should push no email when the event contains no primary email', async () => {
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
                 undefined,
@@ -171,6 +168,7 @@ describe('SchulconnexPushHandler', () => {
             const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
             expect(result).toEqual(Ok());
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
         });
 
@@ -189,27 +187,6 @@ describe('SchulconnexPushHandler', () => {
 
             expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-        });
-
-        it('should use current email instead of email from the event', async () => {
-            const email: PersonEmailResponse = {
-                address: 'current@example.org',
-            } as unknown as PersonEmailResponse;
-
-            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(email);
-
-            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
-                personId,
-                'event@example.org',
-                undefined,
-                'old@example.org',
-                undefined,
-            );
-
-            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
-
-            expect(result).toEqual(Ok());
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], email);
         });
     });
 
@@ -233,6 +210,7 @@ describe('SchulconnexPushHandler', () => {
                 currentLocks,
                 undefined,
             );
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
         });
 
         it('should use current locks instead of locks from the event', async () => {
@@ -267,6 +245,7 @@ describe('SchulconnexPushHandler', () => {
                 currentLocks,
                 undefined,
             );
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
         });
 
         it('should not push when no relevant personenkontexte exist', async () => {
@@ -278,6 +257,7 @@ describe('SchulconnexPushHandler', () => {
 
             expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
         });
     });
 
@@ -322,12 +302,12 @@ describe('SchulconnexPushHandler', () => {
             expect(result).toEqual(Ok());
             expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledTimes(2);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], newPrimaryEmail);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
                 secondRegistry,
                 secondKontext,
                 [],
-                undefined,
+                newPrimaryEmail,
             );
         });
 
@@ -374,8 +354,13 @@ describe('SchulconnexPushHandler', () => {
 
             expect(result).toEqual(Ok());
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], undefined);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, secondKontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, kontext, [], newPrimaryEmail);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                registry,
+                secondKontext,
+                [],
+                newPrimaryEmail,
+            );
         });
 
         it('should update personenkontexte sequentially', async () => {
@@ -403,7 +388,7 @@ describe('SchulconnexPushHandler', () => {
 
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
-                'new@example.org',
+                newPrimaryEmail.address,
                 undefined,
                 undefined,
                 undefined,
@@ -411,13 +396,21 @@ describe('SchulconnexPushHandler', () => {
 
             const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event);
 
-            await vi.waitFor(() => {
-                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
-            });
+            try {
+                await vi.waitFor(() => {
+                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+                });
 
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(1, registry, kontext, [], undefined);
-
-            resolveFirstPush?.();
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                    1,
+                    registry,
+                    kontext,
+                    [],
+                    newPrimaryEmail,
+                );
+            } finally {
+                resolveFirstPush?.();
+            }
 
             const result: Result<void, DomainError> = await handling;
 
@@ -428,7 +421,7 @@ describe('SchulconnexPushHandler', () => {
                 registry,
                 secondKontext,
                 [],
-                undefined,
+                newPrimaryEmail,
             );
         });
     });
@@ -504,7 +497,7 @@ describe('SchulconnexPushHandler', () => {
                 registry,
                 secondKontext,
                 [],
-                undefined,
+                newPrimaryEmail,
             );
             expect(loggerMock.logUnknownAsError).toHaveBeenCalledOnce();
         });
@@ -514,33 +507,32 @@ describe('SchulconnexPushHandler', () => {
         it('should call keepAlive periodically while processing an event', async () => {
             vi.useFakeTimers();
 
+            const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+
+            let resolvePush: (() => void) | undefined;
+
+            const pendingPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolvePush = (): void => resolve(Ok());
+                },
+            );
+
+            pushAdapterMock.upsertPersonenkontext.mockReturnValue(pendingPush);
+
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                newPrimaryEmail.address,
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
+
             try {
-                const keepAlive: KeepAliveFn = vi.fn();
+                await vi.advanceTimersByTimeAsync(0);
 
-                let resolvePush: (() => void) | undefined;
-
-                const pendingPush: Promise<Result<void, DomainError>> = new Promise(
-                    (resolve: (value: Result<void, DomainError>) => void): void => {
-                        resolvePush = (): void => resolve(Ok());
-                    },
-                );
-
-                pushAdapterMock.upsertPersonenkontext.mockReturnValue(pendingPush);
-
-                const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
-                    personId,
-                    'new@example.org',
-                    undefined,
-                    undefined,
-                    undefined,
-                );
-
-                const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
-
-                await vi.waitFor(() => {
-                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-                });
-
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
                 expect(keepAlive).not.toHaveBeenCalled();
 
                 await vi.advanceTimersByTimeAsync(30_000);
@@ -550,13 +542,9 @@ describe('SchulconnexPushHandler', () => {
                 await vi.advanceTimersByTimeAsync(30_000);
 
                 expect(keepAlive).toHaveBeenCalledTimes(2);
-
-                resolvePush?.();
-
-                const result: Result<void, DomainError> = await handling;
-
-                expect(result).toEqual(Ok());
             } finally {
+                resolvePush?.();
+                await handling;
                 vi.useRealTimers();
             }
         });
@@ -565,17 +553,21 @@ describe('SchulconnexPushHandler', () => {
             vi.useFakeTimers();
 
             try {
-                const keepAlive: KeepAliveFn = vi.fn();
+                const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
 
                 const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                     personId,
-                    'new@example.org',
+                    newPrimaryEmail.address,
                     undefined,
                     undefined,
                     undefined,
                 );
 
-                const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event, keepAlive);
+                const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
+
+                await vi.advanceTimersByTimeAsync(0);
+
+                const result: Result<void, DomainError> = await handling;
 
                 expect(result).toEqual(Ok());
 
@@ -590,59 +582,57 @@ describe('SchulconnexPushHandler', () => {
         it('should call keepAlive while waiting for another update of the same person', async () => {
             vi.useFakeTimers();
 
+            const firstKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+            const secondKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+
+            let resolveFirstPush: (() => void) | undefined;
+
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = (): void => resolve(Ok());
+                },
+            );
+
+            pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+
+            const firstEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                personId,
+                'first@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const secondEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
+
+            const firstHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(
+                firstEvent,
+                firstKeepAlive,
+            );
+
+            let secondHandling: Promise<Result<void, DomainError>> | undefined;
+
             try {
-                const firstKeepAlive: KeepAliveFn = vi.fn();
-                const secondKeepAlive: KeepAliveFn = vi.fn();
+                await vi.advanceTimersByTimeAsync(0);
 
-                let resolveFirstPush: (() => void) | undefined;
+                expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
 
-                const firstPush: Promise<Result<void, DomainError>> = new Promise(
-                    (resolve: (value: Result<void, DomainError>) => void): void => {
-                        resolveFirstPush = (): void => resolve(Ok());
-                    },
-                );
+                secondHandling = sut.handleLocksForPersonChanged(secondEvent, secondKeepAlive);
 
-                pushAdapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
-
-                const firstEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
-                    personId,
-                    'first@example.org',
-                    undefined,
-                    undefined,
-                    undefined,
-                );
-
-                const secondEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(personId, [], []);
-
-                const firstHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(
-                    firstEvent,
-                    firstKeepAlive,
-                );
-
-                await vi.waitFor(() => {
-                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-                });
-
-                const secondHandling: Promise<Result<void, DomainError>> = sut.handleLocksForPersonChanged(
-                    secondEvent,
-                    secondKeepAlive,
-                );
-
+                await vi.advanceTimersByTimeAsync(0);
                 await vi.advanceTimersByTimeAsync(30_000);
 
                 expect(firstKeepAlive).toHaveBeenCalledOnce();
                 expect(secondKeepAlive).toHaveBeenCalledOnce();
-
                 expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-
+            } finally {
                 resolveFirstPush?.();
 
-                const [firstResult, secondResult]: [Result<void, DomainError>, Result<void, DomainError>] =
-                    await Promise.all([firstHandling, secondHandling]);
+                await firstHandling;
+                if (secondHandling) {
+                    await secondHandling;
+                }
 
-                expect(firstResult).toEqual(Ok());
-                expect(secondResult).toEqual(Ok());
-            } finally {
                 vi.useRealTimers();
             }
         });
@@ -658,7 +648,12 @@ describe('SchulconnexPushHandler', () => {
                 new Date(),
             );
 
+            const currentEmail: PersonEmailResponse = {
+                address: 'current@example.org',
+            } as PersonEmailResponse;
+
             userLockRepoMock.findByPersonId.mockResolvedValueOnce([]).mockResolvedValueOnce([currentLock]);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(currentEmail);
 
             let resolveFirstPush: (() => void) | undefined;
 
@@ -672,7 +667,7 @@ describe('SchulconnexPushHandler', () => {
 
             const emailEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 personId,
-                'new@example.org',
+                newPrimaryEmail.address,
                 undefined,
                 'old@example.org',
                 undefined,
@@ -691,18 +686,28 @@ describe('SchulconnexPushHandler', () => {
 
             const emailHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(emailEvent);
 
-            await vi.waitFor(() => {
+            let locksHandling: Promise<Result<void, DomainError>> | undefined;
+
+            try {
+                await vi.waitFor(() => {
+                    expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+                });
+
+                locksHandling = sut.handleLocksForPersonChanged(locksEvent);
+
+                await Promise.resolve();
+
+                expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(1);
                 expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
-            });
+                expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
+            } finally {
+                resolveFirstPush?.();
+            }
 
-            const locksHandling: Promise<Result<void, DomainError>> = sut.handleLocksForPersonChanged(locksEvent);
-
-            await Promise.resolve();
-
-            expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(1);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
-
-            resolveFirstPush?.();
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            if (!locksHandling) {
+                throw new Error('Locks handling was not started');
+            }
 
             const [emailResult, locksResult]: [Result<void, DomainError>, Result<void, DomainError>] =
                 await Promise.all([emailHandling, locksHandling]);
@@ -710,14 +715,22 @@ describe('SchulconnexPushHandler', () => {
             expect(emailResult).toEqual(Ok());
             expect(locksResult).toEqual(Ok());
             expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(2);
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledOnce();
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledWith(personId);
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(1, registry, kontext, [], undefined);
+            expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                1,
+                registry,
+                kontext,
+                [],
+                newPrimaryEmail,
+            );
             expect(pushAdapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
                 2,
                 registry,
                 kontext,
                 [currentLock],
-                undefined,
+                currentEmail,
             );
         });
     });
