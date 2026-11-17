@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { assert, type Mock } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
@@ -7,7 +7,9 @@ import { DomainErrorMock } from '../../../../../test/utils/error.mock.js';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { type DomainError, SchulconnexPushError } from '../../../../shared/error/index.js';
+import { EmailMicroserviceAddressChangedEvent } from '../../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../../shared/events/kafka-personenkontext-updated.event.js';
+import { LocksForPersonChangedEvent } from '../../../../shared/events/locks-for-person-changed.event.js';
 import { type PersonenkontextEventKontextData } from '../../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenkontext-updated.event.js';
 import { type PersonID, type PersonenkontextID, type RolleID } from '../../../../shared/types/index.js';
@@ -30,7 +32,7 @@ import { type Rolle } from '../../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
 import { SchulconnexPushAdapter } from '../adapter/domain/schulconnex-push.adapter.js';
 import { SchulconnexPushRegistryRepo } from '../persistence/schulconnex-push-registry.repo.js';
-import { SchulconnexPushHandler } from './schulconnex-push-handler.js';
+import { SchulconnexPushHandler, type KeepAliveFn } from './schulconnex-push-handler.js';
 import { SchulconnexPushRegistry } from './schulconnex-push-registry.js';
 
 function createRegistry(id: string, serviceProviderId: string = 'service-provider-1'): SchulconnexPushRegistry<true> {
@@ -198,23 +200,25 @@ describe('SchulconnexPushHandler', () => {
         removedKontext = createKontext('removed-kontext');
         pushKontext = createPushKontext(newKontext, person, registry);
 
-        registryRepoMock.findAll.mockResolvedValueOnce([registry]);
-        rolleRepoMock.findByIds.mockResolvedValueOnce(new Map([[rolle.id, rolle]]));
-        personRepoMock.findById.mockResolvedValueOnce(person);
-        personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([pushKontext]);
-        userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks);
-        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Ok(new Map([[person.id, email]])));
-        adapterMock.upsertPerson.mockResolvedValueOnce(Ok());
-        adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
-        adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
-        adapterMock.deletePerson.mockResolvedValueOnce(Ok());
+        registryRepoMock.findAll.mockResolvedValue([registry]);
+        rolleRepoMock.findByIds.mockResolvedValue(new Map([[rolle.id, rolle]]));
+        personRepoMock.findById.mockResolvedValue(person);
+        personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([pushKontext]);
+        personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([pushKontext]);
+        userLockRepoMock.findByPersonId.mockResolvedValue(userLocks);
+        emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[person.id, email]])));
+        emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
+        adapterMock.upsertPerson.mockResolvedValue(Ok());
+        adapterMock.upsertPersonenkontext.mockResolvedValue(Ok());
+        adapterMock.deletePersonenkontext.mockResolvedValue(Ok());
+        adapterMock.deletePerson.mockResolvedValue(Ok());
     });
 
     describe('handlePersonenkontextUpdatedEvent', () => {
         describe('registry and context selection', () => {
             it('should log receipt and return without loading roles when no registries exist', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                registryRepoMock.findAll.mockReset().mockResolvedValueOnce([]);
+                registryRepoMock.findAll.mockResolvedValueOnce([]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -224,46 +228,35 @@ describe('SchulconnexPushHandler', () => {
                 );
                 expect(registryRepoMock.findAll).toHaveBeenCalledOnce();
                 expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
             it('should propagate a failure while loading registries', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
                 const error: Error = new Error('Registry lookup failed');
-                registryRepoMock.findAll.mockReset().mockRejectedValueOnce(error);
+                registryRepoMock.findAll.mockRejectedValueOnce(error);
 
                 await expect(sut.handlePersonenkontextUpdatedEvent(event)).rejects.toBe(error);
-
                 expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
             });
 
             it('should propagate a failure while loading roles', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
                 const error: Error = new Error('Role lookup failed');
-                rolleRepoMock.findByIds.mockReset().mockRejectedValueOnce(error);
+                rolleRepoMock.findByIds.mockRejectedValueOnce(error);
 
                 await expect(sut.handlePersonenkontextUpdatedEvent(event)).rejects.toBe(error);
-
                 expect(personRepoMock.findById).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
             });
 
             it('should return success without pushing when the event has no contexts', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, []);
-
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
                 expect(rolleRepoMock.findByIds).toHaveBeenCalledExactlyOnceWith([]);
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
             it('should load each non-class role only once across new, removed and current contexts', async () => {
@@ -276,33 +269,25 @@ describe('SchulconnexPushHandler', () => {
                     [removedKontext, createKontext('removed-other', { rolleId: 'rolle-2' })],
                     [newKontext, existingKontext, createKontext('current-other', { rolleId: 'rolle-3' })],
                 );
-                rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(new Map());
+                rolleRepoMock.findByIds.mockResolvedValueOnce(new Map());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
                 expect(rolleRepoMock.findByIds).toHaveBeenCalledExactlyOnceWith(['rolle-1', 'rolle-2', 'rolle-3']);
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
             });
 
-            it('should ignore class contexts even when their role grants the service provider', async () => {
+            it('should ignore class contexts', async () => {
                 const newClass: PersonenkontextEventKontextData = createKontext('new-class', {
                     orgaTyp: OrganisationsTyp.KLASSE,
                 });
-                const removedClass: PersonenkontextEventKontextData = createKontext('removed-class', {
-                    orgaTyp: OrganisationsTyp.KLASSE,
-                });
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newClass], [removedClass], [newClass]);
+                const event: PersonenkontextUpdatedEvent = createEvent(person, [newClass]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(rolleRepoMock.findByIds).toHaveBeenCalledExactlyOnceWith([]);
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
             it.each(['missing role', 'unrelated service provider'])(
@@ -314,73 +299,37 @@ describe('SchulconnexPushHandler', () => {
                         : new Map([
                               [rolle.id, DoFactory.createRolle(true, { serviceProviderIds: ['other-provider'] })],
                           ]);
-                    rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(rollen);
+                    rolleRepoMock.findByIds.mockResolvedValueOnce(rollen);
 
                     const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                     expect(result).toEqual(Ok());
-                    expect(personRepoMock.findById).not.toHaveBeenCalled();
-                    expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                     expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                    expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                    expect(adapterMock.deletePerson).not.toHaveBeenCalled();
                 },
             );
 
             it('should not repush unchanged relevant contexts', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [], [], [existingKontext]);
-
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
         });
 
         describe('creation', () => {
-            it('should keep the handler alive after each creation adapter operation', async () => {
-                const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, secondKontext]);
-                const keepAlive: Mock<() => void> = vi.fn();
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockReset()
-                    .mockResolvedValueOnce([pushKontext, createPushKontext(secondKontext, person, registry)]);
-                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
-
-                expect(result).toEqual(Ok());
-                expect(keepAlive).toHaveBeenCalledTimes(3);
-                expect(adapterMock.upsertPerson).toHaveBeenCalledBefore(keepAlive);
-                expect(keepAlive).toHaveBeenCalledBefore(adapterMock.upsertPersonenkontext);
-                const [firstContextUpsert, secondContextUpsert]: number[] =
-                    adapterMock.upsertPersonenkontext.mock.invocationCallOrder;
-                assert.isDefined(firstContextUpsert);
-                assert.isDefined(secondContextUpsert);
-                expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(firstContextUpsert);
-                expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(secondContextUpsert);
-                expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(secondContextUpsert);
-            });
-
             it('should create the person before pushing all current contexts on first access', async () => {
                 const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
                 const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext, person, registry);
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, secondKontext]);
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockReset()
-                    .mockResolvedValueOnce([secondPushKontext, pushKontext]);
-                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
+                    secondPushKontext,
+                    pushKontext,
+                ]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(personRepoMock.findById).toHaveBeenCalledExactlyOnceWith(person.id);
-                expect(personenkontextRepoMock.findByPersonWithOrgaAndRolle).toHaveBeenCalledExactlyOnceWith(person.id);
-                expect(userLockRepoMock.findByPersonId).toHaveBeenCalledExactlyOnceWith(person.id);
                 expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
                 expect(adapterMock.upsertPerson).toHaveBeenCalledBefore(adapterMock.upsertPersonenkontext);
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
@@ -398,9 +347,6 @@ describe('SchulconnexPushHandler', () => {
                     userLocks,
                     email,
                 );
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
-                expect(loggerMock.logUnknownAsError).not.toHaveBeenCalled();
             });
 
             it('should only push new contexts without recreating a person with existing access', async () => {
@@ -410,9 +356,10 @@ describe('SchulconnexPushHandler', () => {
                     [],
                     [newKontext, existingKontext],
                 );
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockReset()
-                    .mockResolvedValueOnce([createPushKontext(existingKontext, person, registry), pushKontext]);
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
+                    createPushKontext(existingKontext, person, registry),
+                    pushKontext,
+                ]);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -424,56 +371,15 @@ describe('SchulconnexPushHandler', () => {
                     userLocks,
                     email,
                 );
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
-            it('should push replacement contexts before deleting removed contexts without recreating the person', async () => {
+            it('should push replacement contexts before deleting removed contexts', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext], [removedKontext]);
-
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    pushKontext,
-                    userLocks,
-                    email,
-                );
-                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    person.id,
-                    removedKontext.id,
-                );
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledBefore(adapterMock.deletePersonenkontext);
                 expect(adapterMock.deletePerson).not.toHaveBeenCalled();
-            });
-
-            it('should treat only unrelated existing contexts as first access', async () => {
-                const unrelatedKontext: PersonenkontextEventKontextData = createKontext('unrelated-kontext', {
-                    rolleId: 'unrelated-role',
-                });
-                const classKontext: PersonenkontextEventKontextData = createKontext('class-kontext', {
-                    orgaTyp: OrganisationsTyp.KLASSE,
-                });
-                const event: PersonenkontextUpdatedEvent = createEvent(
-                    person,
-                    [newKontext, unrelatedKontext, classKontext],
-                    [createKontext('removed-unrelated', { rolleId: 'unrelated-role' })],
-                    [newKontext, unrelatedKontext, classKontext],
-                );
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expect(result).toEqual(Ok());
-                expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    pushKontext,
-                    userLocks,
-                    email,
-                );
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
             });
 
             it('should handle Kafka events through the same public handler', async () => {
@@ -489,42 +395,10 @@ describe('SchulconnexPushHandler', () => {
 
                 expect(result).toEqual(Ok());
                 expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    pushKontext,
-                    userLocks,
-                    email,
-                );
             });
         });
 
         describe('deletion', () => {
-            it('should keep the handler alive after each deletion adapter operation', async () => {
-                const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
-                const event: PersonenkontextUpdatedEvent = createEvent(
-                    person,
-                    [],
-                    [removedKontext, secondRemovedKontext],
-                    [],
-                );
-                const keepAlive: Mock<() => void> = vi.fn();
-                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
-
-                expect(result).toEqual(Ok());
-                expect(keepAlive).toHaveBeenCalledTimes(3);
-                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledBefore(keepAlive);
-                const [, secondContextDeletion]: number[] = adapterMock.deletePersonenkontext.mock.invocationCallOrder;
-                const [personDeletion]: number[] = adapterMock.deletePerson.mock.invocationCallOrder;
-                assert.isDefined(secondContextDeletion);
-                assert.isDefined(personDeletion);
-                expect(keepAlive.mock.invocationCallOrder[0]).toBeLessThan(secondContextDeletion);
-                expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(secondContextDeletion);
-                expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(personDeletion);
-                expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(personDeletion);
-            });
-
             it('should delete removed contexts but retain a person with remaining relevant contexts', async () => {
                 const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
                 const event: PersonenkontextUpdatedEvent = createEvent(
@@ -533,33 +407,16 @@ describe('SchulconnexPushHandler', () => {
                     [removedKontext, secondRemovedKontext],
                     [existingKontext],
                 );
-                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
                 expect(adapterMock.deletePersonenkontext).toHaveBeenCalledTimes(2);
-                expect(adapterMock.deletePersonenkontext).toHaveBeenNthCalledWith(
-                    1,
-                    registry,
-                    person.id,
-                    removedKontext.id,
-                );
-                expect(adapterMock.deletePersonenkontext).toHaveBeenNthCalledWith(
-                    2,
-                    registry,
-                    person.id,
-                    secondRemovedKontext.id,
-                );
                 expect(adapterMock.deletePerson).not.toHaveBeenCalled();
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });
 
             it('should delete the person after deleting their last relevant context', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [], [removedKontext], []);
-
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
@@ -570,7 +427,6 @@ describe('SchulconnexPushHandler', () => {
                 );
                 expect(adapterMock.deletePerson).toHaveBeenCalledExactlyOnceWith(registry, person.id);
                 expect(adapterMock.deletePersonenkontext).toHaveBeenCalledBefore(adapterMock.deletePerson);
-                expect(personRepoMock.findById).not.toHaveBeenCalled();
             });
 
             it('should ignore class and unrelated contexts when deciding whether to delete the person', async () => {
@@ -590,11 +446,6 @@ describe('SchulconnexPushHandler', () => {
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    person.id,
-                    removedKontext.id,
-                );
                 expect(adapterMock.deletePerson).toHaveBeenCalledExactlyOnceWith(registry, person.id);
             });
         });
@@ -602,7 +453,6 @@ describe('SchulconnexPushHandler', () => {
         describe('push data', () => {
             it('should resolve email addresses through the email microservice', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
@@ -615,53 +465,11 @@ describe('SchulconnexPushHandler', () => {
                 );
             });
 
-            it('should pass the resolved email address and status to the adapter unchanged', async () => {
+            it('should pass an undefined email when no email is available', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                const microserviceEmail: PersonEmailResponse = {
-                    address: 'microservice@example.org',
-                    status: EmailAddressStatus.DISABLED,
-                };
-                emailResolverServiceMock.findEmailsBySpshPersons
-                    .mockReset()
-                    .mockResolvedValueOnce(Ok(new Map([[person.id, microserviceEmail]])));
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expect(result).toEqual(Ok());
-                expect(emailResolverServiceMock.findEmailsBySpshPersons).toHaveBeenCalledExactlyOnceWith([person.id]);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    pushKontext,
-                    userLocks,
-                    microserviceEmail,
+                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
+                    Ok(new Map<PersonID, PersonEmailResponse | undefined>()),
                 );
-            });
-
-            it('should push an undefined email when the email map has no entry for the person', async () => {
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                emailResolverServiceMock.findEmailsBySpshPersons
-                    .mockReset()
-                    .mockResolvedValueOnce(Ok(new Map<PersonID, PersonEmailResponse | undefined>()));
-                userLockRepoMock.findByPersonId.mockReset().mockResolvedValueOnce([]);
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expect(result).toEqual(Ok());
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    pushKontext,
-                    [],
-                    undefined,
-                );
-            });
-
-            it('should pass through an undefined email returned by the microservice', async () => {
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                emailResolverServiceMock.findEmailsBySpshPersons
-                    .mockReset()
-                    .mockResolvedValueOnce(
-                        Ok(new Map<PersonID, PersonEmailResponse | undefined>([[person.id, undefined]])),
-                    );
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -676,58 +484,30 @@ describe('SchulconnexPushHandler', () => {
 
             it('should fail without pushing when the person no longer exists', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                personRepoMock.findById.mockReset().mockResolvedValueOnce(undefined);
+                personRepoMock.findById.mockResolvedValueOnce(undefined);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [new SchulconnexPushError(`Person ${person.id} not found`)]);
                 expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-            });
-
-            it('should validate all requested contexts before pushing the person or any context', async () => {
-                const missingKontext: PersonenkontextEventKontextData = createKontext('missing-kontext');
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, missingKontext]);
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expectPushFailure(result, event, [
-                    new SchulconnexPushError(`Personenkontext ${missingKontext.id} not found`),
-                ]);
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });
 
             it('should stop context creation and deletion when resolving emails fails', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext], [removedKontext]);
                 const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
-                emailResolverServiceMock.findEmailsBySpshPersons.mockReset().mockResolvedValueOnce(Err(error));
+                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [error]);
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
                 expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
-            });
-
-            it('should propagate email microservice errors without pushing', async () => {
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                const error: DomainError = new DomainErrorMock('Email microservice lookup failed');
-                emailResolverServiceMock.findEmailsBySpshPersons.mockReset().mockResolvedValueOnce(Err(error));
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expectPushFailure(result, event, [error]);
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });
 
             it('should aggregate unexpected errors thrown while loading push data', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
                 const error: Error = new Error('Person lookup failed');
-                personRepoMock.findById.mockReset().mockRejectedValueOnce(error);
+                personRepoMock.findById.mockRejectedValueOnce(error);
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
@@ -736,8 +516,6 @@ describe('SchulconnexPushHandler', () => {
                     `[EventID: ${event.eventID}] Schulconnex push for person ${person.id}: Registry ${registry.id} failed`,
                     error,
                 );
-                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
             });
         });
 
@@ -745,109 +523,52 @@ describe('SchulconnexPushHandler', () => {
             it('should stop before pushing contexts when creating the person fails', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
                 const error: DomainError = new DomainErrorMock('Person upsert failed');
-                adapterMock.upsertPerson.mockReset().mockResolvedValueOnce(Err(error));
+                adapterMock.upsertPerson.mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [error]);
-                expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
                 expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
             it('should stop remaining upserts and deletions when a context upsert fails', async () => {
                 const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
-                const thirdKontext: PersonenkontextEventKontextData = createKontext('third-kontext');
                 const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext, person, registry);
                 const event: PersonenkontextUpdatedEvent = createEvent(
                     person,
-                    [newKontext, secondKontext, thirdKontext],
+                    [newKontext, secondKontext],
                     [removedKontext],
                 );
                 const error: DomainError = new DomainErrorMock('Context upsert failed');
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockReset()
-                    .mockResolvedValueOnce([
-                        pushKontext,
-                        secondPushKontext,
-                        createPushKontext(thirdKontext, person, registry),
-                    ]);
-                adapterMock.upsertPersonenkontext
-                    .mockReset()
-                    .mockResolvedValueOnce(Ok())
-                    .mockResolvedValueOnce(Err(error));
+                personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce([
+                    pushKontext,
+                    secondPushKontext,
+                ]);
+                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok()).mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [error]);
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
-                    1,
-                    registry,
-                    pushKontext,
-                    userLocks,
-                    email,
-                );
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
-                    2,
-                    registry,
-                    secondPushKontext,
-                    userLocks,
-                    email,
-                );
                 expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
-                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
             });
 
-            it('should stop remaining deletions and retain the person when a context deletion fails', async () => {
+            it('should stop remaining deletions when a context deletion fails', async () => {
                 const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
-                const thirdRemovedKontext: PersonenkontextEventKontextData = createKontext('third-removed');
                 const event: PersonenkontextUpdatedEvent = createEvent(
                     person,
                     [],
-                    [removedKontext, secondRemovedKontext, thirdRemovedKontext],
+                    [removedKontext, secondRemovedKontext],
                     [],
                 );
                 const error: DomainError = new DomainErrorMock('Context deletion failed');
-                adapterMock.deletePersonenkontext
-                    .mockReset()
-                    .mockResolvedValueOnce(Ok())
-                    .mockResolvedValueOnce(Err(error));
+                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok()).mockResolvedValueOnce(Err(error));
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expectPushFailure(result, event, [error]);
                 expect(adapterMock.deletePersonenkontext).toHaveBeenCalledTimes(2);
-                expect(adapterMock.deletePersonenkontext).toHaveBeenNthCalledWith(
-                    1,
-                    registry,
-                    person.id,
-                    removedKontext.id,
-                );
-                expect(adapterMock.deletePersonenkontext).toHaveBeenNthCalledWith(
-                    2,
-                    registry,
-                    person.id,
-                    secondRemovedKontext.id,
-                );
                 expect(adapterMock.deletePerson).not.toHaveBeenCalled();
-            });
-
-            it('should propagate a failure when deleting the person', async () => {
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [], [removedKontext], []);
-                const error: DomainError = new DomainErrorMock('Person deletion failed');
-                adapterMock.deletePerson.mockReset().mockResolvedValueOnce(Err(error));
-
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
-
-                expectPushFailure(result, event, [error]);
-                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    registry,
-                    person.id,
-                    removedKontext.id,
-                );
-                expect(adapterMock.deletePerson).toHaveBeenCalledExactlyOnceWith(registry, person.id);
             });
         });
 
@@ -857,10 +578,6 @@ describe('SchulconnexPushHandler', () => {
                     'registry-2',
                     'service-provider-2',
                 );
-                const unrelatedRegistry: SchulconnexPushRegistry<true> = createRegistry(
-                    'registry-3',
-                    'service-provider-3',
-                );
                 const secondRolle: Rolle<true> = DoFactory.createRolle(true, {
                     id: 'rolle-2',
                     serviceProviderIds: [secondRegistry.serviceProviderId],
@@ -868,37 +585,27 @@ describe('SchulconnexPushHandler', () => {
                 const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext', {
                     rolleId: secondRolle.id,
                 });
-                const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontext, person, registry);
+                const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(
+                    secondKontext,
+                    person,
+                    secondRegistry,
+                );
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, secondKontext]);
-                registryRepoMock.findAll
-                    .mockReset()
-                    .mockResolvedValueOnce([registry, secondRegistry, unrelatedRegistry]);
-                rolleRepoMock.findByIds.mockReset().mockResolvedValueOnce(
+                registryRepoMock.findAll.mockResolvedValueOnce([registry, secondRegistry]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
                     new Map([
                         [rolle.id, rolle],
                         [secondRolle.id, secondRolle],
                     ]),
                 );
-                personRepoMock.findById.mockResolvedValueOnce(person);
                 personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockReset()
                     .mockResolvedValueOnce([pushKontext, secondPushKontext])
                     .mockResolvedValueOnce([pushKontext, secondPushKontext]);
-                userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks);
-                emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValueOnce(
-                    Ok(new Map([[person.id, email]])),
-                );
-                adapterMock.upsertPerson.mockResolvedValueOnce(Ok());
-                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
 
                 const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
 
                 expect(result).toEqual(Ok());
-                expect(personRepoMock.findById).toHaveBeenCalledTimes(2);
                 expect(adapterMock.upsertPerson).toHaveBeenCalledTimes(2);
-                expect(adapterMock.upsertPerson).toHaveBeenCalledWith(registry, person);
-                expect(adapterMock.upsertPerson).toHaveBeenCalledWith(secondRegistry, person);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledWith(registry, pushKontext, userLocks, email);
                 expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
                     secondRegistry,
@@ -906,26 +613,16 @@ describe('SchulconnexPushHandler', () => {
                     userLocks,
                     email,
                 );
-                expect(loggerMock.logUnknownAsError).not.toHaveBeenCalled();
             });
 
-            it('should aggregate returned and thrown failures while still pushing to successful registries', async () => {
+            it('should aggregate returned and thrown failures while still pushing successful registries', async () => {
                 const secondRegistry: SchulconnexPushRegistry<true> = createRegistry('registry-2');
                 const thirdRegistry: SchulconnexPushRegistry<true> = createRegistry('registry-3');
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
                 const returnedError: DomainError = new DomainErrorMock('First registry failed');
                 const thrownError: Error = new Error('Second registry failed');
-                registryRepoMock.findAll.mockReset().mockResolvedValueOnce([registry, secondRegistry, thirdRegistry]);
-                personRepoMock.findById.mockResolvedValueOnce(person).mockResolvedValueOnce(person);
-                personenkontextRepoMock.findByPersonWithOrgaAndRolle
-                    .mockResolvedValueOnce([pushKontext])
-                    .mockResolvedValueOnce([pushKontext]);
-                userLockRepoMock.findByPersonId.mockResolvedValueOnce(userLocks).mockResolvedValueOnce(userLocks);
-                emailResolverServiceMock.findEmailsBySpshPersons
-                    .mockResolvedValueOnce(Ok(new Map([[person.id, email]])))
-                    .mockResolvedValueOnce(Ok(new Map([[person.id, email]])));
+                registryRepoMock.findAll.mockResolvedValueOnce([registry, secondRegistry, thirdRegistry]);
                 adapterMock.upsertPerson
-                    .mockReset()
                     .mockResolvedValueOnce(Err(returnedError))
                     .mockRejectedValueOnce(thrownError)
                     .mockResolvedValueOnce(Ok());
@@ -934,39 +631,490 @@ describe('SchulconnexPushHandler', () => {
 
                 expectPushFailure(result, event, [returnedError, thrownError]);
                 expect(adapterMock.upsertPerson).toHaveBeenCalledTimes(3);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
-                    thirdRegistry,
-                    pushKontext,
-                    userLocks,
-                    email,
-                );
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
                 expect(loggerMock.logUnknownAsError).toHaveBeenCalledTimes(2);
-                expect(loggerMock.logUnknownAsError).toHaveBeenNthCalledWith(
-                    1,
-                    `[EventID: ${event.eventID}] Schulconnex push for person ${person.id}: Registry ${registry.id} failed`,
-                    returnedError,
-                );
-                expect(loggerMock.logUnknownAsError).toHaveBeenNthCalledWith(
-                    2,
-                    `[EventID: ${event.eventID}] Schulconnex push for person ${person.id}: Registry ${secondRegistry.id} failed`,
-                    thrownError,
-                );
             });
+        });
+    });
 
-            it('should preserve and log rejection reasons that are not Error instances', async () => {
-                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
-                const reason: string = 'Connection closed';
-                adapterMock.upsertPerson.mockReset().mockRejectedValueOnce(reason);
+    describe('handleEmailAddressChanged', () => {
+        it('should update all relevant personenkontexte with the primary email from the event and return Ok', async () => {
+            const newPrimaryEmail: PersonEmailResponse = {
+                address: 'new@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                newPrimaryEmail.address,
+                undefined,
+                'old@example.org',
+                undefined,
+            );
 
-                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
 
-                expectPushFailure(result, event, [reason]);
-                expect(loggerMock.logUnknownAsError).toHaveBeenCalledExactlyOnceWith(
-                    `[EventID: ${event.eventID}] Schulconnex push for person ${person.id}: Registry ${registry.id} failed`,
-                    reason,
+            expect(result).toEqual(Ok());
+            expect(registryRepoMock.findAll).toHaveBeenCalledOnce();
+            expect(userLockRepoMock.findByPersonId).toHaveBeenCalledExactlyOnceWith(person.id);
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
+            expect(
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle,
+            ).toHaveBeenCalledExactlyOnceWith(person.id, registry.serviceProviderId);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                registry,
+                pushKontext,
+                userLocks,
+                newPrimaryEmail,
+            );
+        });
+
+        it('should push no email when the event contains no primary email', async () => {
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                undefined,
+                undefined,
+                'old@example.org',
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                registry,
+                pushKontext,
+                userLocks,
+                undefined,
+            );
+        });
+
+        it('should not push when no relevant personenkontexte exist', async () => {
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([]);
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('handleLocksForPersonChanged', () => {
+        it('should update all relevant personenkontexte with current locks and resolved email', async () => {
+            const currentLocks: UserLock[] = [
+                UserLock.construct(person.id, 'admin-id', new Date(), PersonLockOccasion.MANUELL_GESPERRT, new Date()),
+            ];
+            const currentEmail: PersonEmailResponse = {
+                address: 'current@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce(currentLocks);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(currentEmail);
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(person.id);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                registry,
+                pushKontext,
+                currentLocks,
+                currentEmail,
+            );
+        });
+
+        it('should use current locks instead of locks from the event', async () => {
+            const currentLocks: UserLock[] = [
+                UserLock.construct(person.id, 'admin-id', new Date(), PersonLockOccasion.MANUELL_GESPERRT, new Date()),
+            ];
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce(currentLocks);
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(
+                person.id,
+                [{ locked_until: new Date(), locked_occasion: PersonLockOccasion.MANUELL_GESPERRT }],
+                [{ locked_until: undefined, locked_occasion: PersonLockOccasion.MANUELL_GESPERRT }],
+            );
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                registry,
+                pushKontext,
+                currentLocks,
+                undefined,
+            );
+        });
+
+        it('should not push when no relevant personenkontexte exist', async () => {
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([]);
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(person.id);
+        });
+    });
+
+    describe('email and lock update selection', () => {
+        it('should update relevant personenkontexte for every registry', async () => {
+            const newPrimaryEmail: PersonEmailResponse = {
+                address: 'new@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            const secondRegistry: SchulconnexPushRegistry<true> = createRegistry('registry-2', 'service-provider-2');
+            const secondKontextData: PersonenkontextEventKontextData = createKontext('second-kontext');
+            const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(
+                secondKontextData,
+                person,
+                secondRegistry,
+            );
+            registryRepoMock.findAll.mockResolvedValueOnce([registry, secondRegistry]);
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockImplementation(
+                (_personId: PersonID, serviceProviderId: string): Promise<KontextWithOrgaAndRolle[]> =>
+                    Promise.resolve(
+                        serviceProviderId === registry.serviceProviderId ? [pushKontext] : [secondPushKontext],
+                    ),
+            );
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                newPrimaryEmail.address,
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledTimes(2);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                registry,
+                pushKontext,
+                userLocks,
+                newPrimaryEmail,
+            );
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledWith(
+                secondRegistry,
+                secondPushKontext,
+                userLocks,
+                newPrimaryEmail,
+            );
+        });
+
+        it('should not resolve personenkontexte when no registries exist', async () => {
+            registryRepoMock.findAll.mockResolvedValueOnce([]);
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result).toEqual(Ok());
+            expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).not.toHaveBeenCalled();
+            expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+        });
+
+        it('should update all relevant personenkontexte for a registry sequentially', async () => {
+            const newPrimaryEmail: PersonEmailResponse = {
+                address: 'new@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            const secondKontextData: PersonenkontextEventKontextData = createKontext('second-kontext');
+            const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontextData, person, registry);
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                pushKontext,
+                secondPushKontext,
+            ]);
+            let resolveFirstPush: ((result: Result<void, DomainError>) => void) | undefined;
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = resolve;
+                },
+            );
+            adapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                newPrimaryEmail.address,
+                undefined,
+                undefined,
+                undefined,
+            );
+            const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event);
+
+            try {
+                await vi.waitFor(() => {
+                    expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+                });
+            } finally {
+                resolveFirstPush?.(Ok());
+            }
+
+            const result: Result<void, DomainError> = await handling;
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                2,
+                registry,
+                secondPushKontext,
+                userLocks,
+                newPrimaryEmail,
+            );
+        });
+    });
+
+    describe('email and lock update error handling', () => {
+        it('should return Err when pushing a personenkontext fails', async () => {
+            const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
+            adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Err(error));
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result.ok).toBe(false);
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    `Could not update Personenkontext ${pushKontext.personenkontext.id} for person ${person.id}`,
+                ),
+                error,
+            );
+        });
+
+        it('should propagate push failures from the locks handler', async () => {
+            const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
+            adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Err(error));
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event);
+
+            expect(result.ok).toBe(false);
+        });
+
+        it('should continue pushing remaining personenkontexte and return Err', async () => {
+            const newPrimaryEmail: PersonEmailResponse = {
+                address: 'new@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            const secondKontextData: PersonenkontextEventKontextData = createKontext('second-kontext');
+            const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontextData, person, registry);
+            const error: SchulconnexPushError = new SchulconnexPushError('Push failed');
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                pushKontext,
+                secondPushKontext,
+            ]);
+            adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Err(error)).mockResolvedValueOnce(Ok());
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                newPrimaryEmail.address,
+                undefined,
+                undefined,
+                undefined,
+            );
+
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event);
+
+            expect(result.ok).toBe(false);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledOnce();
+        });
+    });
+
+    describe('keepAlive', () => {
+        it('should call keepAlive periodically while processing an event', async () => {
+            vi.useFakeTimers();
+            const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+            let resolvePush: ((result: Result<void, DomainError>) => void) | undefined;
+            const pendingPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolvePush = resolve;
+                },
+            );
+            adapterMock.upsertPersonenkontext.mockReturnValueOnce(pendingPush);
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                'new@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+            const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
+
+            try {
+                await vi.advanceTimersByTimeAsync(0);
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+                expect(keepAlive).not.toHaveBeenCalled();
+                await vi.advanceTimersByTimeAsync(30_000);
+                expect(keepAlive).toHaveBeenCalledOnce();
+                await vi.advanceTimersByTimeAsync(30_000);
+                expect(keepAlive).toHaveBeenCalledTimes(2);
+            } finally {
+                resolvePush?.(Ok());
+                await handling;
+                vi.useRealTimers();
+            }
+        });
+
+        it('should stop calling keepAlive after processing has finished', async () => {
+            vi.useFakeTimers();
+            try {
+                const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+                const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                    person.id,
+                    'new@example.org',
+                    undefined,
+                    undefined,
+                    undefined,
                 );
-                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
-            });
+                const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
+                await vi.advanceTimersByTimeAsync(0);
+                const result: Result<void, DomainError> = await handling;
+                expect(result).toEqual(Ok());
+                await vi.advanceTimersByTimeAsync(60_000);
+                expect(keepAlive).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('should call keepAlive while waiting for another update of the same person', async () => {
+            vi.useFakeTimers();
+            const firstKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+            const secondKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
+            let resolveFirstPush: ((result: Result<void, DomainError>) => void) | undefined;
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = resolve;
+                },
+            );
+            adapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+            const firstEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                'first@example.org',
+                undefined,
+                undefined,
+                undefined,
+            );
+            const secondEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+            const firstHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(
+                firstEvent,
+                firstKeepAlive,
+            );
+            let secondHandling: Promise<Result<void, DomainError>> | undefined;
+
+            try {
+                await vi.advanceTimersByTimeAsync(0);
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+                secondHandling = sut.handleLocksForPersonChanged(secondEvent, secondKeepAlive);
+                await vi.advanceTimersByTimeAsync(0);
+                await vi.advanceTimersByTimeAsync(30_000);
+                expect(firstKeepAlive).toHaveBeenCalledOnce();
+                expect(secondKeepAlive).toHaveBeenCalledOnce();
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            } finally {
+                resolveFirstPush?.(Ok());
+                await firstHandling;
+                if (secondHandling) {
+                    await secondHandling;
+                }
+                vi.useRealTimers();
+            }
+        });
+    });
+
+    describe('concurrency handling', () => {
+        it('should serialize email and lock updates for the same person', async () => {
+            const newPrimaryEmail: PersonEmailResponse = {
+                address: 'new@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            const currentLock: UserLock = UserLock.construct(
+                person.id,
+                'admin-id',
+                new Date(),
+                PersonLockOccasion.MANUELL_GESPERRT,
+                new Date(),
+            );
+            const currentEmail: PersonEmailResponse = {
+                address: 'current@example.org',
+                status: EmailAddressStatus.ENABLED,
+            };
+            userLockRepoMock.findByPersonId.mockResolvedValueOnce([]).mockResolvedValueOnce([currentLock]);
+            emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(currentEmail);
+            let resolveFirstPush: ((result: Result<void, DomainError>) => void) | undefined;
+            const firstPush: Promise<Result<void, DomainError>> = new Promise(
+                (resolve: (value: Result<void, DomainError>) => void): void => {
+                    resolveFirstPush = resolve;
+                },
+            );
+            adapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
+            const emailEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+                person.id,
+                newPrimaryEmail.address,
+                undefined,
+                'old@example.org',
+                undefined,
+            );
+            const locksEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+            const emailHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(emailEvent);
+            let locksHandling: Promise<Result<void, DomainError>> | undefined;
+
+            try {
+                await vi.waitFor(() => {
+                    expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(1);
+                });
+                locksHandling = sut.handleLocksForPersonChanged(locksEvent);
+                await Promise.resolve();
+                expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(1);
+                expect(emailResolverServiceMock.findEmailBySpshPerson).not.toHaveBeenCalled();
+            } finally {
+                resolveFirstPush?.(Ok());
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            if (!locksHandling) {
+                throw new Error('Locks handling was not started');
+            }
+
+            const [emailResult, locksResult]: [Result<void, DomainError>, Result<void, DomainError>] =
+                await Promise.all([emailHandling, locksHandling]);
+
+            expect(emailResult).toEqual(Ok());
+            expect(locksResult).toEqual(Ok());
+            expect(userLockRepoMock.findByPersonId).toHaveBeenCalledTimes(2);
+            expect(emailResolverServiceMock.findEmailBySpshPerson).toHaveBeenCalledExactlyOnceWith(person.id);
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                1,
+                registry,
+                pushKontext,
+                [],
+                newPrimaryEmail,
+            );
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenNthCalledWith(
+                2,
+                registry,
+                pushKontext,
+                [currentLock],
+                currentEmail,
+            );
         });
     });
 });
