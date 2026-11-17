@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDate, IsEnum, IsNumber, IsOptional, ValidateNested } from 'class-validator';
-import { DbiamPersonenkontextBodyParams } from './dbiam-personenkontext.body.params.js';
 import { OperationContext } from '../../domain/personenkontext.enums.js';
+import { DbiamPersonenkontextBodyParams } from './dbiam-personenkontext.body.params.js';
 
 export class DbiamUpdatePersonenkontexteBodyParams {
     @IsDate()

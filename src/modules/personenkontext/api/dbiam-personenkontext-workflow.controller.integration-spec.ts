@@ -596,8 +596,13 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
         });
 
-        describe.skip(`when context is ${OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN}`, () => {
-            const setup = async () => {
+        describe(`when context is ${OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN}`, () => {
+            const setup = async (): Promise<{
+                organisation: Organisation<true>;
+                rolle: Rolle<true>;
+                existingPerson: Person<true>;
+                personenkontext: Personenkontext<true>;
+            }> => {
                 const organisation: Organisation<true> = await organisationRepo.save(
                     DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
                 );
@@ -620,6 +625,11 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
 
             it('should return canCommit=true for a valid combination', async () => {
                 const { organisation, rolle, existingPerson } = await setup();
+                personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                    all: false,
+                    orgaIds: [organisation.id],
+                });
+                personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(`/personenkontext-workflow/step`)
                     .query({
@@ -632,6 +642,87 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
                 expect(body.canCommit).toBe(true);
+            });
+
+            it('should return canCommit=false if the user lacks LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN at the organisation', async () => {
+                const { organisation, rolle, existingPerson } = await setup();
+                personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
+                    all: false,
+                    orgaIds: [],
+                });
+                personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(false);
+                const response: Response = await request(app.getHttpServer() as App)
+                    .get(`/personenkontext-workflow/step`)
+                    .query({
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                        organisationId: organisation.id,
+                        rollenIds: [rolle.id],
+                        personId: existingPerson.id,
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                    .send();
+                expect(response.status).toBe(200);
+                const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
+                expect(body.canCommit).toBe(false);
+            });
+
+            it('should return canCommit=false if the rolle does not exist', async () => {
+                const { organisation, existingPerson } = await setup();
+                personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(true);
+                const response: Response = await request(app.getHttpServer() as App)
+                    .get(`/personenkontext-workflow/step`)
+                    .query({
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                        organisationId: organisation.id,
+                        rollenIds: [faker.string.uuid()],
+                        personId: existingPerson.id,
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                    .send();
+                expect(response.status).toBe(200);
+                const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
+                expect(body.canCommit).toBe(false);
+            });
+
+            it('should return canCommit=false if the organisation does not exist', async () => {
+                const { rolle, existingPerson } = await setup();
+                personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(true);
+                const response: Response = await request(app.getHttpServer() as App)
+                    .get(`/personenkontext-workflow/step`)
+                    .query({
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                        organisationId: faker.string.uuid(),
+                        rollenIds: [rolle.id],
+                        personId: existingPerson.id,
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                    .send();
+                expect(response.status).toBe(200);
+                const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
+                expect(body.canCommit).toBe(false);
+            });
+
+            it('should return canCommit=false if the rolle is not administered by the organisation', async () => {
+                const { organisation, existingPerson } = await setup();
+                const unrelatedOrganisation: Organisation<true> = await organisationRepo.save(
+                    DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+                );
+                const unrelatedRolle: Rolle<true> = await rolleRepo.create(
+                    DoFactory.createRolle(false, {
+                        administeredBySchulstrukturknoten: unrelatedOrganisation.id,
+                        rollenart: RollenArt.LERN,
+                    }),
+                );
+                personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(true);
+                const response: Response = await request(app.getHttpServer() as App)
+                    .get(`/personenkontext-workflow/step`)
+                    .query({
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                        organisationId: organisation.id,
+                        rollenIds: [unrelatedRolle.id],
+                        personId: existingPerson.id,
+                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                    .send();
+                expect(response.status).toBe(200);
+                const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
+                expect(body.canCommit).toBe(false);
             });
         });
     });
