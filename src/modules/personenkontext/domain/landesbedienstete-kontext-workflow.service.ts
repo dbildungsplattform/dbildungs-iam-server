@@ -97,13 +97,6 @@ export class LandesbediensteteKontextWorkflowService {
             return new MissingPermissionsError('No target organisation provided for context expansion');
         }
 
-        const canExpandContext: Result<void, DomainError> =
-            await this.landesbediensteteSearchService.personIsSearchable(personId);
-
-        if (!canExpandContext.ok) {
-            return canExpandContext.error;
-        }
-
         const permissionChecks: Result<void, DomainError>[] = await Promise.all(
             personenkontexte.map((pk: DbiamPersonenkontextBodyParams) =>
                 this.checkPermissions(permissions, pk.organisationId),
@@ -115,6 +108,13 @@ export class LandesbediensteteKontextWorkflowService {
         );
         if (failedCheck && !failedCheck.ok) {
             return failedCheck.error;
+        }
+
+        const canExpandContext: Result<void, DomainError> =
+            await this.landesbediensteteSearchService.personIsSearchable(personId);
+
+        if (!canExpandContext.ok) {
+            return canExpandContext.error;
         }
     }
 

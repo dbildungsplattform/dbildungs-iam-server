@@ -186,11 +186,7 @@ export class DbiamPersonenkontextWorkflowController {
                 );
         }
 
-        if (updateResult instanceof PersonenkontexteUpdateError || updateResult instanceof MissingPermissionsError) {
-            throw updateResult;
-        }
-
-        if (updateResult instanceof DuplicatePersonalnummerError) {
+        if (updateResult instanceof DomainError) {
             throw updateResult;
         }
         return new PersonenkontexteUpdateResponse(updateResult);
