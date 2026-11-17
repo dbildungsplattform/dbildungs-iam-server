@@ -40,7 +40,7 @@ describe('PersonenkontextWorkflow', () => {
     let personpermissionsMock: DeepMocked<PersonPermissions>;
     let dbiamPersonenkontextFactoryMock: DeepMocked<DbiamPersonenkontextFactory>;
     let configMock: DeepMocked<ConfigService>;
-    let personenkontextWorkflowSharedKernelMock: DeepMocked<RoleOrganisationAssignmentValidator>;
+    let roleOrgAssignmentValidatorMock: DeepMocked<RoleOrganisationAssignmentValidator>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -87,7 +87,7 @@ describe('PersonenkontextWorkflow', () => {
         personenkontextAnlageFactory = module.get(PersonenkontextWorkflowFactory);
         personpermissionsMock = module.get(PersonPermissions);
         configMock = module.get(ConfigService);
-        personenkontextWorkflowSharedKernelMock = module.get(RoleOrganisationAssignmentValidator);
+        roleOrgAssignmentValidatorMock = module.get(RoleOrganisationAssignmentValidator);
     });
 
     afterAll(async () => {
@@ -574,13 +574,13 @@ describe('PersonenkontextWorkflow', () => {
             );
 
             expectOkResult(result);
-            expect(personenkontextWorkflowSharedKernelMock.checkReferences).not.toHaveBeenCalled();
+            expect(roleOrgAssignmentValidatorMock.checkReferences).not.toHaveBeenCalled();
         });
 
         it('should return the first failed reference check', async () => {
             anlage.initialize(undefined, 'org-id', ['rolle-1', 'rolle-2']);
             const referenceError: DomainError = new PersonenkontexteUpdateError('reference error');
-            personenkontextWorkflowSharedKernelMock.checkReferences
+            roleOrgAssignmentValidatorMock.checkReferences
                 .mockResolvedValueOnce(Ok(undefined))
                 .mockResolvedValueOnce(Err(referenceError));
 
@@ -595,7 +595,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should return an error if permissions are insufficient', async () => {
             anlage.initialize(undefined, 'org-id', ['rolle-1']);
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok(undefined));
+            roleOrgAssignmentValidatorMock.checkReferences.mockResolvedValue(Ok(undefined));
 
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
@@ -611,7 +611,7 @@ describe('PersonenkontextWorkflow', () => {
 
         it('should return Ok when references and permissions are satisfied', async () => {
             anlage.initialize(undefined, 'org-id', ['rolle-1']);
-            personenkontextWorkflowSharedKernelMock.checkReferences.mockResolvedValue(Ok(undefined));
+            roleOrgAssignmentValidatorMock.checkReferences.mockResolvedValue(Ok(undefined));
 
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissions.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);

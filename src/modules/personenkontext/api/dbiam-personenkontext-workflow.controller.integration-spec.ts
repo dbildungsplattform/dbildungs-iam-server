@@ -54,7 +54,12 @@ import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
 import { type FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
 import { type DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 import { type PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
-
+type SetupResult = {
+    organisation: Organisation<true>;
+    rolle: Rolle<true>;
+    existingPerson: Person<true>;
+    personenkontext: Personenkontext<true>;
+};
 describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     let app: INestApplication;
     let orm: MikroORM;
@@ -597,12 +602,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         });
 
         describe(`when context is ${OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN}`, () => {
-            const setup = async (): Promise<{
-                organisation: Organisation<true>;
-                rolle: Rolle<true>;
-                existingPerson: Person<true>;
-                personenkontext: Personenkontext<true>;
-            }> => {
+            const setup = async (): Promise<SetupResult> => {
                 const organisation: Organisation<true> = await organisationRepo.save(
                     DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
                 );
@@ -624,7 +624,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             };
 
             it('should return canCommit=true for a valid combination', async () => {
-                const { organisation, rolle, existingPerson } = await setup();
+                const { organisation, rolle, existingPerson }: SetupResult = await setup();
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
                     orgaIds: [organisation.id],
@@ -645,7 +645,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             it('should return canCommit=false if the user lacks LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN at the organisation', async () => {
-                const { organisation, rolle, existingPerson } = await setup();
+                const { organisation, rolle, existingPerson }: SetupResult = await setup();
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
                     orgaIds: [],
@@ -666,7 +666,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             it('should return canCommit=false if the rolle does not exist', async () => {
-                const { organisation, existingPerson } = await setup();
+                const { organisation, existingPerson }: SetupResult = await setup();
                 personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(true);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(`/personenkontext-workflow/step`)
@@ -683,7 +683,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             it('should return canCommit=false if the organisation does not exist', async () => {
-                const { rolle, existingPerson } = await setup();
+                const { rolle, existingPerson }: SetupResult = await setup();
                 personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValue(true);
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(`/personenkontext-workflow/step`)
@@ -700,7 +700,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             });
 
             it('should return canCommit=false if the rolle is not administered by the organisation', async () => {
-                const { organisation, existingPerson } = await setup();
+                const { organisation, existingPerson }: SetupResult = await setup();
                 const unrelatedOrganisation: Organisation<true> = await organisationRepo.save(
                     DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
                 );

@@ -99,7 +99,10 @@ describe('RoleOrganisationAssignmentValidator', () => {
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
 
             // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(faker.string.uuid(), faker.string.uuid());
+            const result: Result<void, DomainError> = await sut.checkReferences(
+                faker.string.uuid(),
+                faker.string.uuid(),
+            );
 
             // Assert
             expectOkResult(result);
@@ -112,7 +115,10 @@ describe('RoleOrganisationAssignmentValidator', () => {
             rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new OrganisationMatchesRollenartError()));
 
             // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(faker.string.uuid(), faker.string.uuid());
+            const result: Result<void, DomainError> = await sut.checkReferences(
+                faker.string.uuid(),
+                faker.string.uuid(),
+            );
 
             // Assert
             expectErrResult(result);
