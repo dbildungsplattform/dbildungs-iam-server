@@ -152,6 +152,7 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
         systemrechte: RollenSystemRecht[],
         withChildren: boolean = false,
         matchAll: boolean = true,
+        excludeKlassen: boolean = false,
     ): Promise<PermittedOrgas> {
         if (await this.hasSystemrechteAtRootOrganisation(systemrechte, matchAll)) {
             return { all: true };
@@ -173,6 +174,7 @@ export class EscalatedPersonPermissions implements IPersonPermissions {
         if (withChildren) {
             const childOrgas: Organisation<true>[] = await this.organisationRepo.findChildOrgasForIds(
                 Array.from(organisationIDs),
+                excludeKlassen,
             );
 
             childOrgas.forEach((orga: Organisation<true>) => organisationIDs.add(orga.id));

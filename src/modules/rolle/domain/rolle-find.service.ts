@@ -437,7 +437,7 @@ export class RolleFindService {
                 requestedPairs.map(
                     async (paar: RollenmerkmalSystemrechtPaar): Promise<[RollenSystemRecht, PermittedOrgas]> => [
                         paar.systemrecht,
-                        await permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
+                        await permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true, true, true),
                     ],
                 ),
             ),
