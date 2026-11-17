@@ -19,8 +19,6 @@ function config(overrides: Partial<RedisConfig> = {}): RedisConfig {
         SENTINEL_ENABLED: true,
         SENTINEL_MASTER_NAME: 'test-master',
         SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
-        SENTINEL_USERNAME: 'sentinel-user',
-        SENTINEL_PASSWORD: 'sentinel-test-password',
         SENTINEL_USE_TLS: false,
         ...overrides,
     });
@@ -32,14 +30,14 @@ describe('Redis Sentinel', () => {
     });
 
     describe('createRedisSentinelOptions', () => {
-        it('should discover the master and use separate Sentinel credentials without using the static host', () => {
+        it('should discover the master using Redis credentials without using the static host', () => {
             const options: SentinelConnectionOptions = createRedisSentinelOptions(config());
 
             expect(options).toEqual({
                 name: 'test-master',
                 sentinelRootNodes: [{ host: 'sentinel.example', port: 26379 }],
                 nodeClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
-                sentinelClientOptions: { username: 'sentinel-user', password: 'sentinel-test-password', socket: {} },
+                sentinelClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
                 replicaPoolSize: 0,
                 passthroughClientErrorEvents: true,
             });
@@ -65,30 +63,33 @@ describe('Redis Sentinel', () => {
             expect(options.sentinelClientOptions?.socket).toEqual(options.nodeClientOptions?.socket);
         });
 
-        it('should allow separate Sentinel credentials and TLS', () => {
+        it('should use Redis credentials with separate Sentinel TLS', () => {
             const options: SentinelConnectionOptions = createRedisSentinelOptions(
                 config({
-                    SENTINEL_USERNAME: 'sentinel-user',
-                    SENTINEL_PASSWORD: 'sentinel-test-password',
                     SENTINEL_USE_TLS: true,
                 }),
             );
 
             expect(options.sentinelClientOptions).toMatchObject({
-                username: 'sentinel-user',
-                password: 'sentinel-test-password',
+                username: 'valkey-user',
+                password: 'valkey-test-password',
                 socket: { tls: true },
             });
             expect(options.nodeClientOptions?.socket).toEqual({});
         });
 
-        it.each([
-            ['SENTINEL_USERNAME', 'username'],
-            ['SENTINEL_PASSWORD', 'password'],
-        ])('should not inherit Redis credentials when %s is missing', (property: string, option: string) => {
-            const options: SentinelConnectionOptions = createRedisSentinelOptions(config({ [property]: undefined }));
+        it('should ignore separate Sentinel credentials', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                Object.assign(config(), {
+                    SENTINEL_USERNAME: 'unused-user',
+                    SENTINEL_PASSWORD: 'unused-password',
+                }),
+            );
 
-            expect(options.sentinelClientOptions).toMatchObject({ [option]: undefined });
+            expect(options.sentinelClientOptions).toMatchObject({
+                username: 'valkey-user',
+                password: 'valkey-test-password',
+            });
         });
 
         it('should not inherit Redis TLS when Sentinel TLS is missing', () => {
@@ -108,8 +109,8 @@ describe('Redis Sentinel', () => {
             );
 
             expect(options.sentinelClientOptions).toEqual({
-                username: 'sentinel-user',
-                password: 'sentinel-test-password',
+                username: 'valkey-user',
+                password: 'valkey-test-password',
                 socket: {},
             });
             expect(options.nodeClientOptions?.socket).toMatchObject({ tls: true });

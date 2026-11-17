@@ -39,8 +39,8 @@ export function createRedisSentinelOptions(
             socket: config.USE_TLS ? { ...socketOptions, ...tlsOptions } : socketOptions,
         },
         sentinelClientOptions: {
-            username: config.SENTINEL_USERNAME,
-            password: config.SENTINEL_PASSWORD,
+            username: config.USERNAME,
+            password: config.PASSWORD,
             socket: config.SENTINEL_USE_TLS ? { ...socketOptions, ...tlsOptions } : socketOptions,
         },
         replicaPoolSize: 0,

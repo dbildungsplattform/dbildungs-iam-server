@@ -197,8 +197,6 @@ describe('configloader', () => {
                         ...config.REDIS,
                         SENTINEL_ENABLED: true,
                         SENTINEL_MASTER_NAME: 'test-master',
-                        SENTINEL_USERNAME: 'sentinel-user',
-                        SENTINEL_PASSWORD: 'sentinel-test-password',
                         SENTINEL_USE_TLS: false,
                         SENTINEL_NODES: [
                             { HOST: 'old-sentinel-1.example', PORT: 26379 },
@@ -225,8 +223,6 @@ describe('configloader', () => {
                         ...config.REDIS,
                         SENTINEL_ENABLED: true,
                         SENTINEL_MASTER_NAME: 'test-master',
-                        SENTINEL_USERNAME: 'sentinel-user',
-                        SENTINEL_PASSWORD: 'sentinel-test-password',
                         SENTINEL_USE_TLS: false,
                         SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
                     },
@@ -242,32 +238,26 @@ describe('configloader', () => {
                 expect(validatedConfig.REDIS.SENTINEL_NODES).toEqual([{ HOST: 'sentinel.example', PORT: 26379 }]);
             });
 
-            it.each(['SENTINEL_USERNAME', 'SENTINEL_PASSWORD', 'SENTINEL_USE_TLS'])(
-                'should reject missing %s despite configured Redis data-node settings',
-                (property: string) => {
-                    const sentinelConfig: DeepPartial<JsonConfig> = {
-                        ...config,
-                        REDIS: {
-                            ...config.REDIS,
-                            SENTINEL_MASTER_NAME: 'test-master',
-                            SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
-                            SENTINEL_USERNAME: 'sentinel-user',
-                            SENTINEL_PASSWORD: 'sentinel-test-password',
-                            SENTINEL_USE_TLS: false,
-                            [property]: undefined,
-                        },
-                    };
-                    readFileSyncSpy
-                        .mockReset()
-                        .mockReturnValueOnce(JSON.stringify(sentinelConfig))
-                        .mockReturnValueOnce(JSON.stringify(secrets));
-                    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-                    vi.stubEnv('REDIS_SENTINEL_ENABLED', 'true');
-                    vi.stubEnv(`REDIS_${property}`, undefined);
+            it('should reject missing Sentinel TLS despite configured Redis data-node settings', () => {
+                const sentinelConfig: DeepPartial<JsonConfig> = {
+                    ...config,
+                    REDIS: {
+                        ...config.REDIS,
+                        SENTINEL_MASTER_NAME: 'test-master',
+                        SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+                        SENTINEL_USE_TLS: undefined,
+                    },
+                };
+                readFileSyncSpy
+                    .mockReset()
+                    .mockReturnValueOnce(JSON.stringify(sentinelConfig))
+                    .mockReturnValueOnce(JSON.stringify(secrets));
+                vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+                vi.stubEnv('REDIS_SENTINEL_ENABLED', 'true');
+                vi.stubEnv('REDIS_SENTINEL_USE_TLS', undefined);
 
-                    expect(() => loadConfigFiles()).toThrow(property);
-                },
-            );
+                expect(() => loadConfigFiles()).toThrow('SENTINEL_USE_TLS');
+            });
         });
 
         describe('When there is no secrets config', () => {

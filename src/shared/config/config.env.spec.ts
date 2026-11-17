@@ -19,8 +19,6 @@ describe('Config Loader', () => {
             process.env['REDIS_SENTINEL_ENABLED'] = 'true';
             process.env['REDIS_SENTINEL_MASTER_NAME'] = 'test-master';
             process.env['REDIS_SENTINEL_NODES'] = '[{"HOST":"sentinel.example","PORT":26379}]';
-            process.env['REDIS_SENTINEL_USERNAME'] = 'sentinel-user';
-            process.env['REDIS_SENTINEL_PASSWORD'] = 'sentinel-test-password';
             process.env['REDIS_SENTINEL_USE_TLS'] = 'true';
 
             const config: Config = configEnv();
@@ -29,8 +27,6 @@ describe('Config Loader', () => {
                 SENTINEL_ENABLED: true,
                 SENTINEL_MASTER_NAME: 'test-master',
                 SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
-                SENTINEL_USERNAME: 'sentinel-user',
-                SENTINEL_PASSWORD: 'sentinel-test-password',
                 SENTINEL_USE_TLS: true,
             });
         });
@@ -62,13 +58,14 @@ describe('Config Loader', () => {
             expect(config.REDIS.SENTINEL_NODES).toBeUndefined();
         });
 
-        it('should preserve explicitly empty Sentinel credentials', () => {
-            process.env['REDIS_SENTINEL_USERNAME'] = '';
-            process.env['REDIS_SENTINEL_PASSWORD'] = '';
+        it('should ignore separate Sentinel credentials from the environment', () => {
+            process.env['REDIS_SENTINEL_USERNAME'] = 'unused-user';
+            process.env['REDIS_SENTINEL_PASSWORD'] = 'unused-password';
 
             const config: Config = configEnv();
 
-            expect(config.REDIS).toMatchObject({ SENTINEL_USERNAME: '', SENTINEL_PASSWORD: '' });
+            expect(config.REDIS).not.toHaveProperty('SENTINEL_USERNAME');
+            expect(config.REDIS).not.toHaveProperty('SENTINEL_PASSWORD');
         });
 
         it('should reject malformed endpoint JSON', () => {

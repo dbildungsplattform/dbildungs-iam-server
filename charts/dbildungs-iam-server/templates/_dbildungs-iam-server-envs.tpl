@@ -71,18 +71,6 @@
     secretKeyRef:
         name: {{ default .Values.auth.existingSecret .Values.auth.secretName }}
         key: redis-password
-- name: REDIS_SENTINEL_USERNAME
-  valueFrom:
-    secretKeyRef:
-        name: {{ default .Values.auth.existingSecret .Values.auth.secretName }}
-        key: redis-sentinel-username
-        optional: {{ not .Values.redis.sentinel.enabled }}
-- name: REDIS_SENTINEL_PASSWORD
-  valueFrom:
-    secretKeyRef:
-        name: {{ default .Values.auth.existingSecret .Values.auth.secretName }}
-        key: redis-sentinel-password
-        optional: {{ not .Values.redis.sentinel.enabled }}
 - name: OX_PASSWORD
   valueFrom:
     secretKeyRef:

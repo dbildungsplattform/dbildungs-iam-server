@@ -75,14 +75,4 @@ export class RedisConfig {
     @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
     @IsBoolean()
     public readonly SENTINEL_USE_TLS?: boolean;
-
-    @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
-    @IsString()
-    @IsNotEmpty()
-    public readonly SENTINEL_USERNAME?: string;
-
-    @ValidateIf((config: RedisConfig) => config.SENTINEL_ENABLED === true)
-    @IsString()
-    @IsNotEmpty()
-    public readonly SENTINEL_PASSWORD?: string;
 }

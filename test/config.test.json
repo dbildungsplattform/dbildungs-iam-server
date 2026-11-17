@@ -40,9 +40,7 @@
         "SENTINEL_ENABLED": false,
         "SENTINEL_MASTER_NAME": "",
         "SENTINEL_NODES": [],
-        "SENTINEL_USE_TLS": false,
-        "SENTINEL_USERNAME": "",
-        "SENTINEL_PASSWORD": ""
+        "SENTINEL_USE_TLS": false
     },
     "LDAP": {
         "URL": "ldap://localhost",

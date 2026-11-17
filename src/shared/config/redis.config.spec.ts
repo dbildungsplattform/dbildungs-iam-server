@@ -7,8 +7,6 @@ const sentinelConfig: Record<string, unknown> = {
     SENTINEL_ENABLED: true,
     SENTINEL_MASTER_NAME: 'test-master',
     SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
-    SENTINEL_USERNAME: 'sentinel-user',
-    SENTINEL_PASSWORD: 'sentinel-test-password',
     SENTINEL_USE_TLS: false,
 };
 
@@ -73,17 +71,14 @@ describe('RedisConfig', () => {
             expect(errors).toEqual([]);
         });
 
-        it.each([
-            'SENTINEL_MASTER_NAME',
-            'SENTINEL_NODES',
-            'SENTINEL_USERNAME',
-            'SENTINEL_PASSWORD',
-            'SENTINEL_USE_TLS',
-        ])('should require %s when Sentinel is enabled', (property: string) => {
-            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: undefined });
+        it.each(['SENTINEL_MASTER_NAME', 'SENTINEL_NODES', 'SENTINEL_USE_TLS'])(
+            'should require %s when Sentinel is enabled',
+            (property: string) => {
+                const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: undefined });
 
-            expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
-        });
+                expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
+            },
+        );
 
         it('should reject an empty master name', () => {
             const errors: ValidationError[] = validateConfig({ ...sentinelConfig, SENTINEL_MASTER_NAME: '' });
@@ -119,21 +114,21 @@ describe('RedisConfig', () => {
             expect(errors).toEqual([]);
         });
 
-        it.each(['SENTINEL_USERNAME', 'SENTINEL_PASSWORD'])('should reject empty %s', (property: string) => {
-            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: '' });
+        it.each([
+            ['USERNAME', undefined],
+            ['USERNAME', ''],
+            ['PASSWORD', undefined],
+            ['PASSWORD', ''],
+        ])('should reject invalid shared Redis %s value %s', (property: string, value: unknown) => {
+            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: value });
 
             expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
         });
 
-        it.each([
-            ['SENTINEL_USERNAME', null],
-            ['SENTINEL_PASSWORD', null],
-            ['SENTINEL_USE_TLS', null],
-            ['SENTINEL_USE_TLS', 'false'],
-        ])('should reject invalid %s value %s', (property: string, value: unknown) => {
-            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, [property]: value });
+        it.each([null, 'false'])('should reject invalid Sentinel TLS value %s', (value: unknown) => {
+            const errors: ValidationError[] = validateConfig({ ...sentinelConfig, SENTINEL_USE_TLS: value });
 
-            expect(errors.some((error: ValidationError) => error.property === property)).toBe(true);
+            expect(errors.some((error: ValidationError) => error.property === 'SENTINEL_USE_TLS')).toBe(true);
         });
 
         it('should reject a non-boolean Sentinel flag', () => {

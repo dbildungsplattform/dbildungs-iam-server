@@ -105,8 +105,6 @@ export default (): Config => ({
         SENTINEL_MASTER_NAME: process.env['REDIS_SENTINEL_MASTER_NAME'],
         SENTINEL_NODES: sentinelNodesFromEnv(),
         SENTINEL_USE_TLS: envToOptionalBoolean('REDIS_SENTINEL_USE_TLS'),
-        SENTINEL_USERNAME: process.env['REDIS_SENTINEL_USERNAME'],
-        SENTINEL_PASSWORD: process.env['REDIS_SENTINEL_PASSWORD'],
     },
     ITSLEARNING: {
         ENABLED: envToOptionalBoolean('ITSLEARNING_ENABLED'),

@@ -29,12 +29,10 @@
         "USERNAME": "default",
         "PASSWORD": "",
         "USE_TLS": false,
-        "SENTINEL_ENABLED": false,
-        "SENTINEL_MASTER_NAME": "",
-        "SENTINEL_NODES": [],
-        "SENTINEL_USE_TLS": false,
-        "SENTINEL_USERNAME": "",
-        "SENTINEL_PASSWORD": ""
+        "SENTINEL_ENABLED": true,
+        "SENTINEL_MASTER_NAME": "valkeyha",
+        "SENTINEL_NODES": [{"HOST":"dbildungs-iam-valkey.spsh.svc.cluster.local","PORT":26379}],
+        "SENTINEL_USE_TLS": false
     },
 
     "LDAP": {
