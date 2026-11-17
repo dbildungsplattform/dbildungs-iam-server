@@ -42,7 +42,13 @@
         "USERNAME": "default",
         "PASSWORD": "password",
         "USE_TLS": false,
-        "CLUSTERED": false
+        "CLUSTERED": false,
+        "SENTINEL_ENABLED": false,
+        "SENTINEL_MASTER_NAME": "",
+        "SENTINEL_NODES": [],
+        "SENTINEL_USE_TLS": false,
+        "SENTINEL_USERNAME": "",
+        "SENTINEL_PASSWORD": ""
     },
     "LDAP": {
         "URL": "ldap://localhost",
