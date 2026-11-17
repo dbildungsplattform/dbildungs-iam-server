@@ -142,19 +142,36 @@ const rollenartOrderClause: RawQueryFragment = sql`CASE
     ELSE 10
 END`;
 
+export interface GatedRollenBucket {
+    allowedRollenarten: Array<RollenArt>;
+    authorizedMerkmale: Array<RollenMerkmal>;
+    /** Gated Rollen must carry one of these Merkmale, unless their Rollenart is in the top-level allowedRollenarten. */
+    requiredMerkmale?: Array<RollenMerkmal>;
+}
+
 export interface FindRollenAvailableForPersonenkontextCreationParams {
     organisationId: OrganisationID;
     allowedOrganisationIds: Array<OrganisationID>;
     allowedRollenarten: Array<RollenArt>;
     /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
-    gatedBucket?: {
-        allowedRollenarten: Array<RollenArt>;
-        authorizedMerkmale: Array<RollenMerkmal>;
-    };
+    gatedBucket?: GatedRollenBucket;
     searchStr?: string;
     limit?: number;
     offset?: number;
 }
+
+/** Relations loaded for every Rolle that gets mapped to an aggregate. Intentionally `as const` to keep the literal types for MikroORM's `Loaded` typing. */
+// eslint-disable-next-line @typescript-eslint/typedef
+const ROLLE_LOAD_OPTIONS = {
+    populate: [
+        'merkmale',
+        'systemrechte',
+        'serviceProvider.serviceProvider',
+        'serviceProvider.serviceProvider.merkmale',
+        'serviceProvider.serviceProvider.rollenartenWhitelist',
+    ],
+    exclude: ['serviceProvider.serviceProvider.logo'],
+} as const;
 
 @Injectable()
 export class RolleRepo {
@@ -174,16 +191,7 @@ export class RolleRepo {
     public async findById(id: RolleID, includeTechnical: boolean = false): Promise<Option<Rolle<true>>> {
         const query: { id: RolleID; istTechnisch?: boolean } = includeTechnical ? { id } : { id, istTechnisch: false };
 
-        const rolle: Option<RolleEntity> = await this.em.findOne(this.entityName, query, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
-        });
+        const rolle: Option<RolleEntity> = await this.em.findOne(this.entityName, query, ROLLE_LOAD_OPTIONS);
 
         return rolle && mapRolleEntityToAggregate(rolle, this.rolleFactory);
     }
@@ -218,20 +226,7 @@ export class RolleRepo {
     }
 
     public async findByIds(ids: RolleID[]): Promise<Map<string, Rolle<true>>> {
-        const rollenEntities: RolleEntity[] = await this.em.find(
-            RolleEntity,
-            { id: { $in: ids } },
-            {
-                populate: [
-                    'merkmale',
-                    'systemrechte',
-                    'serviceProvider.serviceProvider',
-                    'serviceProvider.serviceProvider.merkmale',
-                    'serviceProvider.serviceProvider.rollenartenWhitelist',
-                ] as const,
-                exclude: ['serviceProvider.serviceProvider.logo'] as const,
-            },
-        );
+        const rollenEntities: RolleEntity[] = await this.em.find(RolleEntity, { id: { $in: ids } }, ROLLE_LOAD_OPTIONS);
 
         const rollenMap: Map<string, Rolle<true>> = new Map();
         rollenEntities.forEach((rolleEntity: RolleEntity) => {
@@ -256,18 +251,7 @@ export class RolleRepo {
         const rollen: RolleEntity[] = await this.em.find(
             this.entityName,
             { name: { $ilike: '%' + searchStr + '%' }, ...rollenartQuery, ...technischeQuery },
-            {
-                populate: [
-                    'merkmale',
-                    'systemrechte',
-                    'serviceProvider.serviceProvider',
-                    'serviceProvider.serviceProvider.merkmale',
-                    'serviceProvider.serviceProvider.rollenartenWhitelist',
-                ] as const,
-                exclude: ['serviceProvider.serviceProvider.logo'] as const,
-                limit: limit,
-                offset: offset,
-            },
+            { ...ROLLE_LOAD_OPTIONS, limit: limit, offset: offset },
         );
         return rollen.map((rolle: RolleEntity) => mapRolleEntityToAggregate(rolle, this.rolleFactory));
     }
@@ -283,14 +267,7 @@ export class RolleRepo {
             rollenarten && rollenarten.length > 0 ? { rollenart: { $in: rollenarten } } : {};
 
         const rollen: RolleEntity[] = await this.em.findAll(RolleEntity, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            ...ROLLE_LOAD_OPTIONS,
             where: { ...technischeQuery, ...rollenartQuery },
             limit: limit,
             offset: offset,
@@ -330,14 +307,7 @@ export class RolleRepo {
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
 
         const [rollen, total]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, finalQuery, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            ...ROLLE_LOAD_OPTIONS,
             limit: params.limit,
             offset: params.offset,
             orderBy,
@@ -463,22 +433,9 @@ export class RolleRepo {
     }
 
     public async findBySchulstrukturknoten(administeredBySchulstrukturknoten: OrganisationID): Promise<Rolle<true>[]> {
-        return (
-            await this.em.find(
-                this.entityName,
-                { administeredBySchulstrukturknoten },
-                {
-                    populate: [
-                        'merkmale',
-                        'systemrechte',
-                        'serviceProvider.serviceProvider',
-                        'serviceProvider.serviceProvider.merkmale',
-                        'serviceProvider.serviceProvider.rollenartenWhitelist',
-                    ] as const,
-                    exclude: ['serviceProvider.serviceProvider.logo'] as const,
-                },
-            )
-        ).map((rolleEntity: RolleEntity) => mapRolleEntityToAggregate(rolleEntity, this.rolleFactory));
+        return (await this.em.find(this.entityName, { administeredBySchulstrukturknoten }, ROLLE_LOAD_OPTIONS)).map(
+            (rolleEntity: RolleEntity) => mapRolleEntityToAggregate(rolleEntity, this.rolleFactory),
+        );
     }
 
     public async findByServiceProviderIds(
@@ -533,69 +490,83 @@ export class RolleRepo {
     public async findRollenAvailableForPersonenkontextCreation(
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<Rolle<true>>> {
-        const allowedRollenWhere: ObjectQuery<NoInfer<RolleEntity>> =
-            params.gatedBucket && params.gatedBucket.authorizedMerkmale.length > 0
-                ? {
-                      $or: [
-                          {
-                              rollenart: { $in: params.allowedRollenarten },
-                              merkmale: {
-                                  $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
-                              },
-                          },
-                          {
-                              rollenart: { $in: params.gatedBucket.allowedRollenarten },
-                              $and: [
-                                  { merkmale: { $some: { merkmal: { $in: params.gatedBucket.authorizedMerkmale } } } },
-                                  {
-                                      merkmale: {
-                                          $none: {
-                                              merkmal: {
-                                                  $in: RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(
-                                                      params.gatedBucket.authorizedMerkmale,
-                                                  ),
-                                              },
-                                          },
-                                      },
-                                  },
-                              ],
-                          },
-                      ],
-                  }
-                : {
-                      rollenart: { $in: params.allowedRollenarten },
-                      merkmale: {
-                          $none: { merkmal: { $in: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE) } },
-                      },
-                  };
-        const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = {
-            istTechnisch: false,
-            administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
-            ...allowedRollenWhere,
-        };
-        const where: ObjectQuery<NoInfer<RolleEntity>> = {
-            ...creationScopeWhere,
-        };
+        const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = this.createCreationScopeQuery(params);
+        const where: ObjectQuery<NoInfer<RolleEntity>> = { ...creationScopeWhere };
         if (params.searchStr) {
             where.name = { $ilike: `%${params.searchStr}%` };
         }
+
         const [rollenEntities, count]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, where, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
+            ...ROLLE_LOAD_OPTIONS,
             limit: params.limit,
             offset: params.offset,
         });
 
-        return [
-            rollenEntities.map((entity: RolleEntity) => mapRolleEntityToAggregate(entity, this.rolleFactory)),
-            count,
-        ];
+        const rollen: Rolle<true>[] = rollenEntities.map((entity: RolleEntity) =>
+            mapRolleEntityToAggregate(entity, this.rolleFactory),
+        );
+        return [rollen, count];
+    }
+
+    private createCreationScopeQuery(
+        params: FindRollenAvailableForPersonenkontextCreationParams,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        return {
+            istTechnisch: false,
+            administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
+            ...this.createAllowedRollenQuery(params.allowedRollenarten, params.gatedBucket),
+        };
+    }
+
+    private createAllowedRollenQuery(
+        allowedRollenarten: Array<RollenArt>,
+        gatedBucket: GatedRollenBucket | undefined,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        const ungatedRollenQuery: ObjectQuery<NoInfer<RolleEntity>> = this.createUngatedRollenQuery(allowedRollenarten);
+        if (!gatedBucket || gatedBucket.authorizedMerkmale.length === 0) {
+            return ungatedRollenQuery;
+        }
+
+        return { $or: [ungatedRollenQuery, this.createGatedRollenQuery(allowedRollenarten, gatedBucket)] };
+    }
+
+    private createUngatedRollenQuery(allowedRollenarten: Array<RollenArt>): ObjectQuery<NoInfer<RolleEntity>> {
+        return {
+            rollenart: { $in: allowedRollenarten },
+            ...this.hasNoneOfMerkmale(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+        };
+    }
+
+    private createGatedRollenQuery(
+        allowedRollenarten: Array<RollenArt>,
+        gatedBucket: GatedRollenBucket,
+    ): ObjectQuery<NoInfer<RolleEntity>> {
+        const conditions: ObjectQuery<NoInfer<RolleEntity>>[] = [this.hasAnyOfMerkmale(gatedBucket.authorizedMerkmale)];
+
+        if (gatedBucket.requiredMerkmale?.length) {
+            conditions.push({
+                $or: [{ rollenart: { $in: allowedRollenarten } }, this.hasAnyOfMerkmale(gatedBucket.requiredMerkmale)],
+            });
+        }
+
+        conditions.push(
+            this.hasNoneOfMerkmale(
+                RollenmerkmalSystemrechtPaar.getGatedMerkmaleNotIncludedIn(gatedBucket.authorizedMerkmale),
+            ),
+        );
+
+        return {
+            rollenart: { $in: gatedBucket.allowedRollenarten },
+            $and: conditions,
+        };
+    }
+
+    private hasAnyOfMerkmale(merkmale: ReadonlyArray<RollenMerkmal>): ObjectQuery<NoInfer<RolleEntity>> {
+        return { merkmale: { $some: { merkmal: { $in: Array.from(merkmale) } } } };
+    }
+
+    private hasNoneOfMerkmale(merkmale: ReadonlyArray<RollenMerkmal>): ObjectQuery<NoInfer<RolleEntity>> {
+        return { merkmale: { $none: { merkmal: { $in: Array.from(merkmale) } } } };
     }
 
     public async existsForServiceProviderId(
@@ -769,16 +740,7 @@ export class RolleRepo {
     }
 
     private async update(rolle: Rolle<true>): Promise<Rolle<true>> {
-        const rolleEntity: Loaded<RolleEntity> = await this.em.findOneOrFail(RolleEntity, rolle.id, {
-            populate: [
-                'merkmale',
-                'systemrechte',
-                'serviceProvider.serviceProvider',
-                'serviceProvider.serviceProvider.merkmale',
-                'serviceProvider.serviceProvider.rollenartenWhitelist',
-            ] as const,
-            exclude: ['serviceProvider.serviceProvider.logo'] as const,
-        });
+        const rolleEntity: Loaded<RolleEntity> = await this.em.findOneOrFail(RolleEntity, rolle.id, ROLLE_LOAD_OPTIONS);
 
         if (rolleEntity.version !== rolle.version) {
             throw new RolleUpdateOutdatedError();
