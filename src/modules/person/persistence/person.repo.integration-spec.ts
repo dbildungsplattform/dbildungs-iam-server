@@ -42,6 +42,7 @@ import { EmailResolverService } from '../../email-microservice/domain/email-reso
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
 import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
+import { UserLockEntity } from '../../keycloak-administration/entity/user-lock.entity.js';
 import { KeycloakUserService, PersonHasNoKeycloakId } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -2561,6 +2562,174 @@ describe('PersonRepository Integration', () => {
         });
     });
 
+    describe('findPersons with sperrgruende', () => {
+        let manualPerson: Person<true>;
+        let kopersPerson: Person<true>;
+        let bothPerson: Person<true>;
+        let unlockedPerson: Person<true>;
+        let organisationId: string;
+        let otherOrganisationId: string;
+        let rolleId: string;
+
+        beforeEach(async () => {
+            manualPerson = await savePerson(false, { vorname: 'Anna', username: 'manual' });
+            kopersPerson = await savePerson(false, { vorname: 'Berta', username: 'kopers' });
+            bothPerson = await savePerson(false, { vorname: 'Clara', username: 'both' });
+            unlockedPerson = await savePerson(false, { vorname: 'Dora', username: 'unlocked' });
+            const organisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false),
+            );
+            const otherOrganisation: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false),
+            );
+            const rolle: Rolle<true> | DomainError = await rolleRepo.save(DoFactory.createRolle(false));
+            if (rolle instanceof DomainError) {
+                throw rolle;
+            }
+            organisationId = organisation.id;
+            otherOrganisationId = otherOrganisation.id;
+            rolleId = rolle.id;
+
+            const kontexte: PersonenkontextEntity[] = [manualPerson, kopersPerson, bothPerson, unlockedPerson].map(
+                (person: Person<true>) =>
+                    em.create(PersonenkontextEntity, {
+                        personId: person.id,
+                        organisationId: person.id === kopersPerson.id ? otherOrganisationId : organisationId,
+                        rolleId,
+                    }),
+            );
+            const manualLocks: UserLockEntity[] = [manualPerson, bothPerson].map((person: Person<true>) =>
+                em.create(UserLockEntity, {
+                    person: person.id,
+                    locked_by: 'admin',
+                    locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                }),
+            );
+            const kopersLocks: UserLockEntity[] = [kopersPerson, bothPerson].map((person: Person<true>) =>
+                em.create(UserLockEntity, {
+                    person: person.id,
+                    locked_by: 'cron',
+                    locked_occasion: PersonLockOccasion.KOPERS_GESPERRT,
+                }),
+            );
+            await em.persist([...kontexte, ...manualLocks, ...kopersLocks]).flush();
+        });
+
+        it.each([undefined, []])(
+            'should include locked and unlocked persons with no filter: %j',
+            async (sperrgruende: PersonLockOccasion[] | undefined) => {
+                const [persons, total]: Counted<Person<true>> = await sut.findPersons({ sperrgruende }, { all: true });
+
+                expect(total).toBe(4);
+                expect(persons.map((person: Person<true>) => person.id)).toEqual([
+                    manualPerson.id,
+                    kopersPerson.id,
+                    bothPerson.id,
+                    unlockedPerson.id,
+                ]);
+            },
+        );
+
+        it.each([PersonLockOccasion.MANUELL_GESPERRT, PersonLockOccasion.KOPERS_GESPERRT])(
+            'should filter by a single lock reason without selecting a school: %s',
+            async (sperrgrund: PersonLockOccasion) => {
+                const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                    { sperrgruende: [sperrgrund] },
+                    { all: true },
+                );
+
+                expect(total).toBe(2);
+                expect(persons.map((person: Person<true>) => person.id)).toEqual([
+                    sperrgrund === PersonLockOccasion.MANUELL_GESPERRT ? manualPerson.id : kopersPerson.id,
+                    bothPerson.id,
+                ]);
+            },
+        );
+
+        it('should match any selected reason without duplicating persons or the total', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: Object.values(PersonLockOccasion) },
+                { all: true },
+            );
+
+            expect(total).toBe(3);
+            expect(persons.map((person: Person<true>) => person.id)).toEqual([
+                manualPerson.id,
+                kopersPerson.id,
+                bothPerson.id,
+            ]);
+        });
+
+        it('should paginate matching persons while counting all matches', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: Object.values(PersonLockOccasion), offset: 1, limit: 1 },
+                { all: true },
+            );
+
+            expect(total).toBe(3);
+            expect(persons.map((person: Person<true>) => person.id)).toEqual([kopersPerson.id]);
+        });
+
+        it('should restrict results to permitted schools even without a school selection', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: Object.values(PersonLockOccasion) },
+                { all: false, orgaIds: [organisationId] },
+            );
+
+            expect(total).toBe(2);
+            expect(persons.map((person: Person<true>) => person.id)).toEqual([manualPerson.id, bothPerson.id]);
+        });
+
+        it('should not allow the school filter to bypass permitted organisations', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: Object.values(PersonLockOccasion), organisationIDs: [otherOrganisationId] },
+                { all: false, orgaIds: [organisationId] },
+            );
+
+            expect(total).toBe(0);
+            expect(persons).toEqual([]);
+        });
+
+        it('should combine lock reasons with school, role, name and search filters using AND', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                {
+                    sperrgruende: Object.values(PersonLockOccasion),
+                    organisationIDs: [organisationId],
+                    rolleIDs: [rolleId],
+                    vorname: bothPerson.vorname,
+                    familienname: bothPerson.familienname,
+                    suchFilter: 'both',
+                },
+                { all: true },
+            );
+
+            expect(total).toBe(1);
+            expect(persons.map((person: Person<true>) => person.id)).toEqual([bothPerson.id]);
+        });
+
+        it('should return no persons when the selected role does not match', async () => {
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: Object.values(PersonLockOccasion), rolleIDs: [faker.string.uuid()] },
+                { all: true },
+            );
+
+            expect(total).toBe(0);
+            expect(persons).toEqual([]);
+        });
+
+        it('should omit persons from the next search after their last lock is removed', async () => {
+            await userLockRepository.deleteUserLock(manualPerson.id, PersonLockOccasion.MANUELL_GESPERRT);
+
+            const [persons, total]: Counted<Person<true>> = await sut.findPersons(
+                { sperrgruende: [PersonLockOccasion.MANUELL_GESPERRT] },
+                { all: true },
+            );
+
+            expect(total).toBe(1);
+            expect(persons.map((person: Person<true>) => person.id)).toEqual([bothPerson.id]);
+        });
+    });
+
     describe('createPersonScope', () => {
         it('should create a scope with the correct filters and sorting', async () => {
             await savePerson(false, { vorname: 'Alice', familienname: 'Smith', username: 'asmith1' });
@@ -2576,7 +2745,7 @@ describe('PersonRepository Integration', () => {
                 sortOrder: ScopeOrder.ASC,
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2610,7 +2779,7 @@ describe('PersonRepository Integration', () => {
                 suchFilter: person2.vorname,
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2636,7 +2805,7 @@ describe('PersonRepository Integration', () => {
                 sortOrder: ScopeOrder.ASC,
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2661,7 +2830,7 @@ describe('PersonRepository Integration', () => {
                 // sortField and sortOrder are not provided
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2697,7 +2866,7 @@ describe('PersonRepository Integration', () => {
                 sortOrder: ScopeOrder.ASC,
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2733,7 +2902,7 @@ describe('PersonRepository Integration', () => {
                 sortOrder: ScopeOrder.ASC,
             };
 
-            const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+            const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
             expect(result).toBeDefined();
 
@@ -2765,7 +2934,7 @@ describe('PersonRepository Integration', () => {
                     sortOrder: ScopeOrder.ASC,
                 };
 
-                const result: Counted<Person<true>> = await sut.findbyPersonFrontend(queryParams, permittedOrgas);
+                const result: Counted<Person<true>> = await sut.findPersons(queryParams, permittedOrgas);
 
                 expect(result).toBeDefined();
 
