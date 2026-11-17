@@ -14,11 +14,16 @@ import { LdapAdapter } from '../../../core/ldap/adapter/domain/ldap.adapter.js';
 import { LdapSyncEventHandler } from '../../../core/ldap/domain/ldap-sync-event-handler.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
-import { EntityCouldNotBeDeleted, EntityNotFoundError, MismatchedRevisionError } from '../../../shared/error/index.js';
+import {
+    EntityCouldNotBeDeleted,
+    EntityNotFoundError,
+    MismatchedRevisionError,
+    MissingPermissionsError,
+} from '../../../shared/error/index.js';
 import { KeycloakClientError } from '../../../shared/error/keycloak-client.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { type Paged, type PagedResponse } from '../../../shared/paging/index.js';
+import { type Paged, type PagedResponse, type RawPagedResponse } from '../../../shared/paging/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
@@ -52,6 +57,7 @@ import { PersonLandesbediensteterSearchQueryParams } from './person-landesbedien
 import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
 import { PersonController } from './person.controller.js';
+import { type PersonenQueryParams } from './personen-query.param.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { type UpdatePersonBodyParams } from './update-person.body.params.js';
 
@@ -60,10 +66,10 @@ describe('PersonController', () => {
     let logger: ClassLogger;
     let personController: PersonController;
     let personRepositoryMock: DeepMocked<PersonRepository>;
+    let personServiceMock: DeepMocked<PersonService>;
     let emailResolverService: DeepMocked<EmailResolverService>;
     let personenkontextServiceMock: DeepMocked<PersonenkontextService>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
-    let personServiceMock: DeepMocked<PersonService>;
     let personDeleteServiceMock: DeepMocked<PersonDeleteService>;
     let personLandesbediensteterSearchServiceMock: DeepMocked<PersonLandesbediensteterSearchService>;
     let personPermissionsMock: DeepMocked<PersonPermissions>;
@@ -80,6 +86,10 @@ describe('PersonController', () => {
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
             providers: [
                 PersonController,
+                {
+                    provide: PersonService,
+                    useValue: createMock(PersonService),
+                },
                 PersonFactory,
                 PersonApiMapper,
                 {
@@ -89,10 +99,6 @@ describe('PersonController', () => {
                 {
                     provide: UsernameGeneratorService,
                     useValue: createMock(UsernameGeneratorService),
-                },
-                {
-                    provide: PersonService,
-                    useValue: createMock(PersonService),
                 },
                 {
                     provide: PersonDeleteService,
@@ -157,12 +163,12 @@ describe('PersonController', () => {
             .compile();
         logger = module.get(ClassLogger);
         personController = module.get(PersonController);
+        personServiceMock = module.get(PersonService);
         personRepositoryMock = module.get(PersonRepository);
         emailResolverService = module.get(EmailResolverService);
         personenkontextServiceMock = module.get(PersonenkontextService);
         rolleRepoMock = module.get(RolleRepo);
         personDeleteServiceMock = module.get(PersonDeleteService);
-        personServiceMock = module.get(PersonService);
         dBiamPersonenkontextServiceMock = module.get(DBiamPersonenkontextService);
         eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         ldapClientAdapterMock = module.get(LdapAdapter);
@@ -209,6 +215,67 @@ describe('PersonController', () => {
     it('should be defined', () => {
         expect(personController).toBeDefined();
         expect(personLandesbediensteterSearchServiceMock).toBeDefined();
+    });
+
+    describe('findPersons', () => {
+        it('should map all persons with default paging', async () => {
+            const person: Person<true> = getPerson();
+            personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[person], 1] });
+
+            const result: RawPagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+                { sichtfreigabe: SichtfreigabeType.NEIN },
+                personPermissionsMock,
+            );
+
+            expect(result).toEqual({
+                offset: 0,
+                limit: 1,
+                total: 1,
+                items: [new PersonendatensatzResponse(person, false)],
+            });
+        });
+
+        it('should pass all filters to the service and preserve explicit paging', async () => {
+            const queryParams: PersonenQueryParams = {
+                sichtfreigabe: SichtfreigabeType.NEIN,
+                sperrgruende: [PersonLockOccasion.MANUELL_GESPERRT, PersonLockOccasion.KOPERS_GESPERRT],
+                organisationIDs: [faker.string.uuid()],
+                rolleIDs: [faker.string.uuid()],
+                suchFilter: 'Max',
+                offset: 5,
+                limit: 10,
+            };
+            personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[], 3] });
+
+            const result: RawPagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+                queryParams,
+                personPermissionsMock,
+            );
+
+            expect(personServiceMock.findPersons).toHaveBeenCalledExactlyOnceWith(queryParams, personPermissionsMock);
+            expect(result).toEqual({ offset: 5, limit: 10, total: 3, items: [] });
+        });
+
+        it('should propagate missing permissions to the exception filters', async () => {
+            const error: MissingPermissionsError = new MissingPermissionsError('NOT_AUTHORIZED');
+            personServiceMock.findPersons.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(
+                personController.findPersons({ sichtfreigabe: SichtfreigabeType.NEIN }, personPermissionsMock),
+            ).rejects.toBe(error);
+        });
+
+        it('should propagate technical errors without converting them to unauthorized errors', async () => {
+            const error: KeycloakClientError = new KeycloakClientError('Person search failed');
+            personServiceMock.findPersons.mockRejectedValueOnce(error);
+
+            await expect(
+                personController.findPersons({ sichtfreigabe: SichtfreigabeType.NEIN }, personPermissionsMock),
+            ).rejects.toBe(error);
+        });
     });
 
     describe('deletePerson', () => {

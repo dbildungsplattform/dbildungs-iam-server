@@ -3,12 +3,13 @@ import { createMock, type DeepMocked } from '../../../../test/utils/createMock.j
 import { DoFactory } from '../../../../test/utils/do-factory.js';
 import { createPersonPermissionsMock } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { type DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
+import { type DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { KeycloakClientError } from '../../../shared/error/keycloak-client.error.js';
 import { type Paged } from '../../../shared/paging/index.js';
-import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { type PermittedOrgas, type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
-import { PersonRepository } from '../persistence/person.repository.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { type PersonenQueryParams, PersonRepository } from '../persistence/person.repository.js';
 import { PersonDomainError } from './person-domain.error.js';
 import { DownstreamKeycloakError } from './person-keycloak.error.js';
 import { NotFoundOrNoPermissionError } from './person-not-found-or-no-permission.error.js';
@@ -59,6 +60,50 @@ describe('PersonService', () => {
 
     it('should be defined', () => {
         expect(sut).toBeDefined();
+    });
+
+    describe('findPersons', () => {
+        it.each<PermittedOrgas>([{ all: true }, { all: false, orgaIds: ['school-id'] }])(
+            'should forward filters and restrict the search to permitted organisations: %j',
+            async (permittedOrgas: PermittedOrgas) => {
+                const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce(permittedOrgas);
+                const queryParams: PersonenQueryParams = {
+                    sperrgruende: [PersonLockOccasion.MANUELL_GESPERRT, PersonLockOccasion.KOPERS_GESPERRT],
+                    suchFilter: 'Max',
+                    rolleIDs: ['role-id'],
+                    offset: 5,
+                    limit: 10,
+                };
+                const persons: Counted<Person<true>> = [[DoFactory.createPerson(true)], 1];
+                personRepoMock.findPersons.mockResolvedValueOnce(persons);
+
+                const result: Result<Counted<Person<true>>, MissingPermissionsError> = await sut.findPersons(
+                    queryParams,
+                    permissions,
+                );
+
+                expect(result).toEqual({ ok: true, value: persons });
+                expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
+                    [RollenSystemRecht.PERSONEN_VERWALTEN],
+                    true,
+                );
+                expect(personRepoMock.findPersons).toHaveBeenCalledExactlyOnceWith(queryParams, permittedOrgas);
+            },
+        );
+
+        it('should reject searches without permitted organisations', async () => {
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [] });
+
+            const result: Result<Counted<Person<true>>, MissingPermissionsError> = await sut.findPersons(
+                {},
+                permissions,
+            );
+
+            expect(result).toEqual({ ok: false, error: new MissingPermissionsError('NOT_AUTHORIZED') });
+            expect(personRepoMock.findPersons).not.toHaveBeenCalled();
+        });
     });
 
     describe('findPersonById', () => {
