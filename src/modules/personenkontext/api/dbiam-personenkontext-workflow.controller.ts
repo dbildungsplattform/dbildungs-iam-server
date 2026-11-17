@@ -31,16 +31,16 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { OrganisationResponseLegacy } from '../../organisation/api/organisation.response.legacy.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
+import { LandesbediensteteKontextWorkflowService } from '../domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
+import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
 import { DbiamPersonenkontexteUpdateError } from './dbiam-personenkontexte-update.error.js';
 import { DbiamCreatePersonWithPersonenkontexteBodyParams } from './param/dbiam-create-person-with-personenkontexte.body.params.js';
@@ -63,9 +63,9 @@ import { PersonenkontexteUpdateResponse } from './response/personenkontexte-upda
 export class DbiamPersonenkontextWorkflowController {
     public constructor(
         private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
+        private readonly landesbediensteteKontextWorkflowService: LandesbediensteteKontextWorkflowService,
         private readonly personenkontextCreationService: PersonenkontextCreationService,
         private readonly logger: ClassLogger,
-        private readonly personenkontextRepo: DBiamPersonenkontextRepo,
     ) {}
 
     @Get('step')
@@ -90,37 +90,28 @@ export class DbiamPersonenkontextWorkflowController {
         // Initializes the aggregate with the values of the person, the selected organisation and rolle through the UI
         anlage.initialize(params.personId, params.organisationId, params.rollenIds);
 
-        if (params.personId) {
-            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
-                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
-            if (!findByPersonResult.ok) {
-                return new PersonenkontextWorkflowResponse([], false, params.organisationId, params.rollenIds);
-            }
-        }
-
-        const organisations: Organisation<true>[] = await anlage.findAllSchulstrukturknoten(
-            permissions,
-            params.organisationName,
-            params.limit,
-        );
-        const organisationsResponse: OrganisationResponseLegacy[] = organisations.map(
-            (org: Organisation<true>) => new OrganisationResponseLegacy(org),
-        );
-
         // Determine canCommit status, by default it's always false unless both the rolle and orga are selected
         let canCommit: boolean = false;
         if (params.organisationId && params.rollenIds) {
-            const commitResult: Result<void, DomainError> = await anlage.canCommit(
-                permissions,
-                params.operationContext,
-            );
+            let commitResult: Result<void, DomainError>;
+            if (params.operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
+                // Additional logic for this operation context can be added here
+                commitResult = await this.landesbediensteteKontextWorkflowService.canCommit(
+                    params.rollenIds,
+                    params.organisationId,
+                    permissions,
+                );
+            } else {
+                commitResult = await anlage.canCommit(permissions, params.operationContext);
+            }
+
             if (commitResult.ok) {
                 canCommit = true;
             }
         }
 
         const response: PersonenkontextWorkflowResponse = new PersonenkontextWorkflowResponse(
-            organisationsResponse,
+            [],
             canCommit,
             params.organisationId,
             params.rollenIds,
@@ -151,8 +142,19 @@ export class DbiamPersonenkontextWorkflowController {
         @Body() bodyParams: DbiamUpdatePersonenkontexteBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PersonenkontexteUpdateResponse> {
-        const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError =
-            await this.personenkontextWorkflowFactory
+        let updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError;
+
+        if (bodyParams.operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
+            updateResult = await this.landesbediensteteKontextWorkflowService.commit(
+                params.personId,
+                bodyParams.lastModified,
+                bodyParams.count,
+                bodyParams.personenkontexte,
+                permissions,
+                queryParams.personalnummer || undefined,
+            );
+        } else {
+            updateResult = await this.personenkontextWorkflowFactory
                 .createNew()
                 .commit(
                     params.personId,
@@ -160,9 +162,9 @@ export class DbiamPersonenkontextWorkflowController {
                     bodyParams.count,
                     bodyParams.personenkontexte,
                     permissions,
-                    bodyParams.operationContext,
                     queryParams.personalnummer || undefined,
                 );
+        }
 
         if (updateResult instanceof PersonenkontexteUpdateError || updateResult instanceof MissingPermissionsError) {
             throw updateResult;

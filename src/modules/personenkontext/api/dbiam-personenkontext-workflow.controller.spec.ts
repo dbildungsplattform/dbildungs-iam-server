@@ -18,11 +18,12 @@ import { type Rolle } from '../../rolle/domain/rolle.js';
 import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { type DbiamPersonenkontextFactory } from '../domain/dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
+import { LandesbediensteteKontextWorkflowService } from '../domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { type PersonenkontextWorkflowSharedKernel } from '../domain/personenkontext-workflow-shared-kernel.js';
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { OperationContext } from '../domain/personenkontext.enums.js';
+import { type RoleOrganisationAssignmentValidator } from '../domain/role-organisation-assignment.validator.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextWorkflowController } from './dbiam-personenkontext-workflow.controller.js';
 import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
@@ -63,13 +64,17 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                             null as unknown as OrganisationRepository,
                             null as unknown as DbiamPersonenkontextFactory,
                             null as unknown as ConfigService,
-                            null as unknown as PersonenkontextWorkflowSharedKernel,
+                            null as unknown as RoleOrganisationAssignmentValidator,
                         ),
                     ),
                 },
                 {
                     provide: PersonenkontextCreationService,
                     useValue: createMock(PersonenkontextCreationService),
+                },
+                {
+                    provide: LandesbediensteteKontextWorkflowService,
+                    useValue: createMock(LandesbediensteteKontextWorkflowService),
                 },
                 {
                     provide: DBiamPersonenkontextRepo,

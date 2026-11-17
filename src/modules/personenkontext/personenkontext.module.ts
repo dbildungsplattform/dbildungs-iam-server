@@ -13,6 +13,7 @@ import { DBiamPersonenkontextService } from './domain/dbiam-personenkontext.serv
 import { PersonenkontextCreationService } from './domain/personenkontext-creation.service.js';
 import { PersonenkontextWorkflowFactory } from './domain/personenkontext-workflow.factory.js';
 import { PersonenkontextFactory } from './domain/personenkontext.factory.js';
+import { RoleOrganisationAssignmentValidator } from './domain/role-organisation-assignment.validator.js';
 import { DBiamPersonenkontextRepo } from './persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-personenkontext.repo.js';
 
@@ -35,6 +36,7 @@ import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-p
         PersonenkontextFactory,
         PersonenkontextCreationService,
         PersonenkontextWorkflowFactory,
+        RoleOrganisationAssignmentValidator,
         EntityAggregateMapper,
     ],
     exports: [
@@ -46,6 +48,7 @@ import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-p
         PersonenkontextFactory,
         PersonenkontextCreationService,
         PersonenkontextWorkflowFactory,
+        RoleOrganisationAssignmentValidator,
     ],
 })
 export class PersonenKontextModule {}

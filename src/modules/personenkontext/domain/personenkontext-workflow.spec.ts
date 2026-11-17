@@ -25,12 +25,12 @@ import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personen
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { PersonenkontextWorkflowFactory } from './personenkontext-workflow.factory.js';
 import { type PersonenkontextWorkflowAggregate } from './personenkontext-workflow.js';
 import { OperationContext } from './personenkontext.enums.js';
 import { PersonenkontextFactory } from './personenkontext.factory.js';
 import { type Personenkontext } from './personenkontext.js';
+import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 describe('PersonenkontextWorkflow', () => {
     let module: TestingModule;
@@ -41,7 +41,7 @@ describe('PersonenkontextWorkflow', () => {
     let personpermissionsMock: DeepMocked<PersonPermissions>;
     let dbiamPersonenkontextFactoryMock: DeepMocked<DbiamPersonenkontextFactory>;
     let configMock: DeepMocked<ConfigService>;
-    let personenkontextWorkflowSharedKernelMock: DeepMocked<PersonenkontextWorkflowSharedKernel>;
+    let personenkontextWorkflowSharedKernelMock: DeepMocked<RoleOrganisationAssignmentValidator>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -77,8 +77,8 @@ describe('PersonenkontextWorkflow', () => {
                     useValue: createMock(ConfigService),
                 },
                 {
-                    provide: PersonenkontextWorkflowSharedKernel,
-                    useValue: createMock(PersonenkontextWorkflowSharedKernel),
+                    provide: RoleOrganisationAssignmentValidator,
+                    useValue: createMock(RoleOrganisationAssignmentValidator),
                 },
             ],
         }).compile();
@@ -88,7 +88,7 @@ describe('PersonenkontextWorkflow', () => {
         personenkontextAnlageFactory = module.get(PersonenkontextWorkflowFactory);
         personpermissionsMock = module.get(PersonPermissions);
         configMock = module.get(ConfigService);
-        personenkontextWorkflowSharedKernelMock = module.get(PersonenkontextWorkflowSharedKernel);
+        personenkontextWorkflowSharedKernelMock = module.get(RoleOrganisationAssignmentValidator);
     });
 
     afterAll(async () => {
