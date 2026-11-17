@@ -14,7 +14,12 @@ import { LdapAdapter } from '../../../core/ldap/adapter/domain/ldap.adapter.js';
 import { LdapSyncEventHandler } from '../../../core/ldap/domain/ldap-sync-event-handler.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
-import { EntityCouldNotBeDeleted, EntityNotFoundError, MismatchedRevisionError } from '../../../shared/error/index.js';
+import {
+    EntityCouldNotBeDeleted,
+    EntityNotFoundError,
+    MismatchedRevisionError,
+    MissingPermissionsError,
+} from '../../../shared/error/index.js';
 import { KeycloakClientError } from '../../../shared/error/keycloak-client.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
@@ -22,7 +27,6 @@ import { type Paged, type PagedResponse } from '../../../shared/paging/index.js'
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';
 import { type PersonenkontextResponse } from '../../personenkontext/api/response/personenkontext.response.js';
@@ -38,6 +42,7 @@ import { PersonUserPasswordModificationError } from '../domain/person-user-passw
 import { PersonLockOccasion } from '../domain/person.enums.js';
 import { PersonFactory } from '../domain/person.factory.js';
 import { Person } from '../domain/person.js';
+import { PersonService } from '../domain/person.service.js';
 import { PersonalnummerRequiredError } from '../domain/personalnummer-required.error.js';
 import { UsernameGeneratorService } from '../domain/username-generator.service.js';
 import { VornameForPersonWithTrailingSpaceError } from '../domain/vorname-with-trailing-space.error.js';
@@ -45,13 +50,14 @@ import { PersonApiMapper } from '../mapper/person-api.mapper.js';
 import { PersonRepository } from '../persistence/person.repository.js';
 import { PersonDeleteService } from '../person-deletion/person-delete.service.js';
 import { PersonLandesbediensteterSearchService } from '../person-landesbedienstete-search/person-landesbediensteter-search.service.js';
-import { LockUserBodyParams } from './lock-user.body.params.js';
+import { type LockUserBodyParams } from './lock-user.body.params.js';
 import { PersonByIdParams } from './person-by-id.param.js';
 import { PersonEmailResponse } from './person-email-response.js';
 import { PersonLandesbediensteterSearchQueryParams } from './person-landesbediensteter-search-query.param.js';
 import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
 import { PersonController } from './person.controller.js';
+import { type PersonenQueryParams } from './personen-query.param.js';
 import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { type UpdatePersonBodyParams } from './update-person.body.params.js';
 
@@ -60,10 +66,10 @@ describe('PersonController', () => {
     let logger: ClassLogger;
     let personController: PersonController;
     let personRepositoryMock: DeepMocked<PersonRepository>;
+    let personServiceMock: DeepMocked<PersonService>;
     let emailResolverService: DeepMocked<EmailResolverService>;
     let personenkontextServiceMock: DeepMocked<PersonenkontextService>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
-    let keycloakUserService: DeepMocked<KeycloakUserService>;
     let personDeleteServiceMock: DeepMocked<PersonDeleteService>;
     let personLandesbediensteterSearchServiceMock: DeepMocked<PersonLandesbediensteterSearchService>;
     let personPermissionsMock: DeepMocked<PersonPermissions>;
@@ -80,6 +86,10 @@ describe('PersonController', () => {
             imports: [ConfigTestModule, DatabaseTestModule.forRoot({ isDatabaseRequired: false })],
             providers: [
                 PersonController,
+                {
+                    provide: PersonService,
+                    useValue: createMock(PersonService),
+                },
                 PersonFactory,
                 PersonApiMapper,
                 {
@@ -89,10 +99,6 @@ describe('PersonController', () => {
                 {
                     provide: UsernameGeneratorService,
                     useValue: createMock(UsernameGeneratorService),
-                },
-                {
-                    provide: KeycloakUserService,
-                    useValue: createMock(KeycloakUserService),
                 },
                 {
                     provide: PersonDeleteService,
@@ -154,17 +160,15 @@ describe('PersonController', () => {
         })
             .overrideProvider(EventRoutingLegacyKafkaService)
             .useValue(createMock(EventRoutingLegacyKafkaService))
-            .overrideProvider(KeycloakUserService)
-            .useValue(createMock(KeycloakUserService))
             .compile();
         logger = module.get(ClassLogger);
         personController = module.get(PersonController);
+        personServiceMock = module.get(PersonService);
         personRepositoryMock = module.get(PersonRepository);
         emailResolverService = module.get(EmailResolverService);
         personenkontextServiceMock = module.get(PersonenkontextService);
         rolleRepoMock = module.get(RolleRepo);
         personDeleteServiceMock = module.get(PersonDeleteService);
-        keycloakUserService = module.get(KeycloakUserService);
         dBiamPersonenkontextServiceMock = module.get(DBiamPersonenkontextService);
         eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         ldapClientAdapterMock = module.get(LdapAdapter);
@@ -211,6 +215,67 @@ describe('PersonController', () => {
     it('should be defined', () => {
         expect(personController).toBeDefined();
         expect(personLandesbediensteterSearchServiceMock).toBeDefined();
+    });
+
+    describe('findPersons', () => {
+        it('should map all persons with default paging', async () => {
+            const person: Person<true> = getPerson();
+            personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[person], 1] });
+
+            const result: PagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+                { sichtfreigabe: SichtfreigabeType.NEIN },
+                personPermissionsMock,
+            );
+
+            expect(result).toEqual({
+                offset: 0,
+                limit: 1,
+                total: 1,
+                items: [new PersonendatensatzResponse(person, false)],
+            });
+        });
+
+        it('should pass all filters to the service and preserve explicit paging', async () => {
+            const queryParams: PersonenQueryParams = {
+                sichtfreigabe: SichtfreigabeType.NEIN,
+                sperrgruende: [PersonLockOccasion.MANUELL_GESPERRT, PersonLockOccasion.KOPERS_GESPERRT],
+                organisationIDs: [faker.string.uuid()],
+                rolleIDs: [faker.string.uuid()],
+                suchFilter: 'Max',
+                offset: 5,
+                limit: 10,
+            };
+            personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[], 3] });
+
+            const result: PagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+                queryParams,
+                personPermissionsMock,
+            );
+
+            expect(personServiceMock.findPersons).toHaveBeenCalledExactlyOnceWith(queryParams, personPermissionsMock);
+            expect(result).toEqual({ offset: 5, limit: 10, total: 3, items: [] });
+        });
+
+        it('should propagate missing permissions to the exception filters', async () => {
+            const error: MissingPermissionsError = new MissingPermissionsError('NOT_AUTHORIZED');
+            personServiceMock.findPersons.mockResolvedValueOnce({
+                ok: false,
+                error,
+            });
+
+            await expect(
+                personController.findPersons({ sichtfreigabe: SichtfreigabeType.NEIN }, personPermissionsMock),
+            ).rejects.toBe(error);
+        });
+
+        it('should propagate technical errors without converting them to unauthorized errors', async () => {
+            const error: KeycloakClientError = new KeycloakClientError('Person search failed');
+            personServiceMock.findPersons.mockRejectedValueOnce(error);
+
+            await expect(
+                personController.findPersons({ sichtfreigabe: SichtfreigabeType.NEIN }, personPermissionsMock),
+            ).rejects.toBe(error);
+        });
     });
 
     describe('deletePerson', () => {
@@ -639,139 +704,43 @@ describe('PersonController', () => {
         });
     });
     describe('lockPerson', () => {
-        const params: PersonByIdParams = new PersonByIdParams();
-        Object.assign(params, {
-            personId: faker.string.uuid(),
-        });
-        personPermissionsMock = createPersonPermissionsMock();
+        const personId: string = faker.string.uuid();
 
-        describe('when locking a user is successful', () => {
-            const person: Person<true> = getPerson();
+        it.each([
+            { lock: true, lockedUntil: new Date('2030-01-01T00:00:00Z') },
+            { lock: true, lockedUntil: undefined },
+            { lock: false, lockedUntil: new Date('2030-01-01T00:00:00Z') },
+            { lock: false, lockedUntil: undefined },
+        ])(
+            'delegates and returns a success response when lock is $lock and expiry is $lockedUntil',
+            async ({ lock, lockedUntil }: { lock: boolean; lockedUntil: Date | undefined }) => {
+                const body: LockUserBodyParams = { lock, locked_by: 'organisation-id', locked_until: lockedUntil };
+                personServiceMock.lockPerson.mockResolvedValueOnce({ ok: true, value: undefined });
 
-            it.each([[new Date()], [undefined]])(
-                'should return a success message when locked_until is %p',
-                async (lockedUntil: Date | undefined) => {
-                    const lockUserBodyParams: LockUserBodyParams = new LockUserBodyParams();
-                    Object.assign(lockUserBodyParams, {
-                        lock: true,
-                        locked_by: 'Theo Tester',
-                        locked_until: lockedUntil,
-                    });
-                    personRepositoryMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
-                    keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({ ok: true, value: undefined });
+                const response: { message: string } = await personController.lockPerson(
+                    personId,
+                    body,
+                    personPermissionsMock,
+                );
 
-                    const response: { message: string } = await personController.lockPerson(
-                        params.personId,
-                        lockUserBodyParams,
-                        personPermissionsMock,
-                    );
-
-                    expect(response).toEqual({ message: 'User has been successfully locked.' });
-                    expect(personRepositoryMock.getPersonIfAllowed).toHaveBeenCalledTimes(1);
-                    expect(keycloakUserService.updateKeycloakUserStatus).toHaveBeenCalledTimes(1);
-                },
-            );
-        });
-
-        describe('when unlocking a user is successful', () => {
-            const person: Person<true> = getPerson();
-
-            it.each([[new Date()], [undefined]])(
-                'should return a success message when locked_until is %p',
-                async (lockedUntil: Date | undefined) => {
-                    const lockUserBodyParams: LockUserBodyParams = new LockUserBodyParams();
-                    Object.assign(lockUserBodyParams, {
-                        lock: false,
-                        locked_by: 'Theo Tester',
-                        locked_until: lockedUntil,
-                    });
-                    personRepositoryMock.getPersonIfAllowed.mockResolvedValueOnce({ ok: true, value: person });
-                    keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({ ok: true, value: undefined });
-
-                    const response: { message: string } = await personController.lockPerson(
-                        params.personId,
-                        lockUserBodyParams,
-                        personPermissionsMock,
-                    );
-
-                    expect(response).toEqual({ message: 'User has been successfully unlocked.' });
-                    expect(personRepositoryMock.getPersonIfAllowed).toHaveBeenCalledTimes(1);
-                    expect(keycloakUserService.updateKeycloakUserStatus).toHaveBeenCalledTimes(1);
-                },
-            );
-        });
-
-        describe('when person does not exist or no permissions', () => {
-            it.each([
-                { lock: false, description: 'lock is false' },
-                { lock: true, description: 'lock is true' },
-            ])('should throw an error when $description', async ({ lock }: { lock: boolean }) => {
-                const lockUserBodyParams: LockUserBodyParams = new LockUserBodyParams();
-                Object.assign(lockUserBodyParams, {
+                expect(response).toEqual({ message: `User has been successfully ${lock ? '' : 'un'}locked.` });
+                expect(personServiceMock.lockPerson).toHaveBeenCalledExactlyOnceWith(
+                    personId,
+                    personPermissionsMock,
                     lock,
-                    locked_by: '2024-01-01T00:00:00Z',
-                    locked_until: new Date(),
-                });
-                personRepositoryMock.getPersonIfAllowed.mockResolvedValueOnce({
-                    ok: false,
-                    error: new EntityNotFoundError('Person'),
-                });
-                await expect(
-                    personController.lockPerson(params.personId, lockUserBodyParams, personPermissionsMock),
-                ).rejects.toThrow(PersonDomainError);
-            });
-        });
+                    body.locked_by,
+                    lockedUntil,
+                );
+                expect(personRepositoryMock.getPersonIfAllowed).not.toHaveBeenCalled();
+            },
+        );
 
-        describe('when keycloakUserId is missing', () => {
-            const person: Person<true> = getPerson();
-            person.keycloakUserId = undefined;
+        it.each([true, false])('throws the service error when lock is %s', async (lock: boolean) => {
+            const body: LockUserBodyParams = { lock, locked_by: 'organisation-id' };
+            const error: NotFoundOrNoPermissionError = new NotFoundOrNoPermissionError(personId);
+            personServiceMock.lockPerson.mockResolvedValueOnce({ ok: false, error });
 
-            it.each([
-                { lock: false, description: 'lock is false' },
-                { lock: true, description: 'lock is true' },
-            ])('should throw an error when $description', async ({ lock }: { lock: boolean }) => {
-                const lockUserBodyParams: LockUserBodyParams = new LockUserBodyParams();
-                Object.assign(lockUserBodyParams, {
-                    lock,
-                    locked_by: '2024-01-01T00:00:00Z',
-                    locked_until: new Date(),
-                });
-                personRepositoryMock.getPersonIfAllowed.mockResolvedValueOnce({
-                    ok: true,
-                    value: person,
-                });
-                await expect(
-                    personController.lockPerson(params.personId, lockUserBodyParams, personPermissionsMock),
-                ).rejects.toThrow(PersonDomainError);
-            });
-        });
-
-        describe('when updating user status fails', () => {
-            const person: Person<true> = getPerson();
-            person.keycloakUserId = 'keycloak-12345';
-
-            it.each([
-                { lock: false, description: 'lock is false' },
-                { lock: true, description: 'lock is true' },
-            ])('should throw an error when $description', async ({ lock }: { lock: boolean }) => {
-                const lockUserBodyParams: LockUserBodyParams = new LockUserBodyParams();
-                Object.assign(lockUserBodyParams, {
-                    lock,
-                    locked_by: '2024-01-01T00:00:00Z',
-                    locked_until: new Date(),
-                });
-                personRepositoryMock.getPersonIfAllowed.mockResolvedValueOnce({
-                    ok: true,
-                    value: person,
-                });
-                keycloakUserService.updateKeycloakUserStatus.mockResolvedValueOnce({
-                    ok: false,
-                    error: new KeycloakClientError('Could not update user status or custom attributes'),
-                });
-                await expect(
-                    personController.lockPerson(params.personId, lockUserBodyParams, personPermissionsMock),
-                ).rejects.toThrow(PersonDomainError);
-            });
+            await expect(personController.lockPerson(personId, body, personPermissionsMock)).rejects.toBe(error);
         });
     });
 
