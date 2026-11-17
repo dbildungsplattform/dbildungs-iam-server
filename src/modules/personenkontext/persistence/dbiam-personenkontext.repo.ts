@@ -695,6 +695,7 @@ export class DBiamPersonenkontextRepo {
         personId: PersonID,
         serviceProviderId: ServiceProviderID,
     ): Promise<KontextWithOrgaAndRolle[]> {
+        // this already uses rollenerweiterungen which will be important in next ticket
         const kontexteByPerson: Map<PersonID, KontextWithOrgaAndRolle[]> =
             await this.findByPersonIdsAndServiceprovidersWithOrgaAndRolle([personId], [serviceProviderId], {
                 all: true,

@@ -75,8 +75,7 @@ export class SchulconnexPushHandler {
 
         return this.runExclusiveForPerson(
             event.person.id,
-            keepAlive,
-            (): Promise<Result<void, DomainError>> => this.handlePersonenkontextUpdatedEventExclusive(event),
+            (): Promise<Result<void, DomainError>> => this.handlePersonenkontextUpdatedEventExclusive(event, keepAlive),
         );
     }
 
@@ -133,6 +132,7 @@ export class SchulconnexPushHandler {
 
     private async handlePersonenkontextUpdatedEventExclusive(
         event: PersonenkontextUpdatedEvent,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         const logPrefix: string = `[EventID: ${event.eventID}] ` + `Schulconnex push for person ${event.person.id}`;
 
@@ -158,7 +158,7 @@ export class SchulconnexPushHandler {
 
         const results: PromiseSettledResult<Result<void, DomainError>>[] = await Promise.allSettled(
             relevantRegistries.map((registry: SchulconnexPushRegistry<true>) =>
-                this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen),
+                this.pushPersonenkontextUpdatedEventToRegistry(event, registry, rollen, keepAlive),
             ),
         );
 
@@ -210,6 +210,7 @@ export class SchulconnexPushHandler {
         event: PersonenkontextUpdatedEvent,
         registry: SchulconnexPushRegistry<true>,
         rollen: Map<RolleID, Rolle<true>>,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         const filter: (pk: PersonenkontextEventKontextData) => boolean = this.createRegistryKontextFilter(
             registry,
@@ -237,13 +238,14 @@ export class SchulconnexPushHandler {
             kontexteToUpsert,
             hadRelevantKontexte,
             registry,
+            keepAlive,
         );
 
         if (!creationResult.ok) {
             return creationResult;
         }
 
-        return this.handleDeletion(event, removedKontexte, currentKontexte, hadRelevantKontexte, registry);
+        return this.handleDeletion(event, removedKontexte, currentKontexte, hadRelevantKontexte, registry, keepAlive);
     }
 
     private async handleDeletion(
@@ -252,6 +254,7 @@ export class SchulconnexPushHandler {
         currentKontexte: PersonenkontextEventKontextData[],
         hadRelevantKontexte: boolean,
         registry: SchulconnexPushRegistry<true>,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         for (const pk of removedKontexte) {
             // eslint-disable-next-line no-await-in-loop
@@ -260,14 +263,16 @@ export class SchulconnexPushHandler {
                 event.person.id,
                 pk.id,
             );
-
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
         }
 
         if (hadRelevantKontexte && currentKontexte.length === 0) {
-            return this.adapter.deletePerson(registry, event.person.id);
+            const result: Result<void, DomainError> = await this.adapter.deletePerson(registry, event.person.id);
+            keepAlive?.();
+            return result;
         }
 
         return Ok();
@@ -278,6 +283,7 @@ export class SchulconnexPushHandler {
         kontexteToUpsert: PersonenkontextEventKontextData[],
         hadRelevantKontexte: boolean,
         registry: SchulconnexPushRegistry<true>,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
         if (kontexteToUpsert.length === 0) {
             return Ok();
@@ -305,7 +311,7 @@ export class SchulconnexPushHandler {
 
         if (!hadRelevantKontexte) {
             const result: Result<void, DomainError> = await this.adapter.upsertPerson(registry, data.value.person);
-
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
@@ -319,7 +325,7 @@ export class SchulconnexPushHandler {
                 data.value.userLocks,
                 data.value.email,
             );
-
+            keepAlive?.();
             if (!result.ok) {
                 return result;
             }
@@ -385,9 +391,8 @@ export class SchulconnexPushHandler {
     ): Promise<Result<void, DomainError>> {
         return this.runExclusiveForPerson(
             personId,
-            keepAlive,
             (): Promise<Result<void, DomainError>> =>
-                this.updatePersonenkontexteExclusive(personId, eventId, emailSource),
+                this.updatePersonenkontexteExclusive(personId, eventId, emailSource, keepAlive),
         );
     }
 
@@ -395,7 +400,9 @@ export class SchulconnexPushHandler {
         personId: PersonID,
         eventId: string,
         emailSource: EmailSource,
+        keepAlive?: KeepAliveFn,
     ): Promise<Result<void, DomainError>> {
+        // Do not fall back to the resolver for email change events: undefined indicates that the primary email was removed and must stay removed.
         const emailPromise: Promise<Option<PersonEmailResponse>> =
             emailSource.type === 'event'
                 ? Promise.resolve(emailSource.email)
@@ -425,6 +432,7 @@ export class SchulconnexPushHandler {
                     userLocks,
                     email,
                 );
+                keepAlive?.();
 
                 if (!result.ok) {
                     errors.push(result.error);
@@ -451,22 +459,15 @@ export class SchulconnexPushHandler {
 
     private async runExclusiveForPerson(
         personId: PersonID,
-        keepAlive: KeepAliveFn | undefined,
         operation: () => Promise<Result<void, DomainError>>,
     ): Promise<Result<void, DomainError>> {
         const mutex: Mutex = this.personUpdateMutexes.get(personId) ?? new Mutex();
 
         this.personUpdateMutexes.set(personId, mutex);
 
-        const keepAliveInterval: NodeJS.Timeout | undefined = keepAlive ? setInterval(keepAlive, 30_000) : undefined;
-
         try {
             return await mutex.runExclusive(operation);
         } finally {
-            if (keepAliveInterval) {
-                clearInterval(keepAliveInterval);
-            }
-
             if (this.personUpdateMutexes.get(personId) === mutex && !mutex.isLocked()) {
                 this.personUpdateMutexes.delete(personId);
             }

@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { createMock, type DeepMocked } from '../../../../../test/utils/createMock.js';
 import { DoFactory } from '../../../../../test/utils/do-factory.js';
@@ -32,7 +32,7 @@ import { type Rolle } from '../../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
 import { SchulconnexPushAdapter } from '../adapter/domain/schulconnex-push.adapter.js';
 import { SchulconnexPushRegistryRepo } from '../persistence/schulconnex-push-registry.repo.js';
-import { SchulconnexPushHandler, type KeepAliveFn } from './schulconnex-push-handler.js';
+import { SchulconnexPushHandler } from './schulconnex-push-handler.js';
 import { SchulconnexPushRegistry } from './schulconnex-push-registry.js';
 
 function createRegistry(id: string, serviceProviderId: string = 'service-provider-1'): SchulconnexPushRegistry<true> {
@@ -939,104 +939,136 @@ describe('SchulconnexPushHandler', () => {
     });
 
     describe('keepAlive', () => {
-        it('should call keepAlive periodically while processing an event', async () => {
-            vi.useFakeTimers();
-            const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
-            let resolvePush: ((result: Result<void, DomainError>) => void) | undefined;
-            const pendingPush: Promise<Result<void, DomainError>> = new Promise(
-                (resolve: (value: Result<void, DomainError>) => void): void => {
-                    resolvePush = resolve;
-                },
+        it('should keep the handler alive after each creation adapter operation', async () => {
+            const secondKontext: PersonenkontextEventKontextData = createKontext('second-kontext');
+            const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, secondKontext]);
+            const keepAlive: Mock<() => void> = vi.fn();
+
+            personenkontextRepoMock.findByPersonWithOrgaAndRolle
+                .mockReset()
+                .mockResolvedValueOnce([pushKontext, createPushKontext(secondKontext, person, registry)]);
+
+            adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Ok());
+
+            const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
+
+            expect(result).toEqual(Ok());
+            expect(keepAlive).toHaveBeenCalledTimes(3);
+            expect(adapterMock.upsertPerson).toHaveBeenCalledBefore(keepAlive);
+            expect(keepAlive).toHaveBeenCalledBefore(adapterMock.upsertPersonenkontext);
+
+            const [firstContextUpsert, secondContextUpsert]: number[] =
+                adapterMock.upsertPersonenkontext.mock.invocationCallOrder;
+
+            assert.isDefined(firstContextUpsert);
+            assert.isDefined(secondContextUpsert);
+
+            expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(firstContextUpsert);
+            expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(secondContextUpsert);
+            expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(secondContextUpsert);
+        });
+
+        it('should keep the handler alive after each deletion adapter operation', async () => {
+            const secondRemovedKontext: PersonenkontextEventKontextData = createKontext('second-removed');
+            const event: PersonenkontextUpdatedEvent = createEvent(
+                person,
+                [],
+                [removedKontext, secondRemovedKontext],
+                [],
             );
-            adapterMock.upsertPersonenkontext.mockReturnValueOnce(pendingPush);
+            const keepAlive: Mock<() => void> = vi.fn();
+
+            adapterMock.deletePersonenkontext.mockResolvedValueOnce(Ok());
+
+            const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event, keepAlive);
+
+            expect(result).toEqual(Ok());
+            expect(keepAlive).toHaveBeenCalledTimes(3);
+            expect(adapterMock.deletePersonenkontext).toHaveBeenCalledBefore(keepAlive);
+
+            const [, secondContextDeletion]: number[] = adapterMock.deletePersonenkontext.mock.invocationCallOrder;
+
+            const [personDeletion]: number[] = adapterMock.deletePerson.mock.invocationCallOrder;
+
+            assert.isDefined(secondContextDeletion);
+            assert.isDefined(personDeletion);
+
+            expect(keepAlive.mock.invocationCallOrder[0]).toBeLessThan(secondContextDeletion);
+            expect(keepAlive.mock.invocationCallOrder[1]).toBeGreaterThan(secondContextDeletion);
+            expect(keepAlive.mock.invocationCallOrder[1]).toBeLessThan(personDeletion);
+            expect(keepAlive.mock.invocationCallOrder[2]).toBeGreaterThan(personDeletion);
+        });
+
+        it('should call keepAlive after updating a personenkontext for an email change', async () => {
+            const keepAlive: Mock<() => void> = vi.fn();
+
             const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 person.id,
                 'new@example.org',
                 undefined,
-                undefined,
+                'old@example.org',
                 undefined,
             );
-            const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
 
-            try {
-                await vi.advanceTimersByTimeAsync(0);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-                expect(keepAlive).not.toHaveBeenCalled();
-                await vi.advanceTimersByTimeAsync(30_000);
-                expect(keepAlive).toHaveBeenCalledOnce();
-                await vi.advanceTimersByTimeAsync(30_000);
-                expect(keepAlive).toHaveBeenCalledTimes(2);
-            } finally {
-                resolvePush?.(Ok());
-                await handling;
-                vi.useRealTimers();
-            }
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event, keepAlive);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            expect(keepAlive).toHaveBeenCalledOnce();
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledBefore(keepAlive);
         });
 
-        it('should stop calling keepAlive after processing has finished', async () => {
-            vi.useFakeTimers();
-            try {
-                const keepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
-                const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
-                    person.id,
-                    'new@example.org',
-                    undefined,
-                    undefined,
-                    undefined,
-                );
-                const handling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(event, keepAlive);
-                await vi.advanceTimersByTimeAsync(0);
-                const result: Result<void, DomainError> = await handling;
-                expect(result).toEqual(Ok());
-                await vi.advanceTimersByTimeAsync(60_000);
-                expect(keepAlive).not.toHaveBeenCalled();
-            } finally {
-                vi.useRealTimers();
-            }
+        it('should call keepAlive after updating a personenkontext for a lock change', async () => {
+            const keepAlive: Mock<() => void> = vi.fn();
+
+            const event: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
+
+            const result: Result<void, DomainError> = await sut.handleLocksForPersonChanged(event, keepAlive);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            expect(keepAlive).toHaveBeenCalledOnce();
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledBefore(keepAlive);
         });
 
-        it('should call keepAlive while waiting for another update of the same person', async () => {
-            vi.useFakeTimers();
-            const firstKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
-            const secondKeepAlive: KeepAliveFn = vi.fn<KeepAliveFn>();
-            let resolveFirstPush: ((result: Result<void, DomainError>) => void) | undefined;
-            const firstPush: Promise<Result<void, DomainError>> = new Promise(
-                (resolve: (value: Result<void, DomainError>) => void): void => {
-                    resolveFirstPush = resolve;
-                },
-            );
-            adapterMock.upsertPersonenkontext.mockReturnValueOnce(firstPush).mockResolvedValueOnce(Ok());
-            const firstEvent: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
+        it('should call keepAlive after every personenkontext update', async () => {
+            const keepAlive: Mock<() => void> = vi.fn();
+
+            const secondKontextData: PersonenkontextEventKontextData = createKontext('second-kontext');
+
+            const secondPushKontext: KontextWithOrgaAndRolle = createPushKontext(secondKontextData, person, registry);
+
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                pushKontext,
+                secondPushKontext,
+            ]);
+
+            const event: EmailMicroserviceAddressChangedEvent = new EmailMicroserviceAddressChangedEvent(
                 person.id,
-                'first@example.org',
+                'new@example.org',
                 undefined,
-                undefined,
+                'old@example.org',
                 undefined,
             );
-            const secondEvent: LocksForPersonChangedEvent = new LocksForPersonChangedEvent(person.id, [], []);
-            const firstHandling: Promise<Result<void, DomainError>> = sut.handleEmailAddressChanged(
-                firstEvent,
-                firstKeepAlive,
-            );
-            let secondHandling: Promise<Result<void, DomainError>> | undefined;
 
-            try {
-                await vi.advanceTimersByTimeAsync(0);
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-                secondHandling = sut.handleLocksForPersonChanged(secondEvent, secondKeepAlive);
-                await vi.advanceTimersByTimeAsync(0);
-                await vi.advanceTimersByTimeAsync(30_000);
-                expect(firstKeepAlive).toHaveBeenCalledOnce();
-                expect(secondKeepAlive).toHaveBeenCalledOnce();
-                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
-            } finally {
-                resolveFirstPush?.(Ok());
-                await firstHandling;
-                if (secondHandling) {
-                    await secondHandling;
-                }
-                vi.useRealTimers();
-            }
+            const result: Result<void, DomainError> = await sut.handleEmailAddressChanged(event, keepAlive);
+
+            expect(result).toEqual(Ok());
+            expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledTimes(2);
+            expect(keepAlive).toHaveBeenCalledTimes(2);
+
+            const [firstUpsert, secondUpsert]: number[] = adapterMock.upsertPersonenkontext.mock.invocationCallOrder;
+
+            const [firstKeepAlive, secondKeepAlive]: number[] = keepAlive.mock.invocationCallOrder;
+
+            assert.isDefined(firstUpsert);
+            assert.isDefined(secondUpsert);
+            assert.isDefined(firstKeepAlive);
+            assert.isDefined(secondKeepAlive);
+
+            expect(firstKeepAlive).toBeGreaterThan(firstUpsert);
+            expect(firstKeepAlive).toBeLessThan(secondUpsert);
+            expect(secondKeepAlive).toBeGreaterThan(secondUpsert);
         });
     });
 
