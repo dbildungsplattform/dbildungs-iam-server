@@ -57,8 +57,8 @@ import { PersonLandesbediensteterSearchQueryParams } from './person-landesbedien
 import { PersonLandesbediensteterSearchResponse } from './person-landesbediensteter-search.response.js';
 import { PersonMetadataBodyParams } from './person-metadata.body.param.js';
 import { PersonController } from './person.controller.js';
-import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { type PersonenQueryParams } from './personen-query.param.js';
+import { PersonendatensatzResponse } from './personendatensatz.response.js';
 import { type UpdatePersonBodyParams } from './update-person.body.params.js';
 
 describe('PersonController', () => {
@@ -70,7 +70,6 @@ describe('PersonController', () => {
     let emailResolverService: DeepMocked<EmailResolverService>;
     let personenkontextServiceMock: DeepMocked<PersonenkontextService>;
     let rolleRepoMock: DeepMocked<RolleRepo>;
-    let personServiceMock: DeepMocked<PersonService>;
     let personDeleteServiceMock: DeepMocked<PersonDeleteService>;
     let personLandesbediensteterSearchServiceMock: DeepMocked<PersonLandesbediensteterSearchService>;
     let personPermissionsMock: DeepMocked<PersonPermissions>;
@@ -100,10 +99,6 @@ describe('PersonController', () => {
                 {
                     provide: UsernameGeneratorService,
                     useValue: createMock(UsernameGeneratorService),
-                },
-                {
-                    provide: PersonService,
-                    useValue: createMock(PersonService),
                 },
                 {
                     provide: PersonDeleteService,
@@ -174,7 +169,6 @@ describe('PersonController', () => {
         personenkontextServiceMock = module.get(PersonenkontextService);
         rolleRepoMock = module.get(RolleRepo);
         personDeleteServiceMock = module.get(PersonDeleteService);
-        personServiceMock = module.get(PersonService);
         dBiamPersonenkontextServiceMock = module.get(DBiamPersonenkontextService);
         eventServiceMock = module.get(EventRoutingLegacyKafkaService);
         ldapClientAdapterMock = module.get(LdapAdapter);

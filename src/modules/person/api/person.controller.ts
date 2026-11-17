@@ -100,7 +100,6 @@ export class PersonController {
         private readonly personDeleteService: PersonDeleteService,
         private readonly personLandesbediensteterSearchService: PersonLandesbediensteterSearchService,
         private readonly logger: ClassLogger,
-        private readonly personService: PersonService,
         private readonly dBiamPersonenkontextService: DBiamPersonenkontextService,
         private readonly ldapClientAdapter: LdapAdapter,
         private readonly personApiMapper: PersonApiMapper,
