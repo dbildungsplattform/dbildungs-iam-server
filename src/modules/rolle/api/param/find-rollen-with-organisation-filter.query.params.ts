@@ -5,7 +5,7 @@ import { OrganisationID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 import { FindRollenBaseQueryParams } from './find-rollen-base.query.params.js';
 
-export abstract class FindRollenWithIdsQueryParams extends FindRollenBaseQueryParams {
+export abstract class FindRollenWithOrganisationFilterQueryParams extends FindRollenBaseQueryParams {
     @IsOptional()
     @IsUUID(undefined, { each: true })
     @TransformToArray()
