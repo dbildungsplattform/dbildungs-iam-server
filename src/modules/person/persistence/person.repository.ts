@@ -197,6 +197,7 @@ export type PersonenQueryParams = {
     familienname?: string;
     organisationIDs?: string[];
     rolleIDs?: string[];
+    sperrgruende?: PersonLockOccasion[];
     offset?: number;
     limit?: number;
     sortField?: SortFieldPerson;
@@ -874,7 +875,7 @@ export class PersonRepository {
         return person;
     }
 
-    public async findbyPersonFrontend(
+    public async findPersons(
         queryParams: PersonenQueryParams,
         permittedOrgas: PermittedOrgas,
     ): Promise<Counted<Person<true>>> {
@@ -901,6 +902,7 @@ export class PersonRepository {
                 organisationen: permittedOrgas.all ? undefined : permittedOrgas.orgaIds,
             })
             .findByPersonenKontext(queryParams.organisationIDs, queryParams.rolleIDs)
+            .findBySperrgruende(queryParams.sperrgruende)
             .paged(queryParams.offset, queryParams.limit);
 
         const sortField: SortFieldPerson = queryParams.sortField || SortFieldPerson.VORNAME;

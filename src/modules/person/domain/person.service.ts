@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
-import { DomainError, EntityNotFoundError } from '../../../shared/error/index.js';
+import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
 import { Paged } from '../../../shared/paging/paged.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
+import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
-import { PersonRepository } from '../persistence/person.repository.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { PersonenQueryParams, PersonRepository } from '../persistence/person.repository.js';
 import { PersonScope } from '../persistence/person.scope.js';
 import { PersonDomainError } from './person-domain.error.js';
 import { DownstreamKeycloakError } from './person-keycloak.error.js';
@@ -102,6 +104,24 @@ export class PersonService {
         this.logger.info(
             `Admin ${permissions.personFields.username} (AdminId: ${permissions.personFields.id}, Sperrende Organisation: ${userLock.locked_by}) hat Benutzer ${person.username} (BenutzerId: ${userLock.person})) ${lock ? 'gesperrt' : 'entsperrt'} (Befristung: ${userLock.locked_until?.toString() ?? 'unbefristet'}).`,
         );
+    }
+
+    public async findPersons(
+        queryParams: PersonenQueryParams,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Counted<Person<true>>, MissingPermissionsError>> {
+        const permittedOrgas: PermittedOrgas = await permissions.getOrgIdsWithSystemrecht(
+            [RollenSystemRecht.PERSONEN_VERWALTEN],
+            true,
+        );
+
+        if (!permittedOrgas.all && permittedOrgas.orgaIds.length === 0) {
+            return { ok: false, error: new MissingPermissionsError('NOT_AUTHORIZED') };
+        }
+
+        const persons: Counted<Person<true>> = await this.personRepository.findPersons(queryParams, permittedOrgas);
+
+        return { ok: true, value: persons };
     }
 
     public async findPersonById(id: string): Promise<Result<Person<true>, DomainError>> {

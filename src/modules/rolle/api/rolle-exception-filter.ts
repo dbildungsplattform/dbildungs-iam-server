@@ -12,6 +12,7 @@ import { ItslearningNichtNachtraeglichZuweisbarError } from '../specification/er
 import { ServiceProviderNichtVerfuegbarFuerRollenerweiterungError } from '../specification/error/service-provider-nicht-verfuegbar-fuer-rollenerweiterung.error.js';
 import { NoRedundantRollenerweiterungError } from '../specification/error/no-redundant-rollenerweiterung.error.js';
 import { ServiceProviderProvidedOutOfTreeError } from '../domain/service-provider-provided-out-of-tree.error.js';
+import { RollenartNotAllowedForSPError } from '../domain/rollenart-not-allowed-for-sp.error.js';
 
 @Catch(RolleDomainError)
 export class RolleExceptionFilter implements ExceptionFilter<RolleDomainError> {
@@ -49,6 +50,13 @@ export class RolleExceptionFilter implements ExceptionFilter<RolleDomainError> {
             new DbiamRolleError({
                 code: 400,
                 i18nKey: RolleErrorI18nTypes.ROLLE_NAME_UNIQUE_ON_SSK,
+            }),
+        ],
+        [
+            RollenartNotAllowedForSPError.name,
+            new DbiamRolleError({
+                code: 400,
+                i18nKey: RolleErrorI18nTypes.ROLLENART_NOT_ALLOWED_FOR_SERVICE_PROVIDER,
             }),
         ],
         [
