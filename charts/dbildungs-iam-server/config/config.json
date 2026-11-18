@@ -34,7 +34,6 @@
         "SENTINEL_NODES": [{"HOST":"dbildungs-iam-valkey.spsh.svc.cluster.local","PORT":26379}],
         "SENTINEL_USE_TLS": false
     },
-
     "LDAP": {
         "URL": "ldap://spsh-xxx.svc.cluster.local",
         "BIND_DN": "cn=admin,dc=schule-sh,dc=de",
@@ -115,7 +114,9 @@
         "SSL_KEY_PATH": "/tls/client-key.pem"
     },
     "PORTAL": {
-        "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
+        "ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN": [
+            "LERN"
+        ]
     },
     "EMAIL_MICROSERVICE": {
         "ENDPOINT": "http://dbildungs-iam-server-email-backend:80/"
