@@ -4,15 +4,8 @@ import { type CallHandler, type ExecutionContext, type NestInterceptor } from '@
 import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
 
-export const DISABLE_PAGING_INTERCEPTOR: symbol = Symbol('dont-transform-paging-response');
-
 export class GlobalPagingHeadersInterceptor implements NestInterceptor {
     public intercept(context: ExecutionContext, next: CallHandler<unknown>): Observable<unknown> {
-        const dontTransform: boolean = Reflect.getMetadata(DISABLE_PAGING_INTERCEPTOR, context.getHandler()) as boolean;
-        if (dontTransform) {
-            return next.handle();
-        }
-
         return next.handle().pipe(
             map((value: unknown) => {
                 if (value instanceof SchulconnexPagedResponse) {
