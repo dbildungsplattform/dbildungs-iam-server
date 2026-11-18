@@ -554,6 +554,33 @@ describe('ItsLearning Persons Event Handler', () => {
             expect(itslearningMembershipAdapterMock.setMemberships).not.toHaveBeenCalled();
         });
 
+        it('should log an error if the mass delete request fails', async () => {
+            const person: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockPersonWithoutKontext(person);
+            itslearningPersonAdapterMock.deletePersons.mockResolvedValueOnce(Err(new ItsLearningError('Error Test')));
+
+            await sut.personExternalSystemSyncBatch([person.id], eventId, keepAlive);
+
+            expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                expect.stringContaining(`Could not delete 1 persons from itslearning`),
+                expect.any(ItsLearningError),
+            );
+        });
+
+        it('should log an error for each person that itslearning failed to delete', async () => {
+            const person: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockPersonWithoutKontext(person);
+            itslearningPersonAdapterMock.deletePersons.mockResolvedValueOnce(
+                Ok({ status: [failureStatus], value: undefined }),
+            );
+
+            await sut.personExternalSystemSyncBatch([person.id], eventId, keepAlive);
+
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                expect.stringContaining(`Could not delete person with ID ${person.id} from itslearning`),
+            );
+        });
+
         it('should continue with the other persons if determining one of them fails', async () => {
             const failingPersonId: string = faker.string.uuid();
             const personB: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
