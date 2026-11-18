@@ -36,8 +36,6 @@ import { RolleSystemrechtEntity } from '../entity/rolle-systemrecht.entity.js';
 import { RolleEntity } from '../entity/rolle.entity.js';
 import { RolleNameNotUniqueOnSskError } from '../specification/error/rolle-name-not-unique-on-ssk.error.js';
 import { ServiceProviderNichtNachtraeglichZuweisbarError } from '../specification/error/service-provider-nicht-nachtraeglich-zuweisbar.error.js';
-import { ItslearningNichtNachtraeglichZuweisbarError } from '../specification/error/itslearning-nicht-nachtraeglich-zuweisbar.error.js';
-import { KeinNachtraeglichesItslearningServiceProvider } from '../specification/kein-nachtraegliches-itslearning-service-provider.specification.js';
 import { NurNachtraeglichZuweisbareServiceProvider } from '../specification/only-assignable-service-providers.specification.js';
 import { RolleNameUniqueOnSsk } from '../specification/rolle-name-unique-on-ssk.js';
 
@@ -749,12 +747,6 @@ export class RolleRepo {
         }
 
         if (isAlreadyAssigned) {
-            const itslearningSpec: KeinNachtraeglichesItslearningServiceProvider =
-                new KeinNachtraeglichesItslearningServiceProvider(this.serviceProviderRepo, authorizedRole);
-            if (!(await itslearningSpec.isSatisfiedBy(updatedRolle))) {
-                return Err(new ItslearningNichtNachtraeglichZuweisbarError());
-            }
-
             const spec: NurNachtraeglichZuweisbareServiceProvider = new NurNachtraeglichZuweisbareServiceProvider(
                 this.serviceProviderRepo,
                 authorizedRole,

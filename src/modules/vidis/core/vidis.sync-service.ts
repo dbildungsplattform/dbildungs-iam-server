@@ -319,7 +319,7 @@ export class VidisSyncService {
 
         if (serviceProviderIdsMissingInVidis.length > 0) {
             try {
-                // (offen, noch zu klären): Kein Event: Die betroffenen Service Provider sind VIDIS-Angebote, itslearning ist davon nicht betroffen soweit ich weiß.
+                // Kein Event: Betroffen sind nur VIDIS-Angebote. itslearning ist kein VIDIS-Angebot.
                 const deleteRollenerweiterungenResult: Awaited<
                     ReturnType<RollenerweiterungRepo['deleteByOrganisationIdAndServiceProviderIds']>
                 > = await this.rollenerweiterungRepo.deleteByOrganisationIdAndServiceProviderIds(
