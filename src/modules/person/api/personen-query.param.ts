@@ -3,7 +3,12 @@ import { ArrayUnique, IsEnum, IsOptional, IsString, IsUUID } from 'class-validat
 import { PagedQueryParams } from '../../../shared/paging/index.js';
 import { SichtfreigabeType } from '../../personenkontext/domain/personenkontext.enums.js';
 import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
-import { SortFieldPerson, SortFieldPersonTypName } from '../domain/person.enums.js';
+import {
+    PersonLockOccasion,
+    PersonLockOccasionTypName,
+    SortFieldPerson,
+    SortFieldPersonTypName,
+} from '../domain/person.enums.js';
 import { ScopeOrder, ScopeOrderTypName } from '../../../shared/persistence/scope.enums.js';
 
 export class PersonenQueryParams extends PagedQueryParams {
@@ -64,6 +69,21 @@ export class PersonenQueryParams extends PagedQueryParams {
         description: 'List of Role ID used to filter for Persons.',
     })
     public readonly rolleIDs?: string[];
+
+    @IsOptional()
+    @TransformToArray()
+    @IsEnum(PersonLockOccasion, { each: true })
+    @ArrayUnique()
+    @ApiProperty({
+        enum: PersonLockOccasion,
+        enumName: PersonLockOccasionTypName,
+        required: false,
+        nullable: true,
+        isArray: true,
+        description:
+            'Filter persons with at least one of these lock reasons. Omit or pass an empty array to include all persons. Combined with other filters using AND.',
+    })
+    public readonly sperrgruende?: PersonLockOccasion[];
 
     @IsString()
     @IsOptional()
