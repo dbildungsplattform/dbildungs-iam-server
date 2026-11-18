@@ -517,6 +517,19 @@ describe('SchulconnexPushHandler', () => {
                     error,
                 );
             });
+
+            it('should validate all requested contexts before pushing the person or any context', async () => {
+                const missingKontext: PersonenkontextEventKontextData = createKontext('missing-kontext');
+                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext, missingKontext]);
+
+                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
+
+                expectPushFailure(result, event, [
+                    new SchulconnexPushError(`Personenkontext ${missingKontext.id} not found`),
+                ]);
+                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
         });
 
         describe('adapter failures', () => {
