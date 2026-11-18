@@ -28,6 +28,9 @@ export class KafkaConfig<SslEnabled extends boolean = boolean> {
     public readonly ENABLED!: boolean;
 
     @IsBoolean()
+    public readonly PRODUCER_IDEMPOTENCE_ENABLED!: boolean;
+
+    @IsBoolean()
     public readonly SSL_ENABLED!: SslEnabled;
 
     @ValidateIf((o: KafkaConfig) => o.SSL_ENABLED)
