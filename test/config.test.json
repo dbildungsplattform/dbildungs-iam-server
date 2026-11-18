@@ -120,7 +120,9 @@
         "ENABLED": false
     },
     "PORTAL": {
-        "LIMITED_ROLLENART_ALLOWLIST": ["LERN"]
+        "ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN": [
+            "LERN"
+        ]
     },
     "CRON": {
         "PERSON_WITHOUT_ORG_LIMIT": 30
