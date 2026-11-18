@@ -1,10 +1,6 @@
 import { type Observable, from, lastValueFrom } from 'rxjs';
 import { type ArgumentsHost, type CallHandler, type ExecutionContext } from '@nestjs/common';
-import {
-    DISABLE_PAGING_INTERCEPTOR,
-    DisablePagingInterceptor,
-    GlobalPagingHeadersInterceptor,
-} from './global-paging-headers.interceptor.js';
+import { GlobalPagingHeadersInterceptor } from './global-paging-headers.interceptor.js';
 import { type Response } from 'express';
 import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
@@ -16,22 +12,6 @@ describe('GlobalPagingHeadersInterceptor', () => {
     let responseMock: Partial<Response>;
     let contextMock: Partial<ExecutionContext>;
     let callHandlerMock: Partial<CallHandler>;
-
-    describe('DisablePagingInterceptor', () => {
-        it('should set metadata to disable paging transformation', () => {
-            class TestController {
-                @DisablePagingInterceptor()
-                public testHandler(): void {}
-            }
-
-            const metadata: unknown = Reflect.getMetadata(
-                DISABLE_PAGING_INTERCEPTOR,
-                TestController.prototype.testHandler,
-            );
-
-            expect(metadata).toBe(true);
-        });
-    });
 
     describe('intercept', () => {
         describe('when intercepting a paged response', () => {
@@ -146,64 +126,6 @@ describe('GlobalPagingHeadersInterceptor', () => {
                 );
 
                 await expect(lastValueFrom(observable)).resolves.toBeNull();
-            });
-        });
-
-        describe('when endpoint should be ignored', () => {
-            beforeEach(() => {
-                responseMock = {
-                    setHeader: vi.fn().mockReturnThis(),
-                };
-                const httpArgumentsHostMock: Partial<HttpArgumentsHost> = {
-                    getResponse: vi.fn().mockImplementation(() => responseMock),
-                };
-                const handlerMock = (): void => {};
-                Reflect.defineMetadata(DISABLE_PAGING_INTERCEPTOR, true, handlerMock);
-
-                contextMock = {
-                    getHandler: (): (() => void) => handlerMock,
-                    switchToHttp: (): HttpArgumentsHost => httpArgumentsHostMock as HttpArgumentsHost,
-                };
-                callHandlerMock = {
-                    handle: vi.fn(() =>
-                        from([
-                            new SchulconnexPagedResponse({
-                                offset: 0,
-                                limit: 0,
-                                total: 0,
-                                items: [],
-                            }),
-                        ]),
-                    ),
-                } as CallHandler;
-            });
-
-            it('should not set any headers', async () => {
-                const observable: Observable<unknown> = sut.intercept(
-                    contextMock as ExecutionContext,
-                    callHandlerMock as CallHandler,
-                );
-
-                // is needed to execute the observable pipeline
-                await lastValueFrom(observable);
-
-                expect(responseMock.setHeader).not.toHaveBeenCalled();
-            });
-
-            it('should not change response type', async () => {
-                const observable: Observable<unknown> = sut.intercept(
-                    contextMock as ExecutionContext,
-                    callHandlerMock as CallHandler,
-                );
-
-                await expect(lastValueFrom(observable)).resolves.toStrictEqual(
-                    new SchulconnexPagedResponse({
-                        offset: 0,
-                        limit: 0,
-                        total: 0,
-                        items: [],
-                    }),
-                );
             });
         });
     });

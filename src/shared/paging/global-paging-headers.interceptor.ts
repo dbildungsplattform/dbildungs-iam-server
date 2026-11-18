@@ -1,20 +1,10 @@
 import { type Response } from 'express';
 import { type Observable, map } from 'rxjs';
-import {
-    type CallHandler,
-    type ExecutionContext,
-    type NestInterceptor,
-    SetMetadata,
-    applyDecorators,
-} from '@nestjs/common';
+import { type CallHandler, type ExecutionContext, type NestInterceptor } from '@nestjs/common';
 import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
 
 export const DISABLE_PAGING_INTERCEPTOR: symbol = Symbol('dont-transform-paging-response');
-
-// Applying this decorator to an endpoint will disable the transformation of SchulconnexPagedResponse.
-export const DisablePagingInterceptor = (): MethodDecorator =>
-    applyDecorators(SetMetadata(DISABLE_PAGING_INTERCEPTOR, true));
 
 export class GlobalPagingHeadersInterceptor implements NestInterceptor {
     public intercept(context: ExecutionContext, next: CallHandler<unknown>): Observable<unknown> {
