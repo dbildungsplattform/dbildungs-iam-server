@@ -10,6 +10,21 @@ type SentinelSessionStoreClient = Pick<RedisSentinelType, 'get' | 'set' | 'expir
     scanIterator(options?: Parameters<RedisSentinelType['scan']>[1]): AsyncGenerator<string[]>;
 };
 
+export function describeRedisConnection(config: RedisConfig): string {
+    if (config.SENTINEL_ENABLED) {
+        return (
+            `mode=sentinel, master=${config.SENTINEL_MASTER_NAME}, ` +
+            `sentinels=${JSON.stringify(config.SENTINEL_NODES?.map(({ HOST, PORT }: RedisSentinelNodeConfig) => ({ HOST, PORT })))}, ` +
+            `redisTls=${config.USE_TLS}, sentinelTls=${config.SENTINEL_USE_TLS === true}`
+        );
+    }
+
+    return (
+        `mode=${config.CLUSTERED ? 'cluster' : 'standalone'}, ` +
+        `host=${config.HOST}, port=${config.PORT}, redisTls=${config.USE_TLS}`
+    );
+}
+
 export function createRedisSentinelOptions(
     config: RedisConfig,
     socketOptions: Pick<NonNullable<RedisClientOptions['socket']>, 'connectTimeout' | 'reconnectStrategy'> = {},

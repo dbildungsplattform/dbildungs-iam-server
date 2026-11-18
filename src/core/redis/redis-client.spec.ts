@@ -4,6 +4,7 @@ import { RedisConfig } from '../../shared/config/redis.config.js';
 import {
     createRedisSentinelOptions,
     createSentinelSessionStoreClient,
+    describeRedisConnection,
     type SentinelConnectionOptions,
 } from './redis-client.js';
 
@@ -27,6 +28,61 @@ function config(overrides: Partial<RedisConfig> = {}): RedisConfig {
 describe('Redis Sentinel', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    describe('describeRedisConnection', () => {
+        it('should describe Sentinel discovery without the static host or credentials', () => {
+            const redisConfig: RedisConfig = config({
+                CLUSTERED: true,
+                SENTINEL_USE_TLS: true,
+                SENTINEL_NODES: [
+                    Object.assign({ HOST: 'sentinel.example', PORT: 26379 }, { PASSWORD: 'not-for-logging' }),
+                    { HOST: 'sentinel-backup.example', PORT: 26380 },
+                ],
+            });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toBe(
+                'mode=sentinel, master=test-master, ' +
+                    'sentinels=[{"HOST":"sentinel.example","PORT":26379},{"HOST":"sentinel-backup.example","PORT":26380}], ' +
+                    'redisTls=false, sentinelTls=true',
+            );
+        });
+
+        it('should describe missing optional Sentinel TLS as disabled', () => {
+            const redisConfig: RedisConfig = config({ SENTINEL_USE_TLS: undefined });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toContain('sentinelTls=false');
+        });
+
+        it('should describe missing Sentinel endpoints without throwing', () => {
+            const redisConfig: RedisConfig = config({ SENTINEL_NODES: undefined });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toContain('sentinels=undefined');
+        });
+
+        it.each([
+            { clustered: false, mode: 'standalone' },
+            { clustered: true, mode: 'cluster' },
+        ])(
+            'should describe $mode connections without credentials',
+            ({ clustered, mode }: { clustered: boolean; mode: string }) => {
+                const redisConfig: RedisConfig = config({
+                    SENTINEL_ENABLED: false,
+                    CLUSTERED: clustered,
+                    USE_TLS: true,
+                });
+
+                const description: string = describeRedisConnection(redisConfig);
+
+                expect(description).toBe(`mode=${mode}, host=static-master.example, port=6379, redisTls=true`);
+            },
+        );
     });
 
     describe('createRedisSentinelOptions', () => {

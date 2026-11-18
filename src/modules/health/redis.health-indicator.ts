@@ -5,6 +5,7 @@ import { createClient, RedisClientType } from 'redis';
 import { createSentinel, type RedisSentinelType } from '@keyv/redis';
 import { ConfigService } from '@nestjs/config';
 import { createRedisSentinelOptions } from '../../core/redis/redis-client.js';
+import { ClassLogger } from '../../core/logging/class-logger.js';
 
 @Injectable()
 export class RedisHealthIndicator {
@@ -13,6 +14,7 @@ export class RedisHealthIndicator {
     public constructor(
         configService: ConfigService<ServerConfig>,
         private readonly healthIndicatorService: HealthIndicatorService,
+        private readonly logger: ClassLogger,
     ) {
         this.redisConfig = configService.getOrThrow<RedisConfig>('REDIS');
     }
@@ -44,6 +46,8 @@ export class RedisHealthIndicator {
                       reconnectStrategy: false,
                   },
               });
+        const mode: string = this.redisConfig.SENTINEL_ENABLED ? 'sentinel' : 'standalone';
+        this.logger.debug(`Redis health check connecting: mode=${mode}`);
         try {
             try {
                 await redisClient
@@ -72,6 +76,7 @@ export class RedisHealthIndicator {
             };
         }
 
+        this.logger.debug(`Redis health check completed: mode=${mode}, available=${currentState.available}`);
         return currentState.available
             ? this.healthIndicatorService.check(HealthCheckKey).up({
                   message: currentState.message,

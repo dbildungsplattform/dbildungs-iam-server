@@ -60,6 +60,7 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
 import {
     createRedisSentinelOptions,
     createSentinelSessionStoreClient,
+    describeRedisConnection,
     type SentinelConnectionOptions,
 } from '../core/redis/redis-client.js';
 
@@ -99,8 +100,9 @@ import {
         }),
         CacheModule.registerAsync({
             isGlobal: true,
-            inject: [JsonConfig],
-            useFactory: (config: JsonConfig) => {
+            imports: [LoggerModule.register(ServerModule.name)],
+            inject: [JsonConfig, ClassLogger],
+            useFactory: (config: JsonConfig, logger: ClassLogger) => {
                 const redisConfig: RedisConfig = config.REDIS;
                 const defaultTtlMs: number = 10_000;
 
@@ -148,6 +150,7 @@ import {
                 }
 
                 const store: KeyvRedis<unknown> = new KeyvRedis(clientOptions);
+                logger.debug(`Redis application cache configured: ${describeRedisConnection(redisConfig)}`);
 
                 return {
                     stores: [store],
@@ -247,11 +250,14 @@ export class ServerModule implements NestModule {
             Also the documentation expressly requires listening to on('error')
              */
 
+        const connectionDescription: string = describeRedisConnection(redisConfig);
+        this.logger.info(`Redis session store connecting: ${connectionDescription}`);
+
         /* istanbul ignore next */
         await redisClient
             .on('error', (error: Error) => this.logger.error(`Redis connection failed: ${error.message}`))
             .connect();
-        this.logger.info('Redis-connection made');
+        this.logger.info(`Redis session store connected: ${connectionDescription}`);
 
         const redisStore: RedisStore = new RedisStore({
             client: 'getSentinelNode' in redisClient ? createSentinelSessionStoreClient(redisClient) : redisClient,

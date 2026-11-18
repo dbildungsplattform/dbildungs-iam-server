@@ -6,6 +6,8 @@ import { type Mock } from 'vitest';
 import { RedisConfig, type ServerConfig } from '../../shared/config/index.js';
 import { createRedisSentinelOptions, type SentinelConnectionOptions } from '../../core/redis/redis-client.js';
 import { RedisHealthIndicator } from './redis.health-indicator.js';
+import { ClassLogger } from '../../core/logging/class-logger.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 
 const createClientMock: Mock<(options?: redis.RedisClientOptions) => redis.RedisClientType> = vi.hoisted(() => vi.fn());
 const createSentinelMock: Mock<(options: SentinelConnectionOptions) => keyvRedis.RedisSentinelType> = vi.hoisted(() =>
@@ -28,6 +30,7 @@ describe('RedisHealthIndicator', () => {
     let config: RedisConfig;
     let client: redis.RedisClientType;
     let indicator: RedisHealthIndicator;
+    let logger: DeepMocked<ClassLogger>;
 
     beforeAll(async () => {
         actualRedis = await vi.importActual<typeof redis>('redis');
@@ -49,9 +52,11 @@ describe('RedisHealthIndicator', () => {
         });
         vi.spyOn(client, 'disconnect').mockResolvedValue(undefined);
         createClientMock.mockReturnValue(client);
+        logger = createMock(ClassLogger);
         indicator = new RedisHealthIndicator(
             new ConfigService<ServerConfig>({ REDIS: config }),
             new HealthIndicatorService(),
+            logger,
         );
     });
 
@@ -98,6 +103,8 @@ describe('RedisHealthIndicator', () => {
             });
             expect(client.disconnect).toHaveBeenCalledOnce();
             expect(keyvRedis.createSentinel).not.toHaveBeenCalled();
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check connecting: mode=standalone');
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check completed: mode=standalone, available=true');
         });
 
         it('should report connection error events as down', async () => {
@@ -111,6 +118,7 @@ describe('RedisHealthIndicator', () => {
             expect(result).toEqual({
                 Redis: { status: 'down', message: 'Redis does not seem to be up: Connection failed' },
             });
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check completed: mode=standalone, available=false');
         });
 
         it('should report connection exceptions as down', async () => {
@@ -131,6 +139,8 @@ describe('RedisHealthIndicator', () => {
             expect(result).toEqual({ Redis: { status: 'up', message: '' } });
             expect(sentinel.close).toHaveBeenCalledOnce();
             expect(redis.createClient).not.toHaveBeenCalled();
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check connecting: mode=sentinel');
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check completed: mode=sentinel, available=true');
             expect(createSentinelMock.mock.calls[0]?.[0]).toMatchObject({
                 maxCommandRediscovers: 0,
                 nodeClientOptions: {
@@ -152,6 +162,7 @@ describe('RedisHealthIndicator', () => {
                 Redis: { status: 'down', message: 'Exception while making connection: Error: Sentinel unavailable' },
             });
             expect(sentinel.close).toHaveBeenCalledOnce();
+            expect(logger.debug).toHaveBeenCalledWith('Redis health check completed: mode=sentinel, available=false');
         });
 
         it('should report Sentinel cleanup failures as down', async () => {
