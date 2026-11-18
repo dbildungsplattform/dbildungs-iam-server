@@ -3418,7 +3418,9 @@ describe('OrganisationRepository', () => {
                     relationToA.id, // other typ (SCHULTRAEGER)
                 ];
 
-                await expect(findIds(SortFieldOrganisationsbeziehung.TYP, ScopeOrder.ASC)).resolves.toEqual(expectedAsc);
+                await expect(findIds(SortFieldOrganisationsbeziehung.TYP, ScopeOrder.ASC)).resolves.toEqual(
+                    expectedAsc,
+                );
                 await expect(findIds(SortFieldOrganisationsbeziehung.TYP, ScopeOrder.DESC)).resolves.toEqual(
                     [...expectedAsc].reverse(),
                 );
