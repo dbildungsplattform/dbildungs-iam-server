@@ -155,22 +155,25 @@ type OrderDirection = 'asc' | 'desc';
 
 const ORGANISATIONSBEZIEHUNG_ORDER_BY: Record<
     SortFieldOrganisationsbeziehung,
-    (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>
+    (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>[]
 > = {
-    [SortFieldOrganisationsbeziehung.TYP]: (direction: OrderDirection) => ({
-        [raw('cast(b.typ as text)')]: direction,
-    }),
-    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME]: (direction: OrderDirection) => ({
-        [raw('coalesce(q.name, z.name)')]: direction,
-    }),
-    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => ({
-        [raw('coalesce(q.kennung, z.kennung)')]: direction,
-    }),
+    // typ -> Dienststellennummer of the other organisation -> name of the other organisation
+    [SortFieldOrganisationsbeziehung.TYP]: (direction: OrderDirection) => [
+        { [raw('cast(b.typ as text)')]: direction },
+        { [raw('coalesce(q.kennung, z.kennung)')]: direction },
+        { [raw('coalesce(q.name, z.name)')]: direction },
+    ],
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_NAME]: (direction: OrderDirection) => [
+        { [raw('coalesce(q.name, z.name)')]: direction },
+    ],
+    [SortFieldOrganisationsbeziehung.ANDERE_ORGANISATION_DIENSTSTELLENNUMMER]: (direction: OrderDirection) => [
+        { [raw('coalesce(q.kennung, z.kennung)')]: direction },
+    ],
 };
 
 function getOrganisationsbeziehungOrderByFactory(
     sortField: SortFieldOrganisationsbeziehung,
-): (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity> {
+): (direction: OrderDirection) => QueryOrderMap<OrganisationsbeziehungEntity>[] {
     switch (sortField) {
         case SortFieldOrganisationsbeziehung.TYP:
             return ORGANISATIONSBEZIEHUNG_ORDER_BY[SortFieldOrganisationsbeziehung.TYP];
@@ -920,7 +923,7 @@ export class OrganisationRepository {
     ): Promise<Counted<OrganisationsbeziehungWithOrganisationen>> {
         const direction: OrderDirection = options.sortOrder === ScopeOrder.DESC ? 'desc' : 'asc';
         const sortField: SortFieldOrganisationsbeziehung = options.sortField ?? SortFieldOrganisationsbeziehung.TYP;
-        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity> =
+        const orderBy: QueryOrderMap<OrganisationsbeziehungEntity>[] =
             getOrganisationsbeziehungOrderByFactory(sortField)(direction);
 
         const pattern: string = `%${options.searchString ?? ''}%`;
@@ -943,7 +946,7 @@ export class OrganisationRepository {
                       }
                     : {},
             )
-            .orderBy([orderBy, { 'b.id': 'asc' }])
+            .orderBy([...orderBy, { 'b.id': 'asc' }])
             .limit(options.limit)
             .offset(options.offset)
             .getResultAndCount();

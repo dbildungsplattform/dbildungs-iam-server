@@ -3385,6 +3385,45 @@ describe('OrganisationRepository', () => {
                 ).resolves.toEqual([relationToB.id, relationToA.id, relationFromAA.id]);
             });
 
+            it('should sort by typ, then Dienststellennummer, then name of the other organisation', async () => {
+                const createRelation: (name: string, kennung: string) => Promise<Organisationsbeziehung<true>> = async (
+                    name: string,
+                    kennung: string,
+                ) => {
+                    const ziel: Organisation<true, false> = await sut.save(
+                        DoFactory.createOrganisationAggregate(false, {
+                            name,
+                            kennung,
+                            typ: OrganisationsTyp.SONSTIGE,
+                        }),
+                    );
+                    return sut.createOrganisationsbeziehung(
+                        DoFactory.createOrganisationsbeziehung(false, {
+                            quellOrganisationId: organisation.id,
+                            zielOrganisationId: ziel.id,
+                            typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                        }),
+                    );
+                };
+                // same typ as relationToB (SCHULAUFSICHT, kennung 1111111)
+                const sameKennungNameB: Organisationsbeziehung<true> = await createRelation('B-Zweite', '1111111');
+                const sameKennungNameA: Organisationsbeziehung<true> = await createRelation('A-Zweite', '1111111');
+                const higherKennung: Organisationsbeziehung<true> = await createRelation('AAA', '1999999');
+
+                const expectedAsc: string[] = [
+                    sameKennungNameA.id, // 1111111, A-Zweite
+                    relationToB.id, // 1111111, B-Ziel
+                    sameKennungNameB.id, // 1111111, B-Zweite
+                    higherKennung.id, // 1999999
+                    relationToA.id, // other typ (SCHULTRAEGER)
+                ];
+
+                await expect(findIds(SortFieldOrganisationsbeziehung.TYP, ScopeOrder.ASC)).resolves.toEqual(expectedAsc);
+                await expect(findIds(SortFieldOrganisationsbeziehung.TYP, ScopeOrder.DESC)).resolves.toEqual(
+                    [...expectedAsc].reverse(),
+                );
+            });
+
             it('should default to sorting by typ ascending', async () => {
                 await expect(findIds()).resolves.toEqual(await findIds(SortFieldOrganisationsbeziehung.TYP));
             });
