@@ -47,7 +47,6 @@ export class DBiamPersonenuebersichtController {
     }
 
     @Post('')
-    @Post('')
     @ApiOkResponse({
         description: 'The personenuebersichten were successfully returned.',
         schema: {
