@@ -1,4 +1,5 @@
 export enum ErrorIdType {
     ROLLE = 'ROLLE',
     ANGEBOT = 'ANGEBOT',
+    ROLLENART_BESCHRAENKUNG = 'ROLLENART_BESCHRAENKUNG',
 }
