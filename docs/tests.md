@@ -284,6 +284,14 @@ During the API test, all components that are part of the server, or controlled b
 
 Any external services or servers that are outside our control should be mocked away via their respective adapters.
 
+### Redis Sentinel Failover
+
+The failover integration test starts its own Redis primary, replica, and Sentinel with Testcontainers. It requires Docker, but does not use a running Compose stack or local Redis configuration.
+
+```shell
+npm run test:integration -- --run src/core/redis/redis-sentinel-failover.integration-spec.ts
+```
+
 ## References
 
 This guide is inspired by <https://github.com/goldbergyoni/javascript-testing-best-practices/>

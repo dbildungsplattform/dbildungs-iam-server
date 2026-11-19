@@ -87,6 +87,46 @@ Authentication and other Keycloak operations still require a reachable Keycloak 
 For new local Keycloak instances, the `SPSH` realm and its clients are provided by
 the import from `config/local-spsh.json`.
 
+### Redis Sentinel
+
+Sentinel is opt-in. It monitors the existing local Redis and lets you test the same primary discovery
+and shared authentication used in stage and production. This setup has no replicas, failover, or TLS.
+
+Start Sentinel and Redis alongside your usual local services:
+
+```sh
+docker compose up -d --wait redis-sentinel
+```
+
+In the terminal you use to start the backend, set:
+
+```sh
+export REDIS_SENTINEL_ENABLED=true
+export REDIS_SENTINEL_MASTER_NAME=valkeyha
+export REDIS_SENTINEL_USE_TLS=false
+export REDIS_PASSWORD=password
+```
+
+**Backend on your machine (`npm run start`):** Add `127.0.0.1 redis-sentinel-primary` to your
+machine's hosts file (`/etc/hosts` on Linux/macOS). Sentinel returns this hostname for the Redis primary,
+and the backend must be able to resolve it to the published Redis port. Then run:
+
+```sh
+REDIS_SENTINEL_NODES='[{"HOST":"127.0.0.1","PORT":26379}]' npm run start
+```
+
+**Backend in Docker Compose:** No hosts file change is needed; Docker resolves the primary hostname
+on the Compose network. Start the backend with the Sentinel service name:
+
+```sh
+REDIS_SENTINEL_NODES='[{"HOST":"redis-sentinel","PORT":26379}]' \
+  docker compose --profile sentinel --profile backend up -d backend
+```
+
+Check `http://localhost:9090/health` after the backend starts. To return to standalone Redis, unset
+the variables above (or use a fresh terminal) and restart the backend. Stop just Sentinel with
+`docker compose --profile sentinel stop redis-sentinel`.
+
 ### Available profiles
 
 | Name        | Description                                                         |
@@ -98,6 +138,7 @@ the import from `config/local-spsh.json`.
 | db-migrate  | run necessary schema migrations against the database                |
 | db-seed     | seed the database                                                   |
 | kc-service  | start the internal micro-service to access keycloaks database       |
+| sentinel    | run local Redis Sentinel for primary discovery                      |
 
 ## Developer Guides
 
