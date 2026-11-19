@@ -35,7 +35,6 @@ import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { PersonPermissionsRepo } from '../domain/person-permission.repo.js';
 import { type PersonenkontextRolleWithOrganisation, type PersonPermissions } from '../domain/person-permissions.js';
-import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
 import { CsrfTokenService } from '../services/csrf-token.service.js';
 import { OIDC_CLIENT } from '../services/oidc-client.service.js';
 import { type PassportUser } from '../types/user.js';
@@ -65,7 +64,6 @@ describe('AuthenticationController', () => {
             ],
             providers: [
                 AuthenticationController,
-                UserExternaldataWorkflowFactory,
                 {
                     provide: PersonPermissionsRepo,
                     useValue: createMock(PersonPermissionsRepo),
