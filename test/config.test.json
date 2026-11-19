@@ -117,7 +117,8 @@
         "GROUP_ID": "nestjs-kafka",
         "SESSION_TIMEOUT": 300000,
         "HEARTBEAT_INTERVAL": 10000,
-        "ENABLED": false
+        "ENABLED": false,
+        "PRODUCER_IDEMPOTENCE_ENABLED": true
     },
     "PORTAL": {
         "ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN": [
