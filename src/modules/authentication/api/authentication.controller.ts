@@ -5,7 +5,6 @@ import {
     Header,
     HttpCode,
     Inject,
-    NotFoundException,
     Post,
     Req,
     Res,
