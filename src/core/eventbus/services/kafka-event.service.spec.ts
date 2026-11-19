@@ -49,6 +49,7 @@ describe('KafkaEventService', () => {
         USER_TOPIC: 'user-topic',
         USER_DLQ_TOPIC: 'dlq-topic',
         ENABLED: true,
+        PRODUCER_IDEMPOTENCE_ENABLED: true,
         SSL_ENABLED: false,
         SSL_CA_PATH: undefined,
         SSL_CERT_PATH: undefined,
