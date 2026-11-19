@@ -28,7 +28,6 @@ import { RollenArt } from '../../rolle/domain/rolle.enums.js';
 import { RolleModule } from '../../rolle/rolle.module.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
-import { UserExternaldataWorkflowFactory } from '../domain/user-extenaldata.factory.js';
 import { UserExternaldataService } from '../domain/user-externaldata.service.js';
 import { AuthenticationExceptionFilter } from './authentication-exception-filter.js';
 import { UserExternalDataV2Response } from './externaldata/user-externaldata-v2.response.js';
@@ -54,7 +53,6 @@ describe('KeycloakInternalController', () => {
             ],
             providers: [
                 KeycloakInternalController,
-                UserExternaldataWorkflowFactory,
                 UserExternaldataService,
                 ExternalDataCacheInterceptor,
                 { provide: CACHE_MANAGER, useValue: { get: vi.fn(), set: vi.fn() } },
