@@ -33,8 +33,8 @@ import {
 import { DataConfig } from '../../../shared/config/data.config.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged, PagingHeadersObject } from '../../../shared/paging/index.js';
-import { PagedResponse } from '../../../shared/paging/paged.response.js';
+import { Paged } from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/paged.response.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
@@ -233,10 +233,8 @@ export class OrganisationController {
     }
 
     @Get()
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(OrganisationResponse, {
         description: 'The organizations were successfully returned.',
-        type: [OrganisationResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
@@ -268,10 +266,8 @@ export class OrganisationController {
     }
 
     @Get(':organisationId/administriert')
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(OrganisationResponse, {
         description: 'The organizations were successfully returned.',
-        type: [OrganisationResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
@@ -308,10 +304,8 @@ export class OrganisationController {
     // public addAdministrierteOrganisation(): void
 
     @Get(':organisationId/zugehoerig')
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(OrganisationResponse, {
         description: 'The organizations were successfully returned.',
-        type: [OrganisationResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
@@ -382,7 +376,6 @@ export class OrganisationController {
     @ApiOkResponse({
         description: 'The organizations were successfully updated.',
         type: OrganisationResponseLegacy,
-        headers: PagingHeadersObject,
     })
     @ApiBadRequestResponse({ description: 'The organisation could not be modified.', type: DbiamOrganisationError })
     @ApiUnauthorizedResponse({ description: 'Not authorized to modify the organisation.' })
@@ -421,7 +414,6 @@ export class OrganisationController {
     @ApiOkResponse({
         description: 'The organization was successfully enabled for itslearning.',
         type: OrganisationResponseLegacy,
-        headers: PagingHeadersObject,
     })
     @ApiBadRequestResponse({ description: 'The organisation could not be modified.', type: DbiamOrganisationError })
     @ApiUnauthorizedResponse({ description: 'Not authorized to modify the organisation.' })
