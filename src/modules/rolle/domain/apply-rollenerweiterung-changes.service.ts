@@ -360,7 +360,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -415,7 +415,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 
@@ -431,6 +431,9 @@ export class ApplyRollenerweiterungService {
 
                 continue;
             }
+
+            /* no validation of serviceProvider.rollenartenWhitelist here,
+            because changes of rollenartenWhitelist should repair/clean up data inconsistencies */
 
             this.logger.info(
                 `Adding Erweiterung for rolleId: ${rolleId}, ` +
@@ -484,7 +487,7 @@ export class ApplyRollenerweiterungService {
             if (!serviceProvider) {
                 results.push({
                     id: serviceProviderId,
-                    errorIdType: ErrorIdType.ROLLE,
+                    errorIdType: ErrorIdType.ANGEBOT,
                     result: Err(new EntityNotFoundError('ServiceProvider', serviceProviderId)),
                 });
 
@@ -525,7 +528,7 @@ export class ApplyRollenerweiterungService {
             if (!rolle) {
                 results.push({
                     id: rolleId,
-                    errorIdType: ErrorIdType.ANGEBOT,
+                    errorIdType: ErrorIdType.ROLLE,
                     result: Err(new EntityNotFoundError('Rolle', rolleId)),
                 });
 

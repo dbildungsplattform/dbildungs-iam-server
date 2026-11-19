@@ -13,6 +13,7 @@ import { ServiceProviderProvidedOutOfTreeError } from './service-provider-provid
 import { OrganisationMatchesRollenartError } from './specification/error/organisation-matches-rollenart.error.js';
 import { OrganisationMatchesRollenart } from './specification/organisation-matches-rollenart.js';
 import { type RollenSystemRecht } from './systemrecht.js';
+import { RollenartNotAllowedForSPError } from './rollenart-not-allowed-for-sp.error.js';
 
 export class Rolle<WasPersisted extends boolean> {
     private constructor(
@@ -163,14 +164,16 @@ export class Rolle<WasPersisted extends boolean> {
      * - No duplicate serviceproviders
      * - All serviceproviders exist
      * - All serviceproviders are defined at the Rolle's organisation or above
+     * - The rollenart is allowed by the whitelist of every newly added serviceprovider
+     *   (those in alreadyAssignedServiceProviderIds are exempt from the whitelist check)
      */
-    public async validate(): Promise<Result<void, DomainError>> {
+    public async validate(alreadyAssignedServiceProviderIds: string[] = []): Promise<Result<void, DomainError>> {
         // Check Name
         if (!NameValidator.isNameValid(this.name)) {
             return Err(new NameForRolleWithTrailingSpaceError());
         }
 
-        // Check ServiceProviders existance
+        // Check ServiceProviders existence
         const serviceProviderMap: Map<string, ServiceProvider<true>> = await this.serviceProviderRepo.findByIds(
             this.serviceProviderIds,
         );
@@ -197,6 +200,16 @@ export class Rolle<WasPersisted extends boolean> {
                 )
             ) {
                 return Err(new ServiceProviderProvidedOutOfTreeError(serviceProviderId));
+            }
+
+            // TODO: Remove this check once the whole Service-Provider-Rollenarten-Whitelist checks and cleanup are implemented in dedicated place.
+            const isNewServiceProvider: boolean = !alreadyAssignedServiceProviderIds.includes(serviceProviderId);
+            if (
+                isNewServiceProvider &&
+                serviceProvider.rollenartenWhitelist.length > 0 &&
+                !serviceProvider.rollenartenWhitelist.includes(this.rollenart)
+            ) {
+                return Err(new RollenartNotAllowedForSPError(this.rollenart, serviceProvider.id));
             }
         }
 
