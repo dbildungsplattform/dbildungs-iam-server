@@ -31,7 +31,7 @@ node scripts/eflk/export-eflk-ldif.mjs \
   weil das Skript nicht selbst danach sucht.
 * `--exclude-schools` unterdrückt alle Schul-/Gruppen-Einträge. Ohne diesen
   Schalter bleiben sie im Export enthalten.
-* Exporter und Validator ordnen die Domain der gelesenen E-Mail-Adresse
+* Der Exporter ordnet die Domain der gelesenen E-Mail-Adresse
   unabhängig vom Kubernetes-Cluster zu:
 
   | Umgebung | Öffentlich | Ersatzschulen |
@@ -54,10 +54,25 @@ Es schreibt einen Report in eine weitere Datei.
 Läuft rein auf der LDIF-Datei, ohne DB-/SSH-Zugriff:
 
 ```bash
-node scripts/eflk/validate-eflk-ldif.mjs --file ../export.ldif
+node scripts/eflk/validate-eflk-ldif.mjs --file ../export.ldif --environment stage
 # schreibt den Report nach export-report.txt (neben export.ldif)
 ```
 
 ```bash
-node scripts/eflk/validate-eflk-ldif.mjs --file export.ldif --include-containers
+node scripts/eflk/validate-eflk-ldif.mjs --file export.ldif --environment stage --include-containers
 ```
+
+`--environment` ist verpflichtend und akzeptiert `dev`, `stage`, `test` oder
+`prod`. Bestehende Validator-Aufrufe ohne diese Option muessen angepasst werden.
+Die Umgebung wird nicht aus dem Dateinamen oder dem DN abgeleitet.
+
+Der Validator prueft primaere und alternative E-Mail-Adressen gegen die Domains
+der oben stehenden Tabelle: `dev` und `stage` erlauben ausschliesslich die
+`qs.*`-Domains, `test` die `test.*`-Domains und `prod` die Produktionsdomains.
+Die Domain muss ausserdem zur OU (`oeffentlich` oder `ersatz`) passen.
+Falsche, unbekannte oder ungueltige Domains erzeugen einen `ERROR` mit erwarteter
+Domain und Exit-Code `1`. Die gewaehlte Umgebung steht im Report.
+
+Beispiel: `neuer.nutzer@schule-sh.de` ist mit `--environment stage` unzulaessig;
+fuer `ou=oeffentlich` wird `qs.schule-sh.de` erwartet. Der Exporter und die
+LDIF-Nutzerdaten werden durch die Validierung nicht veraendert.

@@ -8,10 +8,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, basename, extname, join } from 'node:path';
 import { needsBase64 } from './ldif-format.mjs';
-import { resolveOuFromEmailAddress } from './email-domains.mjs';
+import { getDomainsForEnvironment, resolveOuFromEmailAddress } from './email-domains.mjs';
 
 function parseArgs(argv) {
-    const args = { file: undefined, includeContainers: false };
+    const args = { file: undefined, environment: undefined, includeContainers: false };
 
     for (let i = 0; i < argv.length; i += 1) {
         const arg = argv[i];
@@ -19,6 +19,9 @@ function parseArgs(argv) {
         switch (arg) {
             case '--file':
                 args.file = next();
+                break;
+            case '--environment':
+                args.environment = next();
                 break;
             case '--include-containers':
                 args.includeContainers = true;
@@ -35,6 +38,10 @@ function parseArgs(argv) {
     if (!args.file) {
         throw new Error('Fehlende Pflicht-Option: --file (siehe --help)');
     }
+    if (!args.environment) {
+        throw new Error('Fehlende Pflicht-Option: --environment (siehe --help)');
+    }
+    getDomainsForEnvironment(args.environment);
 
     return args;
 }
@@ -52,6 +59,7 @@ function printHelp() {
 
     --file <datei>         Zu pruefende LDIF-Datei (z.B. Ausgabe von export-eflk-ldif.mjs)
                                                  Report wird automatisch nach '<datei ohne Endung>-report.txt' geschrieben
+    --environment <name>   Pflicht: dev, stage, test oder prod; legt die erlaubten E-Mail-Domains fest
     --include-containers  OU-/users-/groups-/lists-Container erlauben (Default: ERROR bei Containern)
     --help                 Diese Hilfe anzeigen
 
@@ -281,23 +289,25 @@ function collectMailAddresses(record) {
     return allMails;
 }
 
-function validateMailDomain(record, ou, allMails, addIssue) {
+function validateMailDomain(record, ou, allMails, environment, addIssue) {
     if (!ou) return;
 
+    const expectedDomain = getDomainsForEnvironment(environment)[ou];
     for (const { value, attr } of allMails) {
         const mailOu = resolveOuFromEmailAddress(value);
-        if (mailOu && mailOu !== ou) {
+        const domain = value?.split('@')[1]?.toLowerCase();
+        if (mailOu !== ou || domain !== expectedDomain) {
             addIssue(
                 'ERROR',
                 record.dn,
                 record.startLine,
-                `Attribut '${attr}' ('${value}') passt nicht zu ou=${ou} (Domain gehoert zu ou=${mailOu})`,
+                `Attribut '${attr}' ('${value}'): Domain '${domain ?? '(ungueltig)'}' ist fuer Umgebung '${environment}' und ou=${ou} unzulaessig; erwartet: '${expectedDomain}'`,
             );
         }
     }
 }
 
-function validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries }, addIssue) {
+function validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries, environment }, addIssue) {
     personDnSet.add(record.dn);
     personEntries.push(record);
 
@@ -340,7 +350,7 @@ function validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries 
         addToMultimap(mailSeen, value.toLowerCase(), { dn: record.dn, attr });
     }
 
-    validateMailDomain(record, ou, allMails, addIssue);
+    validateMailDomain(record, ou, allMails, environment, addIssue);
 }
 
 function validateGroup(record, { groupCnSeen, groupEntries }, addIssue) {
@@ -445,7 +455,7 @@ function reportPersonsWithoutGroup(personEntries, groupEntries, addIssue) {
     }
 }
 
-function validate(records, { includeContainers = false } = {}) {
+function validate(records, { includeContainers = false, environment } = {}) {
     const stats = { total: records.length, person: 0, group: 0, container: 0, unknown: 0 };
     const { issues, add: addIssue } = createIssueCollector();
 
@@ -472,7 +482,7 @@ function validate(records, { includeContainers = false } = {}) {
         validateEncoding(record, addIssue);
 
         if (kind === 'person') {
-            validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries }, addIssue);
+            validatePerson(record, { uidSeen, mailSeen, personDnSet, personEntries, environment }, addIssue);
         } else if (kind === 'group') {
             validateGroup(record, { groupCnSeen, groupEntries }, addIssue);
         } else if (kind === 'container' && !includeContainers) {
@@ -526,12 +536,13 @@ function formatIssueGroups(issues) {
     return lines;
 }
 
-function formatReport({ issues, stats }, inFile) {
+function formatReport({ issues, stats }, inFile, environment) {
     const { errors, warnings, infos } = partitionBySeverity(issues);
 
     const lines = [
         'EFLK LDIF Validation Report',
         `Eingabedatei: ${inFile}`,
+        `Umgebung: ${environment}`,
         `Erzeugt am: ${new Date().toISOString()}`,
         '',
         'Zusammenfassung:',
@@ -569,9 +580,10 @@ async function main() {
     const records = buildRecords(logicalLines);
     const result = validate(records, {
         includeContainers: args.includeContainers,
+        environment: args.environment,
     });
 
-    await writeFile(outPath, formatReport(result, args.file));
+    await writeFile(outPath, formatReport(result, args.file, args.environment));
 
     const { errors, warnings, infos } = partitionBySeverity(result.issues);
     console.log(
