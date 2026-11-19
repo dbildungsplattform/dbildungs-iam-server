@@ -15,6 +15,7 @@ declare module 'express-session' {
         requiredStepupLevel?: StepUpLevel;
         lastRouteChangeTime?: number;
         csrfToken?: string;
+        valkeyWriteProbeMarker?: string;
         passport?: {
             user: {
                 redirect_uri?: string;
