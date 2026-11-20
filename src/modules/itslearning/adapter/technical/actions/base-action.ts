@@ -3,7 +3,7 @@ import { type MatcherView, XMLBuilder, XMLParser } from 'fast-xml-parser';
 import { type DomainError, ItsLearningError } from '../../../../../shared/error/index.js';
 import { type ItslearningAction } from './action.types.js';
 
-export type StatusInfo =
+type StatusInfo =
     | {
           codeMajor: 'failure';
           severity: 'error';
@@ -13,7 +13,7 @@ export type StatusInfo =
           severity: 'status';
       };
 
-export type BaseResponse<BodyResponse> = {
+type BaseResponse<BodyResponse> = {
     Envelope: {
         Header: {
             syncResponseHeaderInfo: {

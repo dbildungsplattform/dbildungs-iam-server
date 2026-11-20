@@ -9,7 +9,7 @@ import { ConfigLoaderValidationError } from './errors/config-loader-validation.e
 import { JsonConfig } from './json.config.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseFileToJSON(path: string): any {
+function parseFileToJSON(path: string): any {
     const file: string = fs.readFileSync(path, { encoding: 'utf8' });
     return JSON.parse(file);
 }

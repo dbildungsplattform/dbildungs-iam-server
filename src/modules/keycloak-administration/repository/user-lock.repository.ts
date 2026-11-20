@@ -12,7 +12,7 @@ import { DomainError } from '../../../shared/error/domain.error.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { PersonLockOccasion } from '../../person/domain/person.enums.js';
 
-export function mapEntityToAggregate(entity: UserLockEntity): UserLock {
+function mapEntityToAggregate(entity: UserLockEntity): UserLock {
     return UserLock.construct(
         entity.person.id,
         entity.locked_by,
@@ -24,7 +24,7 @@ export function mapEntityToAggregate(entity: UserLockEntity): UserLock {
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapAggregateToData(userLock: UserLock) {
+function mapAggregateToData(userLock: UserLock) {
     return {
         person: userLock.person,
         locked_by: userLock.locked_by,
@@ -33,7 +33,7 @@ export function mapAggregateToData(userLock: UserLock) {
     };
 }
 
-export function mapEntityToAggregateInplace(entity: UserLockEntity, userLock: UserLock): UserLock {
+function mapEntityToAggregateInplace(entity: UserLockEntity, userLock: UserLock): UserLock {
     userLock.person = entity.person.id;
     userLock.locked_by = entity.locked_by;
     userLock.locked_until = entity.locked_until;

@@ -1,5 +1,3 @@
-export const VertrauensstufeTypName: string = 'Vertrauensstufe';
-export const GeschlechtTypName: string = 'Geschlecht';
 export const PersonLockOccasionTypName: string = 'PersonLockOccasion';
 export const SortFieldPersonTypName: string = 'SortFieldPerson';
 

@@ -21,7 +21,7 @@ import { decode, JwtPayload } from 'jsonwebtoken';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { PermissionsNotLoadedError } from '../domain/permissions-not-loaded.error.js';
 
-export interface CustomJwtPayload extends JwtPayload {
+interface CustomJwtPayload extends JwtPayload {
     acr: StepUpLevel;
 }
 

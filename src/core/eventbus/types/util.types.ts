@@ -12,7 +12,7 @@ export type EventHandlerType<Event extends BaseEvent, TResult = unknown> = (
 
 export type EventHandlerWithKeepAliveType<T extends BaseEvent> = (event: T, keepAlive: () => void) => void;
 
-export type TypedMethodDescriptor<T> = {
+type TypedMethodDescriptor<T> = {
     value?: T;
 };
 

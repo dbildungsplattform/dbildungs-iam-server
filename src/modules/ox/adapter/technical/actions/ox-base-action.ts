@@ -15,7 +15,7 @@ export type AuthParams = {
     password: string;
 };
 
-export type OxBaseResponse<BodyResponse> = {
+type OxBaseResponse<BodyResponse> = {
     Envelope: {
         Body: BodyResponse;
     };
