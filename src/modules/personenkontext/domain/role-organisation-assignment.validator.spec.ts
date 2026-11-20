@@ -13,131 +13,239 @@ import { RolleNurAnPassendeOrganisationError } from '../specification/error/roll
 import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 describe('RoleOrganisationAssignmentValidator', () => {
-    let rolleRepoMock: DeepMocked<RolleRepo>;
-    let organisationRepositoryMock: DeepMocked<OrganisationRepository>;
-    let organisationMock: DeepMocked<Organisation<true>>;
-    let rolleMock: DeepMocked<Rolle<true>>;
-    let sut: RoleOrganisationAssignmentValidator;
-
-    beforeEach(() => {
-        rolleRepoMock = createMock(RolleRepo);
-        organisationRepositoryMock = createMock(OrganisationRepository);
-        organisationMock = createMock(Organisation<true>) as unknown as DeepMocked<Organisation<true>>;
-        rolleMock = createMock(Rolle<true>) as unknown as DeepMocked<Rolle<true>>;
-        sut = new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock);
-    });
-
     describe('checkReferences', () => {
-        it('should return EntityNotFoundError for Organisation if organisation does not exist', async () => {
-            // Arrange
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            organisationRepositoryMock.findById.mockResolvedValueOnce(undefined);
-            rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+        describe('if organisation does not exist', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                const rolleMock: DeepMocked<Rolle<true>> = createMock<Rolle<true>>(Rolle);
+                organisationRepositoryMock.findById.mockResolvedValueOnce(undefined);
+                rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                };
+            }
 
-            // Assert
-            expectErrResult(result);
-            expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            expect(result.error).toEqual(new EntityNotFoundError('Organisation', organisationId));
+            it('should return EntityNotFoundError for Organisation', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
+
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expectErrResult(result);
+                expect(result.error).toBeInstanceOf(EntityNotFoundError);
+                expect(result.error).toEqual(new EntityNotFoundError('Organisation', organisationId));
+            });
         });
 
-        it('should return EntityNotFoundError for Rolle if rolle does not exist', async () => {
-            // Arrange
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
-            rolleRepoMock.findById.mockResolvedValueOnce(undefined);
+        describe('if rolle does not exist', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                const organisationMock: DeepMocked<Organisation<true>> = createMock<Organisation<true>>(Organisation);
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
+                rolleRepoMock.findById.mockResolvedValueOnce(undefined);
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                };
+            }
 
-            // Assert
-            expectErrResult(result);
-            expect(result.error).toBeInstanceOf(EntityNotFoundError);
-            expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolleId));
+            it('should return EntityNotFoundError for Rolle', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
+
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expectErrResult(result);
+                expect(result.error).toBeInstanceOf(EntityNotFoundError);
+                expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolleId));
+            });
         });
 
-        it('should report missing Organisation first if both organisation and rolle do not exist', async () => {
-            // Arrange
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            organisationRepositoryMock.findById.mockResolvedValueOnce(undefined);
-            rolleRepoMock.findById.mockResolvedValueOnce(undefined);
+        describe('if both organisation and rolle do not exist', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                organisationRepositoryMock.findById.mockResolvedValueOnce(undefined);
+                rolleRepoMock.findById.mockResolvedValueOnce(undefined);
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                };
+            }
 
-            // Assert
-            expectErrResult(result);
-            expect(result.error).toEqual(new EntityNotFoundError('Organisation', organisationId));
+            it('should report missing Organisation first', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
+
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expectErrResult(result);
+                expect(result.error).toEqual(new EntityNotFoundError('Organisation', organisationId));
+            });
         });
 
-        it('should look up organisation and rolle by their ids', async () => {
-            // Arrange
-            const organisationId: string = faker.string.uuid();
-            const rolleId: string = faker.string.uuid();
-            organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
-            rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
-            rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
+        describe('if rolle can be assigned to organisation', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+                rolleRepoMock: DeepMocked<RolleRepo>;
+                organisationRepositoryMock: DeepMocked<OrganisationRepository>;
+                organisationMock: DeepMocked<Organisation<true>>;
+                rolleMock: DeepMocked<Rolle<true>>;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                const organisationMock: DeepMocked<Organisation<true>> = createMock<Organisation<true>>(Organisation);
+                const rolleMock: DeepMocked<Rolle<true>> = createMock<Rolle<true>>(Rolle);
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
+                rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+                rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
 
-            // Act
-            await sut.checkReferences(organisationId, rolleId);
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                    rolleRepoMock,
+                    organisationRepositoryMock,
+                    organisationMock,
+                    rolleMock,
+                };
+            }
 
-            // Assert
-            expect(organisationRepositoryMock.findById).toHaveBeenCalledWith(organisationId);
-            expect(rolleRepoMock.findById).toHaveBeenCalledWith(rolleId);
-            expect(rolleMock.canBeAssignedToOrga).toHaveBeenCalledWith(organisationMock);
+            it('should look up organisation and rolle by their ids', async () => {
+                // Arrange
+                const {
+                    sut,
+                    organisationId,
+                    rolleId,
+                    organisationRepositoryMock,
+                    rolleRepoMock,
+                    rolleMock,
+                    organisationMock,
+                }: ReturnType<typeof setup> = setup();
+
+                // Act
+                await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expect(organisationRepositoryMock.findById).toHaveBeenCalledWith(organisationId);
+                expect(rolleRepoMock.findById).toHaveBeenCalledWith(rolleId);
+                expect(rolleMock.canBeAssignedToOrga).toHaveBeenCalledWith(organisationMock);
+            });
+
+            it('should return Ok', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
+
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expectOkResult(result);
+            });
         });
 
-        it('should return Ok if rolle can be assigned to organisation', async () => {
-            // Arrange
-            organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
-            rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
-            rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Ok(undefined));
+        describe('if rollenart does not match organisation', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                const organisationMock: DeepMocked<Organisation<true>> = createMock<Organisation<true>>(Organisation);
+                const rolleMock: DeepMocked<Rolle<true>> = createMock<Rolle<true>>(Rolle);
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
+                rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+                rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new OrganisationMatchesRollenartError()));
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(
-                faker.string.uuid(),
-                faker.string.uuid(),
-            );
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId: faker.string.uuid(),
+                };
+            }
 
-            // Assert
-            expectOkResult(result);
+            it('should return RolleNurAnPassendeOrganisationError', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
+
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
+
+                // Assert
+                expectErrResult(result);
+                expect(result.error).toBeInstanceOf(RolleNurAnPassendeOrganisationError);
+            });
         });
 
-        it('should return RolleNurAnPassendeOrganisationError if rollenart does not match organisation', async () => {
-            // Arrange
-            organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
-            rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
-            rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new OrganisationMatchesRollenartError()));
+        describe('if rolle is not available for organisation', () => {
+            function setup(): {
+                sut: RoleOrganisationAssignmentValidator;
+                organisationId: string;
+                rolleId: string;
+            } {
+                const rolleRepoMock: DeepMocked<RolleRepo> = createMock(RolleRepo);
+                const organisationRepositoryMock: DeepMocked<OrganisationRepository> =
+                    createMock(OrganisationRepository);
+                const organisationMock: DeepMocked<Organisation<true>> = createMock<Organisation<true>>(Organisation);
+                const rolleMock: DeepMocked<Rolle<true>> = createMock<Rolle<true>>(Rolle);
+                const rolleId: string = faker.string.uuid();
+                organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
+                rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
+                rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new EntityNotFoundError('Rolle', rolleId)));
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(
-                faker.string.uuid(),
-                faker.string.uuid(),
-            );
+                return {
+                    sut: new RoleOrganisationAssignmentValidator(rolleRepoMock, organisationRepositoryMock),
+                    organisationId: faker.string.uuid(),
+                    rolleId,
+                };
+            }
 
-            // Assert
-            expectErrResult(result);
-            expect(result.error).toBeInstanceOf(RolleNurAnPassendeOrganisationError);
-        });
+            it('should return EntityNotFoundError for Rolle', async () => {
+                // Arrange
+                const { sut, organisationId, rolleId }: ReturnType<typeof setup> = setup();
 
-        it('should return EntityNotFoundError for Rolle if rolle is not available for organisation', async () => {
-            // Arrange
-            const rolleId: string = faker.string.uuid();
-            organisationRepositoryMock.findById.mockResolvedValueOnce(organisationMock);
-            rolleRepoMock.findById.mockResolvedValueOnce(rolleMock);
-            rolleMock.canBeAssignedToOrga.mockResolvedValueOnce(Err(new EntityNotFoundError('Rolle', rolleId)));
+                // Act
+                const result: Result<void, DomainError> = await sut.checkReferences(organisationId, rolleId);
 
-            // Act
-            const result: Result<void, DomainError> = await sut.checkReferences(faker.string.uuid(), rolleId);
-
-            // Assert
-            expectErrResult(result);
-            expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolleId));
+                // Assert
+                expectErrResult(result);
+                expect(result.error).toEqual(new EntityNotFoundError('Rolle', rolleId));
+            });
         });
     });
 });
