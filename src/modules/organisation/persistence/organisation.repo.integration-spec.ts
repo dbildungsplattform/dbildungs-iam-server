@@ -3192,7 +3192,9 @@ describe('OrganisationRepository', () => {
             const schule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
             const anotherSchule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
             const firstTraeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
-            const secondTraeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
+            const secondTraeger: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.TRAEGER,
+            );
             const behoerde: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.BEHOERDE);
 
             await sut.createOrganisationsbeziehung(
