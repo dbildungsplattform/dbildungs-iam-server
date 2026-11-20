@@ -49,6 +49,7 @@ describe('KafkaEventService', () => {
         USER_TOPIC: 'user-topic',
         USER_DLQ_TOPIC: 'dlq-topic',
         ENABLED: true,
+        PRODUCER_IDEMPOTENCE_ENABLED: true,
         SSL_ENABLED: false,
         SSL_CA_PATH: undefined,
         SSL_CERT_PATH: undefined,
@@ -155,6 +156,56 @@ describe('KafkaEventService', () => {
                 /^Handler for event KafkaPersonDeletedEvent with EventID: .+ completed successfully$/,
             ),
         );
+    });
+
+    describe('duplicate event handling', () => {
+        const createMessage = (event: KafkaPersonDeletedEvent): KafkaMessage =>
+            ({
+                key: Buffer.from('test'),
+                value: Buffer.from(JSON.stringify(event)),
+                headers: { eventKey: 'user.deleted' },
+            }) as unknown as KafkaMessage;
+
+        it('should skip an event with an already handled EventID', async () => {
+            const message: KafkaMessage = createMessage(new KafkaPersonDeletedEvent('test', 'test'));
+            const handler: Mock = vi.fn();
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+
+            await sut.handleMessage(message, () => Promise.resolve());
+            await sut.handleMessage(message, () => Promise.resolve());
+
+            expect(handler).toHaveBeenCalledTimes(1);
+            expect(logger.warning).toHaveBeenCalledWith(expect.stringContaining('was already handled, skipping'));
+        });
+
+        it('should not remember an event whose handler failed', async () => {
+            const message: KafkaMessage = createMessage(new KafkaPersonDeletedEvent('test', 'test'));
+            const handler: Mock = vi.fn().mockReturnValue({ ok: false, error: new Error('Handler error') });
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+
+            await sut.handleMessage(message, () => Promise.resolve());
+            await sut.handleMessage(message, () => Promise.resolve());
+
+            expect(handler).toHaveBeenCalledTimes(2);
+        });
+
+        it('should forget the oldest EventID once the limit is exceeded', async () => {
+            const firstMessage: KafkaMessage = createMessage(new KafkaPersonDeletedEvent('test', 'test'));
+            const handler: Mock = vi.fn();
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+            await sut.handleMessage(firstMessage, () => Promise.resolve());
+
+            for (let i: number = 0; i < 10_000; i++) {
+                // eslint-disable-next-line no-await-in-loop
+                await sut.handleMessage(createMessage(new KafkaPersonDeletedEvent('test', 'test')), () =>
+                    Promise.resolve(),
+                );
+            }
+            handler.mockClear();
+            await sut.handleMessage(firstMessage, () => Promise.resolve());
+
+            expect(handler).toHaveBeenCalledTimes(1);
+        });
     });
 
     it('should do nothing if no handlers are registered', async () => {

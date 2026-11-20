@@ -40,6 +40,11 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
 
     private readonly kafkaConfig: KafkaConfig;
 
+    private static readonly MAX_HANDLED_EVENT_IDS: number = 10_000;
+
+    // Only successfully handled events are remembered, so failed events can still be retried
+    private readonly handledEventIds: Set<string> = new Set();
+
     public constructor(
         private readonly logger: ClassLogger,
         @Inject(KAFKA_INSTANCE) private readonly kafka: Kafka,
@@ -62,6 +67,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
             'allow.auto.create.topics': false,
             // The server is very strict about open connections and will disconnect the producers after 5000ms of inactivity
             'log.connection.close': false,
+            'enable.idempotence': this.kafkaConfig.PRODUCER_IDEMPOTENCE_ENABLED,
         });
     }
 
@@ -149,6 +155,13 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         const kafkaEvent: BaseEvent & KafkaEvent = Object.assign(new eventClass(), eventData);
         const handlers: EventHandlerType<BaseEvent>[] | undefined = this.handlerMap.get(eventClass);
 
+        if (this.handledEventIds.has(kafkaEvent.eventID)) {
+            this.logger.warning(
+                `Duplicate event ${eventClass.name} with EventID: ${kafkaEvent.eventID} was already handled, skipping`,
+            );
+            return;
+        }
+
         if (handlers?.length) {
             this.logger.info(`Handling event: ${eventClass.name} with ${handlers.length} handlers`);
             const handlerPromises: Promise<Result<unknown>>[] = handlers.map(
@@ -187,7 +200,17 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
 
             if (firstFailure) {
                 await this.publishToDLQ(kafkaEvent, firstFailure.value.error);
+            } else {
+                this.rememberHandledEventId(kafkaEvent.eventID);
             }
+        }
+    }
+
+    private rememberHandledEventId(eventId: string): void {
+        this.handledEventIds.add(eventId);
+        if (this.handledEventIds.size > KafkaEventService.MAX_HANDLED_EVENT_IDS) {
+            // Sets iterate in insertion order, so this evicts the oldest ID
+            this.handledEventIds.delete(this.handledEventIds.values().next().value as string);
         }
     }
 

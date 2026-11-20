@@ -137,6 +137,7 @@
         "SESSION_TIMEOUT": 300000,
         "HEARTBEAT_INTERVAL": 10000,
         "ENABLED": true,
+        "PRODUCER_IDEMPOTENCE_ENABLED": true,
         "SSL_ENABLED": false
     },
     "PORTAL": {
