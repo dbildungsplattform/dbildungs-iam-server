@@ -17,7 +17,6 @@ import {
     PersonAlreadyExistsError,
 } from '../../../shared/error/index.js';
 import { ExceedsLimitError } from '../../../shared/error/exceeds-limit.error.js';
-import { UserExternalDataWorkflowError } from '../../../shared/error/user-externaldata-workflow.error.js';
 import { EmailMicroserviceCommunicationError } from '../../../shared/error/email-microservice-communication.error.js';
 
 @Catch(SharedDomainError)
@@ -139,16 +138,6 @@ export class SchulConnexSharedErrorFilter implements ExceptionFilter<SharedDomai
                 subcode: '01',
                 titel: 'Die Anfrage überschreitete das Limit',
                 beschreibung: 'Die Anfrage überschreitete das Limit',
-            }),
-        ],
-        [
-            UserExternalDataWorkflowError.name,
-            new SchulConnexError({
-                code: 500,
-                subcode: '01',
-                titel: 'Interner Serverfehler',
-                beschreibung:
-                    'Es ist ein interner Fehler aufgetreten. Externe Userdaten können nicht bereitgestellt werden.',
             }),
         ],
         [

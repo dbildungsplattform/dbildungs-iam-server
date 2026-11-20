@@ -39,6 +39,9 @@ import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbe
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { type OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
+import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
+import { type PagedResponse } from '../../../shared/paging/paged.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
@@ -1086,6 +1089,71 @@ describe('OrganisationController', () => {
                     organisationController.deleteOrganisation({ organisationId: orga.id }, permissionsMock),
                 ).rejects.toThrow(OrganisationHasChildrenError);
             });
+        });
+    });
+
+    describe('getOrganisationsbeziehungen', () => {
+        it('should map the found relationships to a paged response', async () => {
+            const organisationId: string = faker.string.uuid();
+            const quelle: Organisation<true> = DoFactory.createOrganisation(true, { kennung: '1234567' });
+            const ziel: Organisation<true> = DoFactory.createOrganisation(true, { kennung: undefined });
+            const id: string = faker.string.uuid();
+            organisationServiceMock.findOrganisationsbeziehungen.mockResolvedValueOnce({
+                ok: true,
+                value: {
+                    total: 4,
+                    offset: 1,
+                    limit: 1,
+                    pageTotal: 1,
+                    items: [
+                        {
+                            organisationsbeziehung: {
+                                id,
+                                createdAt: faker.date.past(),
+                                updatedAt: faker.date.recent(),
+                                quellOrganisationId: quelle.id,
+                                zielOrganisationId: ziel.id,
+                                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                            },
+                            quelle,
+                            ziel,
+                        },
+                    ],
+                },
+            });
+            const queryParams: FindOrganisationsbeziehungenQueryParams = new FindOrganisationsbeziehungenQueryParams();
+            Object.assign(queryParams, { offset: 1, limit: 1, searchString: 'x' });
+
+            const result: PagedResponse<OrganisationsbeziehungWithOrganisationenResponse> =
+                await organisationController.getOrganisationsbeziehungen({ organisationId }, queryParams);
+
+            expect(organisationServiceMock.findOrganisationsbeziehungen).toHaveBeenCalledWith(
+                organisationId,
+                queryParams,
+            );
+            expect(result.total).toBe(4);
+            expect(result.offset).toBe(1);
+            expect(result.limit).toBe(1);
+            expect(result.items).toEqual([
+                {
+                    id,
+                    typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                    quelle: { id: quelle.id, name: quelle.name, dienststellennummer: '1234567' },
+                    ziel: { id: ziel.id, name: ziel.name, dienststellennummer: undefined },
+                },
+            ]);
+        });
+
+        it('should throw the error if the organisation could not be found', async () => {
+            const error: EntityNotFoundError = new EntityNotFoundError('Organisation', faker.string.uuid());
+            organisationServiceMock.findOrganisationsbeziehungen.mockResolvedValueOnce({ ok: false, error });
+
+            await expect(
+                organisationController.getOrganisationsbeziehungen(
+                    { organisationId: faker.string.uuid() },
+                    new FindOrganisationsbeziehungenQueryParams(),
+                ),
+            ).rejects.toBe(error);
         });
     });
 
