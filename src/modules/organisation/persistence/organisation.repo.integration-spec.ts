@@ -1837,6 +1837,49 @@ describe('OrganisationRepository', () => {
             expect(result[1]).toBe(0);
         });
 
+        it('should exclude organisations before applying pagination and counting', async () => {
+            const first: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School A',
+                    kennung: '0000001',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const excluded: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School B',
+                    kennung: '0000002',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const last: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School C',
+                    kennung: '0000003',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const [items, total, pageTotal]: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.SCHULEN_VERWALTEN],
+                {
+                    typ: OrganisationsTyp.SCHULE,
+                    excludeOrganisationIds: [excluded.id],
+                    offset: 1,
+                    limit: 1,
+                    sortField: SortFieldOrganisation.KENNUNG,
+                },
+            );
+
+            expect(total).toBe(2);
+            expect(pageTotal).toBe(1);
+            expect(items.map((item: Organisation<true>): OrganisationID => item.id)).toEqual([last.id]);
+            expect(items.map((item: Organisation<true>): OrganisationID => item.id)).not.toContain(first.id);
+        });
+
         describe.each([[true], [false]])('with matchAllSystemrechte = %s', (matchAllSystemrechte: boolean) => {
             it('should return all authorized organisations according to list', async () => {
                 const orgas: OrganisationEntity[] = [];
@@ -3141,6 +3184,42 @@ describe('OrganisationRepository', () => {
             );
 
             expect(result).toBeUndefined();
+        });
+    });
+
+    describe('findSchulenWithSchultraegerBeziehung', () => {
+        it('should return unique schools with an existing Schultraeger relationship', async () => {
+            const schule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
+            const anotherSchule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
+            const firstTraeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
+            const secondTraeger: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.TRAEGER,
+            );
+            const behoerde: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.BEHOERDE);
+
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: schule.id,
+                    zielOrganisationId: firstTraeger.id,
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: schule.id,
+                    zielOrganisationId: secondTraeger.id,
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: anotherSchule.id,
+                    zielOrganisationId: behoerde.id,
+                    typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                }),
+            );
+
+            await expect(sut.findSchulenWithSchultraegerBeziehung()).resolves.toEqual([schule.id]);
         });
     });
 

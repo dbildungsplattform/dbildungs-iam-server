@@ -15,6 +15,7 @@ import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import {
     OrganisationRepository,
+    type OrganisationSearchOptions,
     type OrganisationsbeziehungSearchOptions,
 } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
@@ -770,6 +771,84 @@ export class OrganisationService {
                 limit: options.limit ?? total,
                 items,
                 pageTotal: items.length,
+            },
+        };
+    }
+
+    public async searchOrganisationsForRelationships(
+        organisationId: OrganisationID,
+        options: Pick<OrganisationSearchOptions, 'searchString' | 'offset' | 'limit'>,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Paged<Organisation<true>>, DomainError>> {
+        const sourceResult: Result<
+            Organisation<true, false>,
+            EntityNotFoundError | MissingPermissionsError
+        > = await this.findOrganisationWithManagePermission(permissions, organisationId);
+        if (!sourceResult.ok) {
+            return sourceResult;
+        }
+
+        let targetType: OrganisationsTyp;
+        let targetSystemrecht: RollenSystemRecht;
+        switch (sourceResult.value.typ) {
+            case OrganisationsTyp.SCHULE:
+                targetType = OrganisationsTyp.BEHOERDE;
+                targetSystemrecht = RollenSystemRecht.BEHOERDEN_VERWALTEN;
+                break;
+            case OrganisationsTyp.BEHOERDE:
+            case OrganisationsTyp.TRAEGER:
+                targetType = OrganisationsTyp.SCHULE;
+                targetSystemrecht = RollenSystemRecht.SCHULEN_VERWALTEN;
+                break;
+            default:
+                return {
+                    ok: true,
+                    value: {
+                        total: 0,
+                        offset: options.offset ?? 0,
+                        limit: options.limit ?? 0,
+                        items: [],
+                        pageTotal: 0,
+                    },
+                };
+        }
+
+        const existingRelationships: Counted<OrganisationsbeziehungWithOrganisationen> =
+            await this.organisationRepo.findOrganisationsbeziehungen(organisationId, {});
+        const relationships: OrganisationsbeziehungWithOrganisationen[] = existingRelationships[0];
+        const excludedOrganisationIds: Set<OrganisationID> = new Set(
+            relationships.map((relationship: OrganisationsbeziehungWithOrganisationen): string =>
+                relationship.quelle.id === organisationId ? relationship.ziel.id : relationship.quelle.id,
+            ),
+        );
+        const offset: number = options.offset ?? 0;
+        const excludedIds: string[] =
+            sourceResult.value.typ === OrganisationsTyp.TRAEGER
+                ? await this.organisationRepo.findSchulenWithSchultraegerBeziehung()
+                : [];
+        excludedIds.forEach((id: OrganisationID): void => {
+            excludedOrganisationIds.add(id);
+        });
+        excludedOrganisationIds.add(organisationId);
+
+        const searchOptions: OrganisationSearchOptions = {
+            typ: targetType,
+            searchString: options.searchString,
+            offset: options.offset,
+            limit: options.limit,
+            excludeOrganisationIds: [...excludedOrganisationIds],
+        };
+        const [items, total, pageTotal]: [Organisation<true>[], number, number] =
+            await this.organisationRepo.findAuthorized(permissions, [targetSystemrecht], searchOptions);
+
+        return {
+            ok: true,
+            value: {
+                total,
+                offset,
+                limit: options.limit ?? total,
+                items,
+                pageTotal,
             },
         };
     }
