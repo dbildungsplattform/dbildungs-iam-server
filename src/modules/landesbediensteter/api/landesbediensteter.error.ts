@@ -5,7 +5,6 @@ export enum LandesbediensteterErrorI18nTypes {
     LANDESBEDIENSTETER_ERROR = 'LANDESBEDIENSTETER_ERROR',
     MISSING_PERMISSIONS = 'MISSING_PERMISSIONS',
     NOT_FOUND = 'NOT_FOUND',
-    UPDATE_ERROR = 'UPDATE_ERROR',
 }
 
 export type LandesbediensteterErrorProps = DbiamErrorProps & {

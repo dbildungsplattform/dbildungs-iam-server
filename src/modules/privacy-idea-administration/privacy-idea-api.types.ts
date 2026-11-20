@@ -35,12 +35,7 @@ export type InitSoftwareTokenPayload = {
     rollover: number;
 };
 
-export type TokenStatePayload = {
-    type: string;
-    user: string;
-};
-
-export type PrivacyIdeaTokenInfo = {
+type PrivacyIdeaTokenInfo = {
     hashlib: string;
     timeShift: string;
     timeStep: string;

@@ -12,7 +12,7 @@ import { uniq } from 'lodash-es';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapAggregateToData(emailAddress: EmailAddress<boolean>) {
+function mapAggregateToData(emailAddress: EmailAddress<boolean>) {
     // eslint-disable-next-line @typescript-eslint/typedef
     const statuses = emailAddress.sortedStatuses.map((s: EmailAddressStatus) => ({
         id: s.id,

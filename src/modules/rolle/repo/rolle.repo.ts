@@ -44,7 +44,7 @@ import { RolleNameUniqueOnSsk } from '../specification/rolle-name-unique-on-ssk.
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapRolleAggregateToData(rolle: Rolle<boolean>) {
+function mapRolleAggregateToData(rolle: Rolle<boolean>) {
     // eslint-disable-next-line @typescript-eslint/typedef
     const merkmale = rolle.merkmale.map((merkmal: RollenMerkmal) => ({
         rolle: rolle.id,

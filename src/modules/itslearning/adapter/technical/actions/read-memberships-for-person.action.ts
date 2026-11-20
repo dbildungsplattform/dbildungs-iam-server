@@ -4,14 +4,6 @@ import { IMS_COMMON_SCHEMA, IMS_MEMBER_MAN_MESS_SCHEMA, IMS_MESS_BIND_SCHEMA } f
 import { type IMSESRoleType } from '../../domain/role.enum.js';
 import { IMSESMassAction } from './base-mass-action.js';
 
-export type ReadAllPersonsParams = {
-    pageIndex: number;
-    pageSize: number;
-    createdFrom?: Date;
-    onlyManuallyCreatedUsers?: boolean;
-    convertFromManual?: boolean;
-};
-
 export type MembershipResponse = {
     id: string;
     groupId: string;
@@ -19,7 +11,7 @@ export type MembershipResponse = {
 };
 
 // Partial, actual structure contains more data
-export type MembershipIdPair = {
+type MembershipIdPair = {
     sourcedId: {
         identifier: string;
     };

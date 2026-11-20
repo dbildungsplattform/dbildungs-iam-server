@@ -49,14 +49,6 @@ export type ImportUploadResultFields = {
     invalidImportDataItems: ImportDataItem<false>[];
 };
 export type OrganisationByIdAndName = Pick<Organisation<true>, 'id' | 'name'>;
-export type TextFilePersonFields = {
-    klasse: string | undefined;
-    vorname: string;
-    nachname: string;
-    username: string | undefined;
-    password: string | undefined;
-};
-
 export type RolleAndOrganisationByName = {
     rollenName: string;
     organisationsname: string;

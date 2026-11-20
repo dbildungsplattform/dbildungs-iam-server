@@ -15,10 +15,6 @@ import { KafkaEventHandler } from '../../core/eventbus/decorators/kafka-event-ha
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 
-export type KontextIdsAndDuplicationFlag = {
-    hasDuplicateRolleIds: boolean;
-    personenkontextIdSet: Set<string>;
-};
 export type KeycloakRole = string;
 @Injectable()
 export class KeycloackServiceProviderHandler {
