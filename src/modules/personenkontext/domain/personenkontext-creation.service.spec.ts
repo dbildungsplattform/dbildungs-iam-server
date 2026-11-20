@@ -1,5 +1,11 @@
-import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { faker } from '@faker-js/faker';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { type MockedObject } from 'vitest';
+import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
+import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
+import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { DoFactory } from '../../../../test/utils/do-factory.js';
+import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflow.mocks.js';
 import {
     DomainError,
     EntityNotFoundError,
@@ -7,34 +13,28 @@ import {
     KeycloakClientError,
     MissingPermissionsError,
 } from '../../../shared/error/index.js';
-import { DoFactory } from '../../../../test/utils/do-factory.js';
-import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { faker } from '@faker-js/faker';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { PersonenkontextFactory } from './personenkontext.factory.js';
-import { type Rolle } from '../../rolle/domain/rolle.js';
-import { RollenArt } from '../../rolle/domain/rolle.enums.js';
-import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
-import { PersonenkontextWorkflowFactory } from './personenkontext-workflow.factory.js';
-import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
-import { RolleNurAnPassendeOrganisationError } from '../specification/error/rolle-nur-an-passende-organisation.js';
-import { PersonenkontextCreationService, type PersonPersonenkontext } from './personenkontext-creation.service.js';
-import { PersonRepository } from '../../person/persistence/person.repository.js';
-import { PersonFactory } from '../../person/domain/person.factory.js';
-import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
-import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
-import { createPersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
-import { type MockedObject } from 'vitest';
-import { createPersonenkontexteUpdateMock } from '../../../../test/utils/workflow.mocks.js';
+import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
+import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
+import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { EscalatedPersonPermissionsFactory } from '../../permission/escalated-person-permissions.factory.js';
 import { type EscalatedPersonPermissions } from '../../permission/escalated-person-permissions.js';
+import { PersonFactory } from '../../person/domain/person.factory.js';
+import { PersonRepository } from '../../person/persistence/person.repository.js';
+import { RollenArt } from '../../rolle/domain/rolle.enums.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { RolleNurAnPassendeOrganisationError } from '../specification/error/rolle-nur-an-passende-organisation.js';
+import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { DBiamPersonenkontextService } from './dbiam-personenkontext.service.js';
-import { PersonalnummerWithoutKoperspflichtError } from '../../../shared/error/personalnummer-without-koperspflicht.error.js';
+import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
+import { PersonenkontextCreationService, type PersonPersonenkontext } from './personenkontext-creation.service.js';
+import { PersonenkontextWorkflowFactory } from './personenkontext-workflow.factory.js';
+import { PersonenkontextFactory } from './personenkontext.factory.js';
+import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
+import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 describe('PersonenkontextCreationService', () => {
     let module: TestingModule;
@@ -45,7 +45,7 @@ describe('PersonenkontextCreationService', () => {
     let personpermissionsMock: DeepMocked<PersonPermissions>;
     let personFactoryMock: DeepMocked<PersonFactory>;
     let dbiamPersonenkontextFactoryMock: DeepMocked<DbiamPersonenkontextFactory>;
-    let personenkontextWorkflowSharedKernel: DeepMocked<PersonenkontextWorkflowSharedKernel>;
+    let personenkontextWorkflowSharedKernel: DeepMocked<RoleOrganisationAssignmentValidator>;
     const escalatedPersonPermissionsFactoryMock: DeepMocked<EscalatedPersonPermissionsFactory> = createMock(
         EscalatedPersonPermissionsFactory,
     );
@@ -90,8 +90,8 @@ describe('PersonenkontextCreationService', () => {
                     useValue: createMock(DbiamPersonenkontextFactory),
                 },
                 {
-                    provide: PersonenkontextWorkflowSharedKernel,
-                    useValue: createMock(PersonenkontextWorkflowSharedKernel),
+                    provide: RoleOrganisationAssignmentValidator,
+                    useValue: createMock(RoleOrganisationAssignmentValidator),
                 },
                 {
                     provide: EscalatedPersonPermissionsFactory,
@@ -113,7 +113,7 @@ describe('PersonenkontextCreationService', () => {
         personpermissionsMock = module.get(PersonPermissions);
         personFactoryMock = module.get(PersonFactory);
         dbiamPersonenkontextFactoryMock = module.get(DbiamPersonenkontextFactory);
-        personenkontextWorkflowSharedKernel = module.get(PersonenkontextWorkflowSharedKernel);
+        personenkontextWorkflowSharedKernel = module.get(RoleOrganisationAssignmentValidator);
 
         escalatedPersonPermissionsFactoryMock.fromPermissions.mockResolvedValue(
             personpermissionsMock as unknown as EscalatedPersonPermissions,

@@ -16,10 +16,10 @@ import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
 import { type DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { type PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { OperationContext } from './personenkontext.enums.js';
 import { type Personenkontext } from './personenkontext.js';
 import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
+import { type RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 export class PersonenkontextWorkflowAggregate {
     public personId?: PersonID;
@@ -33,7 +33,7 @@ export class PersonenkontextWorkflowAggregate {
         private readonly organisationRepository: OrganisationRepository,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly configService: ConfigService,
-        private readonly personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
+        private readonly roleOrganisationValidator: RoleOrganisationAssignmentValidator,
     ) {}
 
     public static createNew(
@@ -41,14 +41,14 @@ export class PersonenkontextWorkflowAggregate {
         organisationRepository: OrganisationRepository,
         dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         configService: ConfigService,
-        personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
+        roleOrganisationValidator: RoleOrganisationAssignmentValidator,
     ): PersonenkontextWorkflowAggregate {
         return new PersonenkontextWorkflowAggregate(
             rolleRepo,
             organisationRepository,
             dbiamPersonenkontextFactory,
             configService,
-            personenkontextWorkflowSharedKernel,
+            roleOrganisationValidator,
         );
     }
 
@@ -134,7 +134,7 @@ export class PersonenkontextWorkflowAggregate {
             // Check references for all selected roles concurrently
             const referenceChecks: Result<void, DomainError>[] = await Promise.all(
                 this.selectedRolleIds.map((rolleId: string) =>
-                    this.checkReferences(this.selectedOrganisationId!, rolleId),
+                    this.roleOrganisationValidator.checkReferences(this.selectedOrganisationId!, rolleId),
                 ),
             );
 
@@ -161,8 +161,17 @@ export class PersonenkontextWorkflowAggregate {
         return Ok(undefined);
     }
 
-    // Takes in the list of personenkontexte and decides whether to add or delete the personenkontexte for a specific PersonId
-    // This will only be used during "bearbeiten".
+    /**
+     * Commits personenkontexte updates.
+     *
+     * @param personId The ID of the person being modified
+     * @param lastModified The last modified timestamp
+     * @param count Current personenkontext count
+     * @param personenkontexte The list of personenkontexte to update
+     * @param permissions The caller's permissions
+     * @param personalnummer Optional personalnummer
+     * @returns Updated personenkontexte or an error
+     */
     public async commit(
         personId: string,
         lastModified: Date | undefined,
@@ -180,11 +189,6 @@ export class PersonenkontextWorkflowAggregate {
             personalnummer,
         );
         return pkUpdate.update();
-    }
-
-    // Checks if the rolle can be assigned to the target organisation
-    public async checkReferences(organisationId: string, rolleId: string): Promise<Result<void, DomainError>> {
-        return this.personenkontextWorkflowSharedKernel.checkReferences(organisationId, rolleId);
     }
 
     public async checkPermissions(
@@ -216,6 +220,8 @@ export class PersonenkontextWorkflowAggregate {
                 return this.checkCreatePermissions(permissions, organisationId, rolleIds);
             case OperationContext.PERSON_BEARBEITEN:
                 return this.checkEditPermissions(permissions, organisationId);
+            default:
+                return Err(new MissingPermissionsError('Unauthorized operation'));
         }
     }
 

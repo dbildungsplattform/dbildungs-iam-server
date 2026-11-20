@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
-import { PersonenkontextWorkflowSharedKernel } from './personenkontext-workflow-shared-kernel.js';
 import { PersonenkontextWorkflowAggregate } from './personenkontext-workflow.js';
+import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 @Injectable()
 export class PersonenkontextWorkflowFactory {
@@ -13,7 +13,7 @@ export class PersonenkontextWorkflowFactory {
         private readonly organisationRepository: OrganisationRepository,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
         private readonly configService: ConfigService,
-        private readonly personenkontextWorkflowSharedKernel: PersonenkontextWorkflowSharedKernel,
+        private readonly sharedKernel: RoleOrganisationAssignmentValidator,
     ) {}
 
     public createNew(): PersonenkontextWorkflowAggregate {
@@ -22,7 +22,7 @@ export class PersonenkontextWorkflowFactory {
             this.organisationRepository,
             this.dbiamPersonenkontextFactory,
             this.configService,
-            this.personenkontextWorkflowSharedKernel,
+            this.sharedKernel,
         );
     }
 }
