@@ -104,8 +104,6 @@ services:
 
   redis-sentinel:
     image: redis:7.2.2
-    profiles:
-      - sentinel
     depends_on:
       redis:
         condition: service_healthy
@@ -134,14 +132,14 @@ services:
   backend:
     profiles:
       - backend
-    image: ghcr.io/dbildungsplattform/dbildungs-iam-server
+    build: .
     container_name: spsh-backend
-    # build:
-    #   context: .
     depends_on:
       db:
         condition: service_started
       redis:
+        condition: service_healthy
+      redis-sentinel:
         condition: service_healthy
       # kafka:
       #   condition: service_healthy

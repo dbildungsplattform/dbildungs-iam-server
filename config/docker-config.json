@@ -43,9 +43,9 @@
         "PASSWORD": "password",
         "USE_TLS": false,
         "CLUSTERED": false,
-        "SENTINEL_ENABLED": false,
-        "SENTINEL_MASTER_NAME": "",
-        "SENTINEL_NODES": [],
+        "SENTINEL_ENABLED": true,
+        "SENTINEL_MASTER_NAME": "valkeyha",
+        "SENTINEL_NODES": [{ "HOST": "redis-sentinel", "PORT": 26379 }],
         "SENTINEL_USE_TLS": false
     },
     "LDAP": {

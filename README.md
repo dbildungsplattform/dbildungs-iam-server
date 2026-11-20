@@ -15,8 +15,9 @@
     - db
     - keycloak
     - redis
+    - redis-sentinel
 5. run `npm run setup` to initialize the DB and seed data
-6. Run `npm run start` to start the server
+6. Add the hosts file entry described under [Redis Sentinel](#redis-sentinel), then run `npm run start` to start the server
 7. Server runs on the url printed in the console
     - Some Keycloak protocol mappers in `local-spsh.json` (also used to set up feature-branch/dev realms in Kubernetes) fetch data from `http://backend:9090`. Locally, `compose.yaml` maps the `backend` hostname to your host via `extra_hosts: host-gateway` on the `keycloak` service, so the backend must be reachable on port `9090` on the host, whether it is started via `npm run start` (default) or as the containerized `backend` service (its port is published to the host too).
 8. The client and how to run it is described in the [client repo](https://github.com/dBildungsplattform/schulportal-client)
@@ -89,43 +90,22 @@ the import from `config/local-spsh.json`.
 
 ### Redis Sentinel
 
-Sentinel is opt-in. It monitors the existing local Redis and lets you test the same primary discovery
-and shared authentication used in stage and production. This setup has no replicas, failover, or TLS.
+Compose starts Sentinel by default alongside the existing local Redis. This provides primary
+discovery but has no replicas, failover, or TLS.
 
-Start Sentinel and Redis alongside your usual local services:
+**Backend on your machine (`npm run start`):** If the hosts entry is missing, run the command for
+the environment where you start the backend. Sentinel returns this hostname for the Redis primary.
 
-```sh
-docker compose up -d --wait redis-sentinel
-```
-
-In the terminal you use to start the backend, set:
-
-```sh
-export REDIS_SENTINEL_ENABLED=true
-export REDIS_SENTINEL_MASTER_NAME=valkeyha
-export REDIS_SENTINEL_USE_TLS=false
-export REDIS_PASSWORD=password
-```
-
-**Backend on your machine (`npm run start`):** Add `127.0.0.1 redis-sentinel-primary` to your
-machine's hosts file (`/etc/hosts` on Linux/macOS). Sentinel returns this hostname for the Redis primary,
-and the backend must be able to resolve it to the published Redis port. Then run:
-
-```sh
-REDIS_SENTINEL_NODES='[{"HOST":"127.0.0.1","PORT":26379}]' npm run start
-```
+- **Windows (PowerShell as Administrator):** `Add-Content -LiteralPath "$env:SystemRoot\System32\drivers\etc\hosts" -Encoding ascii -Value '', '127.0.0.1 redis-sentinel-primary'`
+- **WSL (inside your distro):** `printf '\n127.0.0.1 redis-sentinel-primary\n' | sudo tee -a /etc/hosts` (WSL may regenerate the file on restart.)
+- **Linux/macOS:** `printf '\n127.0.0.1 redis-sentinel-primary\n' | sudo tee -a /etc/hosts`
 
 **Backend in Docker Compose:** No hosts file change is needed; Docker resolves the primary hostname
-on the Compose network. Start the backend with the Sentinel service name:
+on the Compose network. The backend builds from the local checkout and waits for Sentinel to be
+healthy. Use `docker compose --profile backend up --build` after changing branches or backend code.
 
-```sh
-REDIS_SENTINEL_NODES='[{"HOST":"redis-sentinel","PORT":26379}]' \
-  docker compose --profile sentinel --profile backend up -d backend
-```
-
-Check `http://localhost:9090/health` after the backend starts. To return to standalone Redis, unset
-the variables above (or use a fresh terminal) and restart the backend. Stop just Sentinel with
-`docker compose --profile sentinel stop redis-sentinel`.
+Check `http://localhost:9090/health` after the backend starts. To have the backend use standalone
+Redis instead, set `REDIS_SENTINEL_ENABLED=false` when starting it. Compose still starts Sentinel.
 
 ### Available profiles
 
@@ -138,7 +118,6 @@ the variables above (or use a fresh terminal) and restart the backend. Stop just
 | db-migrate  | run necessary schema migrations against the database                |
 | db-seed     | seed the database                                                   |
 | kc-service  | start the internal micro-service to access keycloaks database       |
-| sentinel    | run local Redis Sentinel for primary discovery                      |
 
 ## Developer Guides
 
