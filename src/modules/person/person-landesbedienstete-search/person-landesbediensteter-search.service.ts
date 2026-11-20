@@ -98,13 +98,17 @@ export class PersonLandesbediensteterSearchService {
     public async personIsSearchable(personId: PersonID): Promise<Result<void, DomainError>> {
         const locks: UserLock[] = await this.userLockRepository.findByPersonId(personId);
 
-        if (locks.findIndex((lock: UserLock) => lock.locked_occasion === PersonLockOccasion.MANUELL_GESPERRT) !== -1) {
+        const isLocked: boolean = locks.some(
+            (lock: UserLock) => lock.locked_occasion === PersonLockOccasion.MANUELL_GESPERRT,
+        );
+        if (isLocked) {
             return Err(new LandesbediensteterSearchNoPersonFoundError());
         }
 
         const person: Option<Person<true>> = await this.personRepository.findById(personId);
 
-        if (person?.personalnummer == null) {
+        const isLandesbediensteter: boolean = person != null;
+        if (!isLandesbediensteter) {
             return Err(new LandesbediensteterSearchNoPersonFoundError());
         }
 
