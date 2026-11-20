@@ -1,3 +1,4 @@
+import { Ref } from '@mikro-orm/core';
 import { Entity, Enum, ManyToOne } from '@mikro-orm/decorators/legacy';
 import { TimestampedEntity } from '../../../persistence/timestamped.entity.js';
 import { OrganisationEntity } from './organisation.entity.js';
@@ -9,17 +10,19 @@ export class OrganisationsbeziehungEntity extends TimestampedEntity {
         super();
     }
 
-    @ManyToOne(() => OrganisationEntity, {
-        mapToPk: true,
+    @ManyToOne({
         fieldName: 'quell_organisation_id',
+        entity: () => OrganisationEntity,
+        ref: true,
     })
-    public quellOrganisationId!: string;
+    public quellOrganisationId!: Ref<OrganisationEntity>;
 
-    @ManyToOne(() => OrganisationEntity, {
-        mapToPk: true,
+    @ManyToOne({
         fieldName: 'ziel_organisation_id',
+        entity: () => OrganisationEntity,
+        ref: true,
     })
-    public zielOrganisationId!: string;
+    public zielOrganisationId!: Ref<OrganisationEntity>;
 
     @Enum({
         items: () => OrganisationsbeziehungsTyp,
