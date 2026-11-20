@@ -26,6 +26,12 @@ export type Organisationsbeziehung<WasPersisted extends boolean> = {
 
 export type Organisationsbeziehungen = Array<Organisationsbeziehung<boolean>>;
 
+export type OrganisationsbeziehungWithOrganisationen = {
+    organisationsbeziehung: Organisationsbeziehung<true>;
+    quelle: Organisation<true, false>;
+    ziel: Organisation<true, false>;
+};
+
 export class Organisation<WasPersisted extends boolean, RelationshipsLoaded extends boolean = false> {
     private constructor(
         public id: Persisted<string, WasPersisted>,

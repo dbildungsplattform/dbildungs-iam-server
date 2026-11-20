@@ -676,7 +676,9 @@ export class RolleRepo {
             [],
         );
 
-        const validationResult: Result<void, DomainError> = await updatedRolle.validate();
+        const validationResult: Result<void, DomainError> = await updatedRolle.validate(
+            authorizedRole.serviceProviderIds,
+        );
         if (!validationResult.ok) {
             return validationResult;
         }

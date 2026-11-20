@@ -1,0 +1,50 @@
+{
+    "entityName": "Organisationsbeziehung",
+    "entities": [
+        {
+            "quellOrganisationId": 7,
+            "zielOrganisationId": 36,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 8,
+            "zielOrganisationId": 36,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 23,
+            "zielOrganisationId": 36,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 10,
+            "zielOrganisationId": 37,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 14,
+            "zielOrganisationId": 37,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 20,
+            "zielOrganisationId": 37,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 28,
+            "zielOrganisationId": 37,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 5,
+            "zielOrganisationId": 36,
+            "typ": "SCHULAUFSICHT"
+        },
+        {
+            "quellOrganisationId": 5,
+            "zielOrganisationId": 37,
+            "typ": "SCHULAUFSICHT"
+        }
+    ]
+}

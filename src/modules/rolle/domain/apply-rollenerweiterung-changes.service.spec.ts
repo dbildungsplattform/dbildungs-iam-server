@@ -796,6 +796,72 @@ describe('ApplyRollenerweiterungChangesService', () => {
             expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
         });
 
+        it('should return ApplyRollenerweiterungError if the Rollenart is not in the whitelist of the Angebot/Service-Provider', async () => {
+            const organisationId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+
+            organisationRepoMock.findById.mockResolvedValueOnce(
+                DoFactory.createOrganisation(true, { id: organisationId }),
+            );
+            serviceProviderRepoMock.findById.mockResolvedValueOnce(
+                createValidServiceProvider({ id: serviceProviderId, rollenartenWhitelist: [RollenArt.LERN] }),
+            );
+            rollenerweiterungRepoMock.findManyByOrganisationIdAndServiceProviderId.mockResolvedValueOnce([]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(
+                new Map([[rolleId, createValidRolle({ id: rolleId, rollenart: RollenArt.LEHR })]]),
+            );
+
+            const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
+                await service.applyRollenerweiterungChangesForAngebot(
+                    organisationId,
+                    serviceProviderId,
+                    { addErweiterungenForRolleIds: [rolleId], removeErweiterungenForRolleIds: [] },
+                    createPermissions(),
+                );
+
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error('Expected operation to fail');
+            }
+            expect(result.error).toBeInstanceOf(ApplyRollenerweiterungError);
+            expect(rollenerweiterungRepoMock.create).not.toHaveBeenCalled();
+        });
+
+        it('should add the Rollenerweiterung if the Rollenart is in the Angebot whitelist', async () => {
+            const organisationId: string = faker.string.uuid();
+            const serviceProviderId: string = faker.string.uuid();
+            const rolleId: string = faker.string.uuid();
+
+            organisationRepoMock.findById.mockResolvedValueOnce(
+                DoFactory.createOrganisation(true, { id: organisationId }),
+            );
+            serviceProviderRepoMock.findById.mockResolvedValueOnce(
+                createValidServiceProvider({
+                    id: serviceProviderId,
+                    rollenartenWhitelist: [RollenArt.LEHR, RollenArt.LERN],
+                }),
+            );
+            rollenerweiterungRepoMock.findManyByOrganisationIdAndServiceProviderId.mockResolvedValueOnce([]);
+            rolleRepoMock.findByIds.mockResolvedValueOnce(
+                new Map([[rolleId, createValidRolle({ id: rolleId, rollenart: RollenArt.LEHR })]]),
+            );
+            rollenerweiterungRepoMock.create.mockResolvedValueOnce(
+                createPersistedRollenerweiterung(organisationId, rolleId, serviceProviderId),
+            );
+
+            const result: Result<null, ApplyRollenerweiterungError | EntityNotFoundError | MissingPermissionsError> =
+                await service.applyRollenerweiterungChangesForAngebot(
+                    organisationId,
+                    serviceProviderId,
+                    { addErweiterungenForRolleIds: [rolleId], removeErweiterungenForRolleIds: [] },
+                    createPermissions(),
+                );
+
+            expect(result.ok).toBe(true);
+            expect(rollenerweiterungRepoMock.create).toHaveBeenCalledTimes(1);
+        });
+
         it('should return ApplyRollenerweiterungError if a Rolle requested for addition does not exist', async () => {
             const organisationId: string = faker.string.uuid();
             const serviceProviderId: string = faker.string.uuid();

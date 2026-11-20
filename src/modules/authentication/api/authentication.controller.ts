@@ -44,17 +44,10 @@ import { getLowestStepUpLevel } from '../passport/oidc.strategy.js';
 import { PersonTimeLimitInfo } from '../../person/domain/person-time-limit-info.js';
 import { PersonTimeLimitInfoResponse } from './person-time-limit-info.reponse.js';
 import PersonTimeLimitService from '../../person/domain/person-time-limit-info.service.js';
-import { ExternalPkData } from '../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { OrganisationResponse } from '../../organisation/api/organisation.response.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { CsrfTokenResponse } from './csrf-token.response.js';
 import { CsrfTokenService } from '../services/csrf-token.service.js';
-
-type WithoutOptional<T> = {
-    [K in keyof T]-?: T[K];
-};
-
-export type RequiredExternalPkData = WithoutOptional<ExternalPkData>;
 
 @ApiTags('auth')
 @Controller({ path: 'auth' })
