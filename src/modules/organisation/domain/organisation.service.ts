@@ -813,37 +813,42 @@ export class OrganisationService {
                 };
         }
 
-        const searchOptions: OrganisationSearchOptions = {
-            typ: targetType,
-            searchString: options.searchString,
-        };
-        const authorisedOrganisations: [Organisation<true>[], number, number] =
-            await this.organisationRepo.findAuthorized(permissions, [targetSystemrecht], searchOptions);
         const existingRelationships: Counted<OrganisationsbeziehungWithOrganisationen> =
             await this.organisationRepo.findOrganisationsbeziehungen(organisationId, {});
-        const organisations: Organisation<true>[] = authorisedOrganisations[0];
         const relationships: OrganisationsbeziehungWithOrganisationen[] = existingRelationships[0];
-        const relatedOrganisationIds: Set<string> = new Set(
+        const excludedOrganisationIds: Set<OrganisationID> = new Set(
             relationships.map((relationship: OrganisationsbeziehungWithOrganisationen): string =>
                 relationship.quelle.id === organisationId ? relationship.ziel.id : relationship.quelle.id,
             ),
         );
-        const eligibleOrganisations: Organisation<true>[] = organisations.filter(
-            (organisation: Organisation<true>): boolean =>
-                organisation.id !== organisationId && !relatedOrganisationIds.has(organisation.id),
-        );
         const offset: number = options.offset ?? 0;
-        const limit: number = options.limit ?? eligibleOrganisations.length;
-        const items: Organisation<true>[] = eligibleOrganisations.slice(offset, offset + limit);
+        const excludedIds: string[] =
+            sourceResult.value.typ === OrganisationsTyp.TRAEGER
+                ? await this.organisationRepo.findSchulenWithSchultraegerBeziehung()
+                : [];
+        excludedIds.forEach((id: OrganisationID): void => {
+            excludedOrganisationIds.add(id);
+        });
+        excludedOrganisationIds.add(organisationId);
+
+        const searchOptions: OrganisationSearchOptions = {
+            typ: targetType,
+            searchString: options.searchString,
+            offset: options.offset,
+            limit: options.limit,
+            excludeOrganisationIds: [...excludedOrganisationIds],
+        };
+        const [items, total, pageTotal]: [Organisation<true>[], number, number] =
+            await this.organisationRepo.findAuthorized(permissions, [targetSystemrecht], searchOptions);
 
         return {
             ok: true,
             value: {
-                total: eligibleOrganisations.length,
+                total,
                 offset,
-                limit,
+                limit: options.limit ?? total,
                 items,
-                pageTotal: items.length,
+                pageTotal,
             },
         };
     }

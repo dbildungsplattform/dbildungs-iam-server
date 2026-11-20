@@ -37,6 +37,7 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
 import {
     Organisation,
     Organisationsbeziehung,
@@ -132,6 +133,7 @@ export type OrganisationSearchOptions = {
     readonly searchString?: string;
     readonly typ?: OrganisationsTyp;
     readonly excludeTyp?: OrganisationsTyp[];
+    readonly excludeOrganisationIds?: string[];
     readonly administriertVon?: string[];
     readonly organisationIds?: string[];
     readonly zugehoerigZu?: string[];
@@ -534,6 +536,9 @@ export class OrganisationRepository {
         }
         if (searchOptions.excludeTyp) {
             andClauses.push({ typ: { $nin: searchOptions.excludeTyp } });
+        }
+        if (searchOptions.excludeOrganisationIds?.length) {
+            andClauses.push({ id: { $nin: searchOptions.excludeOrganisationIds } });
         }
         if (andClauses.length > 0) {
             whereClause = { $and: andClauses };
@@ -961,6 +966,23 @@ export class OrganisationRepository {
         );
 
         return [items, total];
+    }
+
+    public async findSchulenWithSchultraegerBeziehung(): Promise<OrganisationID[]> {
+        const results: { quellOrganisationId: OrganisationID }[] = await this.em
+            .createQueryBuilder(OrganisationsbeziehungEntity, 'b')
+            .select(raw('b.quell_organisation_id as "quellOrganisationId"'))
+            .distinct()
+            .join('b.quellOrganisationId', 'q')
+            .where({
+                'b.typ': OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                'q.typ': OrganisationsTyp.SCHULE,
+            })
+            .execute('all');
+
+        return results.map(
+            (result: { quellOrganisationId: OrganisationID }): OrganisationID => result.quellOrganisationId,
+        );
     }
 
     public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {
