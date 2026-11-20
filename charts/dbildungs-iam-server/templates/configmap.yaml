@@ -62,6 +62,10 @@ data:
   KAFKA_SESSION_TIMEOUT: '{{ .Values.kafka.sessionTimeout }}'
   KAFKA_HEARTBEAT_INTERVAL: '{{ .Values.kafka.heartbeatInterval }}'
   REDIS_HOST: '{{ .Values.redis.host }}'
+  REDIS_SENTINEL_ENABLED: {{ .Values.redis.sentinel.enabled | quote }}
+  REDIS_SENTINEL_MASTER_NAME: {{ .Values.redis.sentinel.masterName | quote }}
+  REDIS_SENTINEL_NODES: {{ .Values.redis.sentinel.nodes | toJson | quote }}
+  REDIS_SENTINEL_USE_TLS: {{ .Values.redis.sentinel.useTls | quote }}
   CRON_PERSON_WITHOUT_ORG_LIMIT: '{{ .Values.cron.personWithoutOrgLimit }}'
   CRON_EMAIL_ADDRESSES_DELETE_LIMIT: '{{ .Values.cron.emailAddressesDeleteLimit }}'
   FEATURE_FLAG_ROLLE_ERWEITERN: '{{ .Values.featureFlags.rolleErweitern }}'

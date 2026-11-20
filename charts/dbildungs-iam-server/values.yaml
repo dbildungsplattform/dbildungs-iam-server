@@ -169,7 +169,7 @@ backend:
     timeoutSeconds: 30
     periodSeconds: 10
     successThreshold: 1
-    failureThreshold: 3
+    failureThreshold: 10
     httpGet:
       scheme: "HTTP"
       port: 8080
@@ -299,6 +299,11 @@ emailBackend:
 
 redis:
   host: dbildungs-iam-valkey-master.spsh.svc.cluster.local
+  sentinel:
+    enabled: true
+    masterName: "valkeyha"
+    nodes: [{"HOST":"dbildungs-iam-valkey.spsh.svc.cluster.local","PORT":26379}]
+    useTls: false
 
 kafka:
   enabled: true

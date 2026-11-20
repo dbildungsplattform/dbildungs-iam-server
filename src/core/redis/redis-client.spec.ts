@@ -1,0 +1,301 @@
+import 'reflect-metadata';
+import KeyvRedis, { createSentinel, type RedisSentinelType } from '@keyv/redis';
+import { RedisConfig } from '../../shared/config/redis.config.js';
+import {
+    createRedisSentinelOptions,
+    createSentinelSessionStoreClient,
+    describeRedisConnection,
+    type SentinelConnectionOptions,
+} from './redis-client.js';
+
+type SessionStoreClient = ReturnType<typeof createSentinelSessionStoreClient>;
+
+function config(overrides: Partial<RedisConfig> = {}): RedisConfig {
+    return Object.assign(new RedisConfig(), {
+        HOST: 'static-master.example',
+        PORT: 6379,
+        USERNAME: 'valkey-user',
+        PASSWORD: 'valkey-test-password',
+        USE_TLS: false,
+        SENTINEL_ENABLED: true,
+        SENTINEL_MASTER_NAME: 'test-master',
+        SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+        SENTINEL_USE_TLS: false,
+        ...overrides,
+    });
+}
+
+describe('Redis Sentinel', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe('describeRedisConnection', () => {
+        it('should describe Sentinel discovery without the static host or credentials', () => {
+            const redisConfig: RedisConfig = config({
+                CLUSTERED: true,
+                SENTINEL_USE_TLS: true,
+                SENTINEL_NODES: [
+                    Object.assign({ HOST: 'sentinel.example', PORT: 26379 }, { PASSWORD: 'not-for-logging' }),
+                    { HOST: 'sentinel-backup.example', PORT: 26380 },
+                ],
+            });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toBe(
+                'mode=sentinel, master=test-master, ' +
+                    'sentinels=[{"HOST":"sentinel.example","PORT":26379},{"HOST":"sentinel-backup.example","PORT":26380}], ' +
+                    'redisTls=false, sentinelTls=true',
+            );
+        });
+
+        it('should describe missing optional Sentinel TLS as disabled', () => {
+            const redisConfig: RedisConfig = config({ SENTINEL_USE_TLS: undefined });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toContain('sentinelTls=false');
+        });
+
+        it('should describe missing Sentinel endpoints without throwing', () => {
+            const redisConfig: RedisConfig = config({ SENTINEL_NODES: undefined });
+
+            const description: string = describeRedisConnection(redisConfig);
+
+            expect(description).toContain('sentinels=undefined');
+        });
+
+        it.each([
+            { clustered: false, mode: 'standalone' },
+            { clustered: true, mode: 'cluster' },
+        ])(
+            'should describe $mode connections without credentials',
+            ({ clustered, mode }: { clustered: boolean; mode: string }) => {
+                const redisConfig: RedisConfig = config({
+                    SENTINEL_ENABLED: false,
+                    CLUSTERED: clustered,
+                    USE_TLS: true,
+                });
+
+                const description: string = describeRedisConnection(redisConfig);
+
+                expect(description).toBe(`mode=${mode}, host=static-master.example, port=6379, redisTls=true`);
+            },
+        );
+    });
+
+    describe('createRedisSentinelOptions', () => {
+        it('should discover the master using Redis credentials without using the static host', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(config());
+
+            expect(options).toEqual({
+                name: 'test-master',
+                sentinelRootNodes: [{ host: 'sentinel.example', port: 26379 }],
+                nodeClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
+                sentinelClientOptions: { username: 'valkey-user', password: 'valkey-test-password', socket: {} },
+                replicaPoolSize: 0,
+                passthroughClientErrorEvents: true,
+            });
+        });
+
+        it('should share certificates when Redis and Sentinel TLS are explicitly enabled', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({
+                    USE_TLS: true,
+                    SENTINEL_USE_TLS: true,
+                    PRIVATE_KEY: 'node-key',
+                    CERT_CHAINS: 'node-certificate',
+                    CERTIFICATE_AUTHORITIES: 'node-ca',
+                }),
+            );
+
+            expect(options.nodeClientOptions?.socket).toEqual({
+                tls: true,
+                key: 'node-key',
+                cert: 'node-certificate',
+                ca: 'node-ca',
+            });
+            expect(options.sentinelClientOptions?.socket).toEqual(options.nodeClientOptions?.socket);
+        });
+
+        it('should use Redis credentials with separate Sentinel TLS', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({
+                    SENTINEL_USE_TLS: true,
+                }),
+            );
+
+            expect(options.sentinelClientOptions).toMatchObject({
+                username: 'valkey-user',
+                password: 'valkey-test-password',
+                socket: { tls: true },
+            });
+            expect(options.nodeClientOptions?.socket).toEqual({});
+        });
+
+        it('should ignore separate Sentinel credentials', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                Object.assign(config(), {
+                    SENTINEL_USERNAME: 'unused-user',
+                    SENTINEL_PASSWORD: 'unused-password',
+                }),
+            );
+
+            expect(options.sentinelClientOptions).toMatchObject({
+                username: 'valkey-user',
+                password: 'valkey-test-password',
+            });
+        });
+
+        it('should not inherit Redis TLS when Sentinel TLS is missing', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({ USE_TLS: true, SENTINEL_USE_TLS: undefined }),
+            );
+
+            expect(options.sentinelClientOptions?.socket).toEqual({});
+        });
+
+        it('should not enable Sentinel TLS from Redis TLS settings', () => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({
+                    USE_TLS: true,
+                    SENTINEL_USE_TLS: false,
+                }),
+            );
+
+            expect(options.sentinelClientOptions).toEqual({
+                username: 'valkey-user',
+                password: 'valkey-test-password',
+                socket: {},
+            });
+            expect(options.nodeClientOptions?.socket).toMatchObject({ tls: true });
+        });
+
+        it.each([false, true])('should apply health-check socket settings with TLS %s', (useTls: boolean) => {
+            const options: SentinelConnectionOptions = createRedisSentinelOptions(
+                config({ USE_TLS: useTls, SENTINEL_USE_TLS: useTls }),
+                {
+                    connectTimeout: 1000,
+                    reconnectStrategy: false,
+                },
+            );
+
+            expect(options.nodeClientOptions?.socket).toMatchObject({
+                connectTimeout: 1000,
+                reconnectStrategy: false,
+            });
+            expect(options.sentinelClientOptions?.socket).toEqual(options.nodeClientOptions?.socket);
+        });
+
+        it.each([
+            { SENTINEL_MASTER_NAME: undefined },
+            { SENTINEL_MASTER_NAME: '' },
+            { SENTINEL_NODES: undefined },
+            { SENTINEL_NODES: [] },
+        ])('should reject incomplete Sentinel configuration %j', (overrides: Partial<RedisConfig>) => {
+            const createOptions: () => SentinelConnectionOptions = () => createRedisSentinelOptions(config(overrides));
+
+            expect(createOptions).toThrow('Sentinel requires a master name and endpoints');
+        });
+
+        it('should support the existing cache adapter', () => {
+            const store: KeyvRedis<unknown> = new KeyvRedis(createRedisSentinelOptions(config()));
+
+            expect(store.client).toHaveProperty('getSentinelNode');
+        });
+    });
+
+    describe('createSentinelSessionStoreClient', () => {
+        let client: RedisSentinelType;
+
+        beforeEach(() => {
+            client = createSentinel(createRedisSentinelOptions(config()));
+        });
+
+        it('should forward session reads with the correct client binding', async () => {
+            vi.spyOn(client, 'get').mockResolvedValueOnce('session');
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+
+            const result: string | null = await adapter.get('sess:one');
+
+            expect(result).toBe('session');
+            expect(client.get).toHaveBeenCalledWith('sess:one');
+            expect(vi.mocked(client.get).mock.contexts[0]).toBe(client);
+        });
+
+        it('should preserve session expiration options', async () => {
+            vi.spyOn(client, 'set').mockResolvedValueOnce('OK');
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+            const options: Parameters<RedisSentinelType['set']>[2] = { expiration: { type: 'EX', value: 60 } };
+
+            await adapter.set('sess:one', 'session', options);
+
+            expect(client.set).toHaveBeenCalledWith('sess:one', 'session', options);
+        });
+
+        it('should forward session touches', async () => {
+            vi.spyOn(client, 'expire').mockResolvedValueOnce(1);
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+
+            await adapter.expire('sess:one', 60);
+
+            expect(client.expire).toHaveBeenCalledWith('sess:one', 60);
+        });
+
+        it('should forward session deletion', async () => {
+            vi.spyOn(client, 'del').mockResolvedValueOnce(1);
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+
+            await adapter.del(['sess:one']);
+
+            expect(client.del).toHaveBeenCalledWith(['sess:one']);
+        });
+
+        it('should forward reads of multiple sessions', async () => {
+            vi.spyOn(client, 'mGet').mockResolvedValueOnce(['one', null]);
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+
+            const result: (string | null)[] = await adapter.mGet(['sess:one', 'sess:two']);
+
+            expect(result).toEqual(['one', null]);
+            expect(client.mGet).toHaveBeenCalledWith(['sess:one', 'sess:two']);
+        });
+
+        it('should scan every cursor page including empty pages', async () => {
+            vi.spyOn(client, 'scan')
+                .mockResolvedValueOnce({ cursor: '17', keys: [] })
+                .mockResolvedValueOnce({ cursor: '42', keys: ['sess:one'] })
+                .mockResolvedValueOnce({ cursor: '0', keys: ['sess:two'] });
+            const adapter: SessionStoreClient = createSentinelSessionStoreClient(client);
+            const batches: string[][] = [];
+            const options: Parameters<RedisSentinelType['scan']>[1] = { MATCH: 'sess:*', COUNT: 2 };
+
+            for await (const keys of adapter.scanIterator(options)) {
+                batches.push(keys);
+            }
+
+            expect(batches).toEqual([[], ['sess:one'], ['sess:two']]);
+            expect(client.scan).toHaveBeenNthCalledWith(1, '0', options);
+            expect(client.scan).toHaveBeenNthCalledWith(2, '17', options);
+            expect(client.scan).toHaveBeenNthCalledWith(3, '42', options);
+        });
+
+        it('should scan without options', async () => {
+            vi.spyOn(client, 'scan').mockResolvedValueOnce({ cursor: '0', keys: [] });
+            const iterator: AsyncGenerator<string[]> = createSentinelSessionStoreClient(client).scanIterator();
+
+            await iterator.next();
+
+            expect(client.scan).toHaveBeenCalledWith('0', undefined);
+        });
+
+        it('should propagate scan failures', async () => {
+            const error: Error = new Error('scan failed');
+            vi.spyOn(client, 'scan').mockRejectedValueOnce(error);
+            const iterator: AsyncGenerator<string[]> = createSentinelSessionStoreClient(client).scanIterator();
+
+            await expect(iterator.next()).rejects.toThrow(error);
+        });
+    });
+});

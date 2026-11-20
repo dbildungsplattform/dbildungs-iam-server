@@ -26,6 +26,16 @@ Please always **remember** that anything that can be overridden in the environme
 
 The environment variables can be found in [src/shared/config/config.env.ts](../src/shared/config/config.env.ts)
 
+### Redis Sentinel
+
+Sentinel always uses the same `REDIS.USERNAME` and `REDIS.PASSWORD` as the Redis data connections.
+Separate Sentinel credentials cannot be configured. In Helm deployments, the existing
+`redis-password` Secret key supplies the shared password; the username comes from `REDIS.USERNAME`
+in the JSON configuration.
+
+Discovery and TLS remain configurable through `REDIS_SENTINEL_ENABLED`, `REDIS_SENTINEL_MASTER_NAME`,
+`REDIS_SENTINEL_NODES`, and `REDIS_SENTINEL_USE_TLS`, or the corresponding `redis.sentinel` Helm values.
+
 ### Secrets Configuration
 
 Secrets are provided inside the application in the same way as the static configuration.
