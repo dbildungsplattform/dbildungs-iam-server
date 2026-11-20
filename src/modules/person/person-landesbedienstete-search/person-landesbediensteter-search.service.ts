@@ -107,7 +107,7 @@ export class PersonLandesbediensteterSearchService {
 
         const person: Option<Person<true>> = await this.personRepository.findById(personId);
 
-        const isLandesbediensteter: boolean = person != null;
+        const isLandesbediensteter: boolean = person?.personalnummer != null;
         if (!isLandesbediensteter) {
             return Err(new LandesbediensteterSearchNoPersonFoundError());
         }
