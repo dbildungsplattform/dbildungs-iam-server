@@ -1,15 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import {
     Controller,
     Get,
-    Header,
-    HttpCode,
     Inject,
-    NotFoundException,
-    Post,
     Req,
     Res,
-    ServiceUnavailableException,
     Session,
     UseGuards,
     Query,
@@ -19,7 +13,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
     ApiBearerAuth,
-    ApiExcludeEndpoint,
     ApiInternalServerErrorResponse,
     ApiOAuth2,
     ApiOkResponse,
@@ -169,33 +162,6 @@ export class AuthenticationController {
             this.logger.error('Failed to generate CSRF token', error);
             throw new InternalServerErrorException('Failed to generate CSRF token');
         }
-    }
-
-    @Post('valkey-write-probe')
-    @HttpCode(200)
-    @Header('Cache-Control', 'no-store')
-    @ApiExcludeEndpoint()
-    public async writeValkeyProbe(@Req() request: Request): Promise<{ marker: string }> {
-        if (!request.isAuthenticated() || !request.session?.passport?.user) {
-            throw new UnauthorizedException('A logged-in browser session is required');
-        }
-
-        const marker: string = randomUUID();
-        const session: Request['session'] = request.session;
-        session.valkeyWriteProbeMarker = marker;
-
-        await new Promise<void>((resolve: () => void, reject: (error: ServiceUnavailableException) => void) => {
-            session.save((error?: unknown) => {
-                if (error) {
-                    this.logger.error('Valkey write probe could not save the session', error);
-                    reject(new ServiceUnavailableException('Valkey write probe failed'));
-                } else {
-                    resolve();
-                }
-            });
-        });
-
-        return { marker };
     }
 
     @Get('logininfo')
