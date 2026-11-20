@@ -1488,6 +1488,25 @@ describe('RolleRepo', () => {
             expect(rollen).toEqual([rolle]);
             expect(count).toBe(1);
         });
+
+        it('should return only rollen matching searchStr and count only those', async () => {
+            const matchingRolle: Rolle<true> = await createRolle({ name: 'Suchbare Rolle XYZ' });
+            await createRolle({
+                administeredBySchulstrukturknoten: matchingRolle.administeredBySchulstrukturknoten,
+                rollenart: matchingRolle.rollenart,
+                name: 'Andere Rolle',
+            });
+
+            const [rollen, count]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: matchingRolle.administeredBySchulstrukturknoten,
+                allowedOrganisationIds: [matchingRolle.administeredBySchulstrukturknoten],
+                allowedRollenarten: [matchingRolle.rollenart],
+                searchStr: 'suchbare',
+            });
+
+            expect(rollen).toEqual([matchingRolle]);
+            expect(count).toBe(1);
+        });
     });
 
     describe('exists', () => {
