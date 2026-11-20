@@ -52,6 +52,7 @@ import { CreateOrganisationBodyParams } from './create-organisation.body.params.
 import { DbiamOrganisationError } from './dbiam-organisation.error.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
 import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
+import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
@@ -415,6 +416,42 @@ export class OrganisationController {
                 (item: OrganisationsbeziehungWithOrganisationen): OrganisationsbeziehungWithOrganisationenResponse =>
                     OrganisationsbeziehungWithOrganisationenResponse.fromDomain(item),
             ),
+        });
+    }
+
+    @Get(':organisationId/search-for-relationships')
+    @ApiOperation({
+        description: 'Search organisations that may be linked to the requested organisation.',
+    })
+    @ApiOkResponse({
+        description: 'The eligible organisations were successfully returned.',
+        type: [OrganisationResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to search organisations.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to manage the requested organisation.' })
+    @ApiNotFoundResponse({ description: 'The requested organisation does not exist.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while searching organisations.' })
+    public async searchOrganisationsForRelationships(
+        @Param() params: OrganisationByIdParams,
+        @Query() queryParams: SearchOrganisationsForRelationshipsQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<PagedResponse<OrganisationResponse>> {
+        const result: Result<
+            Paged<Organisation<true>>,
+            DomainError
+        > = await this.organisationService.searchOrganisationsForRelationships(
+            params.organisationId,
+            queryParams,
+            permissions,
+        );
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return new PagedResponse({
+            ...result.value,
+            items: result.value.items.map((item: Organisation<true>) => new OrganisationResponse(item)),
         });
     }
 
