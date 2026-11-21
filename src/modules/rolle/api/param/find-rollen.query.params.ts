@@ -4,9 +4,9 @@ import { ArrayMaxSize, ArrayUnique, IsEnum, IsOptional, IsUUID } from 'class-val
 import { ServiceProviderID } from '../../../../shared/types/index.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 import { RollenArt, RollenArtTypName, RollenMerkmal, RollenMerkmalTypName } from '../../domain/rolle.enums.js';
-import { FindRollenWithIdsQueryParams } from './find-rollen-with-ids.query.params.js';
+import { FindRollenWithOrganisationFilterQueryParams } from './find-rollen-with-organisation-filter.query.params.js';
 
-export class FindRollenQueryParams extends FindRollenWithIdsQueryParams {
+export class FindRollenQueryParams extends FindRollenWithOrganisationFilterQueryParams {
     @IsOptional()
     @IsEnum(RollenArt, { each: true })
     @TransformToArray()
