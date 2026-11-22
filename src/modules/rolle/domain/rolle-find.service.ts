@@ -37,7 +37,6 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
     organisationId: OrganisationID;
     rollenartForPerson?: RollenArt;
     rolleName?: string;
-    rollenIds?: Array<RolleID>;
     limit?: number;
     offset?: number;
 }
@@ -238,7 +237,6 @@ export class RolleFindService {
             organisationId: params.organisationId,
             allowedRollenarten,
             allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
-            stickyRollenIds: params.rollenIds,
             limit: params.limit,
             offset: params.offset,
             searchStr: params.rolleName,

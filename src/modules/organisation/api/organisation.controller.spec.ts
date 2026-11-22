@@ -39,6 +39,7 @@ import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbe
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { OrganisationsByIdsBodyParams } from './organisations-by-ids.body.params.js';
 import { type OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
 import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
 import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
@@ -506,36 +507,13 @@ describe('OrganisationController', () => {
 
     describe('findOrganizations', () => {
         describe('when finding organizations with given query params', () => {
-            it('should find all organizations that match and handle provided IDs', async () => {
-                const organisationIds: string[] = [faker.string.uuid(), faker.string.uuid()];
-
+            it('should find all organizations that match the query params', async () => {
                 const queryParams: FindOrganisationQueryParams = {
                     typ: OrganisationsTyp.SONSTIGE,
                     searchString: faker.lorem.word(),
                     systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN],
                     administriertVon: [faker.string.uuid(), faker.string.uuid()],
-                    // Assuming you have a field for organisationIds in your query params
-                    organisationIds: organisationIds,
                 };
-
-                const selectedOrganisationMap: Map<string, Organisation<true>> = new Map(
-                    organisationIds.map((id: string) => [
-                        id,
-                        DoFactory.createOrganisationAggregate(true, {
-                            id: id,
-                            createdAt: faker.date.recent(),
-                            updatedAt: faker.date.recent(),
-                            administriertVon: faker.string.uuid(),
-                            zugehoerigZu: faker.string.uuid(),
-                            kennung: faker.lorem.word(),
-                            name: faker.lorem.word(),
-                            namensergaenzung: faker.lorem.word(),
-                            kuerzel: faker.lorem.word(),
-                            typ: OrganisationsTyp.SCHULE,
-                            traegerschaft: Traegerschaft.LAND,
-                        }),
-                    ]),
-                );
 
                 const mockedRepoResponse: [Organisation<true>[], number, number] = [
                     [
@@ -552,10 +530,9 @@ describe('OrganisationController', () => {
                             typ: OrganisationsTyp.SCHULE,
                             traegerschaft: Traegerschaft.LAND,
                         }),
-                        ...selectedOrganisationMap.values(),
                     ],
-                    selectedOrganisationMap.size + 1,
-                    3,
+                    1,
+                    1,
                 ];
 
                 organisationRepositoryMock.findAuthorized.mockResolvedValue(mockedRepoResponse);
@@ -572,8 +549,48 @@ describe('OrganisationController', () => {
                     queryParams,
                 ]);
 
-                expect(result.items.length).toEqual(3);
+                expect(result.items.length).toEqual(1);
             });
+        });
+    });
+
+    describe('findOrganisationsByIds', () => {
+        it('should return the permitted organisations for the given ids', async () => {
+            const ids: string[] = [faker.string.uuid(), faker.string.uuid()];
+            const mockBody: OrganisationsByIdsBodyParams = new OrganisationsByIdsBodyParams();
+            Object.assign(mockBody, { organisationIds: ids });
+            const organisations: Organisation<true>[] = ids.map((id: string) =>
+                DoFactory.createOrganisationAggregate(true, { id, typ: OrganisationsTyp.KLASSE }),
+            );
+            organisationRepositoryMock.findAuthorized.mockResolvedValue([organisations, ids.length, ids.length]);
+
+            const result: OrganisationResponse[] = await organisationController.findOrganisationsByIds(
+                mockBody,
+                permissionsMock,
+            );
+
+            expect(result.map((response: OrganisationResponse) => response.id)).toEqual(ids);
+            expect(organisationRepositoryMock.findAuthorized.mock.calls[0]?.[1]).toEqual([
+                RollenSystemRecht.KLASSEN_VERWALTEN,
+            ]);
+            expect(organisationRepositoryMock.findAuthorized.mock.calls[0]?.[2]).toMatchObject({
+                organisationIds: ids,
+                limit: ids.length,
+                offset: 0,
+            });
+        });
+
+        it('should not query the repository for an empty id list', async () => {
+            const mockBody: OrganisationsByIdsBodyParams = new OrganisationsByIdsBodyParams();
+            Object.assign(mockBody, { organisationIds: [] });
+
+            const result: OrganisationResponse[] = await organisationController.findOrganisationsByIds(
+                mockBody,
+                permissionsMock,
+            );
+
+            expect(result).toEqual([]);
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
         });
     });
 

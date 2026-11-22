@@ -1,3 +1,3 @@
-import { FindRollenWithIdsQueryParams } from './find-rollen-with-ids.query.params.js';
+import { FindRollenWithOrganisationFilterQueryParams } from './find-rollen-with-organisation-filter.query.params.js';
 
-export class FindRollenForMptZuordnungQueryParams extends FindRollenWithIdsQueryParams {}
+export class FindRollenForMptZuordnungQueryParams extends FindRollenWithOrganisationFilterQueryParams {}
