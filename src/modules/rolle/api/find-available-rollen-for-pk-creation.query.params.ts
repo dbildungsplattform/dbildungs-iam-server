@@ -1,10 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PagedQueryParams } from '../../../shared/paging/index.js';
-import { OrganisationID, RolleID } from '../../../shared/types/aggregate-ids.types.js';
+import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { RollenArt, RollenArtTypName } from '../domain/rolle.enums.js';
 import { RollenSystemRechtEnum, RollenSystemRechtEnumName } from '../domain/systemrecht.js';
-import { ArrayUnique, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
-import { TransformToArray } from '../../../shared/util/array-transform.validator.js';
+import { IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParams {
     @IsUUID()
@@ -34,19 +33,6 @@ export class FindAvailableRollenForPKCreationQueryParams extends PagedQueryParam
         nullable: true,
     })
     public readonly rolleName?: string;
-
-    @TransformToArray()
-    @ArrayUnique()
-    @IsUUID(undefined, { each: true })
-    @IsOptional()
-    @TransformToArray()
-    @ApiProperty({
-        description: 'The rollenIds that are currently selected and should always be returned.',
-        required: false,
-        nullable: true,
-        type: [String],
-    })
-    public readonly rollenIds?: Array<RolleID>;
 
     @IsEnum(RollenSystemRechtEnum)
     @IsOptional()

@@ -93,19 +93,6 @@ export class FindOrganisationQueryParams extends PagedQueryParams {
     public readonly zugehoerigZu?: string[];
 
     @IsOptional()
-    @TransformToArray()
-    @ArrayUnique()
-    @IsUUID(undefined, { each: true })
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        isArray: true,
-        description:
-            'Liefert Organisationen mit den angegebenen IDs, selbst wenn andere Filterkriterien nicht zutreffen (ODER-verknüpft mit anderen Kriterien).',
-    })
-    public readonly organisationIds?: string[];
-
-    @IsOptional()
     @IsEnum(ScopeOrder)
     @ApiProperty({
         enum: ScopeOrder,
