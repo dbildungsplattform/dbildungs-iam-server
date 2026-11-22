@@ -254,10 +254,11 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
                     Object.assign(params, { personId: faker.string.uuid() });
                     const bodyParams: DbiamUpdatePersonenkontexteBodyParams =
                         new DbiamUpdatePersonenkontexteBodyParams();
-                    Object.assign(params, {
+                    Object.assign(bodyParams, {
                         count: 1,
                         lastModified: new Date(),
                         personenkontexte: [],
+                        operationContext: OperationContext.PERSON_BEARBEITEN,
                     });
                     const queryParams: DbiamUpdatePersonenkontexteQueryParams = {
                         personalnummer: '1234',

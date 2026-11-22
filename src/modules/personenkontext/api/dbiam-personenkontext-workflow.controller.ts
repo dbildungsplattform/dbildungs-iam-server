@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Get,
@@ -164,19 +165,9 @@ export class DbiamPersonenkontextWorkflowController {
     ): Promise<PersonenkontexteUpdateResponse> {
         let updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError;
 
-        if (bodyParams.operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
-            updateResult = await this.landesbediensteteKontextWorkflowService.commit(
-                params.personId,
-                bodyParams.lastModified,
-                bodyParams.count,
-                bodyParams.personenkontexte,
-                permissions,
-                queryParams.personalnummer || undefined,
-            );
-        } else {
-            updateResult = await this.personenkontextWorkflowFactory
-                .createNew()
-                .commit(
+        switch (bodyParams.operationContext) {
+            case OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN:
+                updateResult = await this.landesbediensteteKontextWorkflowService.commit(
                     params.personId,
                     bodyParams.lastModified,
                     bodyParams.count,
@@ -184,6 +175,22 @@ export class DbiamPersonenkontextWorkflowController {
                     permissions,
                     queryParams.personalnummer || undefined,
                 );
+                break;
+            case OperationContext.PERSON_ANLEGEN:
+            case OperationContext.PERSON_BEARBEITEN:
+                updateResult = await this.personenkontextWorkflowFactory
+                    .createNew()
+                    .commit(
+                        params.personId,
+                        bodyParams.lastModified,
+                        bodyParams.count,
+                        bodyParams.personenkontexte,
+                        permissions,
+                        queryParams.personalnummer || undefined,
+                    );
+                break;
+            default:
+                throw new BadRequestException('Unsupported operation context for updating personenkontexte');
         }
 
         if (updateResult instanceof DomainError) {

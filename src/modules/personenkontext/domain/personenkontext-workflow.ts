@@ -71,7 +71,7 @@ export class PersonenkontextWorkflowAggregate {
         );
 
         // If there are no permitted orgas, return an empty array early
-        if (!permittedOrgas.all && permittedOrgas.orgaIds.length === 0) {
+        if (!permittedOrgas?.all && permittedOrgas?.orgaIds.length === 0) {
             return [];
         }
 
@@ -81,7 +81,7 @@ export class PersonenkontextWorkflowAggregate {
         organisationsExceptKlassen = await this.organisationRepository.findByNameOrKennungAndExcludeByOrganisationType(
             OrganisationsTyp.KLASSE,
             organisationName,
-            permittedOrgas.all ? undefined : permittedOrgas.orgaIds, // Only fetch permitted organizations if restricted
+            permittedOrgas?.all ? undefined : (permittedOrgas?.orgaIds ?? []), // Only fetch permitted organizations if restricted
             limit,
         );
 
