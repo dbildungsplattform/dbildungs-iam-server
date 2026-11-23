@@ -12,7 +12,7 @@ export class KlasseNurVonSchuleAdministriert extends CompositeSpecification<Orga
         if (t.typ !== OrganisationsTyp.KLASSE) {
             return true;
         }
-        return (await this.validateAdministriertVon(t)) && (await this.validateZugehoerigZu(t));
+        return this.validateAdministriertVon(t);
     }
 
     private async validateAdministriertVon(t: Organisation<boolean>): Promise<boolean> {
@@ -20,17 +20,6 @@ export class KlasseNurVonSchuleAdministriert extends CompositeSpecification<Orga
             return false;
         }
         const parent: Option<Organisation<true>> = await this.organisationRepo.findById(t.administriertVon);
-        if (!parent) {
-            return false;
-        }
-        return parent.typ === OrganisationsTyp.SCHULE;
-    }
-
-    private async validateZugehoerigZu(t: Organisation<true>): Promise<boolean> {
-        if (!t.zugehoerigZu) {
-            return false;
-        }
-        const parent: Option<Organisation<true>> = await this.organisationRepo.findById(t.zugehoerigZu);
         if (!parent) {
             return false;
         }

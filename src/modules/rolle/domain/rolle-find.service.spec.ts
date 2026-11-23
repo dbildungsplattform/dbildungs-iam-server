@@ -1097,7 +1097,6 @@ describe('RolleFindService', () => {
                                     parent = DoFactory.createOrganisation<true>(true, { typ: OrganisationsTyp.ROOT });
                                     organisation = DoFactory.createOrganisation(true, {
                                         typ: organisationsTyp,
-                                        zugehoerigZu: parent.id,
                                         administriertVon: parent.id,
                                     });
                                     organisationRepoMock.findDistinctOrganisationsTypen.mockResolvedValue([
@@ -1145,7 +1144,7 @@ describe('RolleFindService', () => {
                         numberOfSchulen,
                         true,
                         DoFactory.createOrganisation,
-                        { typ: OrganisationsTyp.SCHULE, zugehoerigZu: traeger.id, administriertVon: traeger.id },
+                        { typ: OrganisationsTyp.SCHULE, administriertVon: traeger.id },
                     );
                     permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                         all: false,

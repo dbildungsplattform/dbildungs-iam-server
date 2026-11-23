@@ -23,6 +23,8 @@ export class TraegerUnterRootChild<
         const rootChildOrgas: Array<Organisation<true, false> | undefined> =
             await this.organisationRepository.findRootDirectChildren();
 
-        return rootChildOrgas.some((parent: Organisation<true, false> | undefined) => parent?.id === t.zugehoerigZu);
+        return rootChildOrgas.some(
+            (parent: Organisation<true, false> | undefined) => parent !== undefined && parent.id === t.administriertVon,
+        );
     }
 }

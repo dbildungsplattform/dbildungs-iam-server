@@ -8,32 +8,28 @@
 			"namensergaenzung": "Keine",
 			"kuerzel": "Testschule-15",
 			"typ": "SCHULE",
-			"administriertVon": 1,
-			"zugehoerigZu": 1
+			"administriertVon": 1
 		},
 		{
 			"id": 16,
 			"name": "1A",
 			"namensergaenzung": "Keine",
 			"typ": "KLASSE",
-			"administriertVon": 15,
-			"zugehoerigZu": 15
+			"administriertVon": 15
 		},
 		{
 			"id": 17,
 			"name": "1B",
 			"namensergaenzung": "Keine",
 			"typ": "KLASSE",
-			"administriertVon": 15,
-			"zugehoerigZu": 15
+			"administriertVon": 15
 		},
 		{
 			"id": 18,
 			"name": "1C",
 			"namensergaenzung": "Keine",
 			"typ": "KLASSE",
-			"administriertVon": 15,
-			"zugehoerigZu": 15
+			"administriertVon": 15
 		}
 	]
 }

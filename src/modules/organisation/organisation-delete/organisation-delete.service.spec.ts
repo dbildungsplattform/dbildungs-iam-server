@@ -20,7 +20,6 @@ import { OrganisationHasPersonenkontexteError } from './errors/organisation-has-
 import { OrganisationHasRollenError } from './errors/organisation-has-rollen.error.js';
 import { OrganisationHasRollenerweiterungError } from './errors/organisation-has-rollenerweiterung.error.js';
 import { OrganisationHasServiceProvidersError } from './errors/organisation-has-service-provider.error.js';
-import { OrganisationHasZugehoerigeError } from './errors/organisation-has-zugehoerige.error.js';
 import { OrganisationDeleteService } from './organisation-delete.service.js';
 
 describe('OrganisationDeleteService', () => {
@@ -117,33 +116,6 @@ describe('OrganisationDeleteService', () => {
             );
 
             expect(result).toBeInstanceOf(OrganisationHasChildrenError);
-            expect(rolleRepo.findBySchulstrukturknoten).not.toHaveBeenCalled();
-            expect(personenkontextRepo.findBy).not.toHaveBeenCalled();
-            expect(serviceProviderRepo.findBySchulstrukturknoten).not.toHaveBeenCalled();
-            expect(rollenerweiterungRepo.existsByOrganisationId).not.toHaveBeenCalled();
-            expect(organisationRepo.delete).not.toHaveBeenCalled();
-        });
-
-        it('should return OrganisationHasZugehoerigeError if organisation has zugehoerige organisations', async () => {
-            const organisationId: OrganisationID = faker.string.uuid();
-
-            const permissions: IPersonPermissions = createPersonPermissionsMock();
-
-            organisationRepo.findBy.mockResolvedValueOnce([[], 0]).mockResolvedValueOnce([
-                [
-                    DoFactory.createOrganisation(true, {
-                        zugehoerigZu: organisationId,
-                    }),
-                ],
-                1,
-            ]);
-
-            const result: void | DomainError = await organisationDeleteService.deleteOrganisation(
-                organisationId,
-                permissions,
-            );
-
-            expect(result).toBeInstanceOf(OrganisationHasZugehoerigeError);
             expect(rolleRepo.findBySchulstrukturknoten).not.toHaveBeenCalled();
             expect(personenkontextRepo.findBy).not.toHaveBeenCalled();
             expect(serviceProviderRepo.findBySchulstrukturknoten).not.toHaveBeenCalled();

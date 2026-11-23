@@ -190,7 +190,6 @@ describe('Organisation API', () => {
                     name: 'Organisation with forbidden kennung',
                     kennung: '1234567',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 });
 
             expect(response.status).toBe(400);
@@ -216,7 +215,6 @@ describe('Organisation API', () => {
                     name: 'School with kennung',
                     kennung: '1234567',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 });
 
             expect(response.status).toBe(201);
@@ -238,7 +236,6 @@ describe('Organisation API', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     name: 'Organisation without kennung',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 });
 
             expect(response.status).toBe(201);
@@ -259,7 +256,6 @@ describe('Organisation API', () => {
                     typ: OrganisationsTyp.SCHULE,
                     kennung: '1234567',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 }),
             );
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
@@ -271,7 +267,6 @@ describe('Organisation API', () => {
                     name: 'Updated school',
                     kennung: '7654321',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 });
 
             expect(response.status).toBe(200);
@@ -291,7 +286,6 @@ describe('Organisation API', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     kennung: undefined,
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 }),
             );
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(true);
@@ -303,7 +297,6 @@ describe('Organisation API', () => {
                     name: 'Updated organisation',
                     kennung: '7654321',
                     administriertVon: parent.id,
-                    zugehoerigZu: parent.id,
                 });
 
             expect(response.status).toBe(200);
@@ -333,7 +326,6 @@ describe('Organisation API', () => {
                 DoFactory.createOrganisation(false, {
                     typ: type,
                     administriertVon: originalSchool.id,
-                    zugehoerigZu: originalSchool.id,
                 }),
             );
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockImplementation(
@@ -361,7 +353,6 @@ describe('Organisation API', () => {
                 .send({
                     typ: OrganisationsTyp.KLASSE,
                     administriertVon: authorizedSchool.id,
-                    zugehoerigZu: authorizedSchool.id,
                     name: '7a',
                 });
 
@@ -384,7 +375,6 @@ describe('Organisation API', () => {
                     typ: organisation.typ,
                     name: organisation.name,
                     administriertVon: originalSchool.id,
-                    zugehoerigZu: originalSchool.id,
                 }),
             );
         };

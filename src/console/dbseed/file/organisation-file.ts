@@ -7,8 +7,6 @@ export class OrganisationFile {
 
     public administriertVon?: number;
 
-    public zugehoerigZu?: number;
-
     public kennung?: string;
 
     public name!: string;

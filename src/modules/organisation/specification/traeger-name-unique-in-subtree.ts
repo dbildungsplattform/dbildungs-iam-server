@@ -85,21 +85,24 @@ export class TraegerNameUniqueInSubtree<
         t: Organisation<WasPersisted, RelationshipsLoaded>,
     ): Promise<Organisation<true, false> | undefined> {
         const [oeffentlich, ersatz]: RootChildren = this.cachedRootChildren;
-        if (!t.zugehoerigZu) {
+        if (!t.administriertVon) {
             return undefined;
         }
         // test for direct children first, maybe we can return early
-        if (oeffentlich && t.zugehoerigZu === oeffentlich.id) {
+        if (oeffentlich && t.administriertVon === oeffentlich.id) {
             return oeffentlich;
         }
-        if (ersatz && t.zugehoerigZu === ersatz.id) {
+        if (ersatz && t.administriertVon === ersatz.id) {
             return ersatz;
         }
 
-        if (oeffentlich && (await this.organisationRepository.isOrgaAParentOfOrgaB(oeffentlich.id, t.zugehoerigZu))) {
+        if (
+            oeffentlich &&
+            (await this.organisationRepository.isOrgaAParentOfOrgaB(oeffentlich.id, t.administriertVon))
+        ) {
             return oeffentlich;
         }
-        if (ersatz && (await this.organisationRepository.isOrgaAParentOfOrgaB(ersatz.id, t.zugehoerigZu))) {
+        if (ersatz && (await this.organisationRepository.isOrgaAParentOfOrgaB(ersatz.id, t.administriertVon))) {
             return ersatz;
         }
         return undefined;

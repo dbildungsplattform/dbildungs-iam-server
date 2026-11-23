@@ -81,18 +81,6 @@ export class FindOrganisationQueryParams extends PagedQueryParams {
     public readonly administriertVon?: string[];
 
     @IsOptional()
-    @TransformToArray()
-    @ArrayUnique()
-    @IsUUID(undefined, { each: true })
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        isArray: true,
-        description: 'Liefert die Kind-Organisationen, die den angegebenen IDs zugehörig sind.',
-    })
-    public readonly zugehoerigZu?: string[];
-
-    @IsOptional()
     @IsEnum(ScopeOrder)
     @ApiProperty({
         enum: ScopeOrder,

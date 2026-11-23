@@ -35,9 +35,7 @@ import { NameRequiredForSchuleError } from '../specification/error/name-required
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
-import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
-import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
@@ -45,13 +43,10 @@ import { KennungRequiredForSchule } from '../specification/kennung-required-for-
 import { KlasseNurVonSchuleAdministriert } from '../specification/klasse-nur-von-schule-administriert.js';
 import { KlassenNameAnSchuleEindeutig } from '../specification/klassen-name-an-schule-eindeutig.js';
 import { NameRequiredForSchule } from '../specification/name-required-for-schule.js';
-import { OrganisationsOnSameSubtree } from '../specification/organisations-on-same-subtree.js';
 import { SchuleKennungEindeutig } from '../specification/schule-kennung-eindeutig.js';
-import { SchuleUnterTraeger } from '../specification/schule-unter-traeger.js';
 import { TraegerNameUniqueInSubtree } from '../specification/traeger-name-unique-in-subtree.js';
 import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child.js';
 import { ZyklusInOrganisationen } from '../specification/zyklus-in-organisationen.js';
-import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
 import { Organisation, Organisationsbeziehung, OrganisationsbeziehungWithOrganisationen } from './organisation.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
@@ -68,14 +63,7 @@ import { SchultraegerSchuleUndTraegerSelberBaumError } from '../specification/re
 
 export type UpdateOrganisationData = Pick<
     Organisation<true>,
-    | 'id'
-    | 'administriertVon'
-    | 'zugehoerigZu'
-    | 'name'
-    | 'namensergaenzung'
-    | 'kuerzel'
-    | 'traegerschaft'
-    | 'emailAdress'
+    'id' | 'administriertVon' | 'name' | 'namensergaenzung' | 'kuerzel' | 'traegerschaft' | 'emailAdress'
 >;
 
 @Injectable()
@@ -91,9 +79,9 @@ export class OrganisationService {
         error?: Error,
     ): Promise<void> {
         if (organisation.typ === OrganisationsTyp.KLASSE) {
-            if (organisation.zugehoerigZu) {
+            if (organisation.administriertVon) {
                 const school: Option<Organisation<true>> = await this.organisationRepo.findById(
-                    organisation.zugehoerigZu,
+                    organisation.administriertVon,
                 );
                 const schoolName: string = school?.name ?? 'SCHOOL_NOT_FOUND';
                 if (error) {
@@ -126,9 +114,9 @@ export class OrganisationService {
         error?: Error,
     ): Promise<void> {
         if (organisation.typ === OrganisationsTyp.KLASSE) {
-            if (organisation.zugehoerigZu) {
+            if (organisation.administriertVon) {
                 const school: Option<Organisation<true>> = await this.organisationRepo.findById(
-                    organisation.zugehoerigZu,
+                    organisation.administriertVon,
                 );
                 let schoolName: string = 'SCHOOL_NOT_FOUND';
                 if (school) {
@@ -299,7 +287,6 @@ export class OrganisationService {
 
         if (canUpdateParentReferences) {
             organisation.administriertVon = updateData.administriertVon;
-            organisation.zugehoerigZu = updateData.zugehoerigZu;
         }
         organisation.name = updateData.name;
         organisation.namensergaenzung = updateData.namensergaenzung;
@@ -326,7 +313,6 @@ export class OrganisationService {
     private async validateOrganisationCycles(organisationDo: Organisation<true>): Promise<DomainError | undefined> {
         if (
             organisationDo.administriertVon === organisationDo.id ||
-            organisationDo.zugehoerigZu === organisationDo.id ||
             (await new ZyklusInOrganisationen(this.organisationRepo).isSatisfiedBy(organisationDo))
         ) {
             return new ZyklusInOrganisationenError(organisationDo.id);
@@ -340,10 +326,6 @@ export class OrganisationService {
     ): Promise<DomainError | undefined> {
         if (organisationDo.administriertVon && !(await this.organisationRepo.exists(organisationDo.administriertVon))) {
             return new EntityNotFoundError('Organisation', organisationDo.administriertVon);
-        }
-
-        if (organisationDo.zugehoerigZu && !(await this.organisationRepo.exists(organisationDo.zugehoerigZu))) {
-            return new EntityNotFoundError('Organisation', organisationDo.zugehoerigZu);
         }
 
         return undefined;
@@ -436,100 +418,6 @@ export class OrganisationService {
         return { ok: false, error: new EntityNotFoundError('Organization', id) };
     }
 
-    public async setZugehoerigZu(
-        parentId: string,
-        childId: string,
-        permissions: IPersonPermissions,
-    ): Promise<Result<void, DomainError>> {
-        const orgas: Map<OrganisationID, Organisation<true>> = await this.organisationRepo.findByIds([
-            childId,
-            parentId,
-        ]);
-
-        const childOrga: Option<Organisation<true>> = orgas.get(childId);
-        const newParentOrga: Option<Organisation<true>> = orgas.get(parentId);
-
-        if (!childOrga || !childOrga.zugehoerigZu) {
-            return {
-                ok: false,
-                error: new EntityNotFoundError('Organisation', childId),
-            };
-        }
-
-        if (!newParentOrga) {
-            return {
-                ok: false,
-                error: new EntityNotFoundError('Organisation', parentId),
-            };
-        }
-
-        // Check Systemrechte
-        const hasSystemrechteAtParentOrgas: boolean = await Promise.all([
-            permissions.hasSystemrechtAtOrganisation(childOrga.zugehoerigZu, RollenSystemRecht.SCHULTRAEGER_VERWALTEN), // Check at old parent
-            permissions.hasSystemrechtAtOrganisation(parentId, RollenSystemRecht.SCHULTRAEGER_VERWALTEN), // Check at new parent
-        ]).then((v: boolean[]) => v.every(Boolean));
-
-        if (!hasSystemrechteAtParentOrgas) {
-            return {
-                ok: false,
-                error: new MissingPermissionsError('Not allowed to edit organisations'),
-            };
-        }
-
-        // Check child orga type
-        if (childOrga.typ !== OrganisationsTyp.SCHULE) {
-            return {
-                ok: false,
-                error: new OrganisationZuordnungVerschiebenError(childId, childOrga.typ),
-            };
-        }
-
-        // MUST be called before zugehoerigZu is altered
-        const validationResult: Result<boolean, DomainError> = await this.validateZugehoerigZu(
-            childOrga,
-            newParentOrga,
-        );
-        if (!validationResult.ok) {
-            return { ok: false, error: validationResult.error };
-        }
-
-        childOrga.zugehoerigZu = parentId;
-
-        try {
-            await this.organisationRepo.save(childOrga);
-            return { ok: true, value: undefined };
-        } catch (e) {
-            this.logger.logUnknownAsError('Could not update organisation', e);
-            return { ok: false, error: new EntityCouldNotBeUpdated('Organisation', childId) };
-        }
-    }
-
-    private async validateZugehoerigZu(
-        childOrganisation: Organisation<true>,
-        parentOrganisation: Organisation<true>,
-    ): Promise<Result<boolean, OrganisationSpecificationError>> {
-        //check version from DB before zugehoerigZu is altered
-        const organisationsOnSameSubtree: boolean = await new OrganisationsOnSameSubtree(
-            this.organisationRepo,
-        ).isSatisfiedBy([childOrganisation, parentOrganisation]);
-        if (!organisationsOnSameSubtree) {
-            return {
-                ok: false,
-                error: new OrganisationsOnDifferentSubtreesError(),
-            };
-        }
-
-        childOrganisation.zugehoerigZu = parentOrganisation.id;
-
-        const validateStructureSpecifications: Result<boolean, OrganisationSpecificationError> =
-            await this.validateStructureSpecifications(childOrganisation);
-        if (!validateStructureSpecifications.ok) {
-            return { ok: false, error: validateStructureSpecifications.error };
-        }
-
-        return { ok: true, value: true };
-    }
-
     private async validateKlassenSpecifications(
         childOrganisation: Organisation<boolean>,
     ): Promise<Result<boolean, OrganisationSpecificationError>> {
@@ -602,20 +490,6 @@ export class OrganisationService {
         return { ok: true, value: undefined };
     }
 
-    private async validateStructureSpecifications(
-        childOrganisation: Organisation<true>,
-    ): Promise<Result<boolean, OrganisationSpecificationError>> {
-        const schuleUnterTraeger: SchuleUnterTraeger = new SchuleUnterTraeger(this.organisationRepo);
-        if (!(await schuleUnterTraeger.isSatisfiedBy(childOrganisation))) {
-            return { ok: false, error: new SchuleUnterTraegerError(childOrganisation.id) };
-        }
-        const zyklusInOrganisationen: ZyklusInOrganisationen = new ZyklusInOrganisationen(this.organisationRepo);
-        if (await zyklusInOrganisationen.isSatisfiedBy(childOrganisation)) {
-            return { ok: false, error: new ZyklusInOrganisationenError(childOrganisation.id) };
-        }
-        return { ok: true, value: true };
-    }
-
     private validateFieldNames(organisation: Organisation<boolean>): void | OrganisationSpecificationError {
         if (
             organisation.name &&
@@ -682,26 +556,6 @@ export class OrganisationService {
             .setScopeWhereOperator(ScopeOperator.AND)
             .findAdministrierteVon(parentOrganisationID)
             .searchStringAdministriertVon(searchFilter)
-            .paged(offset, limit);
-
-        const [organisations, total]: Counted<Organisation<true>> = await this.organisationRepo.findBy(scope);
-
-        return {
-            total,
-            offset: offset ?? 0,
-            limit: limit ?? total,
-            items: organisations,
-            pageTotal: organisations.length,
-        };
-    }
-
-    public async findAllZugehoerigZu(
-        parentOrganisationID: string,
-        offset?: number,
-        limit?: number,
-    ): Promise<Paged<Organisation<true>>> {
-        const scope: OrganisationScope = new OrganisationScope()
-            .findZugehoerigeZu(parentOrganisationID)
             .paged(offset, limit);
 
         const [organisations, total]: Counted<Organisation<true>> = await this.organisationRepo.findBy(scope);

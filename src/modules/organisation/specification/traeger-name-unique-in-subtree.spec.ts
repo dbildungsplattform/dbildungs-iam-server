@@ -106,7 +106,6 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
                 parent = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.LAND,
                     administriertVon: root.id,
-                    zugehoerigZu: root.id,
                 });
                 orgaRepoMock.findById.mockResolvedValueOnce(root);
                 if (subtreeType === 'oeffentlich') {
@@ -121,7 +120,7 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
                 beforeEach(() => {
                     traeger = DoFactory.createOrganisation(true, {
                         typ: OrganisationsTyp.TRAEGER,
-                        zugehoerigZu: label === 'direct' ? parent.id : faker.string.uuid(),
+                        administriertVon: label === 'direct' ? parent.id : faker.string.uuid(),
                     });
                     if (label === 'indirect') {
                         orgaRepoMock.isOrgaAParentOfOrgaB.mockResolvedValueOnce(true);
@@ -147,7 +146,7 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
             it('when traeger is not part of the subtree, it should return true', async () => {
                 const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
                     typ: OrganisationsTyp.TRAEGER,
-                    zugehoerigZu: '',
+                    administriertVon: '',
                 });
                 orgaRepoMock.findBy.mockResolvedValueOnce([
                     [
@@ -156,7 +155,6 @@ describe('TraegerNameUniqueInSubtree Specification', () => {
                             name: traeger.name,
                             typ: OrganisationsTyp.TRAEGER,
                             administriertVon: parent.id,
-                            zugehoerigZu: parent.id,
                         }),
                     ],
                     2,

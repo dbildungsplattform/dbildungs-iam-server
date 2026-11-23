@@ -9,11 +9,9 @@ export class SchuleUpdatedEvent extends BaseEvent {
         public readonly name: string | undefined,
         public readonly itslearningEnabled: boolean,
         public readonly administriertVon: string | undefined,
-        public readonly zugehoerigZu: string | undefined,
         public readonly oldKennung: string | undefined,
         public readonly oldName: string | undefined,
         public readonly oldAdministriertVon: string | undefined,
-        public readonly oldZugehoerigZu: string | undefined,
     ) {
         super();
     }
@@ -28,11 +26,9 @@ export class SchuleUpdatedEvent extends BaseEvent {
             newOrganisation.name,
             newOrganisation.itslearningEnabled,
             newOrganisation.administriertVon,
-            newOrganisation.zugehoerigZu,
             oldOrganisation.kennung,
             oldOrganisation.name,
             oldOrganisation.administriertVon,
-            oldOrganisation.zugehoerigZu,
         );
     }
 }

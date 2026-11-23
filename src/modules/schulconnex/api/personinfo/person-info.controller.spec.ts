@@ -505,12 +505,10 @@ describe('PersonInfoController', () => {
             it('should return person info for Schueler with gruppen', async () => {
                 const klasse1: Organisation<true> = DoFactory.createOrganisation(true, {
                     administriertVon: orga?.id,
-                    zugehoerigZu: orga?.id,
                     typ: OrganisationsTyp.KLASSE,
                 });
                 const klasse2: Organisation<true> = DoFactory.createOrganisation(true, {
                     administriertVon: orga?.id,
-                    zugehoerigZu: orga?.id,
                     typ: OrganisationsTyp.KLASSE,
                     name: undefined,
                 });
@@ -769,12 +767,10 @@ describe('PersonInfoController', () => {
             it('should return person info for Schueler with gruppen', async () => {
                 const klasse1: Organisation<true> = DoFactory.createOrganisation(true, {
                     administriertVon: orga?.id,
-                    zugehoerigZu: orga?.id,
                     typ: OrganisationsTyp.KLASSE,
                 });
                 const klasse2: Organisation<true> = DoFactory.createOrganisation(true, {
                     administriertVon: orga?.id,
-                    zugehoerigZu: orga?.id,
                     typ: OrganisationsTyp.KLASSE,
                     name: undefined,
                 });

@@ -72,8 +72,7 @@ Example for a seeding-file for organisations (new way of referencing)
             "name": "Root Organisation",
             "kuerzel": "Root",
             "typ": "TRAEGER",
-            "administriertVon": null,
-            "zugehoerigZu": null
+            "administriertVon": null
         },
         {
             "id": 1,
@@ -82,8 +81,7 @@ Example for a seeding-file for organisations (new way of referencing)
             "namensergaenzung": "Keine",
             "kuerzel": "O1",
             "typ": "TRAEGER",
-            "administriertVon": 0,
-            "zugehoerigZu": 0
+            "administriertVon": 0
         }
     ]
 }

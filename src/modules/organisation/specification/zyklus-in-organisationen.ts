@@ -8,7 +8,7 @@ export class ZyklusInOrganisationen extends CompositeSpecification<Organisation<
     }
 
     public async isSatisfiedBy(t: Organisation<true>): Promise<boolean> {
-        return (await this.validateAdministriertVon(t, [])) || (await this.validateZugehoerigZu(t, []));
+        return this.validateAdministriertVon(t, []);
     }
 
     private async validateAdministriertVon(orga: Organisation<true>, list: Organisation<true>[]): Promise<boolean> {
@@ -22,22 +22,6 @@ export class ZyklusInOrganisationen extends CompositeSpecification<Organisation<
             if (parent) {
                 list.push(orga);
                 return this.validateAdministriertVon(parent, list);
-            }
-        }
-        return false;
-    }
-
-    private async validateZugehoerigZu(orga: Organisation<true>, list: Organisation<true>[]): Promise<boolean> {
-        for (const item of list) {
-            if (item.id === orga.id) {
-                return true;
-            }
-        }
-        if (orga.zugehoerigZu) {
-            const parent: Option<Organisation<true>> = await this.organisationRepo.findById(orga.zugehoerigZu);
-            if (parent) {
-                list.push(orga);
-                return this.validateZugehoerigZu(parent, list);
             }
         }
         return false;

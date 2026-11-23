@@ -31,7 +31,6 @@ export async function createAndPersistOrganisation(
 ): Promise<OrganisationEntity> {
     const organisationData: RequiredEntityData<OrganisationEntity> = {
         administriertVon: parentOrga,
-        zugehoerigZu: parentOrga,
         name: fakeNames ? faker.company.name() : 'Testorganisation',
         typ,
         kennung: fakeNames ? faker.lorem.word() : undefined,

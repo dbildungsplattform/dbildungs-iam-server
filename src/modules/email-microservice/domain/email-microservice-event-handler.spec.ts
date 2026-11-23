@@ -80,18 +80,7 @@ function createSchuleUpdatedEvent({
     name,
     oldName,
 }: Pick<SchuleUpdatedEvent, 'organisationId' | 'name' | 'oldName'>): SchuleUpdatedEvent {
-    return new SchuleUpdatedEvent(
-        organisationId,
-        undefined,
-        name,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        oldName,
-        undefined,
-        undefined,
-    );
+    return new SchuleUpdatedEvent(organisationId, undefined, name, false, undefined, undefined, oldName, undefined);
 }
 
 describe('EmailMicroserviceEventHandler', () => {

@@ -178,7 +178,6 @@ describe('Import API', () => {
             klasse1A.typ = OrganisationsTyp.KLASSE;
             klasse1A.name = '1a';
             klasse1A.administriertVon = schule.id;
-            klasse1A.zugehoerigZu = schule.id;
             await em.persist(klasse1A).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse1A.id });
 
@@ -186,7 +185,6 @@ describe('Import API', () => {
             klasse2B.typ = OrganisationsTyp.KLASSE;
             klasse2B.name = '2b';
             klasse2B.administriertVon = schule.id;
-            klasse2B.zugehoerigZu = schule.id;
             await em.persist(klasse2B).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse2B.id });
 
@@ -236,7 +234,6 @@ describe('Import API', () => {
             klasse1A.typ = OrganisationsTyp.KLASSE;
             klasse1A.name = '1A';
             klasse1A.administriertVon = schule.id;
-            klasse1A.zugehoerigZu = schule.id;
             await em.persist(klasse1A).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse1A.id });
 
@@ -482,7 +479,6 @@ describe('Import API', () => {
             klasse1A.typ = OrganisationsTyp.KLASSE;
             klasse1A.name = '1a';
             klasse1A.administriertVon = schule.id;
-            klasse1A.zugehoerigZu = schule.id;
             await em.persist(klasse1A).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse1A.id });
 
@@ -532,7 +528,6 @@ describe('Import API', () => {
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.name = '1a';
             klasse.administriertVon = schule.id;
-            klasse.zugehoerigZu = schule.id;
             await em.persist(klasse).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse.id });
 
@@ -576,7 +571,6 @@ describe('Import API', () => {
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.name = '1a';
             klasse.administriertVon = schule.id;
-            klasse.zugehoerigZu = schule.id;
             await em.persist(klasse).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse.id });
 
@@ -584,7 +578,6 @@ describe('Import API', () => {
             klasse1A.typ = OrganisationsTyp.KLASSE;
             klasse1A.name = '1A';
             klasse1A.administriertVon = schule.id;
-            klasse1A.zugehoerigZu = schule.id;
             await em.persist(klasse1A).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse1A.id });
 
@@ -683,7 +676,6 @@ describe('Import API', () => {
             klasse.typ = OrganisationsTyp.KLASSE;
             klasse.name = '1a';
             klasse.administriertVon = schule.id;
-            klasse.zugehoerigZu = schule.id;
             await em.persist(klasse).flush();
             await em.findOneOrFail(OrganisationEntity, { id: klasse.id });
 

@@ -56,7 +56,6 @@ export function mapOrgaAggregateToData<WasPersisted extends boolean, Relationshi
     return {
         id: organisation.id,
         administriertVon: organisation.administriertVon,
-        zugehoerigZu: organisation.zugehoerigZu,
         kennung: organisation.kennung,
         name: organisation.name,
         namensergaenzung: organisation.namensergaenzung,
@@ -79,7 +78,6 @@ export function mapOrgaEntityToAggregate(entity: OrganisationEntity): Organisati
         entity.typ,
         undefined,
         entity.administriertVon,
-        entity.zugehoerigZu,
         entity.kennung,
         entity.namensergaenzung,
         entity.kuerzel,
@@ -116,7 +114,6 @@ export function mapOrgaEntityToAggregateWithRelationships(
         entity.typ,
         organisationsbeziehungen,
         entity.administriertVon,
-        entity.zugehoerigZu,
         entity.kennung,
         entity.namensergaenzung,
         entity.kuerzel,
@@ -137,7 +134,6 @@ export type OrganisationSearchOptions = {
     readonly excludeSchoolsWithSchultraegerRelationship?: boolean;
     readonly administriertVon?: string[];
     readonly organisationIds?: string[];
-    readonly zugehoerigZu?: string[];
     readonly offset?: number;
     readonly limit?: number;
     readonly sortField?: SortFieldOrganisation;
@@ -523,9 +519,6 @@ export class OrganisationRepository {
             } else {
                 andClauses.push({ administriertVon: { $in: searchOptions.administriertVon } });
             }
-        }
-        if (searchOptions.zugehoerigZu) {
-            andClauses.push({ zugehoerigZu: { $in: searchOptions.zugehoerigZu } });
         }
         if (searchOptions.searchString) {
             andClauses.push({

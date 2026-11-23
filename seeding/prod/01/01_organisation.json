@@ -7,8 +7,7 @@
             "name": "Land Schleswig-Holstein",
             "kuerzel": "Root",
             "typ": "ROOT",
-            "administriertVon": null,
-            "zugehoerigZu": null
+            "administriertVon": null
         },
         {
             "id": 1,
@@ -17,7 +16,6 @@
             "kuerzel": "Öffentl. Schulen",
             "typ": "LAND",
             "administriertVon": 0,
-            "zugehoerigZu": 0,
             "uemLdapOu": "oeffentlicheSchulen"
         },
         {
@@ -27,7 +25,6 @@
             "kuerzel": "Ersatzschulen",
             "typ": "LAND",
             "administriertVon": 0,
-            "zugehoerigZu": 0,
             "uemLdapOu": "ersatzSchulen"
         }
     ]

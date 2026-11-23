@@ -62,17 +62,6 @@ export class OrganisationScope extends ScopeBase<OrganisationEntity> {
         return this;
     }
 
-    public findZugehoerigeZu(parentOrganisationId: string): this {
-        this.findByInternal(
-            {
-                zugehoerigZu: parentOrganisationId,
-            },
-            ScopeOperator.AND,
-        );
-
-        return this;
-    }
-
     public filterByIds(orgaIds: string[]): this {
         if (orgaIds && orgaIds.length > 0) {
             this.findByQuery({

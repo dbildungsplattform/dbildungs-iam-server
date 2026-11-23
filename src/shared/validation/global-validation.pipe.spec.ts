@@ -31,7 +31,6 @@ describe('GlobalValidationPipe', () => {
             name: '',
             typ: OrganisationsTyp.UNBEST,
             administriertVon: faker.string.uuid(),
-            zugehoerigZu: faker.string.uuid(),
         };
 
         return validationPipe

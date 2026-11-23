@@ -85,7 +85,6 @@ export class DbSeedService {
 
     private async constructAndPersistOrganisation(data: OrganisationFile): Promise<Organisation<true>> {
         let administriertVon: string | undefined = undefined;
-        let zugehoerigZu: string | undefined = undefined;
 
         if (data.administriertVon != null) {
             const adminstriertVonOrganisation: Organisation<true> = await this.getReferencedOrganisation(
@@ -93,18 +92,10 @@ export class DbSeedService {
             );
             administriertVon = adminstriertVonOrganisation.id;
         }
-        if (data.zugehoerigZu != null) {
-            const zugehoerigZuOrganisation: Organisation<true> = await this.getReferencedOrganisation(
-                data.zugehoerigZu,
-            );
-            zugehoerigZu = zugehoerigZuOrganisation.id;
-        }
-
         const organisation: Organisation<false> | DomainError = Organisation.createNew(
             data.name,
             data.typ,
             administriertVon,
-            zugehoerigZu,
             data.kennung,
             data.namensergaenzung,
             data.kuerzel,
@@ -116,7 +107,7 @@ export class DbSeedService {
             throw organisation;
         }
 
-        if (!administriertVon && !zugehoerigZu && data.typ === OrganisationsTyp.ROOT) {
+        if (!administriertVon && data.typ === OrganisationsTyp.ROOT) {
             organisation.id = this.ROOT_ORGANISATION_ID;
         }
 

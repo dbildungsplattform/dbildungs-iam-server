@@ -31,7 +31,7 @@ describe('TraegerUnterRootChild Specification', () => {
         orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([oeffentlich, undefined]);
 
         const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
-            zugehoerigZu: oeffentlich.id,
+            administriertVon: oeffentlich.id,
             typ: OrganisationsTyp.TRAEGER,
         });
         await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(true);
@@ -45,7 +45,7 @@ describe('TraegerUnterRootChild Specification', () => {
         orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([undefined, ersatz]);
 
         const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
-            zugehoerigZu: ersatz.id,
+            administriertVon: ersatz.id,
             typ: OrganisationsTyp.TRAEGER,
         });
         await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(true);
@@ -62,9 +62,19 @@ describe('TraegerUnterRootChild Specification', () => {
         ]);
 
         const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
-            zugehoerigZu: faker.string.uuid(),
+            administriertVon: faker.string.uuid(),
             typ: OrganisationsTyp.TRAEGER,
         });
+        await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(false);
+    });
+
+    test('when traeger has no administrator and a root child is missing, it should return false', async () => {
+        orgaRepoMock.findRootDirectChildren.mockResolvedValueOnce([undefined, undefined]);
+        const traeger: Organisation<true, false> = DoFactory.createOrganisation(true, {
+            typ: OrganisationsTyp.TRAEGER,
+            administriertVon: undefined,
+        });
+
         await expect(sut.isSatisfiedBy(traeger)).resolves.toBe(false);
     });
 });
