@@ -9,6 +9,7 @@ import { createMock } from '../../test/utils/createMock.js';
 import { ClassLogger } from '../core/logging/class-logger.js';
 import { createRedisSentinelOptions, type SentinelConnectionOptions } from '../core/redis/redis-client.js';
 import { RedisConfig } from '../shared/config/redis.config.js';
+import { ServerConfigModule } from '../shared/config/server-config.module.js';
 import { ServerModule } from './server.module.js';
 
 const createSentinelMock: Mock<(options: SentinelConnectionOptions) => keyvRedis.RedisSentinelType> = vi.hoisted(() =>
@@ -42,8 +43,10 @@ describe('ServerModule', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [ServerModule, ConfigTestModule, LoggingTestModule, DatabaseTestModule.forRoot()],
+            imports: [ServerModule, LoggingTestModule, DatabaseTestModule.forRoot()],
         })
+            .overrideModule(ServerConfigModule)
+            .useModule(ConfigTestModule)
             .overrideProvider(ClassLogger)
             .useValue(logger)
             .compile();
@@ -61,7 +64,7 @@ describe('ServerModule', () => {
 
     it('should log the application cache mode through the server module logger', () => {
         expect(logger.debug).toHaveBeenCalledWith(
-            expect.stringMatching(/^Redis application cache configured: mode=standalone, host=/),
+            'Redis application cache configured: mode=standalone, host=localhost, port=6379, redisTls=false',
         );
     });
 
@@ -121,11 +124,11 @@ describe('ServerModule', () => {
 
                 await server.configure(consumer);
 
-                expect(sessionLogger.debug).toHaveBeenNthCalledWith(
+                expect(sessionLogger.info).toHaveBeenNthCalledWith(
                     1,
                     expect.stringContaining(`Redis session store connecting: mode=${mode},`),
                 );
-                expect(sessionLogger.debug).toHaveBeenNthCalledWith(
+                expect(sessionLogger.info).toHaveBeenNthCalledWith(
                     2,
                     expect.stringContaining(`Redis session store connected: mode=${mode},`),
                 );
