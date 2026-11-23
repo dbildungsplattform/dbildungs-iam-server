@@ -406,6 +406,50 @@ describe('Organisation API', () => {
         });
     });
 
+    describe('/POST organisationen/by-ids', () => {
+        it('should return a school the person may manage with KLASSEN_VERWALTEN', async () => {
+            const school: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [school.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen/by-ids')
+                .send({ organisationIds: [school.id] });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([expect.objectContaining({ id: school.id })]);
+        });
+
+        it('should not return a school the person may not manage', async () => {
+            const school: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen/by-ids')
+                .send({ organisationIds: [school.id] });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([]);
+        });
+
+        it('should return a permitted non-school organisation, because no typ filter is applied', async () => {
+            const traeger: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
+            );
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [traeger.id] });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .post('/organisationen/by-ids')
+                .send({ organisationIds: [traeger.id] });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([expect.objectContaining({ id: traeger.id, typ: OrganisationsTyp.TRAEGER })]);
+        });
+    });
+
     describe('/DELETE organisation', () => {
         describe('when all conditions pass', () => {
             it('should succeed', async () => {

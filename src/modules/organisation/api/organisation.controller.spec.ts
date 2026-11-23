@@ -39,6 +39,10 @@ import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbe
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.response.js';
+import { OrganisationsByIdsBodyParams } from './organisations-by-ids.body.params.js';
+import { type OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
+import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
+import { type PagedResponse } from '../../../shared/paging/paged.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 
 function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
@@ -502,36 +506,13 @@ describe('OrganisationController', () => {
 
     describe('findOrganizations', () => {
         describe('when finding organizations with given query params', () => {
-            it('should find all organizations that match and handle provided IDs', async () => {
-                const organisationIds: string[] = [faker.string.uuid(), faker.string.uuid()];
-
+            it('should find all organizations that match the query params', async () => {
                 const queryParams: FindOrganisationQueryParams = {
                     typ: OrganisationsTyp.SONSTIGE,
                     searchString: faker.lorem.word(),
                     systemrechte: [RollenSystemRechtEnum.PERSONEN_VERWALTEN],
                     administriertVon: [faker.string.uuid(), faker.string.uuid()],
-                    // Assuming you have a field for organisationIds in your query params
-                    organisationIds: organisationIds,
                 };
-
-                const selectedOrganisationMap: Map<string, Organisation<true>> = new Map(
-                    organisationIds.map((id: string) => [
-                        id,
-                        DoFactory.createOrganisationAggregate(true, {
-                            id: id,
-                            createdAt: faker.date.recent(),
-                            updatedAt: faker.date.recent(),
-                            administriertVon: faker.string.uuid(),
-                            zugehoerigZu: faker.string.uuid(),
-                            kennung: faker.lorem.word(),
-                            name: faker.lorem.word(),
-                            namensergaenzung: faker.lorem.word(),
-                            kuerzel: faker.lorem.word(),
-                            typ: OrganisationsTyp.SCHULE,
-                            traegerschaft: Traegerschaft.LAND,
-                        }),
-                    ]),
-                );
 
                 const mockedRepoResponse: [Organisation<true>[], number, number] = [
                     [
@@ -548,10 +529,9 @@ describe('OrganisationController', () => {
                             typ: OrganisationsTyp.SCHULE,
                             traegerschaft: Traegerschaft.LAND,
                         }),
-                        ...selectedOrganisationMap.values(),
                     ],
-                    selectedOrganisationMap.size + 1,
-                    3,
+                    1,
+                    1,
                 ];
 
                 organisationRepositoryMock.findAuthorized.mockResolvedValue(mockedRepoResponse);
@@ -568,8 +548,48 @@ describe('OrganisationController', () => {
                     queryParams,
                 ]);
 
-                expect(result.items.length).toEqual(3);
+                expect(result.items.length).toEqual(1);
             });
+        });
+    });
+
+    describe('findOrganisationsByIds', () => {
+        it('should return the permitted organisations for the given ids', async () => {
+            const ids: string[] = [faker.string.uuid(), faker.string.uuid()];
+            const mockBody: OrganisationsByIdsBodyParams = new OrganisationsByIdsBodyParams();
+            Object.assign(mockBody, { organisationIds: ids });
+            const organisations: Organisation<true>[] = ids.map((id: string) =>
+                DoFactory.createOrganisationAggregate(true, { id, typ: OrganisationsTyp.KLASSE }),
+            );
+            organisationRepositoryMock.findAuthorized.mockResolvedValue([organisations, ids.length, ids.length]);
+
+            const result: OrganisationResponse[] = await organisationController.findOrganisationsByIds(
+                mockBody,
+                permissionsMock,
+            );
+
+            expect(result.map((response: OrganisationResponse) => response.id)).toEqual(ids);
+            expect(organisationRepositoryMock.findAuthorized.mock.calls[0]?.[1]).toEqual([
+                RollenSystemRecht.KLASSEN_VERWALTEN,
+            ]);
+            expect(organisationRepositoryMock.findAuthorized.mock.calls[0]?.[2]).toMatchObject({
+                organisationIds: ids,
+                limit: ids.length,
+                offset: 0,
+            });
+        });
+
+        it('should not query the repository for an empty id list', async () => {
+            const mockBody: OrganisationsByIdsBodyParams = new OrganisationsByIdsBodyParams();
+            Object.assign(mockBody, { organisationIds: [] });
+
+            const result: OrganisationResponse[] = await organisationController.findOrganisationsByIds(
+                mockBody,
+                permissionsMock,
+            );
+
+            expect(result).toEqual([]);
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
         });
     });
 
@@ -1086,6 +1106,71 @@ describe('OrganisationController', () => {
                     organisationController.deleteOrganisation({ organisationId: orga.id }, permissionsMock),
                 ).rejects.toThrow(OrganisationHasChildrenError);
             });
+        });
+    });
+
+    describe('getOrganisationsbeziehungen', () => {
+        it('should map the found relationships to a paged response', async () => {
+            const organisationId: string = faker.string.uuid();
+            const quelle: Organisation<true> = DoFactory.createOrganisation(true, { kennung: '1234567' });
+            const ziel: Organisation<true> = DoFactory.createOrganisation(true, { kennung: undefined });
+            const id: string = faker.string.uuid();
+            organisationServiceMock.findOrganisationsbeziehungen.mockResolvedValueOnce({
+                ok: true,
+                value: {
+                    total: 4,
+                    offset: 1,
+                    limit: 1,
+                    pageTotal: 1,
+                    items: [
+                        {
+                            organisationsbeziehung: {
+                                id,
+                                createdAt: faker.date.past(),
+                                updatedAt: faker.date.recent(),
+                                quellOrganisationId: quelle.id,
+                                zielOrganisationId: ziel.id,
+                                typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                            },
+                            quelle,
+                            ziel,
+                        },
+                    ],
+                },
+            });
+            const queryParams: FindOrganisationsbeziehungenQueryParams = new FindOrganisationsbeziehungenQueryParams();
+            Object.assign(queryParams, { offset: 1, limit: 1, searchString: 'x' });
+
+            const result: PagedResponse<OrganisationsbeziehungWithOrganisationenResponse> =
+                await organisationController.getOrganisationsbeziehungen({ organisationId }, queryParams);
+
+            expect(organisationServiceMock.findOrganisationsbeziehungen).toHaveBeenCalledWith(
+                organisationId,
+                queryParams,
+            );
+            expect(result.total).toBe(4);
+            expect(result.offset).toBe(1);
+            expect(result.limit).toBe(1);
+            expect(result.items).toEqual([
+                {
+                    id,
+                    typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                    quelle: { id: quelle.id, name: quelle.name, dienststellennummer: '1234567' },
+                    ziel: { id: ziel.id, name: ziel.name, dienststellennummer: undefined },
+                },
+            ]);
+        });
+
+        it('should throw the error if the organisation could not be found', async () => {
+            const error: EntityNotFoundError = new EntityNotFoundError('Organisation', faker.string.uuid());
+            organisationServiceMock.findOrganisationsbeziehungen.mockResolvedValueOnce({ ok: false, error });
+
+            await expect(
+                organisationController.getOrganisationsbeziehungen(
+                    { organisationId: faker.string.uuid() },
+                    new FindOrganisationsbeziehungenQueryParams(),
+                ),
+            ).rejects.toBe(error);
         });
     });
 

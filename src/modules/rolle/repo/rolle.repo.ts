@@ -1,13 +1,11 @@
 import {
     EntityName,
     FilterQuery,
-    FindAllOptions,
     ForeignKeyConstraintViolationException,
     Loaded,
     ObjectQuery,
     OrderDefinition,
     PopulatePath,
-    WithUsingOptions,
 } from '@mikro-orm/core';
 import { EntityManager, RawQueryFragment, sql } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
@@ -158,25 +156,9 @@ export interface FindRollenAvailableForPersonenkontextCreationParams {
     /** Broadens the Rollenart-restriction for Rollen carrying a gated Merkmal (e.g. MPT_ROLLE, PILOT_1_ROLLE, ...) the caller is authorized for. */
     gatedBucket?: GatedRollenBucket;
     searchStr?: string;
-    stickyRollenIds?: Array<RolleID>;
     limit?: number;
     offset?: number;
 }
-
-type RolleFindAllOptions = WithUsingOptions<
-    FindAllOptions<
-        NoInfer<RolleEntity>,
-        | 'merkmale'
-        | 'systemrechte'
-        | 'serviceProvider.serviceProvider'
-        | 'serviceProvider.serviceProvider.merkmale'
-        | 'serviceProvider.serviceProvider.rollenartenWhitelist',
-        never,
-        'serviceProvider.serviceProvider.logo'
-    >,
-    NoInfer<RolleEntity>,
-    never
->;
 
 /** Relations loaded for every Rolle that gets mapped to an aggregate. Intentionally `as const` to keep the literal types for MikroORM's `Loaded` typing. */
 // eslint-disable-next-line @typescript-eslint/typedef
@@ -314,27 +296,13 @@ export class RolleRepo {
             queries.push({ serviceProvider: { serviceProvider: { id: { $in: params.serviceProviderIds } } } });
         }
 
+        if (params.rolleIds) {
+            queries.push({ id: { $in: params.rolleIds } });
+        }
+
         const roleScopeQuery: FilterQuery<NoInfer<RolleEntity>> = this.createRoleScopeQuery(params);
         queries.push(roleScopeQuery);
-        const baseQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
-
-        // TODO: this can fail if there are more rollen than limit
-        const finalQuery: FilterQuery<NoInfer<RolleEntity>> = params.rolleIds?.length
-            ? {
-                  $or: [
-                      baseQuery,
-                      {
-                          $and: [
-                              { id: { $in: params.rolleIds } },
-                              roleScopeQuery,
-                              ...(params.requireMerkmale ?? []).map((merkmal: RollenMerkmal) => ({
-                                  merkmale: { $some: { merkmal } },
-                              })),
-                          ],
-                      },
-                  ],
-              }
-            : baseQuery;
+        const finalQuery: FilterQuery<NoInfer<RolleEntity>> = { $and: queries };
 
         const orderBy: OrderDefinition<RolleEntity> | undefined = this.mapParametersToOrderDefinition(params);
 
@@ -431,7 +399,6 @@ export class RolleRepo {
         limit?: number,
         offset?: number,
         organisationIds?: OrganisationID[],
-        rolleIds?: RolleID[],
         merkmale?: RollenMerkmal[],
         rollenArten?: RollenArt[],
         serviceProviderIds?: ServiceProviderID[],
@@ -458,7 +425,6 @@ export class RolleRepo {
             limit,
             offset,
             allowedOrganisationIds,
-            rolleIds,
             orderBy: 'artAndName',
             merkmale,
             rollenArten,
@@ -525,16 +491,18 @@ export class RolleRepo {
         params: FindRollenAvailableForPersonenkontextCreationParams,
     ): Promise<Counted<Rolle<true>>> {
         const creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>> = this.createCreationScopeQuery(params);
-        const stickyRollenEntities: Array<RolleEntity> = await this.findStickyRollen(
-            creationScopeWhere,
-            params.stickyRollenIds,
-        );
-        const [rollenEntities, count]: Counted<RolleEntity> = await this.findAndCountNonStickyRollen(
-            creationScopeWhere,
-            params,
-        );
+        const where: ObjectQuery<NoInfer<RolleEntity>> = { ...creationScopeWhere };
+        if (params.searchStr) {
+            where.name = { $ilike: `%${params.searchStr}%` };
+        }
 
-        const rollen: Rolle<true>[] = [...stickyRollenEntities, ...rollenEntities].map((entity: RolleEntity) =>
+        const [rollenEntities, count]: Counted<RolleEntity> = await this.em.findAndCount(RolleEntity, where, {
+            ...ROLLE_LOAD_OPTIONS,
+            limit: params.limit,
+            offset: params.offset,
+        });
+
+        const rollen: Rolle<true>[] = rollenEntities.map((entity: RolleEntity) =>
             mapRolleEntityToAggregate(entity, this.rolleFactory),
         );
         return [rollen, count];
@@ -548,41 +516,6 @@ export class RolleRepo {
             administeredBySchulstrukturknoten: { $in: params.allowedOrganisationIds },
             ...this.createAllowedRollenQuery(params.allowedRollenarten, params.gatedBucket),
         };
-    }
-
-    /** Sticky Rollen (e.g. already selected ones) are always returned, independent of search and pagination. */
-    private findStickyRollen(
-        creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
-        stickyRollenIds: Array<RolleID> | undefined,
-    ): Promise<Array<RolleEntity>> {
-        if (!stickyRollenIds) {
-            return Promise.resolve([]);
-        }
-
-        const findOptions: RolleFindAllOptions = {
-            where: { id: { $in: stickyRollenIds }, ...creationScopeWhere },
-            ...ROLLE_LOAD_OPTIONS,
-        };
-        return this.em.findAll(RolleEntity, findOptions);
-    }
-
-    private findAndCountNonStickyRollen(
-        creationScopeWhere: ObjectQuery<NoInfer<RolleEntity>>,
-        params: FindRollenAvailableForPersonenkontextCreationParams,
-    ): Promise<Counted<RolleEntity>> {
-        const where: ObjectQuery<NoInfer<RolleEntity>> = { ...creationScopeWhere };
-        if (params.stickyRollenIds) {
-            where.id = { $nin: params.stickyRollenIds };
-        }
-        if (params.searchStr) {
-            where.name = { $ilike: `%${params.searchStr}%` };
-        }
-
-        return this.em.findAndCount(RolleEntity, where, {
-            ...ROLLE_LOAD_OPTIONS,
-            limit: params.limit,
-            offset: params.offset,
-        });
     }
 
     private createAllowedRollenQuery(

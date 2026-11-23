@@ -39,7 +39,11 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { RollenSystemRecht, RollenSystemRechtEnum } from '../../rolle/domain/systemrecht.js';
-import { Organisation, Organisationsbeziehung } from '../domain/organisation.js';
+import {
+    Organisation,
+    Organisationsbeziehung,
+    OrganisationsbeziehungWithOrganisationen,
+} from '../domain/organisation.js';
 import { OrganisationService } from '../domain/organisation.service.js';
 import { OrganisationDeleteService } from '../organisation-delete/organisation-delete.service.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
@@ -47,15 +51,18 @@ import { OrganisationSpecificationError } from '../specification/error/organisat
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
 import { DbiamOrganisationError } from './dbiam-organisation.error.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
+import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
 import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
+import { OrganisationsByIdsBodyParams } from './organisations-by-ids.body.params.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
 import { ParentOrganisationenResponse } from './organisation.parents.response.js';
 import { OrganisationResponse } from './organisation.response.js';
 import { OrganisationResponseLegacy } from './organisation.response.legacy.js';
 import { OrganisationRootChildrenResponse } from './organisation.root-children.response.js';
+import { OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 import { UpdateOrganisationBodyParams } from './update-organisation.body.params.js';
 import { DeleteOrganisationsbeziehungBodyParams } from './delete-organisationsbeziehung.body.params.js';
@@ -211,6 +218,34 @@ export class OrganisationController {
             body.organisationIds,
         );
         return new ParentOrganisationenResponse(organisationen);
+    }
+
+    @Post('by-ids')
+    @HttpCode(HttpStatus.OK)
+    @ApiOkResponse({
+        description: 'The permitted organizations with the given ids were successfully returned.',
+        type: [OrganisationResponse],
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting organizations.' })
+    public async findOrganisationsByIds(
+        @Body() body: OrganisationsByIdsBodyParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<OrganisationResponse[]> {
+        if (body.organisationIds.length === 0) {
+            return [];
+        }
+
+        const [organisations]: [Organisation<true>[], number, number] =
+            await this.organisationRepository.findAuthorized(permissions, [RollenSystemRecht.KLASSEN_VERWALTEN], {
+                organisationIds: body.organisationIds,
+                limit: body.organisationIds.length,
+                offset: 0,
+                matchAllSystemrechte: false,
+            });
+
+        return organisations.map((organisation: Organisation<true>) => new OrganisationResponse(organisation));
     }
 
     @Get(':organisationId')
@@ -369,6 +404,41 @@ export class OrganisationController {
         if (!res.ok) {
             throw res.error;
         }
+    }
+
+    @Get(':organisationId/beziehungen')
+    @ApiOperation({
+        description: 'Get all relationships of an organisation',
+    })
+    @ApiOkResponse({
+        description: 'The organisation relationships were successfully returned.',
+        type: [OrganisationsbeziehungWithOrganisationenResponse],
+        headers: PagingHeadersObject,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get organisation relationships.' })
+    @ApiNotFoundResponse({ description: 'The organisation does not exist.' })
+    @ApiInternalServerErrorResponse({
+        description: 'Internal server error while getting the organisation relationships.',
+    })
+    public async getOrganisationsbeziehungen(
+        @Param() params: OrganisationByIdParams,
+        @Query() queryParams: FindOrganisationsbeziehungenQueryParams,
+    ): Promise<PagedResponse<OrganisationsbeziehungWithOrganisationenResponse>> {
+        const result: Result<
+            Paged<OrganisationsbeziehungWithOrganisationen>,
+            DomainError
+        > = await this.organisationService.findOrganisationsbeziehungen(params.organisationId, queryParams);
+        if (!result.ok) {
+            throw result.error;
+        }
+
+        return new PagedResponse({
+            ...result.value,
+            items: result.value.items.map(
+                (item: OrganisationsbeziehungWithOrganisationen): OrganisationsbeziehungWithOrganisationenResponse =>
+                    OrganisationsbeziehungWithOrganisationenResponse.fromDomain(item),
+            ),
+        });
     }
 
     @Patch(':organisationId/name')
