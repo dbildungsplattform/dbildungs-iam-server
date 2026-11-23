@@ -834,7 +834,6 @@ describe('RolleRepo', () => {
                 0,
                 undefined,
                 undefined,
-                undefined,
                 [RollenArt.LEHR],
             );
 
@@ -870,7 +869,6 @@ describe('RolleRepo', () => {
                 undefined,
                 10,
                 0,
-                undefined,
                 undefined,
                 [RollenMerkmal.BEFRISTUNG_PFLICHT],
             );
@@ -917,7 +915,6 @@ describe('RolleRepo', () => {
                 undefined,
                 10,
                 0,
-                undefined,
                 undefined,
                 undefined,
                 undefined,
@@ -1130,7 +1127,7 @@ describe('RolleRepo', () => {
         );
 
         it.each([false, true])(
-            'should exclude rollen with excluded merkmale (selected=%s)',
+            'should exclude rollen with excluded merkmale, also when selected (selected=%s)',
             async (selected: boolean) => {
                 const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
                     merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
@@ -1147,8 +1144,8 @@ describe('RolleRepo', () => {
 
                 const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-                expect(count).toBe(1);
-                expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
+                expect(count).toBe(selected ? 0 : 1);
+                expect(result.map((r: Rolle<true>) => r.id)).toEqual(selected ? [] : [rolleWithoutExcludedMerkmal.id]);
                 expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
             },
         );
@@ -1175,7 +1172,7 @@ describe('RolleRepo', () => {
             expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithAllRequiredMerkmale.id]);
         });
 
-        it('should return selected rollen within scope even if they do not match the name search', async () => {
+        it('should only return selected rollen that also match the name search', async () => {
             const rolleInScope: Rolle<true> = await createRolle({
                 name: 'Matching role',
                 rollenart: RollenArt.LEIT,
@@ -1191,16 +1188,14 @@ describe('RolleRepo', () => {
                 searchStr: rolleInScope.name,
                 rollenArten: [RollenArt.LEIT],
                 allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
-                rolleIds: [rolleOutOfFilter.id],
+                rolleIds: [rolleInScope.id, rolleOutOfFilter.id],
                 limit: 10,
             };
 
             const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-            expect(count).toBe(2);
-            expect(result.map((r: Rolle<true>) => r.id)).toEqual(
-                expect.arrayContaining([rolleInScope.id, rolleOutOfFilter.id]),
-            );
+            expect(count).toBe(1);
+            expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleInScope.id]);
         });
 
         it.each([
@@ -1208,7 +1203,7 @@ describe('RolleRepo', () => {
             { outsideOrganisation: false, missingMerkmal: true, outsideRollenart: false },
             { outsideOrganisation: false, missingMerkmal: false, outsideRollenart: true },
         ])(
-            'should reject selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal, outsideRollenart=$outsideRollenart)',
+            'should not return selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal, outsideRollenart=$outsideRollenart)',
             async ({
                 outsideOrganisation,
                 missingMerkmal,
@@ -1234,7 +1229,7 @@ describe('RolleRepo', () => {
                     rollenArten: [RollenArt.LEIT],
                     allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
                     requireMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
-                    rolleIds: [selectedRolle.id],
+                    rolleIds: [rolleInScope.id, selectedRolle.id],
                 });
 
                 expect(count).toBe(1);
@@ -1494,69 +1489,23 @@ describe('RolleRepo', () => {
             expect(count).toBe(1);
         });
 
-        it('should not return sticky rollen outside the allowed rollenarten', async () => {
-            await createRolle();
-            const stickyRolle: Rolle<true> = await createRolle({ rollenart: RollenArt.LEHR });
-            const rolle: Rolle<true> = await createRolle({ rollenart: RollenArt.SORGBER });
+        it('should return only rollen matching searchStr and count only those', async () => {
+            const matchingRolle: Rolle<true> = await createRolle({ name: 'Suchbare Rolle XYZ' });
+            await createRolle({
+                administeredBySchulstrukturknoten: matchingRolle.administeredBySchulstrukturknoten,
+                rollenart: matchingRolle.rollenart,
+                name: 'Andere Rolle',
+            });
 
             const [rollen, count]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: rolle.administeredBySchulstrukturknoten,
-                allowedOrganisationIds: [rolle.administeredBySchulstrukturknoten],
-                allowedRollenarten: [rolle.rollenart],
-                stickyRollenIds: [stickyRolle.id],
-                searchStr: rolle.name,
-                limit: 1,
-                offset: 0,
+                organisationId: matchingRolle.administeredBySchulstrukturknoten,
+                allowedOrganisationIds: [matchingRolle.administeredBySchulstrukturknoten],
+                allowedRollenarten: [matchingRolle.rollenart],
+                searchStr: 'suchbare',
             });
 
-            expect(rollen).toEqual([rolle]);
+            expect(rollen).toEqual([matchingRolle]);
             expect(count).toBe(1);
-        });
-
-        it('should not return sticky rollen outside the allowed organisations', async () => {
-            const allowedOrganisation: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false),
-            );
-            const otherOrganisation: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false),
-            );
-            const allowedRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: allowedOrganisation.id,
-            });
-            const stickyRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: otherOrganisation.id,
-                rollenart: allowedRolle.rollenart,
-            });
-
-            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: allowedOrganisation.id,
-                allowedOrganisationIds: [allowedOrganisation.id],
-                allowedRollenarten: [allowedRolle.rollenart],
-                stickyRollenIds: [stickyRolle.id],
-            });
-
-            expect(rollen).toEqual([allowedRolle]);
-        });
-
-        it('should not return sticky MPT rollen without MPT permission', async () => {
-            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const rolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: organisation.id,
-            });
-            const stickyMptRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: rolle.rollenart,
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
-
-            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: organisation.id,
-                allowedOrganisationIds: [organisation.id],
-                allowedRollenarten: [rolle.rollenart],
-                stickyRollenIds: [rolle.id, stickyMptRolle.id],
-            });
-
-            expect(rollen).toEqual([rolle]);
         });
     });
 
