@@ -33,7 +33,7 @@ import {
 import { DataConfig } from '../../../shared/config/data.config.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
-import { Paged } from '../../../shared/paging/index.js';
+import { Paged, PagingHeadersObject } from '../../../shared/paging/index.js';
 import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/paged.response.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
