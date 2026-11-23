@@ -1,10 +1,8 @@
-import { Test, type TestingModule } from '@nestjs/testing';
-import { Issuer } from 'openid-client';
-import { ServerModule } from './server.module.js';
-import { OIDC_CLIENT } from '../modules/authentication/services/oidc-client.service.js';
 import { type MiddlewareConsumer } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { type RedisClientType } from 'redis';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../test/utils/index.js';
+import { ServerModule } from './server.module.js';
 
 function createRedisClientMock(overrides?: Partial<RedisClientType>): RedisClientType {
     return {
@@ -27,15 +25,7 @@ describe('ServerModule', () => {
     beforeAll(async () => {
         module = await Test.createTestingModule({
             imports: [ServerModule, ConfigTestModule, LoggingTestModule, DatabaseTestModule.forRoot()],
-        })
-            .overrideProvider(OIDC_CLIENT)
-            .useValue(
-                new new Issuer({
-                    issuer: 'oidc',
-                    jwks_uri: 'https://keycloak.example.com/nothing',
-                }).Client({ client_id: 'DummyId' }),
-            )
-            .compile();
+        }).compile();
     });
 
     afterAll(async () => {

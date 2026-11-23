@@ -24,10 +24,11 @@ import { type ServiceProvider } from '../../service-provider/domain/service-prov
 import { ServiceProviderRepo } from '../../service-provider/repo/service-provider.repo.js';
 import { ServiceProviderModule } from '../../service-provider/service-provider.module.js';
 import { NameForRolleWithTrailingSpaceError } from '../domain/name-with-trailing-space.error.js';
+import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { RollenArt, RollenMerkmal } from '../domain/rolle.enums.js';
 import { RolleFactory } from '../domain/rolle.factory.js';
-import { RolleHatPersonenkontexteError } from '../domain/rolle-hat-personenkontexte.error.js';
 import { Rolle } from '../domain/rolle.js';
+import { RollenartNotAllowedForSPError } from '../domain/rollenart-not-allowed-for-sp.error.js';
 import { RollenSystemRecht } from '../domain/systemrecht.js';
 import { UpdateMerkmaleError } from '../domain/update-merkmale.error.js';
 import { RolleUpdateOutdatedError } from '../domain/update-outdated.error.js';
@@ -833,7 +834,6 @@ describe('RolleRepo', () => {
                 0,
                 undefined,
                 undefined,
-                undefined,
                 [RollenArt.LEHR],
             );
 
@@ -869,7 +869,6 @@ describe('RolleRepo', () => {
                 undefined,
                 10,
                 0,
-                undefined,
                 undefined,
                 [RollenMerkmal.BEFRISTUNG_PFLICHT],
             );
@@ -916,7 +915,6 @@ describe('RolleRepo', () => {
                 undefined,
                 10,
                 0,
-                undefined,
                 undefined,
                 undefined,
                 undefined,
@@ -1129,7 +1127,7 @@ describe('RolleRepo', () => {
         );
 
         it.each([false, true])(
-            'should exclude rollen with excluded merkmale (selected=%s)',
+            'should exclude rollen with excluded merkmale, also when selected (selected=%s)',
             async (selected: boolean) => {
                 const rolleWithoutExcludedMerkmal: Rolle<true> = await createRolle({
                     merkmale: [RollenMerkmal.BEFRISTUNG_PFLICHT],
@@ -1146,8 +1144,8 @@ describe('RolleRepo', () => {
 
                 const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-                expect(count).toBe(1);
-                expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithoutExcludedMerkmal.id]);
+                expect(count).toBe(selected ? 0 : 1);
+                expect(result.map((r: Rolle<true>) => r.id)).toEqual(selected ? [] : [rolleWithoutExcludedMerkmal.id]);
                 expect(result.map((r: Rolle<true>) => r.id)).not.toContain(rolleWithExcludedMerkmal.id);
             },
         );
@@ -1174,7 +1172,7 @@ describe('RolleRepo', () => {
             expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleWithAllRequiredMerkmale.id]);
         });
 
-        it('should return selected rollen within scope even if they do not match the name search', async () => {
+        it('should only return selected rollen that also match the name search', async () => {
             const rolleInScope: Rolle<true> = await createRolle({
                 name: 'Matching role',
                 rollenart: RollenArt.LEIT,
@@ -1190,16 +1188,14 @@ describe('RolleRepo', () => {
                 searchStr: rolleInScope.name,
                 rollenArten: [RollenArt.LEIT],
                 allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
-                rolleIds: [rolleOutOfFilter.id],
+                rolleIds: [rolleInScope.id, rolleOutOfFilter.id],
                 limit: 10,
             };
 
             const [result, count]: Counted<Rolle<true>> = await sut.findBy(scope);
 
-            expect(count).toBe(2);
-            expect(result.map((r: Rolle<true>) => r.id)).toEqual(
-                expect.arrayContaining([rolleInScope.id, rolleOutOfFilter.id]),
-            );
+            expect(count).toBe(1);
+            expect(result.map((r: Rolle<true>) => r.id)).toEqual([rolleInScope.id]);
         });
 
         it.each([
@@ -1207,7 +1203,7 @@ describe('RolleRepo', () => {
             { outsideOrganisation: false, missingMerkmal: true, outsideRollenart: false },
             { outsideOrganisation: false, missingMerkmal: false, outsideRollenart: true },
         ])(
-            'should reject selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal, outsideRollenart=$outsideRollenart)',
+            'should not return selected IDs outside authorization bounds (outsideOrganisation=$outsideOrganisation, missingMerkmal=$missingMerkmal, outsideRollenart=$outsideRollenart)',
             async ({
                 outsideOrganisation,
                 missingMerkmal,
@@ -1233,7 +1229,7 @@ describe('RolleRepo', () => {
                     rollenArten: [RollenArt.LEIT],
                     allowedOrganisationIds: [rolleInScope.administeredBySchulstrukturknoten],
                     requireMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
-                    rolleIds: [selectedRolle.id],
+                    rolleIds: [rolleInScope.id, selectedRolle.id],
                 });
 
                 expect(count).toBe(1);
@@ -1366,6 +1362,76 @@ describe('RolleRepo', () => {
     });
 
     describe('findRollenAvailableForPersonenkontextCreation', () => {
+        it('should require MPT for gated roles in restricted account creation', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const mptRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.MPT_ROLLE],
+            });
+            const pilotRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const combinedRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [],
+                gatedBucket: {
+                    allowedRollenarten: [RollenArt.LEIT],
+                    authorizedMerkmale: [RollenMerkmal.MPT_ROLLE, RollenMerkmal.PILOT_1_ROLLE],
+                    requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
+                },
+            });
+
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toHaveLength(2);
+            expect(rolleIds).toEqual(expect.arrayContaining([mptRolle.id, combinedRolle.id]));
+            expect(rolleIds).not.toContain(pilotRolle.id);
+        });
+
+        it('should return authorized Pilot rollen without MPT in restricted account creation, if their rollenart is allowed', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const authorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+            const unauthorizedPilotLernRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LERN,
+                merkmale: [RollenMerkmal.PILOT_2_ROLLE],
+            });
+            const pilotLeitRolle: Rolle<true> = await createRolle({
+                administeredBySchulstrukturknoten: organisation.id,
+                rollenart: RollenArt.LEIT,
+                merkmale: [RollenMerkmal.PILOT_1_ROLLE],
+            });
+
+            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
+                organisationId: organisation.id,
+                allowedOrganisationIds: [organisation.id],
+                allowedRollenarten: [RollenArt.LERN],
+                gatedBucket: {
+                    allowedRollenarten: [RollenArt.LERN, RollenArt.LEIT],
+                    authorizedMerkmale: [RollenMerkmal.PILOT_1_ROLLE],
+                    requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
+                },
+            });
+
+            const rolleIds: string[] = rollen.map((rolle: Rolle<true>) => rolle.id);
+            expect(rolleIds).toEqual([authorizedPilotLernRolle.id]);
+            expect(rolleIds).not.toContain(unauthorizedPilotLernRolle.id);
+            expect(rolleIds).not.toContain(pilotLeitRolle.id);
+        });
+
         it('should return rollen without MPT rollen', async () => {
             await createRolle();
             const rolle: Rolle<true> = await createRolle();
@@ -1423,69 +1489,23 @@ describe('RolleRepo', () => {
             expect(count).toBe(1);
         });
 
-        it('should not return sticky rollen outside the allowed rollenarten', async () => {
-            await createRolle();
-            const stickyRolle: Rolle<true> = await createRolle({ rollenart: RollenArt.LEHR });
-            const rolle: Rolle<true> = await createRolle({ rollenart: RollenArt.SORGBER });
+        it('should return only rollen matching searchStr and count only those', async () => {
+            const matchingRolle: Rolle<true> = await createRolle({ name: 'Suchbare Rolle XYZ' });
+            await createRolle({
+                administeredBySchulstrukturknoten: matchingRolle.administeredBySchulstrukturknoten,
+                rollenart: matchingRolle.rollenart,
+                name: 'Andere Rolle',
+            });
 
             const [rollen, count]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: rolle.administeredBySchulstrukturknoten,
-                allowedOrganisationIds: [rolle.administeredBySchulstrukturknoten],
-                allowedRollenarten: [rolle.rollenart],
-                stickyRollenIds: [stickyRolle.id],
-                searchStr: rolle.name,
-                limit: 1,
-                offset: 0,
+                organisationId: matchingRolle.administeredBySchulstrukturknoten,
+                allowedOrganisationIds: [matchingRolle.administeredBySchulstrukturknoten],
+                allowedRollenarten: [matchingRolle.rollenart],
+                searchStr: 'suchbare',
             });
 
-            expect(rollen).toEqual([rolle]);
+            expect(rollen).toEqual([matchingRolle]);
             expect(count).toBe(1);
-        });
-
-        it('should not return sticky rollen outside the allowed organisations', async () => {
-            const allowedOrganisation: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false),
-            );
-            const otherOrganisation: Organisation<true> = await organisationRepo.save(
-                DoFactory.createOrganisation(false),
-            );
-            const allowedRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: allowedOrganisation.id,
-            });
-            const stickyRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: otherOrganisation.id,
-                rollenart: allowedRolle.rollenart,
-            });
-
-            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: allowedOrganisation.id,
-                allowedOrganisationIds: [allowedOrganisation.id],
-                allowedRollenarten: [allowedRolle.rollenart],
-                stickyRollenIds: [stickyRolle.id],
-            });
-
-            expect(rollen).toEqual([allowedRolle]);
-        });
-
-        it('should not return sticky MPT rollen without MPT permission', async () => {
-            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-            const rolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: organisation.id,
-            });
-            const stickyMptRolle: Rolle<true> = await createRolle({
-                administeredBySchulstrukturknoten: organisation.id,
-                rollenart: rolle.rollenart,
-                merkmale: [RollenMerkmal.MPT_ROLLE],
-            });
-
-            const [rollen]: Counted<Rolle<true>> = await sut.findRollenAvailableForPersonenkontextCreation({
-                organisationId: organisation.id,
-                allowedOrganisationIds: [organisation.id],
-                allowedRollenarten: [rolle.rollenart],
-                stickyRollenIds: [rolle.id, stickyMptRolle.id],
-            });
-
-            expect(rollen).toEqual([rolle]);
         });
     });
 
@@ -1893,10 +1913,12 @@ describe('RolleRepo', () => {
             const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
             const rolle: Rolle<true> | DomainError = await sut.save(
                 DoFactory.createRolle(false, {
                     administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LEHR,
                     serviceProviderIds: [serviceProvider.id],
                     serviceProviderData: [serviceProvider],
                 }),
@@ -1911,6 +1933,7 @@ describe('RolleRepo', () => {
             const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
                 merkmale: [],
                 providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [],
             });
 
             const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
@@ -1926,6 +1949,159 @@ describe('RolleRepo', () => {
 
             expectErrResult(rolleResult);
             expect(rolleResult.error).toBeInstanceOf(ServiceProviderNichtNachtraeglichZuweisbarError);
+        });
+
+        it('should not check the rollenart whitelist for already assigned service providers', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [serviceProvider.id],
+                    serviceProviderData: [serviceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [serviceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectOkResult(rolleResult);
+        });
+
+        it('should return error when a newly added service provider does not allow the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectErrResult(rolleResult);
+            expect(rolleResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+        });
+
+        it('should return error when keeping an exempt service provider but adding one that does not allow the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const existingServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [existingServiceProvider.id],
+                    serviceProviderData: [existingServiceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [existingServiceProvider.id, newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectErrResult(rolleResult);
+            expect(rolleResult.error).toBeInstanceOf(RollenartNotAllowedForSPError);
+        });
+
+        it('should succeed when keeping a violating service provider and adding one that allows the rollenart', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
+            const organisationId: OrganisationID = organisation.id;
+            const existingServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LEHR],
+            });
+            const newServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
+                providedOnSchulstrukturknoten: organisationId,
+                rollenartenWhitelist: [RollenArt.LERN],
+            });
+            const rolle: Rolle<true> | DomainError = await sut.save(
+                DoFactory.createRolle(false, {
+                    administeredBySchulstrukturknoten: organisationId,
+                    rollenart: RollenArt.LERN,
+                    serviceProviderIds: [existingServiceProvider.id],
+                    serviceProviderData: [existingServiceProvider],
+                }),
+            );
+            if (rolle instanceof DomainError) {
+                throw Error();
+            }
+
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            permissions.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: false, orgaIds: [organisationId] });
+
+            const rolleResult: Result<Rolle<true>, DomainError> = await sut.updateRolleAuthorized(
+                rolle.id,
+                rolle.name,
+                rolle.merkmale,
+                rolle.systemrechte,
+                [existingServiceProvider.id, newServiceProvider.id],
+                1,
+                false,
+                permissions,
+            );
+
+            expectOkResult(rolleResult);
         });
     });
 

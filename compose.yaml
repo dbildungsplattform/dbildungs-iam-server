@@ -105,8 +105,6 @@ services:
     # build:
     #   context: .
     depends_on:
-      keycloak:
-        condition: service_started
       db:
         condition: service_started
       redis:
@@ -185,27 +183,6 @@ services:
       NODE_ENV: dev
       DEPLOY_STAGE: dev
     command: ['node', 'dist/src/console/main.js', 'db', 'migration-apply']
-    volumes:
-      - source: 'config'
-        target: '/app/config'
-        type: bind
-      - source: 'config/docker-config.json'
-        target: '/app/config/config.json'
-        type: bind
-
-  keycloak-client-update:
-    profiles:
-      - keycloak-client-update
-    image: ghcr.io/dbildungsplattform/dbildungs-iam-server
-    build:
-      context: .
-    depends_on:
-      - db
-      - keycloak
-    environment:
-      NODE_ENV: dev
-      DEPLOY_STAGE: dev
-    command: ['node', 'dist/src/console/main.js', 'keycloak', 'update-clients', 'dev']
     volumes:
       - source: 'config'
         target: '/app/config'

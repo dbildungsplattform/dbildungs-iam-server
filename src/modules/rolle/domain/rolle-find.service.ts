@@ -37,7 +37,6 @@ export interface FindRollenForPersonenkontextCreationWithPermissionsParams {
     organisationId: OrganisationID;
     rollenartForPerson?: RollenArt;
     rolleName?: string;
-    rollenIds?: Array<RolleID>;
     limit?: number;
     offset?: number;
 }
@@ -238,7 +237,6 @@ export class RolleFindService {
             organisationId: params.organisationId,
             allowedRollenarten,
             allowedOrganisationIds: organisationBounds.selectedAndPermittedOrgasWithParents,
-            stickyRollenIds: params.rollenIds,
             limit: params.limit,
             offset: params.offset,
             searchStr: params.rolleName,
@@ -251,6 +249,9 @@ export class RolleFindService {
             query.gatedBucket = {
                 allowedRollenarten: allowedRollenartenForGatedRollen,
                 authorizedMerkmale: authorizedGatedMerkmale,
+                ...(params.systemrecht === RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN
+                    ? { requiredMerkmale: [RollenMerkmal.MPT_ROLLE] }
+                    : {}),
             };
         }
 
@@ -437,7 +438,7 @@ export class RolleFindService {
                 requestedPairs.map(
                     async (paar: RollenmerkmalSystemrechtPaar): Promise<[RollenSystemRecht, PermittedOrgas]> => [
                         paar.systemrecht,
-                        await permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true),
+                        await permissions.getOrgIdsWithSystemrecht([paar.systemrecht], true, true, true),
                     ],
                 ),
             ),
@@ -513,7 +514,7 @@ export class RolleFindService {
     }
 
     /**
-     * Returns two arrays of allowed rollenarten based on parameters. The latter is the more general one, while the first may be narrowed based on users permissions and LIMITED_ROLLENART_ALLOWLIST
+     * Returns two arrays of allowed rollenarten based on parameters. The latter is the more general one, while the first may be narrowed based on users permissions and the restricted-creation allowlist.
      * @param params
      * @param organisation
      * @returns [allowedRollenarten, allowedRollenartenForGatedRollen]
@@ -559,7 +560,7 @@ export class RolleFindService {
 
     private getLimitedRollenarten(): Array<RollenArt> {
         const portalConfig: PortalConfig = this.configService.getOrThrow<PortalConfig>('PORTAL');
-        return portalConfig.LIMITED_ROLLENART_ALLOWLIST;
+        return portalConfig.ROLLENART_ALLOWLIST_FUER_SYSTEMRECHT_EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN;
     }
 
     private async resolveOrganisationBounds(

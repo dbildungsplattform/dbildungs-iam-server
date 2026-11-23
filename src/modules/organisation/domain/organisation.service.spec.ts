@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { type MockInstance } from 'vitest';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createPersonPermissionsMock, PersonPermissionsMock } from '../../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../../test/utils/config-test.module.js';
@@ -29,6 +30,16 @@ import { NameRequiredForSchuleError } from '../specification/error/name-required
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
 import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
+import { SchulaufsichtQuelleSchuleZielBehoerdeError } from '../specification/relations/error/schulaufsicht-quelle-schule-ziel-behoerde.error.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaumError } from '../specification/relations/error/schulaufsicht-schule-und-aufsicht-selber-baum.error.js';
+import { SchultraegerQuelleSchuleZielTraegerError } from '../specification/relations/error/schultraeger-quelle-schule-ziel-traeger.error.js';
+import { SchultraegerSchuleHatExaktEinenTraegerError } from '../specification/relations/error/schultraeger-schule-hat-exakt-einen-traeger.error.js';
+import { SchultraegerSchuleUndTraegerSelberBaumError } from '../specification/relations/error/schultraeger-schule-und-traeger-selber-baum.error.js';
+import { SchulaufsichtQuelleSchuleZielBehoerde } from '../specification/relations/schulaufsicht-quelle-schule-ziel-behoerde.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaum } from '../specification/relations/schulaufsicht-schule-und-aufsicht-selber-baum.js';
+import { SchultraegerQuelleSchuleZielTraeger } from '../specification/relations/schultraeger-quelle-schule-ziel-traeger.js';
+import { SchultraegerSchuleHatExaktEinenTraeger } from '../specification/relations/schultraeger-schule-hat-exakt-einen-traeger.js';
+import { SchultraegerSchuleUndTraegerSelberBaum } from '../specification/relations/schultraeger-schule-und-traeger-selber-baum.js';
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
 import { SchultraegerNameEindeutigError } from '../specification/error/SchultraegerNameEindeutigError.js';
 import { TraegerUnterRootChildError } from '../specification/error/traeger-unter-root-child.error.js';
@@ -36,7 +47,12 @@ import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klasse
 import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, Traegerschaft } from './organisation.enums.js';
-import { type Organisationsbeziehungen, Organisation, type Organisationsbeziehung } from './organisation.js';
+import {
+    type Organisationsbeziehungen,
+    Organisation,
+    type Organisationsbeziehung,
+    type OrganisationsbeziehungWithOrganisationen,
+} from './organisation.js';
 import { OrganisationService, type UpdateOrganisationData } from './organisation.service.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
 
@@ -2352,6 +2368,68 @@ describe('OrganisationService', () => {
         });
     });
 
+    describe('findOrganisationsbeziehungen', () => {
+        const organisationId: OrganisationID = faker.string.uuid();
+
+        it('should return EntityNotFoundError if the organisation does not exist', async () => {
+            organisationRepositoryMock.exists.mockResolvedValueOnce(false);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, {});
+
+            expect(result).toEqual({ ok: false, error: new EntityNotFoundError('Organisation', organisationId) });
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
+        });
+
+        it('should return the paged relationships without requiring permissions', async () => {
+            const item: OrganisationsbeziehungWithOrganisationen = {
+                organisationsbeziehung: {
+                    id: faker.string.uuid(),
+                    createdAt: faker.date.past(),
+                    updatedAt: faker.date.recent(),
+                    quellOrganisationId: organisationId,
+                    zielOrganisationId: faker.string.uuid(),
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                },
+                quelle: DoFactory.createOrganisation(true),
+                ziel: DoFactory.createOrganisation(true),
+            };
+            organisationRepositoryMock.exists.mockResolvedValueOnce(true);
+            organisationRepositoryMock.findOrganisationsbeziehungen.mockResolvedValueOnce([[item], 5]);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, { offset: 2, limit: 1 });
+
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).toHaveBeenCalledWith(organisationId, {
+                offset: 2,
+                limit: 1,
+            });
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 5, offset: 2, limit: 1, items: [item], pageTotal: 1 },
+            });
+        });
+
+        it('should default offset to 0 and limit to total', async () => {
+            organisationRepositoryMock.exists.mockResolvedValueOnce(true);
+            organisationRepositoryMock.findOrganisationsbeziehungen.mockResolvedValueOnce([[], 0]);
+
+            const result: Result<
+                Paged<OrganisationsbeziehungWithOrganisationen>,
+                DomainError
+            > = await organisationService.findOrganisationsbeziehungen(organisationId, {});
+
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 0, offset: 0, limit: 0, items: [], pageTotal: 0 },
+            });
+        });
+    });
+
     describe('createOrganisationsbeziehung', () => {
         const quellOrganisationId: OrganisationID = faker.string.uuid();
         const zielOrganisationId: OrganisationID = faker.string.uuid();
@@ -2391,6 +2469,16 @@ describe('OrganisationService', () => {
             organisationRepositoryMock.createOrganisationsbeziehung.mockResolvedValue(persistedOrganisationsbeziehung);
 
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            vi.spyOn(SchulaufsichtQuelleSchuleZielBehoerde.prototype, 'isSatisfiedBy').mockResolvedValue(true);
+            vi.spyOn(SchulaufsichtSchuleUndAufsichtSelberBaum.prototype, 'isSatisfiedBy').mockResolvedValue(true);
+            vi.spyOn(SchultraegerQuelleSchuleZielTraeger.prototype, 'isSatisfiedBy').mockResolvedValue(true);
+            vi.spyOn(SchultraegerSchuleHatExaktEinenTraeger.prototype, 'isSatisfiedBy').mockResolvedValue(true);
+            vi.spyOn(SchultraegerSchuleUndTraegerSelberBaum.prototype, 'isSatisfiedBy').mockResolvedValue(true);
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
         });
 
         it('should create an Organisationsbeziehung when source and target may be managed', async () => {
@@ -2649,6 +2737,121 @@ describe('OrganisationService', () => {
                     zielOrganisationId,
                     typ,
                 }),
+            );
+        });
+        describe('validateSpecificationsForOrganisationsbeziehung', () => {
+            async function createBeziehungAndExpectError(
+                expectedError: new (organisationsbeziehungId?: string) => DomainError,
+                beziehungsTyp: OrganisationsbeziehungsTyp = typ,
+            ): Promise<void> {
+                const result: Result<
+                    Organisationsbeziehung<true>,
+                    DomainError
+                > = await organisationService.createOrganisationsbeziehung(
+                    quellOrganisationId,
+                    zielOrganisationId,
+                    beziehungsTyp,
+                    permissionsMock,
+                );
+
+                expect(result.ok).toBe(false);
+                if (!result.ok) {
+                    expect(result.error).toBeInstanceOf(expectedError);
+                }
+                expect(organisationRepositoryMock.createOrganisationsbeziehung).not.toHaveBeenCalled();
+            }
+
+            it('should return SchulaufsichtQuelleSchuleZielBehoerdeError when SchulaufsichtQuelleSchuleZielBehoerde is not satisfied', async () => {
+                vi.spyOn(SchulaufsichtQuelleSchuleZielBehoerde.prototype, 'isSatisfiedBy').mockResolvedValue(false);
+
+                await createBeziehungAndExpectError(
+                    SchulaufsichtQuelleSchuleZielBehoerdeError,
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                );
+            });
+
+            it('should return SchulaufsichtSchuleUndAufsichtSelberBaumError when SchulaufsichtSchuleUndAufsichtSelberBaum is not satisfied', async () => {
+                vi.spyOn(SchulaufsichtSchuleUndAufsichtSelberBaum.prototype, 'isSatisfiedBy').mockResolvedValue(false);
+
+                await createBeziehungAndExpectError(
+                    SchulaufsichtSchuleUndAufsichtSelberBaumError,
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                );
+            });
+
+            it('should return SchultraegerQuelleSchuleZielTraegerError when SchultraegerQuelleSchuleZielTraeger is not satisfied', async () => {
+                vi.spyOn(SchultraegerQuelleSchuleZielTraeger.prototype, 'isSatisfiedBy').mockResolvedValue(false);
+
+                await createBeziehungAndExpectError(SchultraegerQuelleSchuleZielTraegerError);
+            });
+
+            it('should return SchultraegerSchuleHatExaktEinenTraegerError when SchultraegerSchuleHatExaktEinenTraeger is not satisfied', async () => {
+                vi.spyOn(SchultraegerSchuleHatExaktEinenTraeger.prototype, 'isSatisfiedBy').mockResolvedValue(false);
+
+                await createBeziehungAndExpectError(SchultraegerSchuleHatExaktEinenTraegerError);
+            });
+
+            it('should return SchultraegerSchuleUndTraegerSelberBaumError when SchultraegerSchuleUndTraegerSelberBaum is not satisfied', async () => {
+                vi.spyOn(SchultraegerSchuleUndTraegerSelberBaum.prototype, 'isSatisfiedBy').mockResolvedValue(false);
+
+                await createBeziehungAndExpectError(SchultraegerSchuleUndTraegerSelberBaumError);
+            });
+
+            it.each([
+                [
+                    OrganisationsbeziehungsTyp.SCHULAUFSICHT,
+                    [SchulaufsichtQuelleSchuleZielBehoerde, SchulaufsichtSchuleUndAufsichtSelberBaum],
+                    [
+                        SchultraegerQuelleSchuleZielTraeger,
+                        SchultraegerSchuleHatExaktEinenTraeger,
+                        SchultraegerSchuleUndTraegerSelberBaum,
+                    ],
+                ],
+                [
+                    OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                    [
+                        SchultraegerQuelleSchuleZielTraeger,
+                        SchultraegerSchuleHatExaktEinenTraeger,
+                        SchultraegerSchuleUndTraegerSelberBaum,
+                    ],
+                    [SchulaufsichtQuelleSchuleZielBehoerde, SchulaufsichtSchuleUndAufsichtSelberBaum],
+                ],
+            ])(
+                'should only check the specifications matching type %s',
+                async (
+                    beziehungsTyp: OrganisationsbeziehungsTyp,
+                    checked: { prototype: { isSatisfiedBy: unknown } }[],
+                    notChecked: { prototype: { isSatisfiedBy: unknown } }[],
+                ) => {
+                    const checkedSpies: MockInstance[] = checked.map((c: { prototype: object }) =>
+                        vi.spyOn(c.prototype as { isSatisfiedBy: () => Promise<boolean> }, 'isSatisfiedBy'),
+                    );
+                    const notCheckedSpies: MockInstance[] = notChecked.map((c: { prototype: object }) =>
+                        vi.spyOn(c.prototype as { isSatisfiedBy: () => Promise<boolean> }, 'isSatisfiedBy'),
+                    );
+
+                    await organisationService.createOrganisationsbeziehung(
+                        quellOrganisationId,
+                        zielOrganisationId,
+                        beziehungsTyp,
+                        permissionsMock,
+                    );
+
+                    for (const spy of checkedSpies) {
+                        expect(spy).toHaveBeenCalledTimes(1);
+                        expect(spy).toHaveBeenCalledWith(
+                            expect.objectContaining({
+                                id: undefined,
+                                quellOrganisationId,
+                                zielOrganisationId,
+                                typ: beziehungsTyp,
+                            }),
+                        );
+                    }
+                    for (const spy of notCheckedSpies) {
+                        expect(spy).not.toHaveBeenCalled();
+                    }
+                },
             );
         });
     });

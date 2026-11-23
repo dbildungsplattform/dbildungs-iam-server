@@ -25,7 +25,4 @@ docker compose exec -it ingress nginx -s reload
 echo "init db"
 docker compose --profile db-seed up -d
 
-echo "update keycloak"
-docker compose --profile keycloak-client-update up -d
-
 docker compose ps

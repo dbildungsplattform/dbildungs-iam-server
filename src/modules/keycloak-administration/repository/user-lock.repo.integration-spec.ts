@@ -17,6 +17,7 @@ import { PersonLockOccasion } from '../../person/domain/person.enums.js';
 import { PersonEntity } from '../../person/persistence/person.entity.js';
 import { mapAggregateToData } from '../../person/persistence/person.repository.js';
 import { UserLock } from '../domain/user-lock.js';
+import { UserLockEntity } from '../entity/user-lock.entity.js';
 import { UserLockRepository } from './user-lock.repository.js';
 
 describe('UserLockRepository', () => {
@@ -275,6 +276,35 @@ describe('UserLockRepository', () => {
                     ],
                 }),
             );
+        });
+
+        it('should replace a time-limited manual lock with an unlimited lock', async () => {
+            const newPerson: PersonEntity = createPersonEntity();
+            await em.persist(newPerson).flush();
+            const userLock: UserLock = UserLock.construct(
+                newPerson.id,
+                faker.string.uuid(),
+                new Date('2030-01-01T00:00:00.000Z'),
+                PersonLockOccasion.MANUELL_GESPERRT,
+                new Date(),
+            );
+            await sut.createUserLock(userLock);
+
+            userLock.locked_until = undefined;
+            const updatedUserLock: UserLock | DomainError = await sut.update(userLock);
+            if (updatedUserLock instanceof DomainError) {
+                throw new Error();
+            }
+
+            expect(updatedUserLock.locked_until).toBeUndefined();
+            expect(
+                await em.count(UserLockEntity, {
+                    person: newPerson.id,
+                    locked_occasion: PersonLockOccasion.MANUELL_GESPERRT,
+                    locked_until: null,
+                }),
+            ).toBe(1);
+            expect(await em.count(UserLockEntity, { person: newPerson.id })).toBe(1);
         });
 
         it('should publish an event when lock snapshot fields are unchanged', async () => {

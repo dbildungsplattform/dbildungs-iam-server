@@ -32,6 +32,7 @@ import { Personenkontext } from '../domain/personenkontext.js';
 import { PersonenkontextErweitertVirtualEntity } from './personenkontext-erweitert.virtual.entity.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
 import { PersonenkontextScope } from './personenkontext.scope.js';
+import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 
 export type RollenCount = { rollenart: string; count: string };
 
@@ -688,5 +689,20 @@ export class DBiamPersonenkontextRepo {
         });
 
         return result;
+    }
+
+    public async findByPersonAndServiceProviderWithOrgaAndRolle(
+        personId: PersonID,
+        serviceProviderId: ServiceProviderID,
+    ): Promise<KontextWithOrgaAndRolle[]> {
+        // this already uses rollenerweiterungen which will be important in next ticket
+        const kontexteByPerson: Map<PersonID, KontextWithOrgaAndRolle[]> =
+            await this.findByPersonIdsAndServiceprovidersWithOrgaAndRolle([personId], [serviceProviderId], {
+                all: true,
+            });
+
+        return (kontexteByPerson.get(personId) ?? []).filter(
+            (kontext: KontextWithOrgaAndRolle) => kontext.organisation.typ !== OrganisationsTyp.KLASSE,
+        );
     }
 }

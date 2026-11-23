@@ -81,20 +81,23 @@ Similarly you may use
 
 - `db-migrate` to migrate schema changes to your current database
 - `db-seed` to seed the database
-- `keycloak-client-update` to update the keycloak client
+
+The backend can start without Keycloak, and `/health` checks only the database and Redis.
+Authentication and other Keycloak operations still require a reachable Keycloak instance.
+For new local Keycloak instances, the `SPSH` realm and its clients are provided by
+the import from `config/local-spsh.json`.
 
 ### Available profiles
 
-| Name                   | Description                                                         |
-| :--------------------- | :------------------------------------------------------------------ |
-| backend                | backend with required depencies                                     |
-| frontend               | frontend + ingress (requires containerized instance of the backend) |
-| third-party            | any third-party systems that are not required for startup           |
-| db-init                | initialise the database                                             |
-| db-migrate             | run necessary schema migrations against the database                |
-| db-seed                | seed the database                                                   |
-| keycloak-client-update | update the keycloak-client                                          |
-| kc-service             | start the internal micro-service to access keycloaks database       |
+| Name        | Description                                                         |
+| :---------- | :------------------------------------------------------------------ |
+| backend     | backend with required depencies                                     |
+| frontend    | frontend + ingress (requires containerized instance of the backend) |
+| third-party | any third-party systems that are not required for startup           |
+| db-init     | initialise the database                                             |
+| db-migrate  | run necessary schema migrations against the database                |
+| db-seed     | seed the database                                                   |
+| kc-service  | start the internal micro-service to access keycloaks database       |
 
 ## Developer Guides
 

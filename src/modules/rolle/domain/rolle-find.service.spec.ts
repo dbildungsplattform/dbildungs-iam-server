@@ -513,9 +513,11 @@ describe('RolleFindService', () => {
                         ],
                     }),
                 );
-                if (bounded) {
+                for (const paar of RollenmerkmalSystemrechtPaar.ALL) {
                     expect(permissionsMock.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
-                        [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                        [paar.systemrecht],
+                        true,
+                        true,
                         true,
                     );
                 }
@@ -850,7 +852,6 @@ describe('RolleFindService', () => {
                     organisationId: schule.id,
                     permissions: permissionsMock,
                     systemrecht: RollenSystemRecht.PERSONEN_VERWALTEN,
-                    rollenIds: ['rolle-1'],
                     limit: 1,
                     offset: 1,
                     rolleName: 'suche rolle',
@@ -863,7 +864,6 @@ describe('RolleFindService', () => {
                     organisationId: schule.id,
                     allowedOrganisationIds: [schule.id, traeger.id],
                     allowedRollenarten,
-                    stickyRollenIds: ['rolle-1'],
                     limit: 1,
                     offset: 1,
                     searchStr: 'suche rolle',
@@ -905,6 +905,7 @@ describe('RolleFindService', () => {
                         gatedBucket: {
                             allowedRollenarten: allowedRollenartenForGatedRollen,
                             authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                            requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
                         },
                     });
                 });
@@ -1001,6 +1002,7 @@ describe('RolleFindService', () => {
                         gatedBucket: {
                             allowedRollenarten: allowedRollenartenForGatedRollen,
                             authorizedMerkmale: Array.from(RollenmerkmalSystemrechtPaar.GATED_MERKMALE),
+                            requiredMerkmale: [RollenMerkmal.MPT_ROLLE],
                         },
                     });
                 });
@@ -1356,6 +1358,8 @@ describe('RolleFindService', () => {
                     expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
                         [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
                         true,
+                        true,
+                        true,
                     );
                     expect(permissions.getPermittedMerkmaleForOrga).not.toHaveBeenCalled();
                     const expectedQuery: Partial<RolleFindByParameters> = {
@@ -1451,6 +1455,8 @@ describe('RolleFindService', () => {
                 expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledTimes(2);
                 expect(permissions.getOrgIdsWithSystemrecht).toHaveBeenCalledWith(
                     [RollenSystemRecht.PILOT_1_ROLLEN_ZUORDNEN],
+                    true,
+                    true,
                     true,
                 );
                 expect(permissions.getPermittedMerkmaleForOrga).not.toHaveBeenCalled();

@@ -1,14 +1,25 @@
 import { type FactoryProvider } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { type BaseClient, type Client, Issuer, type TokenSet } from 'openid-client';
-
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { KeycloakInstanceConfig } from '../../keycloak-administration/keycloak-instance-config.js';
 
 export const OIDC_CLIENT: symbol = Symbol();
 
-export async function tryGetClient(config: KeycloakInstanceConfig): Promise<BaseClient> {
-    const TrustIssuer: Issuer = await Issuer.discover(`${config.BASE_URL}/realms/${config.REALM_NAME}`);
+function createClient(config: KeycloakInstanceConfig): Client {
+    const internalRealmUrl: string = `${config.BASE_URL.replace(/\/$/, '')}/realms/${config.REALM_NAME}`;
+    const externalRealmUrl: string = `${config.EXTERNAL_BASE_URL.replace(/\/$/, '')}/realms/${config.REALM_NAME}`;
+    const TrustIssuer: Issuer = new Issuer({
+        issuer: externalRealmUrl,
+        authorization_endpoint: `${externalRealmUrl}/protocol/openid-connect/auth`,
+        token_endpoint: `${internalRealmUrl}/protocol/openid-connect/token`,
+        userinfo_endpoint: `${internalRealmUrl}/protocol/openid-connect/userinfo`,
+        jwks_uri: `${internalRealmUrl}/protocol/openid-connect/certs`,
+        introspection_endpoint: `${internalRealmUrl}/protocol/openid-connect/token/introspect`,
+        revocation_endpoint: `${internalRealmUrl}/protocol/openid-connect/revoke`,
+        end_session_endpoint: `${externalRealmUrl}/protocol/openid-connect/logout`,
+        code_challenge_methods_supported: ['S256'],
+    });
 
     return new TrustIssuer.Client({
         client_id: config.CLIENT_ID,
@@ -26,8 +37,8 @@ the simplest option here because v5's HTTP customization hook runs before reques
 */
 export const OIDCClientProvider: FactoryProvider<Client> = {
     provide: OIDC_CLIENT,
-    async useFactory(config: KeycloakInstanceConfig, logger: ClassLogger): Promise<Client> {
-        const client: BaseClient = await tryGetClient(config);
+    useFactory(config: KeycloakInstanceConfig, logger: ClassLogger): Client {
+        const client: BaseClient = createClient(config);
         const grant: BaseClient['grant'] = client.grant.bind(client);
         const callback: BaseClient['callback'] = client.callback.bind(client);
         const attempts: WeakMap<TokenSet, string> = new WeakMap();

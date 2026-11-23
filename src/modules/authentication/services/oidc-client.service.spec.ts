@@ -1,12 +1,13 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import type * as Crypto from 'node:crypto';
 import { randomUUID } from 'node:crypto';
-import { type Client, Issuer, TokenSet } from 'openid-client';
+import { Issuer, TokenSet, type Client } from 'openid-client';
 import { type MockInstance } from 'vitest';
 
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { ConfigTestModule, KeycloakConfigTestModule } from '../../../../test/utils/index.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
+import { KeycloakInstanceConfig } from '../../keycloak-administration/keycloak-instance-config.js';
 import { OIDCClientProvider, OIDC_CLIENT } from './oidc-client.service.js';
 
 type importType = typeof Crypto;
@@ -24,18 +25,27 @@ describe('OIDCClientProvider', () => {
     let grantMock: MockInstance<Client['grant']>;
     let callbackMock: MockInstance<Client['callback']>;
     let loggerMock: DeepMocked<ClassLogger>;
+    let client: Client;
+    const config: KeycloakInstanceConfig = new KeycloakInstanceConfig(
+        'http://127.0.0.1:1/',
+        'https://keycloak.example.com/',
+        'admin',
+        'admin-client',
+        'admin-secret',
+        'service-client',
+        '{"keys":[]}',
+        'SPSH',
+        'spsh',
+        'client-secret',
+        'test-client',
+    );
     const attemptId: ReturnType<typeof randomUUID> = '00000000-0000-4000-8000-000000000001';
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const issuer: Issuer = new Issuer({ issuer: 'oidc' });
-        class ClientMock extends issuer.Client {}
-        grantMock = vi.spyOn(ClientMock.prototype, 'grant');
-        callbackMock = vi.spyOn(ClientMock.prototype, 'callback');
-        vi.spyOn(Issuer, 'discover').mockResolvedValueOnce({
-            ...issuer,
-            metadata: issuer.metadata,
-            Client: ClientMock,
-        });
+        const clientPrototype: Client = Object.getPrototypeOf(issuer.Client.prototype) as Client;
+        grantMock = vi.spyOn(clientPrototype, 'grant');
+        callbackMock = vi.spyOn(clientPrototype, 'callback');
 
         module = await Test.createTestingModule({
             imports: [KeycloakConfigTestModule.forRoot(), ConfigTestModule],
@@ -45,28 +55,43 @@ describe('OIDCClientProvider', () => {
                     provide: ClassLogger,
                     useValue: createMock(ClassLogger),
                 },
+                { provide: KeycloakInstanceConfig, useValue: config },
             ],
         }).compile();
 
         sut = module.get(OIDC_CLIENT);
         loggerMock = module.get(ClassLogger);
+        client = module.get<Client>(OIDC_CLIENT);
+        vi.mocked(randomUUID).mockReset().mockReturnValue(attemptId);
     });
 
-    beforeEach(() => {
-        vi.mocked(randomUUID).mockReturnValueOnce(attemptId);
-    });
-
-    afterAll(async () => {
+    afterEach(async () => {
         await module.close();
         vi.restoreAllMocks();
     });
 
-    afterEach(() => {
-        vi.resetAllMocks();
+    it('should initialize without discovery when Keycloak is unavailable', () => {
+        expect(client).toBeDefined();
+        expect(client.metadata.client_id).toBe('spsh');
+        expect(client.metadata.client_secret).toBe('client-secret');
     });
 
-    it('should be defined', () => {
-        expect(sut).toBeDefined();
+    it('should use the external issuer and browser endpoints', () => {
+        expect(client.issuer.metadata).toMatchObject({
+            issuer: 'https://keycloak.example.com/realms/SPSH',
+            authorization_endpoint: 'https://keycloak.example.com/realms/SPSH/protocol/openid-connect/auth',
+            end_session_endpoint: 'https://keycloak.example.com/realms/SPSH/protocol/openid-connect/logout',
+        });
+    });
+
+    it('should use internal endpoints for backend requests', () => {
+        expect(client.issuer.metadata).toMatchObject({
+            token_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/token',
+            userinfo_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/userinfo',
+            jwks_uri: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/certs',
+            introspection_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/token/introspect',
+            revocation_endpoint: 'http://127.0.0.1:1/realms/SPSH/protocol/openid-connect/revoke',
+        });
     });
 
     describe('grant', () => {

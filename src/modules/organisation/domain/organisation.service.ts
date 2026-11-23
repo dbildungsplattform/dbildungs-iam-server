@@ -13,7 +13,10 @@ import { ScopeOperator } from '../../../shared/persistence/index.js';
 import { OrganisationID } from '../../../shared/types/aggregate-ids.types.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
-import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import {
+    OrganisationRepository,
+    type OrganisationsbeziehungSearchOptions,
+} from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
 import { BehoerdeAdministriertVon } from '../specification/behoerde-administriert-von.js';
 import { BehoerdeNameUnique } from '../specification/behoerde-name-eindeutig.js';
@@ -48,8 +51,18 @@ import { TraegerUnterRootChild } from '../specification/traeger-unter-root-child
 import { ZyklusInOrganisationen } from '../specification/zyklus-in-organisationen.js';
 import { OrganisationZuordnungVerschiebenError } from './organisation-zuordnung-verschieben.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
-import { Organisation, Organisationsbeziehung } from './organisation.js';
+import { Organisation, Organisationsbeziehung, OrganisationsbeziehungWithOrganisationen } from './organisation.js';
 import { OrganisationsbeziehungsTyp } from './organisationsbeziehungs-typ.enum.js';
+import { SchulaufsichtQuelleSchuleZielBehoerde } from '../specification/relations/schulaufsicht-quelle-schule-ziel-behoerde.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaum } from '../specification/relations/schulaufsicht-schule-und-aufsicht-selber-baum.js';
+import { SchultraegerQuelleSchuleZielTraeger } from '../specification/relations/schultraeger-quelle-schule-ziel-traeger.js';
+import { SchultraegerSchuleHatExaktEinenTraeger } from '../specification/relations/schultraeger-schule-hat-exakt-einen-traeger.js';
+import { SchultraegerSchuleUndTraegerSelberBaum } from '../specification/relations/schultraeger-schule-und-traeger-selber-baum.js';
+import { SchulaufsichtQuelleSchuleZielBehoerdeError } from '../specification/relations/error/schulaufsicht-quelle-schule-ziel-behoerde.error.js';
+import { SchulaufsichtSchuleUndAufsichtSelberBaumError } from '../specification/relations/error/schulaufsicht-schule-und-aufsicht-selber-baum.error.js';
+import { SchultraegerQuelleSchuleZielTraegerError } from '../specification/relations/error/schultraeger-quelle-schule-ziel-traeger.error.js';
+import { SchultraegerSchuleHatExaktEinenTraegerError } from '../specification/relations/error/schultraeger-schule-hat-exakt-einen-traeger.error.js';
+import { SchultraegerSchuleUndTraegerSelberBaumError } from '../specification/relations/error/schultraeger-schule-und-traeger-selber-baum.error.js';
 
 export type UpdateOrganisationData = Pick<
     Organisation<true>,
@@ -341,7 +354,7 @@ export class OrganisationService {
             return fieldNamesError;
         }
 
-        const emailResult: Result<void, DomainError> = await this.validateEmailAdressOnOrganisationTyp(organisationDo);
+        const emailResult: Result<void, DomainError> = await this.validateEmailAddressOnOrganisationTyp(organisationDo);
         if (!emailResult.ok) {
             return emailResult.error;
         }
@@ -372,7 +385,7 @@ export class OrganisationService {
         return undefined;
     }
 
-    private async validateEmailAdressOnOrganisationTyp(
+    private async validateEmailAddressOnOrganisationTyp(
         organisation: Organisation<boolean>,
     ): Promise<Result<void, DomainError>> {
         const emailAdressOnOrganisationTyp: EmailAdressOnOrganisationTyp = new EmailAdressOnOrganisationTyp();
@@ -621,6 +634,42 @@ export class OrganisationService {
         return undefined;
     }
 
+    private async validateSpecificationsForOrganisationsbeziehung(
+        organisationsbeziehung: Organisationsbeziehung<false>,
+    ): Promise<OrganisationSpecificationError | undefined> {
+        if (organisationsbeziehung.typ === OrganisationsbeziehungsTyp.SCHULAUFSICHT) {
+            const schulaufsichtQuelleSchuleZielBehoerde: SchulaufsichtQuelleSchuleZielBehoerde =
+                new SchulaufsichtQuelleSchuleZielBehoerde(this.organisationRepo);
+            const schulaufsichtSchuleUndAufsichtSelberBaum: SchulaufsichtSchuleUndAufsichtSelberBaum =
+                new SchulaufsichtSchuleUndAufsichtSelberBaum(this.organisationRepo);
+            if (!(await schulaufsichtQuelleSchuleZielBehoerde.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchulaufsichtQuelleSchuleZielBehoerdeError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schulaufsichtSchuleUndAufsichtSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchulaufsichtSchuleUndAufsichtSelberBaumError(organisationsbeziehung.quellOrganisationId);
+            }
+        }
+        if (organisationsbeziehung.typ === OrganisationsbeziehungsTyp.SCHULTRAEGER) {
+            const schultraegerQuelleSchuleZielTraeger: SchultraegerQuelleSchuleZielTraeger =
+                new SchultraegerQuelleSchuleZielTraeger(this.organisationRepo);
+            const schultraegerSchuleHatExaktEinenTraeger: SchultraegerSchuleHatExaktEinenTraeger =
+                new SchultraegerSchuleHatExaktEinenTraeger(this.organisationRepo);
+            const schultraegerSchuleUndTraegerSelberBaum: SchultraegerSchuleUndTraegerSelberBaum =
+                new SchultraegerSchuleUndTraegerSelberBaum(this.organisationRepo);
+            if (!(await schultraegerQuelleSchuleZielTraeger.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerQuelleSchuleZielTraegerError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schultraegerSchuleHatExaktEinenTraeger.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerSchuleHatExaktEinenTraegerError(organisationsbeziehung.quellOrganisationId);
+            }
+            if (!(await schultraegerSchuleUndTraegerSelberBaum.isSatisfiedBy(organisationsbeziehung))) {
+                return new SchultraegerSchuleUndTraegerSelberBaumError(organisationsbeziehung.quellOrganisationId);
+            }
+        }
+
+        return undefined;
+    }
+
     public async findAllAdministriertVon(
         parentOrganisationID: string,
         searchFilter?: string,
@@ -702,6 +751,29 @@ export class OrganisationService {
         }
     }
 
+    public async findOrganisationsbeziehungen(
+        organisationId: OrganisationID,
+        options: OrganisationsbeziehungSearchOptions,
+    ): Promise<Result<Paged<OrganisationsbeziehungWithOrganisationen>, DomainError>> {
+        if (!(await this.organisationRepo.exists(organisationId))) {
+            return { ok: false, error: new EntityNotFoundError('Organisation', organisationId) };
+        }
+
+        const [items, total]: Counted<OrganisationsbeziehungWithOrganisationen> =
+            await this.organisationRepo.findOrganisationsbeziehungen(organisationId, options);
+
+        return {
+            ok: true,
+            value: {
+                total,
+                offset: options.offset ?? 0,
+                limit: options.limit ?? total,
+                items,
+                pageTotal: items.length,
+            },
+        };
+    }
+
     public async createOrganisationsbeziehung(
         quellOrganisationId: OrganisationID,
         zielOrganisationId: OrganisationID,
@@ -738,6 +810,14 @@ export class OrganisationService {
             typ,
         );
 
+        const validationResultForSpecifications: DomainError | undefined =
+            await this.validateSpecificationsForOrganisationsbeziehung(organisationsbeziehung);
+        if (validationResultForSpecifications) {
+            return {
+                ok: false,
+                error: validationResultForSpecifications,
+            };
+        }
         try {
             const persistedOrganisationsbeziehung: Organisationsbeziehung<true> =
                 await this.organisationRepo.createOrganisationsbeziehung(organisationsbeziehung);

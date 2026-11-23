@@ -38,5 +38,4 @@ COPY config/ ./config/
 COPY --from=prod-dependencies /app/node_modules/ ./node_modules/
 COPY --from=build /app/dist/ ./dist/
 COPY /seeding/ /app/seeding/
-COPY /keycloak-migrations/ /app/keycloak-migrations/
 CMD [ "node", "dist/src/server/main.js" ]
