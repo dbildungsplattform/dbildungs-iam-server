@@ -41,6 +41,8 @@ import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
 import { OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
+import { GlobalPagingHeadersInterceptor, type PagedResponse } from '../../../shared/paging/index.js';
+import { type OrganisationResponse } from './organisation.response.js';
 
 describe('Organisation API', () => {
     let app: INestApplication;
@@ -98,6 +100,10 @@ describe('Organisation API', () => {
                     },
                 },
                 {
+                    provide: APP_INTERCEPTOR,
+                    useClass: GlobalPagingHeadersInterceptor,
+                },
+                {
                     provide: PersonPermissionsRepo,
                     useValue: createMock(PersonPermissionsRepo),
                 },
@@ -133,6 +139,41 @@ describe('Organisation API', () => {
 
     beforeEach(async () => {
         await DatabaseTestModule.clearDatabase(orm);
+    });
+
+    describe('/GET organisation pagination', () => {
+        it('should return pagination information in the response body without paging headers', async () => {
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, {
+                    typ: OrganisationsTyp.SCHULE,
+                    name: 'Paged organisation',
+                }),
+            );
+
+            permissionsMock.getOrgIdsWithSystemrecht.mockResolvedValueOnce({ all: true });
+
+            const response: Response = await request(app.getHttpServer() as App)
+                .get('/organisationen')
+                .query({
+                    offset: 0,
+                    limit: 1,
+                });
+
+            expect(response.status).toBe(200);
+
+            const body: PagedResponse<OrganisationResponse> = response.body as PagedResponse<OrganisationResponse>;
+
+            expect(body.total).toBe(1);
+            expect(body.offset).toBe(0);
+            expect(body.limit).toBe(1);
+            expect(body.items).toHaveLength(1);
+            expect(body.items[0]?.id).toBe(organisation.id);
+
+            expect(response.headers['x-paging-offset']).toBeUndefined();
+            expect(response.headers['x-paging-limit']).toBeUndefined();
+            expect(response.headers['x-paging-total']).toBeUndefined();
+            expect(response.headers['x-paging-pagetotal']).toBeUndefined();
+        });
     });
 
     describe('/POST organisation kennung', () => {
