@@ -2446,6 +2446,29 @@ describe('OrganisationService', () => {
             expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
         });
 
+        it('should reject an existing source organisation when manage permission is denied', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(source.id, {}, permissions);
+
+            expect(result).toEqual({
+                ok: false,
+                error: new MissingPermissionsError('Not permitted to manage organisation'),
+            });
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                source.id,
+                RollenSystemRecht.SCHULEN_VERWALTEN,
+            );
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
+        });
+
         it('should search manageable Behörden and exclude existing relationships before pagination', async () => {
             const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
             const linkedFromSource: Organisation<true> = DoFactory.createOrganisation(true, {
