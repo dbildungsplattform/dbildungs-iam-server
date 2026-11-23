@@ -2553,6 +2553,50 @@ describe('OrganisationRepository', () => {
             expect(result[0].some((org: Organisation<true>) => org.id === orgas[3]!.id)).toBeTruthy();
         });
 
+        it('should not return authorities when the user has no authority-management permissions', async () => {
+            const authority: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.BEHOERDE);
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+
+            const result: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                { typ: OrganisationsTyp.BEHOERDE },
+            );
+
+            expect(result).toEqual([[], 0, 0]);
+            expect(result[0].some((organisation: Organisation<true>) => organisation.id === authority.id)).toBe(false);
+        });
+
+        it('should exclude schools with an existing Schultraeger relationship in the database query', async () => {
+            const assignedSchool: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SCHULE,
+            );
+            const eligibleSchool: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SCHULE,
+            );
+            const traeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: assignedSchool.id,
+                    zielOrganisationId: traeger.id,
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                }),
+            );
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const result: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.SCHULEN_VERWALTEN],
+                { typ: OrganisationsTyp.SCHULE, excludeSchoolsWithSchultraegerRelationship: true },
+            );
+
+            expect(result[0].map((organisation: Organisation<true>) => organisation.id)).toEqual([eligibleSchool.id]);
+            expect(result[1]).toBe(1);
+            expect(result[2]).toBe(1);
+        });
+
         it('should return correct pageTotal for root user without searchString', async () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
@@ -3187,39 +3231,40 @@ describe('OrganisationRepository', () => {
         });
     });
 
-    describe('findSchulenWithSchultraegerBeziehung', () => {
-        it('should return unique schools with an existing Schultraeger relationship', async () => {
-            const schule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
-            const anotherSchule: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SCHULE);
-            const firstTraeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
-            const secondTraeger: Organisation<true, false> = await createPersistedOrganisation(
-                OrganisationsTyp.TRAEGER,
+    describe('findRelatedOrganisationIds', () => {
+        it('should return related organisation ids when the requested organisation is either endpoint', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
             );
-            const behoerde: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.BEHOERDE);
+            const relatedAsQuelle: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const relatedAsZiel: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const unrelated: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: organisation.id,
+                    zielOrganisationId: relatedAsQuelle.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: relatedAsZiel.id,
+                    zielOrganisationId: organisation.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: unrelated.id,
+                    zielOrganisationId: relatedAsQuelle.id,
+                }),
+            );
 
-            await sut.createOrganisationsbeziehung(
-                DoFactory.createOrganisationsbeziehung(false, {
-                    quellOrganisationId: schule.id,
-                    zielOrganisationId: firstTraeger.id,
-                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
-                }),
-            );
-            await sut.createOrganisationsbeziehung(
-                DoFactory.createOrganisationsbeziehung(false, {
-                    quellOrganisationId: schule.id,
-                    zielOrganisationId: secondTraeger.id,
-                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
-                }),
-            );
-            await sut.createOrganisationsbeziehung(
-                DoFactory.createOrganisationsbeziehung(false, {
-                    quellOrganisationId: anotherSchule.id,
-                    zielOrganisationId: behoerde.id,
-                    typ: OrganisationsbeziehungsTyp.SCHULAUFSICHT,
-                }),
-            );
+            const relatedIds: OrganisationID[] = await sut.findRelatedOrganisationIds(organisation.id);
 
-            await expect(sut.findSchulenWithSchultraegerBeziehung()).resolves.toEqual([schule.id]);
+            expect(relatedIds.sort()).toEqual([relatedAsQuelle.id, relatedAsZiel.id].sort());
         });
     });
 

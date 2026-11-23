@@ -34,6 +34,7 @@ import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klasse
 import { NameRequiredForSchuleError } from '../specification/error/name-required-for-schule.error.js';
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
 import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
@@ -780,76 +781,79 @@ export class OrganisationService {
         options: Pick<OrganisationSearchOptions, 'searchString' | 'offset' | 'limit'>,
         permissions: IPersonPermissions,
     ): Promise<Result<Paged<Organisation<true>>, DomainError>> {
-        const sourceResult: Result<
+        const contextOrganisationResult: Result<
             Organisation<true, false>,
             EntityNotFoundError | MissingPermissionsError
         > = await this.findOrganisationWithManagePermission(permissions, organisationId);
-        if (!sourceResult.ok) {
-            return sourceResult;
+        if (!contextOrganisationResult.ok) {
+            return contextOrganisationResult;
         }
 
-        let targetType: OrganisationsTyp;
-        let targetSystemrecht: RollenSystemRecht;
-        switch (sourceResult.value.typ) {
+        let candidateType: OrganisationsTyp;
+        let candidateSystemrecht: RollenSystemRecht;
+        switch (contextOrganisationResult.value.typ) {
             case OrganisationsTyp.SCHULE:
-                targetType = OrganisationsTyp.BEHOERDE;
-                targetSystemrecht = RollenSystemRecht.BEHOERDEN_VERWALTEN;
+                candidateType = OrganisationsTyp.BEHOERDE;
+                candidateSystemrecht = RollenSystemRecht.BEHOERDEN_VERWALTEN;
                 break;
             case OrganisationsTyp.BEHOERDE:
             case OrganisationsTyp.TRAEGER:
-                targetType = OrganisationsTyp.SCHULE;
-                targetSystemrecht = RollenSystemRecht.SCHULEN_VERWALTEN;
+                candidateType = OrganisationsTyp.SCHULE;
+                candidateSystemrecht = RollenSystemRecht.SCHULEN_VERWALTEN;
                 break;
             default:
                 return {
-                    ok: true,
-                    value: {
-                        total: 0,
-                        offset: options.offset ?? 0,
-                        limit: options.limit ?? 0,
-                        items: [],
-                        pageTotal: 0,
-                    },
+                    ok: false,
+                    error: new RelationshipSearchUnsupportedOrganisationTypeError(
+                        organisationId,
+                        contextOrganisationResult.value.typ,
+                    ),
                 };
         }
 
-        const existingRelationships: Counted<OrganisationsbeziehungWithOrganisationen> =
-            await this.organisationRepo.findOrganisationsbeziehungen(organisationId, {});
-        const relationships: OrganisationsbeziehungWithOrganisationen[] = existingRelationships[0];
-        const excludedOrganisationIds: Set<OrganisationID> = new Set(
-            relationships.map((relationship: OrganisationsbeziehungWithOrganisationen): string =>
-                relationship.quelle.id === organisationId ? relationship.ziel.id : relationship.quelle.id,
-            ),
-        );
-        const offset: number = options.offset ?? 0;
-        const excludedIds: string[] =
-            sourceResult.value.typ === OrganisationsTyp.TRAEGER
-                ? await this.organisationRepo.findSchulenWithSchultraegerBeziehung()
-                : [];
-        excludedIds.forEach((id: OrganisationID): void => {
-            excludedOrganisationIds.add(id);
-        });
-        excludedOrganisationIds.add(organisationId);
+        const exclusions: Pick<
+            OrganisationSearchOptions,
+            'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'
+        > = await this.findRelationshipCandidateExclusions(organisationId, contextOrganisationResult.value.typ);
 
         const searchOptions: OrganisationSearchOptions = {
-            typ: targetType,
+            typ: candidateType,
             searchString: options.searchString,
             offset: options.offset,
             limit: options.limit,
-            excludeOrganisationIds: [...excludedOrganisationIds],
+            ...exclusions,
         };
         const [items, total, pageTotal]: [Organisation<true>[], number, number] =
-            await this.organisationRepo.findAuthorized(permissions, [targetSystemrecht], searchOptions);
+            await this.organisationRepo.findAuthorized(permissions, [candidateSystemrecht], searchOptions);
 
         return {
             ok: true,
             value: {
                 total,
-                offset,
+                offset: options.offset ?? 0,
                 limit: options.limit ?? total,
                 items,
                 pageTotal,
             },
+        };
+    }
+
+    private async findRelationshipCandidateExclusions(
+        organisationId: OrganisationID,
+        organisationType: OrganisationsTyp,
+    ): Promise<
+        Pick<OrganisationSearchOptions, 'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'>
+    > {
+        const excludedOrganisationIds: Set<OrganisationID> = new Set(
+            await this.organisationRepo.findRelatedOrganisationIds(organisationId),
+        );
+        excludedOrganisationIds.add(organisationId);
+
+        return {
+            excludeOrganisationIds: [...excludedOrganisationIds],
+            ...(organisationType === OrganisationsTyp.TRAEGER
+                ? { excludeSchoolsWithSchultraegerRelationship: true }
+                : {}),
         };
     }
 

@@ -458,6 +458,10 @@ export class OrganisationController {
         headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to search organisations.' })
+    @ApiBadRequestResponse({
+        description: 'The organisation type does not support relationship search.',
+        type: DbiamOrganisationError,
+    })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to manage the requested organisation.' })
     @ApiNotFoundResponse({ description: 'The requested organisation does not exist.' })
     @ApiInternalServerErrorResponse({ description: 'Internal server error while searching organisations.' })

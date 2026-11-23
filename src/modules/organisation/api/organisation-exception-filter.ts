@@ -23,6 +23,7 @@ import { NameRequiredForSchuleError } from '../specification/error/name-required
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
 import { NurKlasseKursUnterSchuleError } from '../specification/error/nur-klasse-kurs-unter-schule.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
 import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { RootOrganisationImmutableError } from '../specification/error/root-organisation-immutable.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
@@ -276,6 +277,13 @@ export class OrganisationExceptionFilter implements ExceptionFilter<Organisation
             new DbiamOrganisationError({
                 code: 400,
                 i18nKey: OrganisationSpecificationErrorI18nTypes.SCHULTRAEGER_SCHULE_UND_TRAEGER_SELBER_BAUM,
+            }),
+        ],
+        [
+            RelationshipSearchUnsupportedOrganisationTypeError.name,
+            new DbiamOrganisationError({
+                code: 400,
+                i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_SPECIFICATION_ERROR,
             }),
         ],
     ]);

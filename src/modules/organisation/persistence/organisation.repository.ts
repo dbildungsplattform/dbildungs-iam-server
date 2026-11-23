@@ -133,7 +133,8 @@ export type OrganisationSearchOptions = {
     readonly searchString?: string;
     readonly typ?: OrganisationsTyp;
     readonly excludeTyp?: OrganisationsTyp[];
-    readonly excludeOrganisationIds?: string[];
+    readonly excludeOrganisationIds?: OrganisationID[];
+    readonly excludeSchoolsWithSchultraegerRelationship?: boolean;
     readonly administriertVon?: string[];
     readonly organisationIds?: string[];
     readonly zugehoerigZu?: string[];
@@ -539,6 +540,20 @@ export class OrganisationRepository {
         }
         if (searchOptions.excludeOrganisationIds?.length) {
             andClauses.push({ id: { $nin: searchOptions.excludeOrganisationIds } });
+        }
+        if (searchOptions.excludeSchoolsWithSchultraegerRelationship) {
+            andClauses.push({
+                id: {
+                    $nin: this.em
+                        .createQueryBuilder(OrganisationsbeziehungEntity, 'schultraegerBeziehung')
+                        .select('schultraegerBeziehung.quellOrganisationId')
+                        .join('schultraegerBeziehung.quellOrganisationId', 'schule')
+                        .where({
+                            'schultraegerBeziehung.typ': OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                            'schule.typ': OrganisationsTyp.SCHULE,
+                        }),
+                },
+            });
         }
         if (andClauses.length > 0) {
             whereClause = { $and: andClauses };
@@ -968,21 +983,21 @@ export class OrganisationRepository {
         return [items, total];
     }
 
-    public async findSchulenWithSchultraegerBeziehung(): Promise<OrganisationID[]> {
-        const results: { quellOrganisationId: OrganisationID }[] = await this.em
+    public async findRelatedOrganisationIds(organisationId: OrganisationID): Promise<OrganisationID[]> {
+        const results: { organisationId: OrganisationID }[] = await this.em
             .createQueryBuilder(OrganisationsbeziehungEntity, 'b')
-            .select(raw('b.quell_organisation_id as "quellOrganisationId"'))
-            .distinct()
-            .join('b.quellOrganisationId', 'q')
+            .select(
+                sql`CASE
+                    WHEN b.quell_organisation_id = ${organisationId} THEN b.ziel_organisation_id
+                    ELSE b.quell_organisation_id
+                END AS "organisationId"`,
+            )
             .where({
-                'b.typ': OrganisationsbeziehungsTyp.SCHULTRAEGER,
-                'q.typ': OrganisationsTyp.SCHULE,
+                $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }],
             })
             .execute('all');
 
-        return results.map(
-            (result: { quellOrganisationId: OrganisationID }): OrganisationID => result.quellOrganisationId,
-        );
+        return results.map((result: { organisationId: OrganisationID }): OrganisationID => result.organisationId);
     }
 
     public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {
