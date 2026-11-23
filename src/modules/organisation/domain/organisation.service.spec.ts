@@ -2483,6 +2483,8 @@ describe('OrganisationService', () => {
             });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            const subtreeRootId: OrganisationID = faker.string.uuid();
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(subtreeRootId);
             organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[eligible], 9, 1]);
             organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([
                 linkedFromSource.id,
@@ -2506,6 +2508,8 @@ describe('OrganisationService', () => {
                     searchString: 'Behörde',
                     offset: 5,
                     limit: 2,
+                    administriertVon: [subtreeRootId],
+                    getChildrenRecursively: true,
                     excludeOrganisationIds: [linkedFromSource.id, linkedToSource.id, source.id],
                 },
             );
@@ -2522,6 +2526,8 @@ describe('OrganisationService', () => {
                 const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
                 const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
                 organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+                const subtreeRootId: OrganisationID = faker.string.uuid();
+                organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(subtreeRootId);
                 organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[schule], 1, 1]);
                 organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
 
@@ -2538,6 +2544,8 @@ describe('OrganisationService', () => {
                         searchString: undefined,
                         offset: undefined,
                         limit: undefined,
+                        administriertVon: [subtreeRootId],
+                        getChildrenRecursively: true,
                         excludeOrganisationIds: [source.id],
                         ...(typ === OrganisationsTyp.TRAEGER
                             ? { excludeSchoolsWithSchultraegerRelationship: true }
@@ -2571,6 +2579,7 @@ describe('OrganisationService', () => {
             const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(faker.string.uuid());
             organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
             organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[], 0, 0]);
             permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
@@ -2590,6 +2599,7 @@ describe('OrganisationService', () => {
             const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
             const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(faker.string.uuid());
             organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
             organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[], 0, 0]);
             permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);

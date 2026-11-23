@@ -811,16 +811,21 @@ export class OrganisationService {
                 };
         }
 
-        const exclusions: Pick<
-            OrganisationSearchOptions,
-            'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'
-        > = await this.findRelationshipCandidateExclusions(organisationId, contextOrganisationResult.value.typ);
+        const [exclusions, subtreeRootId]: [
+            Pick<OrganisationSearchOptions, 'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'>,
+            OrganisationID,
+        ] = await Promise.all([
+            this.findRelationshipCandidateExclusions(organisationId, contextOrganisationResult.value.typ),
+            this.organisationRepo.findOrganisationSubtreeRootId(organisationId),
+        ]);
 
         const searchOptions: OrganisationSearchOptions = {
             typ: candidateType,
             searchString: options.searchString,
             offset: options.offset,
             limit: options.limit,
+            administriertVon: [subtreeRootId],
+            getChildrenRecursively: true,
             ...exclusions,
         };
         const [items, total, pageTotal]: [Organisation<true>[], number, number] =

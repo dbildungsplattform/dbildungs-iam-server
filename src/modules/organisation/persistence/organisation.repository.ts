@@ -847,6 +847,17 @@ export class OrganisationRepository {
         return RootDirectChildrenType.OEFFENTLICH;
     }
 
+    public async findOrganisationSubtreeRootId(organisationId: OrganisationID): Promise<OrganisationID> {
+        const [oeffentlich, ersatz]: [Organisation<true> | undefined, Organisation<true> | undefined] =
+            await this.findRootDirectChildren();
+        const parents: Organisation<true>[] = await this.findParentOrgasForIdSortedByDepthAsc(organisationId);
+        const subtreeRoot: Organisation<true> | undefined = parents.find(
+            (parent: Organisation<true>) => parent.id === oeffentlich?.id || parent.id === ersatz?.id,
+        );
+
+        return subtreeRoot?.id ?? oeffentlich?.id ?? organisationId;
+    }
+
     public async delete(organisationId: OrganisationID): Promise<void | DomainError> {
         const entity: OrganisationEntity | null = await this.em.findOne(OrganisationEntity, { id: organisationId });
         if (!entity) {

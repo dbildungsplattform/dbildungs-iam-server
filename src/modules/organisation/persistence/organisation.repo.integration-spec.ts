@@ -2597,6 +2597,126 @@ describe('OrganisationRepository', () => {
             expect(result[2]).toBe(1);
         });
 
+        it.each([RootDirectChildrenType.OEFFENTLICH, RootDirectChildrenType.ERSATZ])(
+            'should search and paginate candidates only within the %s subtree',
+            async (subtreeType: RootDirectChildrenType) => {
+                const createTreeOrganisation = (
+                    id: string,
+                    name: string,
+                    typ: OrganisationsTyp,
+                    parentId?: string,
+                    kennung?: string,
+                ): Organisation<true, false> =>
+                    Organisation.construct<true, false>(
+                        id,
+                        faker.date.past(),
+                        faker.date.recent(),
+                        faker.number.int(),
+                        name,
+                        typ,
+                        undefined,
+                        parentId,
+                        parentId,
+                        kennung,
+                    );
+
+                const root: Organisation<true, false> = createTreeOrganisation(
+                    ROOT_ORGANISATION_ID,
+                    'Root',
+                    OrganisationsTyp.ROOT,
+                );
+                const oeffentlich: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Öffentliche Schulen Schleswig-Holstein',
+                    OrganisationsTyp.LAND,
+                    root.id,
+                );
+                const ersatz: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Ersatzschulen Schleswig-Holstein',
+                    OrganisationsTyp.LAND,
+                    root.id,
+                );
+                const contextSubtree: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH ? oeffentlich : ersatz;
+                const source: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Source school',
+                    OrganisationsTyp.SCHULE,
+                    contextSubtree.id,
+                    faker.string.numeric(7),
+                );
+                const candidateOrganisations: Organisation<true, false>[] = [
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Public authority one',
+                        OrganisationsTyp.BEHOERDE,
+                        oeffentlich.id,
+                        '0000001',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Public authority two',
+                        OrganisationsTyp.BEHOERDE,
+                        oeffentlich.id,
+                        '0000002',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Replacement authority one',
+                        OrganisationsTyp.BEHOERDE,
+                        ersatz.id,
+                        '0000003',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Replacement authority two',
+                        OrganisationsTyp.BEHOERDE,
+                        ersatz.id,
+                        '0000004',
+                    ),
+                ];
+                await em
+                    .persist(
+                        [root, oeffentlich, ersatz, source, ...candidateOrganisations].map(
+                            (organisation: Organisation<true, false>) =>
+                                em.create(OrganisationEntity, mapOrgaAggregateToData(organisation)),
+                        ),
+                    )
+                    .flush();
+
+                const subtreeRootId: OrganisationID = await sut.findOrganisationSubtreeRootId(source.id);
+                const expectedSubtree: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH ? oeffentlich : ersatz;
+                expect(subtreeRootId).toBe(expectedSubtree.id);
+
+                const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+                const [results, total, pageTotal]: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                    personPermissions,
+                    [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                    {
+                        typ: OrganisationsTyp.BEHOERDE,
+                        administriertVon: [subtreeRootId],
+                        getChildrenRecursively: true,
+                        offset: 1,
+                        limit: 1,
+                    },
+                );
+
+                const expectedSecondCandidate: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH
+                        ? candidateOrganisations[1]!
+                        : candidateOrganisations[3]!;
+                expect(results.map((organisation: Organisation<true>) => organisation.id)).toEqual([
+                    expectedSecondCandidate.id,
+                ]);
+                expect(total).toBe(2);
+                expect(pageTotal).toBe(1);
+            },
+        );
+
         it('should return correct pageTotal for root user without searchString', async () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
