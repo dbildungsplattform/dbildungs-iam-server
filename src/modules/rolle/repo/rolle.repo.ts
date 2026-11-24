@@ -13,7 +13,10 @@ import { EntityManager, RawQueryFragment, sql } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { xor } from 'lodash-es';
 
+import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError, EntityNotFoundError, MissingPermissionsError } from '../../../shared/error/index.js';
+import { KafkaRolleUpdatedEvent } from '../../../shared/events/kafka-rolle-updated.event.js';
+import { RolleUpdatedEvent } from '../../../shared/events/rolle-updated.event.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { OrganisationID, RolleID, ServiceProviderID } from '../../../shared/types/index.js';
 import { Err, UnionToResult } from '../../../shared/util/result.js';
@@ -194,6 +197,7 @@ export class RolleRepo {
 
     public constructor(
         protected readonly rolleFactory: RolleFactory,
+        private readonly eventService: EventRoutingLegacyKafkaService,
         protected readonly em: EntityManager,
         private readonly serviceProviderRepo: ServiceProviderRepo,
     ) {}
@@ -812,9 +816,17 @@ export class RolleRepo {
         }
         rolle.version = rolle.version + 1;
 
+        const oldRolle: Rolle<true> = mapRolleEntityToAggregate(rolleEntity, this.rolleFactory);
+
         rolleEntity.assign(mapRolleAggregateToData(rolle), { updateNestedEntities: true });
         await this.em.persist(rolleEntity).flush();
 
-        return mapRolleEntityToAggregate(rolleEntity, this.rolleFactory);
+        const updatedRolle: Rolle<true> = mapRolleEntityToAggregate(rolleEntity, this.rolleFactory);
+        this.eventService.publish(
+            RolleUpdatedEvent.fromRollen(updatedRolle, oldRolle),
+            KafkaRolleUpdatedEvent.fromRollen(updatedRolle, oldRolle),
+        );
+
+        return updatedRolle;
     }
 }
