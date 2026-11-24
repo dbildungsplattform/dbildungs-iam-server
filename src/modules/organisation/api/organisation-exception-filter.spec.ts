@@ -6,6 +6,7 @@ import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-a
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { KennungOnlyForSchuleError } from '../specification/error/kennung-only-for-schule.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
 import { DbiamOrganisationError, OrganisationSpecificationErrorI18nTypes } from './dbiam-organisation.error.js';
 import { OrganisationExceptionFilter } from './organisation-exception-filter.js';
 import { SchulaufsichtQuelleSchuleZielBehoerdeError } from '../specification/relations/error/schulaufsicht-quelle-schule-ziel-behoerde.error.js';
@@ -40,6 +41,21 @@ describe('OrganisationExceptionFilter', () => {
                 new DbiamOrganisationError({
                     code: 400,
                     i18nKey: OrganisationSpecificationErrorI18nTypes.KENNUNG_ONLY_FOR_SCHULE,
+                }),
+            );
+        });
+
+        it('should map unsupported relationship search types to a bad request', () => {
+            filter.catch(
+                new RelationshipSearchUnsupportedOrganisationTypeError('organisation-id', 'KLASSE'),
+                argumentsHost,
+            );
+
+            expect(responseMock.status).toHaveBeenCalledWith(statusCode);
+            expect(responseMock.json).toHaveBeenCalledWith(
+                new DbiamOrganisationError({
+                    code: statusCode,
+                    i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_SPECIFICATION_ERROR,
                 }),
             );
         });
