@@ -169,6 +169,26 @@ export class ItsLearningSyncEventHandler {
         await this.deletePersonsMass(deletions, eventId);
     }
 
+    private isItslearningOrganisation(
+        organisation: Organisation<true>,
+        organisationsWithParents: Map<OrganisationID, Organisation<true>>,
+    ): boolean {
+        if (organisation.typ === OrganisationsTyp.SCHULE) {
+            return organisation.itslearningEnabled;
+        }
+
+        if (organisation.typ === OrganisationsTyp.KLASSE) {
+            // Classes are only relevant if their parent school is enabled for itslearning
+            return (
+                !!organisation.administriertVon &&
+                !!organisationsWithParents.get(organisation.administriertVon)?.itslearningEnabled
+            );
+        }
+
+        // We only care about schools and classes
+        return false;
+    }
+
     private async determineSyncTarget(personId: PersonID, eventId: string): Promise<Option<PersonSyncTarget>> {
         // Retrieve the person from the DB
         const person: Option<Person<true>> = await this.personRepo.findById(personId);
@@ -239,23 +259,7 @@ export class ItsLearningSyncEventHandler {
 
         // Remove all organisations that do not have itslearning
         for (const [orgaId, organisation] of organisations.entries()) {
-            if (organisation.typ === OrganisationsTyp.SCHULE) {
-                // Only keep schools, that are enabled for itslearning
-                if (!organisation.itslearningEnabled) {
-                    organisations.delete(orgaId);
-                }
-            } else if (organisation.typ === OrganisationsTyp.KLASSE) {
-                // Only keep classes, whose schools are enabled for itslearning
-                const parentItslearningEnabled: boolean = !!(
-                    organisation.administriertVon &&
-                    organisationsWithParents.get(organisation.administriertVon)?.itslearningEnabled
-                );
-
-                if (!parentItslearningEnabled) {
-                    organisations.delete(orgaId);
-                }
-            } else {
-                // We only care about schools and classes
+            if (!this.isItslearningOrganisation(organisation, organisationsWithParents)) {
                 organisations.delete(orgaId);
             }
         }
