@@ -81,7 +81,7 @@ export class PersonenkontextWorkflowAggregate {
         organisationsExceptKlassen = await this.organisationRepository.findByNameOrKennungAndExcludeByOrganisationType(
             OrganisationsTyp.KLASSE,
             organisationName,
-            permittedOrgas?.all ? undefined : (permittedOrgas?.orgaIds ?? []), // Only fetch permitted organizations if restricted
+            permittedOrgas?.all ? undefined : permittedOrgas?.orgaIds, // Only fetch permitted organizations if restricted
             limit,
         );
 
