@@ -1837,6 +1837,49 @@ describe('OrganisationRepository', () => {
             expect(result[1]).toBe(0);
         });
 
+        it('should exclude organisations before applying pagination and counting', async () => {
+            const first: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School A',
+                    kennung: '0000001',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const excluded: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School B',
+                    kennung: '0000002',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const last: Organisation<true, false> = await sut.save(
+                DoFactory.createOrganisationAggregate(false, {
+                    name: 'School C',
+                    kennung: '0000003',
+                    typ: OrganisationsTyp.SCHULE,
+                }),
+            );
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const [items, total, pageTotal]: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.SCHULEN_VERWALTEN],
+                {
+                    typ: OrganisationsTyp.SCHULE,
+                    excludeOrganisationIds: [excluded.id],
+                    offset: 1,
+                    limit: 1,
+                    sortField: SortFieldOrganisation.KENNUNG,
+                },
+            );
+
+            expect(total).toBe(2);
+            expect(pageTotal).toBe(1);
+            expect(items.map((item: Organisation<true>): OrganisationID => item.id)).toEqual([last.id]);
+            expect(items.map((item: Organisation<true>): OrganisationID => item.id)).not.toContain(first.id);
+        });
+
         describe.each([[true], [false]])('with matchAllSystemrechte = %s', (matchAllSystemrechte: boolean) => {
             it('should return all authorized organisations according to list', async () => {
                 const orgas: OrganisationEntity[] = [];
@@ -2510,6 +2553,170 @@ describe('OrganisationRepository', () => {
             expect(result[0].some((org: Organisation<true>) => org.id === orgas[3]!.id)).toBeTruthy();
         });
 
+        it('should not return authorities when the user has no authority-management permissions', async () => {
+            const authority: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.BEHOERDE);
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: false, orgaIds: [] });
+
+            const result: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                { typ: OrganisationsTyp.BEHOERDE },
+            );
+
+            expect(result).toEqual([[], 0, 0]);
+            expect(result[0].some((organisation: Organisation<true>) => organisation.id === authority.id)).toBe(false);
+        });
+
+        it('should exclude schools with an existing Schultraeger relationship in the database query', async () => {
+            const assignedSchool: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SCHULE,
+            );
+            const eligibleSchool: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SCHULE,
+            );
+            const traeger: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.TRAEGER);
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: assignedSchool.id,
+                    zielOrganisationId: traeger.id,
+                    typ: OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                }),
+            );
+            const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+            const result: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                personPermissions,
+                [RollenSystemRecht.SCHULEN_VERWALTEN],
+                { typ: OrganisationsTyp.SCHULE, excludeSchoolsWithSchultraegerRelationship: true },
+            );
+
+            expect(result[0].map((organisation: Organisation<true>) => organisation.id)).toEqual([eligibleSchool.id]);
+            expect(result[1]).toBe(1);
+            expect(result[2]).toBe(1);
+        });
+
+        it.each([RootDirectChildrenType.OEFFENTLICH, RootDirectChildrenType.ERSATZ])(
+            'should search and paginate candidates only within the %s subtree',
+            async (subtreeType: RootDirectChildrenType) => {
+                const createTreeOrganisation = (
+                    id: string,
+                    name: string,
+                    typ: OrganisationsTyp,
+                    parentId?: string,
+                    kennung?: string,
+                ): Organisation<true, false> =>
+                    Organisation.construct<true, false>(
+                        id,
+                        faker.date.past(),
+                        faker.date.recent(),
+                        faker.number.int(),
+                        name,
+                        typ,
+                        undefined,
+                        parentId,
+                        parentId,
+                        kennung,
+                    );
+
+                const root: Organisation<true, false> = createTreeOrganisation(
+                    ROOT_ORGANISATION_ID,
+                    'Root',
+                    OrganisationsTyp.ROOT,
+                );
+                const oeffentlich: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Öffentliche Schulen Schleswig-Holstein',
+                    OrganisationsTyp.LAND,
+                    root.id,
+                );
+                const ersatz: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Ersatzschulen Schleswig-Holstein',
+                    OrganisationsTyp.LAND,
+                    root.id,
+                );
+                const contextSubtree: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH ? oeffentlich : ersatz;
+                const source: Organisation<true, false> = createTreeOrganisation(
+                    faker.string.uuid(),
+                    'Source school',
+                    OrganisationsTyp.SCHULE,
+                    contextSubtree.id,
+                    faker.string.numeric(7),
+                );
+                const candidateOrganisations: Organisation<true, false>[] = [
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Public authority one',
+                        OrganisationsTyp.BEHOERDE,
+                        oeffentlich.id,
+                        '0000001',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Public authority two',
+                        OrganisationsTyp.BEHOERDE,
+                        oeffentlich.id,
+                        '0000002',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Replacement authority one',
+                        OrganisationsTyp.BEHOERDE,
+                        ersatz.id,
+                        '0000003',
+                    ),
+                    createTreeOrganisation(
+                        faker.string.uuid(),
+                        'Replacement authority two',
+                        OrganisationsTyp.BEHOERDE,
+                        ersatz.id,
+                        '0000004',
+                    ),
+                ];
+                await em
+                    .persist(
+                        [root, oeffentlich, ersatz, source, ...candidateOrganisations].map(
+                            (organisation: Organisation<true, false>) =>
+                                em.create(OrganisationEntity, mapOrgaAggregateToData(organisation)),
+                        ),
+                    )
+                    .flush();
+
+                const subtreeRootId: OrganisationID = await sut.findOrganisationSubtreeRootId(source.id);
+                const expectedSubtree: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH ? oeffentlich : ersatz;
+                expect(subtreeRootId).toBe(expectedSubtree.id);
+
+                const personPermissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                personPermissions.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
+
+                const [results, total, pageTotal]: [Organisation<true>[], number, number] = await sut.findAuthorized(
+                    personPermissions,
+                    [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                    {
+                        typ: OrganisationsTyp.BEHOERDE,
+                        administriertVon: [subtreeRootId],
+                        getChildrenRecursively: true,
+                        offset: 1,
+                        limit: 1,
+                    },
+                );
+
+                const expectedSecondCandidate: Organisation<true, false> =
+                    subtreeType === RootDirectChildrenType.OEFFENTLICH
+                        ? candidateOrganisations[1]!
+                        : candidateOrganisations[3]!;
+                expect(results.map((organisation: Organisation<true>) => organisation.id)).toEqual([
+                    expectedSecondCandidate.id,
+                ]);
+                expect(total).toBe(2);
+                expect(pageTotal).toBe(1);
+            },
+        );
+
         it('should return correct pageTotal for root user without searchString', async () => {
             const orgas: OrganisationEntity[] = [];
             for (let i: number = 0; i < 5; i++) {
@@ -3141,6 +3348,43 @@ describe('OrganisationRepository', () => {
             );
 
             expect(result).toBeUndefined();
+        });
+    });
+
+    describe('findRelatedOrganisationIds', () => {
+        it('should return related organisation ids when the requested organisation is either endpoint', async () => {
+            const organisation: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const relatedAsQuelle: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const relatedAsZiel: Organisation<true, false> = await createPersistedOrganisation(
+                OrganisationsTyp.SONSTIGE,
+            );
+            const unrelated: Organisation<true, false> = await createPersistedOrganisation(OrganisationsTyp.SONSTIGE);
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: organisation.id,
+                    zielOrganisationId: relatedAsQuelle.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: relatedAsZiel.id,
+                    zielOrganisationId: organisation.id,
+                }),
+            );
+            await sut.createOrganisationsbeziehung(
+                DoFactory.createOrganisationsbeziehung(false, {
+                    quellOrganisationId: unrelated.id,
+                    zielOrganisationId: relatedAsQuelle.id,
+                }),
+            );
+
+            const relatedIds: OrganisationID[] = await sut.findRelatedOrganisationIds(organisation.id);
+
+            expect(relatedIds.sort()).toEqual([relatedAsQuelle.id, relatedAsZiel.id].sort());
         });
     });
 
