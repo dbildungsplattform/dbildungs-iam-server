@@ -37,6 +37,7 @@ import { PermittedOrgas } from '../../authentication/domain/person-permissions.j
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationsTyp, RootDirectChildrenType, SortFieldOrganisation } from '../domain/organisation.enums.js';
+import { OrganisationsbeziehungsTyp } from '../domain/organisationsbeziehungs-typ.enum.js';
 import {
     Organisation,
     Organisationsbeziehung,
@@ -132,6 +133,8 @@ export type OrganisationSearchOptions = {
     readonly searchString?: string;
     readonly typ?: OrganisationsTyp;
     readonly excludeTyp?: OrganisationsTyp[];
+    readonly excludeOrganisationIds?: OrganisationID[];
+    readonly excludeSchoolsWithSchultraegerRelationship?: boolean;
     readonly administriertVon?: string[];
     readonly organisationIds?: string[];
     readonly zugehoerigZu?: string[];
@@ -535,6 +538,23 @@ export class OrganisationRepository {
         if (searchOptions.excludeTyp) {
             andClauses.push({ typ: { $nin: searchOptions.excludeTyp } });
         }
+        if (searchOptions.excludeOrganisationIds?.length) {
+            andClauses.push({ id: { $nin: searchOptions.excludeOrganisationIds } });
+        }
+        if (searchOptions.excludeSchoolsWithSchultraegerRelationship) {
+            andClauses.push({
+                id: {
+                    $nin: this.em
+                        .createQueryBuilder(OrganisationsbeziehungEntity, 'schultraegerBeziehung')
+                        .select('schultraegerBeziehung.quellOrganisationId')
+                        .join('schultraegerBeziehung.quellOrganisationId', 'schule')
+                        .where({
+                            'schultraegerBeziehung.typ': OrganisationsbeziehungsTyp.SCHULTRAEGER,
+                            'schule.typ': OrganisationsTyp.SCHULE,
+                        }),
+                },
+            });
+        }
         if (andClauses.length > 0) {
             whereClause = { $and: andClauses };
         }
@@ -827,6 +847,17 @@ export class OrganisationRepository {
         return RootDirectChildrenType.OEFFENTLICH;
     }
 
+    public async findOrganisationSubtreeRootId(organisationId: OrganisationID): Promise<OrganisationID> {
+        const [oeffentlich, ersatz]: [Organisation<true> | undefined, Organisation<true> | undefined] =
+            await this.findRootDirectChildren();
+        const parents: Organisation<true>[] = await this.findParentOrgasForIdSortedByDepthAsc(organisationId);
+        const subtreeRoot: Organisation<true> | undefined = parents.find(
+            (parent: Organisation<true>) => parent.id === oeffentlich?.id || parent.id === ersatz?.id,
+        );
+
+        return subtreeRoot?.id ?? oeffentlich?.id ?? organisationId;
+    }
+
     public async delete(organisationId: OrganisationID): Promise<void | DomainError> {
         const entity: OrganisationEntity | null = await this.em.findOne(OrganisationEntity, { id: organisationId });
         if (!entity) {
@@ -961,6 +992,23 @@ export class OrganisationRepository {
         );
 
         return [items, total];
+    }
+
+    public async findRelatedOrganisationIds(organisationId: OrganisationID): Promise<OrganisationID[]> {
+        const results: { organisationId: OrganisationID }[] = await this.em
+            .createQueryBuilder(OrganisationsbeziehungEntity, 'b')
+            .select(
+                sql`CASE
+                    WHEN b.quell_organisation_id = ${organisationId} THEN b.ziel_organisation_id
+                    ELSE b.quell_organisation_id
+                END AS "organisationId"`,
+            )
+            .where({
+                $or: [{ quellOrganisationId: organisationId }, { zielOrganisationId: organisationId }],
+            })
+            .execute('all');
+
+        return results.map((result: { organisationId: OrganisationID }): OrganisationID => result.organisationId);
     }
 
     public async findByIdWithRelationships(organisationId: OrganisationID): Promise<Option<Organisation<true, true>>> {
