@@ -18,6 +18,7 @@ import {
 } from '../../authentication/domain/person-permissions.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { OrganisationRepository } from '../persistence/organisation.repository.js';
+import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
 import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
@@ -2427,6 +2428,197 @@ describe('OrganisationService', () => {
                 ok: true,
                 value: { total: 0, offset: 0, limit: 0, items: [], pageTotal: 0 },
             });
+        });
+    });
+
+    describe('searchOrganisationsForRelationships', () => {
+        it('should require permission to manage the source organisation', async () => {
+            const organisationId: OrganisationID = faker.string.uuid();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(undefined);
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(organisationId, {}, permissions);
+
+            expect(result).toEqual({ ok: false, error: new EntityNotFoundError('Organisation', organisationId) });
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
+        });
+
+        it('should reject an existing source organisation when manage permission is denied', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(false);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(source.id, {}, permissions);
+
+            expect(result).toEqual({
+                ok: false,
+                error: new MissingPermissionsError('Not permitted to manage organisation'),
+            });
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                source.id,
+                RollenSystemRecht.SCHULEN_VERWALTEN,
+            );
+            expect(organisationRepositoryMock.findOrganisationsbeziehungen).not.toHaveBeenCalled();
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
+        });
+
+        it('should search manageable Behörden and exclude existing relationships before pagination', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const linkedFromSource: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            const linkedToSource: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            const eligible: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            const subtreeRootId: OrganisationID = faker.string.uuid();
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(subtreeRootId);
+            organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[eligible], 9, 1]);
+            organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([
+                linkedFromSource.id,
+                linkedToSource.id,
+            ]);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(
+                source.id,
+                { searchString: 'Behörde', offset: 5, limit: 2 },
+                permissions,
+            );
+
+            expect(organisationRepositoryMock.findAuthorized).toHaveBeenCalledWith(
+                permissions,
+                [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                {
+                    typ: OrganisationsTyp.BEHOERDE,
+                    searchString: 'Behörde',
+                    offset: 5,
+                    limit: 2,
+                    administriertVon: [subtreeRootId],
+                    getChildrenRecursively: true,
+                    excludeOrganisationIds: [linkedFromSource.id, linkedToSource.id, source.id],
+                },
+            );
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 9, offset: 5, limit: 2, items: [eligible], pageTotal: 1 },
+            });
+        });
+
+        it.each([OrganisationsTyp.BEHOERDE, OrganisationsTyp.TRAEGER])(
+            'should search manageable Schulen for a %s',
+            async (typ: OrganisationsTyp) => {
+                const source: Organisation<true> = DoFactory.createOrganisation(true, { typ });
+                const schule: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+                const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+                const subtreeRootId: OrganisationID = faker.string.uuid();
+                organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(subtreeRootId);
+                organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[schule], 1, 1]);
+                organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
+
+                const result: Result<
+                    Paged<Organisation<true>>,
+                    DomainError
+                > = await organisationService.searchOrganisationsForRelationships(source.id, {}, permissions);
+
+                expect(organisationRepositoryMock.findAuthorized).toHaveBeenCalledWith(
+                    permissions,
+                    [RollenSystemRecht.SCHULEN_VERWALTEN],
+                    {
+                        typ: OrganisationsTyp.SCHULE,
+                        searchString: undefined,
+                        offset: undefined,
+                        limit: undefined,
+                        administriertVon: [subtreeRootId],
+                        getChildrenRecursively: true,
+                        excludeOrganisationIds: [source.id],
+                        ...(typ === OrganisationsTyp.TRAEGER
+                            ? { excludeSchoolsWithSchultraegerRelationship: true }
+                            : {}),
+                    },
+                );
+                expect(result).toMatchObject({ ok: true, value: { items: [schule], total: 1 } });
+            },
+        );
+
+        it('should reject relationship searches for unsupported organisation types', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.KLASSE });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(source.id, { offset: 4 }, permissions);
+
+            expect(result).toEqual({
+                ok: false,
+                error: new RelationshipSearchUnsupportedOrganisationTypeError(source.id, OrganisationsTyp.KLASSE),
+            });
+            expect(organisationRepositoryMock.findAuthorized).not.toHaveBeenCalled();
+            expect(organisationRepositoryMock.findRelatedOrganisationIds).not.toHaveBeenCalled();
+        });
+
+        it('should return an empty page when a supported organisation type has no candidates', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(faker.string.uuid());
+            organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
+            organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[], 0, 0]);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(source.id, {}, permissions);
+
+            expect(result).toEqual({
+                ok: true,
+                value: { total: 0, offset: 0, limit: 0, items: [], pageTotal: 0 },
+            });
+        });
+
+        it('should only search authorities the school administrator may manage', async () => {
+            const source: Organisation<true> = DoFactory.createOrganisation(true, { typ: OrganisationsTyp.SCHULE });
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+            organisationRepositoryMock.findById.mockResolvedValueOnce(source);
+            organisationRepositoryMock.findOrganisationSubtreeRootId.mockResolvedValueOnce(faker.string.uuid());
+            organisationRepositoryMock.findRelatedOrganisationIds.mockResolvedValueOnce([]);
+            organisationRepositoryMock.findAuthorized.mockResolvedValueOnce([[], 0, 0]);
+            permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+
+            const result: Result<
+                Paged<Organisation<true>>,
+                DomainError
+            > = await organisationService.searchOrganisationsForRelationships(source.id, {}, permissions);
+
+            expect(permissions.hasSystemrechtAtOrganisation).toHaveBeenCalledWith(
+                source.id,
+                RollenSystemRecht.SCHULEN_VERWALTEN,
+            );
+            expect(organisationRepositoryMock.findAuthorized).toHaveBeenCalledWith(
+                permissions,
+                [RollenSystemRecht.BEHOERDEN_VERWALTEN],
+                expect.objectContaining({ typ: OrganisationsTyp.BEHOERDE }),
+            );
+            expect(result).toMatchObject({ ok: true, value: { items: [], total: 0 } });
         });
     });
 

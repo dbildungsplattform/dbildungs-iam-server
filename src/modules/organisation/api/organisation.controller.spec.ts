@@ -42,6 +42,7 @@ import { type OrganisationsbeziehungResponse } from './organisationsbeziehung.re
 import { OrganisationsByIdsBodyParams } from './organisations-by-ids.body.params.js';
 import { type OrganisationsbeziehungWithOrganisationenResponse } from './organisationsbeziehung-with-organisationen.response.js';
 import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
+import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
 import { type PagedResponse } from '../../../shared/paging/paged.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
 
@@ -1169,6 +1170,52 @@ describe('OrganisationController', () => {
                 organisationController.getOrganisationsbeziehungen(
                     { organisationId: faker.string.uuid() },
                     new FindOrganisationsbeziehungenQueryParams(),
+                ),
+            ).rejects.toBe(error);
+        });
+    });
+
+    describe('searchOrganisationsForRelationships', () => {
+        it('should map eligible organisations to a paged response', async () => {
+            const organisationId: string = faker.string.uuid();
+            const organisation: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.BEHOERDE,
+            });
+            const queryParams: SearchOrganisationsForRelationshipsQueryParams =
+                new SearchOrganisationsForRelationshipsQueryParams();
+            Object.assign(queryParams, { offset: 0, limit: 10, searchString: 'Schulaufsicht' });
+            organisationServiceMock.searchOrganisationsForRelationships.mockResolvedValueOnce({
+                ok: true,
+                value: { total: 1, offset: 0, limit: 10, pageTotal: 1, items: [organisation] },
+            });
+
+            const result: PagedResponse<OrganisationResponse> =
+                await organisationController.searchOrganisationsForRelationships(
+                    { organisationId },
+                    queryParams,
+                    permissionsMock,
+                );
+
+            expect(organisationServiceMock.searchOrganisationsForRelationships).toHaveBeenCalledWith(
+                organisationId,
+                queryParams,
+                permissionsMock,
+            );
+            expect(result.total).toBe(1);
+            expect(result.offset).toBe(0);
+            expect(result.limit).toBe(10);
+            expect(result.items).toEqual([new OrganisationResponse(organisation)]);
+        });
+
+        it('should throw the service error when the source organisation cannot be managed', async () => {
+            const error: MissingPermissionsError = new MissingPermissionsError('Not permitted');
+            organisationServiceMock.searchOrganisationsForRelationships.mockResolvedValueOnce({ ok: false, error });
+
+            await expect(
+                organisationController.searchOrganisationsForRelationships(
+                    { organisationId: faker.string.uuid() },
+                    new SearchOrganisationsForRelationshipsQueryParams(),
+                    permissionsMock,
                 ),
             ).rejects.toBe(error);
         });
