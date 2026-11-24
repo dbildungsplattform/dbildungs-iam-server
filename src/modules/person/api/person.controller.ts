@@ -42,14 +42,7 @@ import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafk
 import { KafkaPersonLdapSyncEvent } from '../../../shared/events/kafka-person-ldap-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { PersonLdapSyncEvent } from '../../../shared/events/person-ldap-sync.event.js';
-import {
-    ApiOkResponsePaginated,
-    DisablePagingInterceptor,
-    Paged,
-    PagedResponse,
-    PagingHeadersObject,
-    RawPagedResponse,
-} from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, Paged, PagedResponse } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { ResultInterceptor } from '../../../shared/util/result-interceptor.js';
@@ -111,7 +104,6 @@ export class PersonController {
     }
 
     @Get()
-    @DisablePagingInterceptor()
     @ApiOkResponsePaginated(PersonendatensatzResponse, {
         description:
             'The persons were successfully returned. WARNING: This endpoint returns all persons as default when no paging parameters were set.',
@@ -123,7 +115,7 @@ export class PersonController {
     public async findPersons(
         @Query() queryParams: PersonenQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<PersonendatensatzResponse>> {
+    ): Promise<PagedResponse<PersonendatensatzResponse>> {
         const result: Result<Counted<Person<true>>, MissingPermissionsError> = await this.personService.findPersons(
             queryParams,
             permissions,
@@ -133,7 +125,7 @@ export class PersonController {
         }
 
         const [persons, total]: Counted<Person<true>> = result.value;
-        return new RawPagedResponse({
+        return new PagedResponse({
             offset: queryParams.offset ?? 0,
             limit: queryParams.limit ?? total,
             total,
@@ -259,7 +251,6 @@ export class PersonController {
     @Get(':personId/personenkontexte')
     @ApiOkResponsePaginated(PersonenkontextResponse, {
         description: 'The personenkontexte were successfully pulled.',
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get personenkontexte.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get personenkontexte.' })
