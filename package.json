@@ -58,7 +58,7 @@
         "@nestjs/terminus": "^11.1.1",
         "@s3pweb/keycloak-admin-client-cjs": "^26.6.2",
         "async-mutex": "^0.5.0",
-        "axios": "^1.17.0",
+        "axios": "^1.21.1",
         "class-transformer": "^0.5.1",
         "class-validator": "^0.15.1",
         "connect-redis": "^9.0.0",
