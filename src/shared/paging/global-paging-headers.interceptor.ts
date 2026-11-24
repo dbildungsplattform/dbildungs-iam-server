@@ -1,31 +1,14 @@
 import { type Response } from 'express';
 import { type Observable, map } from 'rxjs';
-import {
-    type CallHandler,
-    type ExecutionContext,
-    type NestInterceptor,
-    SetMetadata,
-    applyDecorators,
-} from '@nestjs/common';
-import { PagedResponse } from './paged.response.js';
+import { type CallHandler, type ExecutionContext, type NestInterceptor } from '@nestjs/common';
+import { SchulconnexPagedResponse } from './schulconnex-paged.response.js';
 import { PagingHeaders } from './paging.enums.js';
-
-export const DISABLE_PAGING_INTERCEPTOR: symbol = Symbol('dont-transform-paging-response');
-
-// Applying this decorator to an endpoint will disable the transformation of PagedResponse
-export const DisablePagingInterceptor = (): MethodDecorator =>
-    applyDecorators(SetMetadata(DISABLE_PAGING_INTERCEPTOR, true));
 
 export class GlobalPagingHeadersInterceptor implements NestInterceptor {
     public intercept(context: ExecutionContext, next: CallHandler<unknown>): Observable<unknown> {
-        const dontTransform: boolean = Reflect.getMetadata(DISABLE_PAGING_INTERCEPTOR, context.getHandler()) as boolean;
-        if (dontTransform) {
-            return next.handle();
-        }
-
         return next.handle().pipe(
             map((value: unknown) => {
-                if (value instanceof PagedResponse) {
+                if (value instanceof SchulconnexPagedResponse) {
                     const response: Response = context.switchToHttp().getResponse();
 
                     GlobalPagingHeadersInterceptor.setPaginationHeaders(response, value);
@@ -38,10 +21,13 @@ export class GlobalPagingHeadersInterceptor implements NestInterceptor {
         );
     }
 
-    private static setPaginationHeaders<T>(response: Response, payload: PagedResponse<T>): void {
+    private static setPaginationHeaders<T>(response: Response, payload: SchulconnexPagedResponse<T>): void {
         response.setHeader(PagingHeaders.OFFSET, payload.offset);
         response.setHeader(PagingHeaders.LIMIT, payload.limit);
         response.setHeader(PagingHeaders.TOTAL, payload.total);
-        response.setHeader(PagingHeaders.PAGE_TOTAL, payload.pageTotal ?? 0);
+
+        if (payload.pageTotal !== undefined) {
+            response.setHeader(PagingHeaders.PAGE_TOTAL, payload.pageTotal);
+        }
     }
 }
