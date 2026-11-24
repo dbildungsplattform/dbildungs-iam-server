@@ -8,6 +8,11 @@ import { BaseEvent } from '../../../shared/events/index.js';
 import { ServerConfig } from '../../../shared/config/server.config.js';
 import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 
+export type LegacyKafkaEventPair = {
+    legacyEvent: BaseEvent;
+    kafkaEvent: KafkaEvent;
+};
+
 @Injectable()
 export class EventRoutingLegacyKafkaService {
     private readonly kafkaEnabled: boolean;
@@ -19,6 +24,24 @@ export class EventRoutingLegacyKafkaService {
         configService: ConfigService<ServerConfig>,
     ) {
         this.kafkaEnabled = configService.getOrThrow<KafkaConfig>('KAFKA').ENABLED;
+    }
+
+    public publishMultiple(pairs: LegacyKafkaEventPair[]): void {
+        if (pairs.length === 0) {
+            return;
+        }
+
+        if (this.kafkaEnabled) {
+            this.logger.debug(`Publishing ${pairs.length} events to Kafka as batch`);
+            this.kafkaEventService
+                .publishMultiple(pairs.map((pair: LegacyKafkaEventPair) => pair.kafkaEvent))
+                .catch((err: unknown) => this.logger.logUnknownAsError(`Failed publishing kafka event batch`, err));
+        } else {
+            for (const pair of pairs) {
+                this.logger.debug(`Publishing '${pair.legacyEvent.constructor.name}' to legacy event service`);
+                this.eventService.publish(pair.legacyEvent);
+            }
+        }
     }
 
     public publish(legacyEvent: BaseEvent, kafkaEvent?: KafkaEvent): void {
