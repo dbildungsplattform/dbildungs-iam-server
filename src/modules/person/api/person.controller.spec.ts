@@ -23,7 +23,7 @@ import {
 import { KeycloakClientError } from '../../../shared/error/keycloak-client.error.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
-import { type Paged, type PagedResponse, type RawPagedResponse } from '../../../shared/paging/index.js';
+import { type Paged, type PagedResponse } from '../../../shared/paging/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
@@ -222,7 +222,7 @@ describe('PersonController', () => {
             const person: Person<true> = getPerson();
             personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[person], 1] });
 
-            const result: RawPagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+            const result: PagedResponse<PersonendatensatzResponse> = await personController.findPersons(
                 { sichtfreigabe: SichtfreigabeType.NEIN },
                 personPermissionsMock,
             );
@@ -247,7 +247,7 @@ describe('PersonController', () => {
             };
             personServiceMock.findPersons.mockResolvedValueOnce({ ok: true, value: [[], 3] });
 
-            const result: RawPagedResponse<PersonendatensatzResponse> = await personController.findPersons(
+            const result: PagedResponse<PersonendatensatzResponse> = await personController.findPersons(
                 queryParams,
                 personPermissionsMock,
             );

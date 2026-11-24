@@ -31,12 +31,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../../shared/error/entity-not-found.error.js';
 import { MissingPermissionsError } from '../../../shared/error/index.js';
-import {
-    ApiOkResponsePaginated,
-    PagedResponse,
-    PagingHeadersObject,
-    RawPagedResponse,
-} from '../../../shared/paging/index.js';
+import { ApiOkResponsePaginated, PagedResponse } from '../../../shared/paging/index.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ServiceProviderID } from '../../../shared/types/aggregate-ids.types.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
@@ -68,6 +63,7 @@ import { FindRollenerweiterungQueryParams } from './find-rollenerweiterung-query
 import { FindRollenForErweiterungQueryParams } from './param/find-rollen-for-erweiterung.query.params.js';
 import { FindRollenForImportQueryParams } from './param/find-rollen-for-import.query.params.js';
 import { FindRollenForMptZuordnungQueryParams } from './param/find-rollen-for-mpt-zuordnung.query.params.js';
+import { GetMptRolleByIdQueryParams } from './param/get-mpt-rolle-by-id.query.params.js';
 import { FindRollenQueryParams } from './param/find-rollen.query.params.js';
 import { RolleExceptionFilter } from './rolle-exception-filter.js';
 import { RolleServiceProviderResponse } from './rolle-service-provider.response.js';
@@ -95,10 +91,8 @@ export class RolleController {
 
     @Get()
     @ApiOperation({ description: 'List all rollen.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -114,7 +108,6 @@ export class RolleController {
             queryParams.limit,
             queryParams.offset,
             queryParams.organisationIds,
-            queryParams.rolleIds,
             queryParams.merkmale,
             queryParams.rollenarten,
             queryParams.serviceProviderIds,
@@ -125,10 +118,8 @@ export class RolleController {
 
     @Get('available-for-erweiterung')
     @ApiOperation({ description: 'List all rollen that are available for the Rollenerweiterung workflow.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -154,10 +145,8 @@ export class RolleController {
 
     @Get('available-for-import')
     @ApiOperation({ description: 'List all rollen that are available for the Personen-Import workflow.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -181,10 +170,8 @@ export class RolleController {
 
     @Get('available-for-mpt-zuordnung')
     @ApiOperation({ description: 'List all MPT rollen the user is allowed to administer.' })
-    @ApiOkResponse({
+    @ApiOkResponsePaginated(RolleWithServiceProvidersResponse, {
         description: 'The rollen were successfully returned',
-        type: [RolleWithServiceProvidersResponse],
-        headers: PagingHeadersObject,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get rollen.' })
     @ApiForbiddenResponse({ description: 'Insufficient permissions to get rollen.' })
@@ -201,10 +188,40 @@ export class RolleController {
                 limit: queryParams.limit,
                 offset: queryParams.offset,
                 organisationIds: queryParams.organisationIds,
-                rolleIds: queryParams.rolleIds,
             });
 
         return this.toPagedRollenWithServiceProvidersResponse(rollen, total, queryParams.offset, queryParams.limit);
+    }
+
+    @Get('available-for-mpt-zuordnung/:rolleId')
+    @ApiOperation({ description: 'Get a single MPT rolle the user is allowed to administer.' })
+    @ApiOkResponse({
+        description: 'The rolle was successfully returned.',
+        type: RolleWithServiceProvidersResponse,
+    })
+    @ApiUnauthorizedResponse({ description: 'Not authorized to get rolle.' })
+    @ApiForbiddenResponse({ description: 'Insufficient permissions to get rolle.' })
+    @ApiNotFoundResponse({ description: 'The rolle does not exist or is not available for MPT zuordnung.' })
+    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting rolle.' })
+    public async findRolleForMptZuordnungById(
+        @Param() params: FindRolleByIdParams,
+        @Query() queryParams: GetMptRolleByIdQueryParams,
+        @Permissions() permissions: IPersonPermissions,
+    ): Promise<RolleWithServiceProvidersResponse> {
+        const [rollen]: [Rolle<true>[], number] = await this.rolleFindService.findRollenAuthorizedForGatedSystemrecht({
+            permissions,
+            systemrecht: RollenSystemRecht.MPT_ROLLEN_ZUORDNEN,
+            rolleIds: [params.rolleId],
+            organisationIds: queryParams.organisationId ? [queryParams.organisationId] : undefined,
+            limit: 1,
+            offset: 0,
+        });
+        const rolle: Rolle<true> | undefined = rollen[0];
+        if (!rolle) {
+            throw new EntityNotFoundError('Rolle', params.rolleId);
+        }
+
+        return this.returnRolleWithServiceProvidersResponse(rolle);
     }
 
     private async toPagedRollenWithServiceProvidersResponse(
@@ -274,7 +291,7 @@ export class RolleController {
     public async findRollenAvailableForPersonAdministration(
         @Query() queryParams: FindRollenForPersonAdministrationQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<RolleResponse>> {
+    ): Promise<PagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonAdministration({
                 permissions,
@@ -287,7 +304,7 @@ export class RolleController {
                 ),
             });
 
-        return RawPagedResponse.fromItemsAndQuery(
+        return PagedResponse.fromItemsAndQuery(
             {
                 total,
                 items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
@@ -326,7 +343,7 @@ export class RolleController {
     public async findAvailableRollenForPersonenkontextCreation(
         @Query() queryParams: FindAvailableRollenForPKCreationQueryParams,
         @Permissions() permissions: IPersonPermissions,
-    ): Promise<RawPagedResponse<RolleResponse>> {
+    ): Promise<PagedResponse<RolleResponse>> {
         const [rollen, total]: [Rolle<true>[], number] =
             await this.rolleFindService.findRollenAvailableForPersonenkontextCreation({
                 permissions,
@@ -336,11 +353,10 @@ export class RolleController {
                 organisationId: queryParams.organisationId,
                 rollenartForPerson: queryParams.rollenartForPerson,
                 rolleName: queryParams.rolleName,
-                rollenIds: queryParams.rollenIds,
                 limit: queryParams.limit,
                 offset: queryParams.offset,
             });
-        return RawPagedResponse.fromItemsAndQuery(
+        return PagedResponse.fromItemsAndQuery(
             {
                 items: rollen.map((rolle: Rolle<true>) => new RolleResponse(rolle)),
                 total,

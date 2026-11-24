@@ -318,6 +318,20 @@
             "zugehoerigZu": 1
         },
         {
+            "id": 36,
+            "name": "Schulaufsicht Gymnasien",
+            "typ": "BEHOERDE",
+            "administriertVon": 1,
+            "zugehoerigZu": 1
+        },
+        {
+            "id": 37,
+            "name": "Schulaufsicht Grundschulen",
+            "typ": "BEHOERDE",
+            "administriertVon": 1,
+            "zugehoerigZu": 1
+        },
+        {
             "id": 3201,
             "name": "1a",
             "typ": "KLASSE",

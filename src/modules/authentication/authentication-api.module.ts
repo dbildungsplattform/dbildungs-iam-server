@@ -14,7 +14,6 @@ import { CsrfProtectionGuard } from './api/csrf-token.guard.js';
 import { KeycloakInternalController } from './api/keycloakinternal.controller.js';
 import { AuthenticationModule } from './authentication.module.js';
 import { PersonPermissionsRepo } from './domain/person-permission.repo.js';
-import { UserExternaldataWorkflowFactory } from './domain/user-extenaldata.factory.js';
 import { InternalCommunicationApiKeyStrategy } from './passport/internalcommunicationapikey.strategy.js';
 import { JwtStrategy } from './passport/jwt.strategy.js';
 import { OpenIdConnectStrategy } from './passport/oidc.strategy.js';
@@ -43,7 +42,6 @@ import { SessionAccessTokenMiddleware } from './services/session-access-token.mi
         OIDCClientProvider,
         PersonPermissionsRepo,
         SessionAccessTokenMiddleware,
-        UserExternaldataWorkflowFactory,
         ExternalDataCacheInterceptor,
         CsrfTokenService,
         {

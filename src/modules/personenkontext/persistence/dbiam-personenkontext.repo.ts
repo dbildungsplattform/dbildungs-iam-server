@@ -723,4 +723,19 @@ export class DBiamPersonenkontextRepo {
         const rows: { person_id: PersonID }[] = await this.em.execute(query, params);
         return rows.map((row: { person_id: PersonID }) => row.person_id);
     }
+
+    public async findByPersonAndServiceProviderWithOrgaAndRolle(
+        personId: PersonID,
+        serviceProviderId: ServiceProviderID,
+    ): Promise<KontextWithOrgaAndRolle[]> {
+        // this already uses rollenerweiterungen which will be important in next ticket
+        const kontexteByPerson: Map<PersonID, KontextWithOrgaAndRolle[]> =
+            await this.findByPersonIdsAndServiceprovidersWithOrgaAndRolle([personId], [serviceProviderId], {
+                all: true,
+            });
+
+        return (kontexteByPerson.get(personId) ?? []).filter(
+            (kontext: KontextWithOrgaAndRolle) => kontext.organisation.typ !== OrganisationsTyp.KLASSE,
+        );
+    }
 }
