@@ -10,6 +10,7 @@ import {
     expectOkResult,
 } from '../../../../test/utils/index.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
+import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { Err, Ok } from '../../../shared/util/result.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -837,6 +838,23 @@ describe('PersonenkontextWorkflow', () => {
 
             expectOkResult(result);
             expect(result.value).toBeUndefined();
+        });
+
+        it('should reject Landesbediensteten extensions in the standard workflow', async () => {
+            const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+
+            const result: Result<void, DomainError> = await anlage.checkPermissions(
+                permissions,
+                undefined,
+                faker.string.uuid(),
+                [faker.string.uuid()],
+                OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+            );
+
+            expectErrResult(result);
+            expect(result.error).toEqual(new MissingPermissionsError('Unauthorized operation'));
+            expect(permissions.hasSystemrechtAtOrganisation).not.toHaveBeenCalled();
+            expect(rolleRepoMock.findByIds).not.toHaveBeenCalled();
         });
 
         describe.each([[OperationContext.PERSON_ANLEGEN], [OperationContext.PERSON_BEARBEITEN]])(

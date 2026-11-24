@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 
 import { type ConfigService } from '@nestjs/config';
@@ -23,6 +24,7 @@ import { PersonenkontextCreationService } from '../domain/personenkontext-creati
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { OperationContext } from '../domain/personenkontext.enums.js';
+import { type Personenkontext } from '../domain/personenkontext.js';
 import { type RoleOrganisationAssignmentValidator } from '../domain/role-organisation-assignment.validator.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextWorkflowController } from './dbiam-personenkontext-workflow.controller.js';
@@ -31,6 +33,7 @@ import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-
 import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
 import { type DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
+import { type PersonenkontexteUpdateResponse } from './response/personenkontexte-update.response.js';
 
 describe('DbiamPersonenkontextWorkflowController Test', () => {
     let module: TestingModule;
@@ -38,6 +41,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
     let personenkontextWorkflowMock: DeepMocked<PersonenkontextWorkflowAggregate>;
     let personenkontextWorkflowFactoryMock: DeepMocked<PersonenkontextWorkflowFactory>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
+    let landesbediensteteKontextWorkflowServiceMock: DeepMocked<LandesbediensteteKontextWorkflowService>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -87,6 +91,7 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
         personenkontextWorkflowMock = module.get(PersonenkontextWorkflowAggregate);
         personenkontextWorkflowFactoryMock = module.get(PersonenkontextWorkflowFactory);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
+        landesbediensteteKontextWorkflowServiceMock = module.get(LandesbediensteteKontextWorkflowService);
     });
 
     afterAll(async () => {
@@ -231,7 +236,117 @@ describe('DbiamPersonenkontextWorkflowController Test', () => {
         );
 
         describe('/PUT commit', () => {
+            it.each(['1234', undefined])(
+                'should delegate Landesbediensteten updates with personalnummer %s to the dedicated service',
+                async (personalnummer: string | undefined) => {
+                    const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
+                    const personenkontext: Personenkontext<true> = DoFactory.createPersonenkontext(true, {
+                        personId: params.personId,
+                    });
+                    const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
+                        count: 1,
+                        lastModified: new Date('2026-01-01T00:00:00Z'),
+                        personenkontexte: [
+                            {
+                                personId: params.personId,
+                                organisationId: personenkontext.organisationId,
+                                rolleId: personenkontext.rolleId,
+                            },
+                        ],
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                    };
+                    const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                    landesbediensteteKontextWorkflowServiceMock.commit.mockResolvedValueOnce([personenkontext]);
+
+                    const response: PersonenkontexteUpdateResponse = await sut.commit(
+                        params,
+                        { personalnummer },
+                        bodyParams,
+                        permissions,
+                    );
+
+                    expect(landesbediensteteKontextWorkflowServiceMock.commit).toHaveBeenCalledExactlyOnceWith(
+                        params.personId,
+                        bodyParams.lastModified,
+                        bodyParams.count,
+                        bodyParams.personenkontexte,
+                        permissions,
+                        personalnummer,
+                    );
+                    expect(personenkontextWorkflowFactoryMock.createNew).not.toHaveBeenCalled();
+                    expect(response.dBiamPersonenkontextResponses).toEqual([
+                        {
+                            personId: params.personId,
+                            organisationId: personenkontext.organisationId,
+                            rolleId: personenkontext.rolleId,
+                            befristung: personenkontext.befristung,
+                        },
+                    ]);
+                },
+            );
+
+            it.each([OperationContext.PERSON_ANLEGEN, OperationContext.PERSON_BEARBEITEN])(
+                'should delegate %s updates to the standard workflow',
+                async (operationContext: OperationContext) => {
+                    const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
+                    const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
+                        count: 0,
+                        personenkontexte: [],
+                        operationContext,
+                    };
+                    const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                    personenkontextWorkflowFactoryMock.createNew.mockReturnValueOnce(personenkontextWorkflowMock);
+                    personenkontextWorkflowMock.commit.mockResolvedValueOnce([]);
+
+                    const response: PersonenkontexteUpdateResponse = await sut.commit(
+                        params,
+                        {},
+                        bodyParams,
+                        permissions,
+                    );
+
+                    expect(personenkontextWorkflowMock.commit).toHaveBeenCalledExactlyOnceWith(
+                        params.personId,
+                        undefined,
+                        bodyParams.count,
+                        bodyParams.personenkontexte,
+                        permissions,
+                        undefined,
+                    );
+                    expect(landesbediensteteKontextWorkflowServiceMock.commit).not.toHaveBeenCalled();
+                    expect(response.dBiamPersonenkontextResponses).toEqual([]);
+                },
+            );
+
             describe('when errors occur', () => {
+                it('should reject unsupported operation contexts without invoking a workflow', async () => {
+                    const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
+                    const bodyParams: DbiamUpdatePersonenkontexteBodyParams = Object.assign(
+                        new DbiamUpdatePersonenkontexteBodyParams(),
+                        { count: 0, personenkontexte: [], operationContext: 'UNSUPPORTED' },
+                    );
+
+                    await expect(sut.commit(params, {}, bodyParams, createPersonPermissionsMock())).rejects.toThrow(
+                        new BadRequestException('Unsupported operation context for updating personenkontexte'),
+                    );
+                    expect(personenkontextWorkflowFactoryMock.createNew).not.toHaveBeenCalled();
+                    expect(landesbediensteteKontextWorkflowServiceMock.commit).not.toHaveBeenCalled();
+                });
+
+                it('should propagate permission errors from the Landesbediensteten service', async () => {
+                    const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
+                    const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
+                        count: 0,
+                        personenkontexte: [],
+                        operationContext: OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN,
+                    };
+                    const error: MissingPermissionsError = new MissingPermissionsError('Not authorized');
+                    landesbediensteteKontextWorkflowServiceMock.commit.mockResolvedValueOnce(error);
+
+                    await expect(sut.commit(params, {}, bodyParams, createPersonPermissionsMock())).rejects.toBe(error);
+                    expect(personenkontextWorkflowFactoryMock.createNew).not.toHaveBeenCalled();
+                });
+
                 it('should propagate missing MPT permissions to the shared exception filter', async () => {
                     const params: DBiamFindPersonenkontexteByPersonIdParams = { personId: faker.string.uuid() };
                     const bodyParams: DbiamUpdatePersonenkontexteBodyParams = {
