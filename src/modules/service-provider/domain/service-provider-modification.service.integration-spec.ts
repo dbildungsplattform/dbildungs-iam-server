@@ -30,7 +30,7 @@ import { AttachedRollenError } from './errors/attached-rollen.error.js';
 import { AttachedRollenerweiterungenError } from './errors/attached-rollenerweiterungen.error.js';
 import { VidisServiceProviderImmutableError } from './errors/vidis-service-provider-immutable.error.js';
 import { ServiceProviderModificationService } from './service-provider-modification.service.js';
-import { ServiceProviderKategorie, ServiceProviderMerkmal, ServiceProviderSystem } from './service-provider.enum.js';
+import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
 import { InternalRollenerweiterungRepo } from '../../rolle/repo/internal-rollenerweiterung.repo.js';
 import { type ServiceProvider } from './service-provider.js';
 
@@ -161,28 +161,6 @@ describe('ServiceProviderModificationService', () => {
             ]);
             expect(createResult.value.requires2fa).toBe(false);
             expect(createResult.value.kategorie).toBe(ServiceProviderKategorie.SCHULISCH);
-        });
-
-        it('should not set NACHTRAEGLICH_ZUWEISBAR for itslearning if person only has limited permissions', async () => {
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                merkmale: [],
-                externalSystem: ServiceProviderSystem.ITSLEARNING,
-            });
-            const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(false);
-            permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-            const createResult: Result<ServiceProvider<true>, DomainError> = await sut.create(
-                permissionsMock,
-                serviceProvider,
-            );
-
-            expectOkResult(createResult);
-            expect(createResult.value.merkmale).toEqual([
-                ServiceProviderMerkmal.VERFUEGBAR_FUER_ROLLENERWEITERUNG,
-                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ANGEBOTSVERWALTUNG,
-                ServiceProviderMerkmal.ANBIETEN_IN_SCHULISCHER_ROLLENVERWALTUNG,
-            ]);
         });
 
         it('return error if person is missing permissions', async () => {

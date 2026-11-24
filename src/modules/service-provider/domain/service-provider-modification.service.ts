@@ -22,7 +22,7 @@ import { AttachedRollenError } from './errors/attached-rollen.error.js';
 import { AttachedRollenerweiterungenError } from './errors/attached-rollenerweiterungen.error.js';
 import { InvalidLogoCombinationError } from './errors/invalid-logo-combination.error.js';
 import { VidisServiceProviderImmutableError } from './errors/vidis-service-provider-immutable.error.js';
-import { ServiceProviderKategorie, ServiceProviderMerkmal, ServiceProviderSystem } from './service-provider.enum.js';
+import { ServiceProviderKategorie, ServiceProviderMerkmal } from './service-provider.enum.js';
 import { ServiceProvider, ServiceProviderUpdateParams } from './service-provider.js';
 
 /**
@@ -44,11 +44,6 @@ const SP_EINGESCHRAENKT_DEFAULTS: Pick<
     requires2fa: false,
     kategorie: ServiceProviderKategorie.SCHULISCH,
 };
-
-// itslearning must not be assignable to existing Rollen afterwards
-const itslearningEingeschraenktMerkmale: ServiceProviderMerkmal[] = SP_EINGESCHRAENKT_DEFAULTS.merkmale.filter(
-    (merkmal: ServiceProviderMerkmal) => merkmal !== ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR,
-);
 
 @Injectable()
 export class ServiceProviderModificationService {
@@ -80,11 +75,7 @@ export class ServiceProviderModificationService {
         // Assign defaults if person only has partial system rights
         if (permissionsResult.value === ServiceProviderPropertyPermissions.EINGESCHRAENKT) {
             // returned error can't happen because SP_EINGESCHRAENKT_DEFAULTS does not include any logo
-            serviceProvider.update(
-                serviceProvider.externalSystem === ServiceProviderSystem.ITSLEARNING
-                    ? { ...SP_EINGESCHRAENKT_DEFAULTS, merkmale: itslearningEingeschraenktMerkmale }
-                    : SP_EINGESCHRAENKT_DEFAULTS,
-            );
+            serviceProvider.update(SP_EINGESCHRAENKT_DEFAULTS);
         }
 
         const persistedServiceProvider: ServiceProvider<true> =
