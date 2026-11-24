@@ -7,6 +7,7 @@ import {
     ApiOkResponse,
     ApiTags,
     ApiUnauthorizedResponse,
+    getSchemaPath,
 } from '@nestjs/swagger';
 import { DBiamPersonenuebersichtResponse } from './dbiam-personenuebersicht.response.js';
 import { DBiamFindPersonenuebersichtByPersonIdParams } from './dbiam-find-personenuebersicht-by-personid.params.js';
@@ -19,7 +20,6 @@ import { DBiamPersonenkontextRepo } from '../../../personenkontext/persistence/d
 import { RolleRepo } from '../../../rolle/repo/rolle.repo.js';
 import { OrganisationID, PersonID, RolleID } from '../../../../shared/types/aggregate-ids.types.js';
 import { Rolle } from '../../../rolle/domain/rolle.js';
-import { ApiOkResponsePaginated, PagingHeadersObject } from '../../../../shared/paging/index.js';
 import { PersonenuebersichtBodyParams } from './personenuebersicht-body.params.js';
 import { Permissions } from '../../../authentication/api/permissions.decorator.js';
 import { ConfigService } from '@nestjs/config';
@@ -47,9 +47,20 @@ export class DBiamPersonenuebersichtController {
     }
 
     @Post('')
-    @ApiOkResponsePaginated(DBiamPersonenuebersichtResponse, {
+    @ApiOkResponse({
         description: 'The personenuebersichten were successfully returned.',
-        headers: PagingHeadersObject,
+        schema: {
+            type: 'object',
+            required: ['items'],
+            properties: {
+                items: {
+                    type: 'array',
+                    items: {
+                        $ref: getSchemaPath(DBiamPersonenuebersichtResponse),
+                    },
+                },
+            },
+        },
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get personenuebersichten.' })
     @ApiForbiddenResponse({ description: 'Insufficient permission to get personenuebersichten.' })
