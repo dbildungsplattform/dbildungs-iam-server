@@ -1,7 +1,7 @@
 import { Migration } from '@mikro-orm/migrations';
 
 export class Migration20261125195500 extends Migration {
-    public async up(): Promise<void> {
+    public up(): void {
         this.addSql(`
             create type "service_provider_kategorie_enum_new" as enum (
                 'EMAIL',
@@ -34,7 +34,7 @@ export class Migration20261125195500 extends Migration {
     }
 
     // Fails if service providers are still assigned to one of the new categories.
-    public override async down(): Promise<void> {
+    public override down(): void {
         this.addSql(`
             create type "service_provider_kategorie_enum_new" as enum (
                 'EMAIL',
