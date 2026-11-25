@@ -51,7 +51,6 @@ import { DbiamOrganisationError } from './dbiam-organisation.error.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
 import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
 import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
