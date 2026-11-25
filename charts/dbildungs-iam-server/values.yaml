@@ -10,7 +10,7 @@ backend2ndHostname: ""
 
 containerSecurityContext:
   enabled: true
-  runAsUser: 1000
+  runAsUser: 10000
   runAsNonRoot: true
   privileged: false
   readOnlyRootFilesystem: false
