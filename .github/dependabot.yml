@@ -14,7 +14,6 @@ updates:
         patterns:
           - '@mikro-orm/core'
           - '@mikro-orm/postgresql'
-          - '@mikro-orm/cli'
       nestjs:
         patterns:
           - '@nestjs/core'

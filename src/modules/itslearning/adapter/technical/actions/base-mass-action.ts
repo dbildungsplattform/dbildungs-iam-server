@@ -4,7 +4,7 @@ import { type DomainError } from '../../../../../shared/error/index.js';
 import { Ok } from '../../../../../shared/util/result.js';
 import { type ItslearningAction } from './action.types.js';
 
-export type CommonStatusInfo = {
+type CommonStatusInfo = {
     codeMinor: {
         codeMinorField: {
             codeMinorName: string;
@@ -22,7 +22,7 @@ export type SuccessStatusInfo = {
     severity: 'status';
 };
 
-export type WarningStatusInfo = {
+type WarningStatusInfo = {
     codeMajor: 'success';
     severity: 'warning';
 } & CommonStatusInfo;
@@ -34,7 +34,7 @@ export type FailureStatusInfo = {
 
 export type StatusInfo = SuccessStatusInfo | WarningStatusInfo | FailureStatusInfo;
 
-export type BaseMassResponse<BodyResponse> = {
+type BaseMassResponse<BodyResponse> = {
     Envelope: {
         Header: {
             syncResponseHeaderInfo: {

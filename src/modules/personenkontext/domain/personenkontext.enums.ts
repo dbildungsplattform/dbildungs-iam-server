@@ -1,6 +1,4 @@
 export const PersonenstatusTypName: string = 'Personenstatus';
-export const JahrgangsstufeTypName: string = 'Jahrgangsstufe';
-export const RolleTypName: string = 'Rolle';
 export const SichtfreigabeTypName: string = 'Sichtfreigabe';
 
 export enum Personenstatus {
@@ -18,15 +16,6 @@ export enum Jahrgangsstufe {
     JAHRGANGSSTUFE_8 = '08',
     JAHRGANGSSTUFE_9 = '09',
     JAHRGANGSSTUFE_10 = '10',
-}
-
-export enum Rolle {
-    LERNENDER = 'LERN',
-    LEHRENDER = 'LEHR',
-    EXTERNE_PERSON = 'EXTERN',
-    ORGANISATIONSADMINISTRATOR = 'ORGADMIN',
-    ORGANISATIONSLEITUNG = 'LEIT',
-    SYSTEMADMINISTRATOR = 'SYSADMIN',
 }
 
 export enum SichtfreigabeType {

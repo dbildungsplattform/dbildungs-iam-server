@@ -8,7 +8,7 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapAggregateToData(emailDomain: EmailDomain<boolean>) {
+function mapAggregateToData(emailDomain: EmailDomain<boolean>) {
     return {
         // Don't assign createdAt and updatedAt, they are auto-generated!
         id: emailDomain.id,

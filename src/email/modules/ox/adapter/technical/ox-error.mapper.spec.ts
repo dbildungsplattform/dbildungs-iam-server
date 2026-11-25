@@ -1,6 +1,6 @@
 import { OxErrorMapper } from './ox-error.mapper.js';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { type OxErrorResponse } from '../../../../../modules/ox/adapter/technical/actions/ox-base-action.js';
+import { type OxErrorResponse } from './actions/ox-base-action.js';
 import { faker } from '@faker-js/faker';
 import { type OxError } from '../../../../../shared/error/ox.error.js';
 
