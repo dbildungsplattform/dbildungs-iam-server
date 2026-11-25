@@ -1108,8 +1108,6 @@ describe('ServiceProvider API', () => {
                         ...body,
                         logo: undefined,
                         logoMimeType: undefined,
-                        keycloakGroup: undefined,
-                        keycloakRole: undefined,
                         updatedAt: updatedServiceProvider.updatedAt,
                         vidisAngebotId: undefined,
                     }),

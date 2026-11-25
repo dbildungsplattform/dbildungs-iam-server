@@ -27,10 +27,6 @@ export class ServiceProviderFile {
 
     public logoMimeType?: string;
 
-    public keycloakGroup?: string;
-
-    public keycloakRole?: string;
-
     public externalSystem?: ServiceProviderSystem;
 
     public requires2fa!: boolean;

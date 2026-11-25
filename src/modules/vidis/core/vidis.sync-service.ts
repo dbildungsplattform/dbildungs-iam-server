@@ -537,8 +537,6 @@ export class VidisSyncService {
             undefined,
             logo,
             logoMimeType,
-            undefined,
-            undefined,
             ServiceProviderSystem.NONE,
             false,
             angebot.offerId.toString(),

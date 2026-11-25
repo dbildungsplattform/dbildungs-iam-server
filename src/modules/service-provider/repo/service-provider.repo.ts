@@ -49,8 +49,6 @@ function mapAggregateToData(serviceProvider: ServiceProvider<boolean>) {
         logoId: serviceProvider.logoId,
         logo: serviceProvider.logo,
         logoMimeType: serviceProvider.logoMimeType,
-        keycloakGroup: serviceProvider.keycloakGroup,
-        keycloakRole: serviceProvider.keycloakRole,
         externalSystem: serviceProvider.externalSystem,
         requires2fa: serviceProvider.requires2fa,
         vidisAngebotId: serviceProvider.vidisAngebotId,
@@ -80,8 +78,6 @@ function mapEntityToAggregate(entity: ServiceProviderEntity): ServiceProvider<bo
         entity.logoId,
         entity.logo,
         entity.logoMimeType,
-        entity.keycloakGroup,
-        entity.keycloakRole,
         entity.externalSystem,
         entity.requires2fa,
         entity.vidisAngebotId,
@@ -191,17 +187,6 @@ export class ServiceProviderRepo {
             },
         );
 
-        return serviceProviders.map(mapEntityToAggregate);
-    }
-
-    public async findByKeycloakGroup(groupname: string): Promise<ServiceProvider<true>[]> {
-        const serviceProviders: ServiceProviderEntity[] = await this.em.find(
-            ServiceProviderEntity,
-            {
-                keycloakGroup: groupname,
-            },
-            { populate: ['merkmale', 'rollenartenWhitelist'] },
-        );
         return serviceProviders.map(mapEntityToAggregate);
     }
 
