@@ -5,7 +5,7 @@ import { MeldungEntity, MeldungStatus } from './meldung.entity.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapAggregateToData(meldung: Meldung<boolean>) {
+function mapAggregateToData(meldung: Meldung<boolean>) {
     return {
         // Don't assign createdAt and updatedAt, they are auto-generated!
         id: meldung.id,

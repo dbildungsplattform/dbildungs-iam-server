@@ -18,19 +18,3 @@ declare const type: unique symbol;
  * const personId: PersonID = "test-id";
  */
 export type Flavor<T, F> = T & { [type]?: F };
-
-/**
- * Create a "branded" version of a type.
- * Typescript will not allow mixing of different brands
- * and implicit conversion from unbranded types.
- *
- * @example
- * type PersonID = Brand<string, "person">;
- * const personId: PersonID = "test-id" as PersonID;
- *
- * @example <caption>Using a unique symbol to brand.</caption>
- * declare const personSymbol: unique symbol;
- * type PersonID = Brand<string, typeof personSymbol>;
- * const personId: PersonID = "test-id" as PersonID;
- */
-export type Brand<T, B> = T & { [type]: B };

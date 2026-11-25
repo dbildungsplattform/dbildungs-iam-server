@@ -16,14 +16,14 @@ import { PersonInfoPersonDtoV2 } from '../../../api/personinfo/v2/person-info-pe
 import { SchulconnexPushRegistry } from '../../domain/schulconnex-push-registry.js';
 
 /** Payloads as defined in push-api/spec/components/schemas */
-export type PushPersonPayload = {
+type PushPersonPayload = {
     referrer: string;
     name: { familienname: string; vorname: string };
 };
 
-export type PushPersonDeletePayload = Record<string, never>;
+type PushPersonDeletePayload = Record<string, never>;
 
-export type PushPersonenkontextPayload = {
+type PushPersonenkontextPayload = {
     referrer: string;
     rolle: string;
     spshRolleId: string;

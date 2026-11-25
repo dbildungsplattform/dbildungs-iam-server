@@ -4,11 +4,6 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError, KeycloakClientError } from '../../../shared/error/index.js';
 import { KeycloakAdministrationService } from './keycloak-admin-client.service.js';
 
-export type FindUserFilter = {
-    username?: string;
-    email?: string;
-};
-
 @Injectable()
 export class KeycloakGroupRoleService {
     public constructor(

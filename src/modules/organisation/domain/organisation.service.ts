@@ -15,6 +15,7 @@ import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import {
     OrganisationRepository,
+    type OrganisationSearchOptions,
     type OrganisationsbeziehungSearchOptions,
 } from '../persistence/organisation.repository.js';
 import { OrganisationScope } from '../persistence/organisation.scope.js';
@@ -33,6 +34,7 @@ import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klasse
 import { NameRequiredForSchuleError } from '../specification/error/name-required-for-schule.error.js';
 import { NameForOrganisationWithTrailingSpaceError } from '../specification/error/name-with-trailing-space.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
+import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
 import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
@@ -771,6 +773,92 @@ export class OrganisationService {
                 items,
                 pageTotal: items.length,
             },
+        };
+    }
+
+    public async searchOrganisationsForRelationships(
+        organisationId: OrganisationID,
+        options: Pick<OrganisationSearchOptions, 'searchString' | 'offset' | 'limit'>,
+        permissions: IPersonPermissions,
+    ): Promise<Result<Paged<Organisation<true>>, DomainError>> {
+        const contextOrganisationResult: Result<
+            Organisation<true, false>,
+            EntityNotFoundError | MissingPermissionsError
+        > = await this.findOrganisationWithManagePermission(permissions, organisationId);
+        if (!contextOrganisationResult.ok) {
+            return contextOrganisationResult;
+        }
+
+        let candidateType: OrganisationsTyp;
+        let candidateSystemrecht: RollenSystemRecht;
+        switch (contextOrganisationResult.value.typ) {
+            case OrganisationsTyp.SCHULE:
+                candidateType = OrganisationsTyp.BEHOERDE;
+                candidateSystemrecht = RollenSystemRecht.BEHOERDEN_VERWALTEN;
+                break;
+            case OrganisationsTyp.BEHOERDE:
+            case OrganisationsTyp.TRAEGER:
+                candidateType = OrganisationsTyp.SCHULE;
+                candidateSystemrecht = RollenSystemRecht.SCHULEN_VERWALTEN;
+                break;
+            default:
+                return {
+                    ok: false,
+                    error: new RelationshipSearchUnsupportedOrganisationTypeError(
+                        organisationId,
+                        contextOrganisationResult.value.typ,
+                    ),
+                };
+        }
+
+        const [exclusions, subtreeRootId]: [
+            Pick<OrganisationSearchOptions, 'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'>,
+            OrganisationID,
+        ] = await Promise.all([
+            this.findRelationshipCandidateExclusions(organisationId, contextOrganisationResult.value.typ),
+            this.organisationRepo.findOrganisationSubtreeRootId(organisationId),
+        ]);
+
+        const searchOptions: OrganisationSearchOptions = {
+            typ: candidateType,
+            searchString: options.searchString,
+            offset: options.offset,
+            limit: options.limit,
+            administriertVon: [subtreeRootId],
+            getChildrenRecursively: true,
+            ...exclusions,
+        };
+        const [items, total, pageTotal]: [Organisation<true>[], number, number] =
+            await this.organisationRepo.findAuthorized(permissions, [candidateSystemrecht], searchOptions);
+
+        return {
+            ok: true,
+            value: {
+                total,
+                offset: options.offset ?? 0,
+                limit: options.limit ?? total,
+                items,
+                pageTotal,
+            },
+        };
+    }
+
+    private async findRelationshipCandidateExclusions(
+        organisationId: OrganisationID,
+        organisationType: OrganisationsTyp,
+    ): Promise<
+        Pick<OrganisationSearchOptions, 'excludeOrganisationIds' | 'excludeSchoolsWithSchultraegerRelationship'>
+    > {
+        const excludedOrganisationIds: Set<OrganisationID> = new Set(
+            await this.organisationRepo.findRelatedOrganisationIds(organisationId),
+        );
+        excludedOrganisationIds.add(organisationId);
+
+        return {
+            excludeOrganisationIds: [...excludedOrganisationIds],
+            ...(organisationType === OrganisationsTyp.TRAEGER
+                ? { excludeSchoolsWithSchultraegerRelationship: true }
+                : {}),
         };
     }
 
