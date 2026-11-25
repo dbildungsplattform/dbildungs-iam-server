@@ -22,7 +22,6 @@ import { type ServiceProvider } from '../../../modules/service-provider/domain/s
 import { GleicheRolleAnKlasseWieSchuleError } from '../../../modules/personenkontext/specification/error/gleiche-rolle-an-klasse-wie-schule.error.js';
 import { PersonenkontextFactory } from '../../../modules/personenkontext/domain/personenkontext.factory.js';
 import { OrganisationRepository } from '../../../modules/organisation/persistence/organisation.repository.js';
-import { KeycloakGroupRoleService } from '../../../modules/keycloak-administration/domain/keycloak-group-role.service.js';
 import { Organisation, type Organisationsbeziehung } from '../../../modules/organisation/domain/organisation.js';
 import { OrganisationsbeziehungsTyp } from '../../../modules/organisation/domain/organisationsbeziehungs-typ.enum.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';
@@ -114,10 +113,6 @@ describe('DbSeedService', () => {
                 {
                     provide: KeycloakUserService,
                     useValue: createMock(KeycloakUserService),
-                },
-                {
-                    provide: KeycloakGroupRoleService,
-                    useValue: createMock(KeycloakGroupRoleService),
                 },
                 {
                     provide: EmailDomainRepo,

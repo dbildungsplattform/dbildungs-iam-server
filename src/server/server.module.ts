@@ -37,7 +37,6 @@ import { ItsLearningModule } from '../modules/itslearning/itslearning.module.js'
 import { LdapModule } from '../core/ldap/ldap.module.js';
 import { EmailModule } from '../modules/email/email.module.js';
 import { OxModule } from '../modules/ox/ox.module.js';
-import { KeycloakHandlerModule } from '../modules/keycloak-handler/keycloak-handler.module.js';
 import { CronModule } from '../modules/cron/cron.module.js';
 import { ImportApiModule } from '../modules/import/import-api.module.js';
 import { ReporterModule } from '../modules/metrics/reporter/reporter.module.js';
@@ -163,7 +162,6 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
         EmailModule,
         OxModule,
         PrivacyIdeaAdministrationModule,
-        KeycloakHandlerModule,
         CronModule,
         ImportApiModule,
         ReporterModule,

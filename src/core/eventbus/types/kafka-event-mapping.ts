@@ -11,7 +11,6 @@ import { KafkaEmailAddressGeneratedEvent } from '../../../shared/events/email/ka
 import { KafkaEmailAddressMarkedForDeletionEvent } from '../../../shared/events/email/kafka-email-address-marked-for-deletion.event.js';
 import { KafkaEmailAddressesPurgedEvent } from '../../../shared/events/email/kafka-email-addresses-purged.event.js';
 import { KafkaImportExecutedEvent } from '../../../shared/events/kafka-import-executed.event.js';
-import { KafkaGroupAndRoleCreatedEvent } from '../../../shared/events/kafka-kc-group-and-role-event.js';
 import { KafkaKlasseCreatedEvent } from '../../../shared/events/kafka-klasse-created.event.js';
 import { KafkaKlasseUpdatedEvent } from '../../../shared/events/kafka-klasse-updated.event.js';
 import { KafkaLocksForPersonChangedEvent } from '../../../shared/events/kafka-locks-for-person-changed.event.js';
@@ -68,7 +67,6 @@ export type KafkaEventKey =
     | 'user.ox.sync.user_created'
     | 'user.email-microservice.changed'
     | 'import.executed'
-    | 'group_role.created'
     | 'klasse.created'
     | 'klasse.updated'
     | 'rolle.updated'
@@ -79,7 +77,7 @@ export type KafkaEventKey =
     | 'schule.itslearning_enabled'
     | 'organisation.deleted';
 
-type TopicPrefixes = 'user' | 'import' | 'group-role' | 'rolle' | 'organisation';
+type TopicPrefixes = 'user' | 'import' | 'rolle' | 'organisation';
 
 export type KafkaTopic = `${TopicPrefixes}-topic`;
 export type KafkaTopicDlq = `${TopicPrefixes}-dlq-topic`;
@@ -146,12 +144,6 @@ export const KafkaEventMapping: Record<KafkaEventKey, KafkaEventMappingEntry> = 
         eventClass: KafkaImportExecutedEvent,
         topic: 'import-topic',
         topicDlq: 'import-dlq-topic',
-    },
-
-    'group_role.created': {
-        eventClass: KafkaGroupAndRoleCreatedEvent,
-        topic: 'group-role-topic',
-        topicDlq: 'group-role-dlq-topic',
     },
 
     'rolle.updated': {

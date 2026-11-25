@@ -10,7 +10,6 @@ import { ServiceProviderModificationService } from './domain/service-provider-mo
 import { ServiceProviderFactory } from './domain/service-provider.factory.js';
 import { ServiceProviderService } from './domain/service-provider.service.js';
 import { OrganisationServiceProviderRepo } from './repo/organisation-service-provider.repo.js';
-import { CreateGroupAndRoleHandler } from './repo/service-provider-event-handler.js';
 import { ServiceProviderInternalRepo } from './repo/service-provider.internal.repo.js';
 import { ServiceProviderRepo } from './repo/service-provider.repo.js';
 
@@ -30,7 +29,6 @@ import { ServiceProviderRepo } from './repo/service-provider.repo.js';
         ServiceProviderFindService,
         ServiceProviderModificationService,
         ServiceProviderService,
-        CreateGroupAndRoleHandler,
         OrganisationServiceProviderRepo,
     ],
     exports: [
