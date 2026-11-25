@@ -16,7 +16,7 @@ import { DbSeedNoDirectoryError } from './error/db-seed-no-directory.error.js';
 import { DbSeedNoDataError } from './error/db-seed-no-data.error.js';
 import { DbSeedUnsupportedEntityTypeError } from './error/db-seed-unsupported-entity-type.error.js';
 
-export interface SeedFile {
+interface SeedFile {
     entityName: string;
 }
 

@@ -13,16 +13,6 @@ import { LdapExecuteWithRetryFallbackError } from './error/ldap-execute-with-ret
 import { LdapModifyPersonError } from './error/ldap-modify-person.error.js';
 import { LdapPersonEntry } from './ldap.types.js';
 
-export type LdapPersonAttributes = {
-    entryUUID?: string;
-    dn: string;
-    givenName?: string;
-    surName?: string;
-    cn?: string;
-    mailPrimaryAddress?: string;
-    mailAlternativeAddress?: string;
-};
-
 export type PersonData = {
     firstName: string;
     lastName: string;

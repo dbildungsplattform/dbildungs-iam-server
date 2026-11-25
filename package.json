@@ -86,8 +86,8 @@
     "devDependencies": {
         "@faker-js/faker": "^10.6.0",
         "@keycloak/keycloak-admin-client": "^26.8.1",
-        "@mikro-orm/cli": "^7.0.15",
         "@nestjs/cli": "^11.0.23",
+        "@nestjs/schematics": "^11.1.0",
         "@nestjs/testing": "^11.1.27",
         "@swc/core": "^1.15.18",
         "@testcontainers/postgresql": "^12.0.1",
@@ -102,7 +102,6 @@
         "@types/supertest": "^7.2.0",
         "@vitest/coverage-v8": "^4.1.12",
         "eslint": "^9.35.0",
-        "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-import": "^2.32.0",
         "jiti": "^2.6.1",
         "prettier": "^3.8.1",

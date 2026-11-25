@@ -68,13 +68,6 @@ type ExternalPkDataLoaded = Loaded<
     never
 >;
 
-export type PersonenkontextErweitertVirtualEntityLoaded = Loaded<
-    PersonenkontextErweitertVirtualEntity,
-    'serviceProvider' | 'personenkontext',
-    'serviceProvider' | 'personenkontext',
-    never
->;
-
 function mapEntityToAggregate(
     entity: PersonenkontextEntity,
     personenkontextFactory: PersonenkontextFactory,

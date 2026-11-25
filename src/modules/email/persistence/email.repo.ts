@@ -19,7 +19,7 @@ import assert from 'assert';
 import { KafkaEmailAddressDeletedInDatabaseEvent } from '../../../shared/events/email/kafka-email-address-deleted-in-database.event.js';
 import { SortOrder } from '../../../shared/persistence/repository.enums.js';
 
-export const NON_ENABLED_EMAIL_ADDRESS_DEADLINE_IN_DAYS_DEFAULT: number = 180;
+const NON_ENABLED_EMAIL_ADDRESS_DEADLINE_IN_DAYS_DEFAULT: number = 180;
 
 export function compareEmailAddressesByUpdatedAt(
     ea1: EmailAddressEntity,

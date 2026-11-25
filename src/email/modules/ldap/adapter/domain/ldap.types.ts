@@ -12,7 +12,3 @@ export type LdapPersonEntry = {
     entryUUID?: string;
     personID?: string;
 };
-
-export enum LdapEntityType {
-    LEHRER = 'LEHRER',
-}

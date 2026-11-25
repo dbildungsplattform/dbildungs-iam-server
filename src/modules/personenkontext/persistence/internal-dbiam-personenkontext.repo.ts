@@ -11,7 +11,7 @@ import { PersonenkontextEntity } from './personenkontext.entity.js';
 
 // Disable explicit types here because it's virtually impossible to do this correctly
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function mapAggregateToData(personenKontext: Personenkontext<boolean>) {
+function mapAggregateToData(personenKontext: Personenkontext<boolean>) {
     return {
         // Don't assign createdAt and updatedAt, they are auto-generated!
         id: personenKontext.id,
