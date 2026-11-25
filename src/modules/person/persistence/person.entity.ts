@@ -34,7 +34,7 @@ export class PersonEntity extends TimestampedEntity {
         expression: (columns: Record<keyof PersonEntity, string>, table: SchemaTable, name: string) =>
             quote`create unique index ${name} on ${table} (${columns.username}) nulls distinct;`,
     })
-    @Property({ nullable: true })
+    @Property({ nullable: true, collation: 'alphanumeric' })
     public username?: string;
 
     @Property()
