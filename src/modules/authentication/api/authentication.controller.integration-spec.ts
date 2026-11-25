@@ -20,7 +20,7 @@ import {
 } from '../../../../test/utils/index.js';
 import { type FrontendConfig } from '../../../shared/config/frontend.config.js';
 import { type KeycloakConfig } from '../../../shared/config/keycloak.config.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailMicroserviceClientModule } from '../../email-microservice-client/email-microservice-client.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import PersonTimeLimitService from '../../person/domain/person-time-limit-info.service.js';
@@ -60,7 +60,7 @@ describe('AuthenticationController', () => {
                 PersonModule,
                 PersonenKontextModule,
                 RolleModule,
-                EmailMicroserviceModule,
+                EmailMicroserviceClientModule,
             ],
             providers: [
                 AuthenticationController,

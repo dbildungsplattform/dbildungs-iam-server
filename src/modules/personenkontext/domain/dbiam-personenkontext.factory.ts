@@ -11,7 +11,7 @@ import { OrganisationRepository } from '../../organisation/persistence/organisat
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
 
 @Injectable()
 export class DbiamPersonenkontextFactory {

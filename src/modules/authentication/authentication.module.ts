@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from '../../core/logging/logger.module.js';
-import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
+import { EmailMicroserviceClientModule } from '../email-microservice-client/email-microservice-client.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonModule } from '../person/person.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
@@ -15,7 +15,7 @@ import { UserExternaldataService } from './domain/user-externaldata.service.js';
         PersonenKontextModule,
         OrganisationModule,
         RolleModule,
-        EmailMicroserviceModule,
+        EmailMicroserviceClientModule,
     ],
     providers: [PersonPermissionsRepo, UserExternaldataService],
     exports: [PersonPermissionsRepo, UserExternaldataService],

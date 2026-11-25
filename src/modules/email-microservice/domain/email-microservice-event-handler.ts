@@ -36,7 +36,7 @@ import { Rolle } from '../../rolle/domain/rolle.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { ServiceProvider } from '../../service-provider/domain/service-provider.js';
-import { EmailResolverService } from './email-resolver.service.js';
+import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
 import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
 
 type PersonEmailContext = {

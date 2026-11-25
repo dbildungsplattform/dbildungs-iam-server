@@ -11,7 +11,7 @@ import { ClassLogger } from '../../../../core/logging/class-logger.js';
 import { EntityNotFoundError } from '../../../../shared/error/index.js';
 import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../../authentication/api/permissions.decorator.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../email-microservice-client/domain/email-resolver.service.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { PersonEmailResponse } from '../../../person/api/person-email-response.js';

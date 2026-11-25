@@ -8,7 +8,7 @@ import { MissingPermissionsError } from '../../../shared/error/missing-permissio
 import { MultipleRollenartenError } from '../../../shared/error/multiple-rollenarten.error.js';
 import { PersonID, RolleID } from '../../../shared/types/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
 import { Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import {

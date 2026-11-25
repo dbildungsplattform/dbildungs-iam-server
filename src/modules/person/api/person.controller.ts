@@ -49,7 +49,7 @@ import { ResultInterceptor } from '../../../shared/util/result-interceptor.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PermittedOrgas, PersonFields } from '../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';
 import { PersonenkontextResponse } from '../../personenkontext/api/response/personenkontext.response.js';
 import { DBiamPersonenkontextService } from '../../personenkontext/domain/dbiam-personenkontext.service.js';

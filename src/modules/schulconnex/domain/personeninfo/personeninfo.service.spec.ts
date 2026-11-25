@@ -6,7 +6,7 @@ import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { expectOkResult } from '../../../../../test/utils/test-types.js';
 import { type DomainError } from '../../../../shared/error/index.js';
 import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../email-microservice-client/domain/email-resolver.service.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../../organisation/domain/organisation.js';

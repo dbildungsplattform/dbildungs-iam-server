@@ -6,7 +6,6 @@ import { of } from 'rxjs';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import {
-    DatabaseTestModule,
     DEFAULT_TIMEOUT_FOR_TESTCONTAINERS,
     DoFactory,
     expectErrResult,
@@ -23,11 +22,10 @@ import {
 } from '../../../shared/error/index.js';
 import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
-import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
-import { EmailMicroserviceModule } from '../email-microservice.module.js';
+import { EmailMicroserviceClientModule } from '../email-microservice-client.module.js';
 import { EmailResolverService, type PersonIdWithEmailResponse } from './email-resolver.service.js';
 
 type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;
@@ -40,19 +38,13 @@ describe('EmailResolverService', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [
-                EmailMicroserviceModule,
-                CommonTestModule,
-                DatabaseTestModule.forRoot({ isDatabaseRequired: false }),
-            ],
+            imports: [EmailMicroserviceClientModule, CommonTestModule],
             providers: [],
         })
             .overrideProvider(ClassLogger)
             .useValue(createMock(ClassLogger))
             .overrideProvider(HttpService)
             .useValue(createMock(HttpService))
-            .overrideProvider(EmailRepo)
-            .useValue(createMock(EmailRepo))
             .compile();
 
         sut = module.get(EmailResolverService);

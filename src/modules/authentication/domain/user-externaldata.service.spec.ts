@@ -12,7 +12,7 @@ import {
     MultipleRollenartenError,
 } from '../../../shared/error/index.js';
 import { Err, Ok } from '../../../shared/util/result.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
 import { EmailAddressNotFoundError } from '../../email/error/email-address-not-found.error.js';
 import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';

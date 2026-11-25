@@ -17,7 +17,7 @@ import { type DBiamPersonenkontextRepoInternal } from '../../src/modules/persone
 import { type IPersonPermissions } from '../../src/shared/permissions/person-permissions.interface.js';
 import { type PersonID } from '../../src/shared/types/index.js';
 import { EscalatedPersonPermissionsFactory } from '../../src/modules/permission/escalated-person-permissions.factory.js';
-import { type EmailResolverService } from '../../src/modules/email-microservice/domain/email-resolver.service.js';
+import { type EmailResolverService } from '../../src/modules/email-microservice-client/domain/email-resolver.service.js';
 
 export function createLandesbediensteterWorkflowAggregateMock(): MockedObject<LandesbediensteterWorkflowAggregate> {
     const landesbediensteterWorkflowAggregate: LandesbediensteterWorkflowAggregate =

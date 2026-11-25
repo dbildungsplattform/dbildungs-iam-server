@@ -14,7 +14,7 @@ import { type PersonenkontextEventKontextData } from '../../../../shared/events/
 import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenkontext-updated.event.js';
 import { type PersonID, type PersonenkontextID, type RolleID } from '../../../../shared/types/index.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../email-microservice-client/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';

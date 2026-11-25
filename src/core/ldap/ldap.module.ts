@@ -9,7 +9,7 @@ import { LdapClient } from './adapter/technical/ldap-client.js';
 import { LdapConfigModule } from './adapter/technical/ldap-config.module.js';
 import { LdapEventHandler } from './domain/ldap-event-handler.js';
 import { LdapSyncEventHandler } from './domain/ldap-sync-event-handler.js';
-import { EmailMicroserviceModule } from '../../modules/email-microservice/email-microservice.module.js';
+import { EmailMicroserviceClientModule } from '../../modules/email-microservice-client/email-microservice-client.module.js';
 
 @Module({
     imports: [
@@ -19,7 +19,7 @@ import { EmailMicroserviceModule } from '../../modules/email-microservice/email-
         OrganisationModule,
         PersonModule,
         PersonenKontextModule,
-        EmailMicroserviceModule,
+        EmailMicroserviceClientModule,
     ],
     providers: [LdapEventHandler, LdapSyncEventHandler, LdapAdapter, LdapClient],
     exports: [LdapEventHandler, LdapSyncEventHandler, LdapAdapter, LdapClient],

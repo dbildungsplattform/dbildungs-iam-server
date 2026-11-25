@@ -24,7 +24,7 @@ import { LdapGroupKennungExtractionError } from '../adapter/domain/error/ldap-gr
 import { LdapAdapter, LdapPersonAttributes } from '../adapter/domain/ldap.adapter.js';
 import { LdapInstanceConfig } from '../adapter/technical/ldap-instance-config.js';
 import { AbstractLdapEventHandler } from './abstract-ldap-event-handler.js';
-import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../modules/email-microservice-client/domain/email-resolver.service.js';
 import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { Err, Ok } from '../../../shared/util/result.js';

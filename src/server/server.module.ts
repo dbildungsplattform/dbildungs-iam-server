@@ -36,6 +36,7 @@ import { EventModule } from '../core/eventbus/index.js';
 import { ItsLearningModule } from '../modules/itslearning/itslearning.module.js';
 import { LdapModule } from '../core/ldap/ldap.module.js';
 import { EmailModule } from '../modules/email/email.module.js';
+import { EmailMicroserviceModule } from '../modules/email-microservice/email-microservice.module.js';
 import { OxModule } from '../modules/ox/ox.module.js';
 import { KeycloakHandlerModule } from '../modules/keycloak-handler/keycloak-handler.module.js';
 import { CronModule } from '../modules/cron/cron.module.js';
@@ -161,6 +162,7 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
         ItsLearningModule,
         LdapModule,
         EmailModule,
+        EmailMicroserviceModule,
         OxModule,
         PrivacyIdeaAdministrationModule,
         KeycloakHandlerModule,
