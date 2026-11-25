@@ -3883,7 +3883,13 @@
             "UNTERRICHT",
             "VERWALTUNG",
             "HINWEISE",
-            "SCHULISCH"
+            "SCHULISCH",
+            "UNTERRICHT_UND_LERNEN",
+            "KOMMUNIKATION_UND_ZUSAMMENARBEIT",
+            "SCHULORGANISATION_UND_VERWALTUNG",
+            "FORTBILDUNG_UND_QUALIFIZIERUNG",
+            "INFORMATIONEN_UND_PORTALE",
+            "HILFE_UND_UNTERSTUETZUNG"
           ],
           "mappedType": "unknown",
           "nativeEnumName": "service_provider_kategorie_enum"
@@ -4710,7 +4716,13 @@
         "UNTERRICHT",
         "VERWALTUNG",
         "HINWEISE",
-        "SCHULISCH"
+        "SCHULISCH",
+        "UNTERRICHT_UND_LERNEN",
+        "KOMMUNIKATION_UND_ZUSAMMENARBEIT",
+        "SCHULORGANISATION_UND_VERWALTUNG",
+        "FORTBILDUNG_UND_QUALIFIZIERUNG",
+        "INFORMATIONEN_UND_PORTALE",
+        "HILFE_UND_UNTERSTUETZUNG"
       ]
     },
     "service_provider_merkmal_enum": {

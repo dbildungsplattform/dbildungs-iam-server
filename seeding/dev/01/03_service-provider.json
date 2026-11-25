@@ -562,6 +562,66 @@
             "requires2fa": false,
             "keycloakClientId": "saml-test",
             "merkmale": []
+        },
+        {
+            "id": 47,
+            "name": "Testangebot Unterricht und Lernen",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "UNTERRICHT_UND_LERNEN",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
+        },
+        {
+            "id": 48,
+            "name": "Testangebot Kommunikation und Zusammenarbeit",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "KOMMUNIKATION_UND_ZUSAMMENARBEIT",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
+        },
+        {
+            "id": 49,
+            "name": "Testangebot Schulorganisation und -verwaltung",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "SCHULORGANISATION_UND_VERWALTUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
+        },
+        {
+            "id": 50,
+            "name": "Testangebot Fortbildung und Qualifizierung",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "FORTBILDUNG_UND_QUALIFIZIERUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
+        },
+        {
+            "id": 51,
+            "name": "Testangebot Informationen und Portale",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "INFORMATIONEN_UND_PORTALE",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
+        },
+        {
+            "id": 52,
+            "name": "Testangebot Hilfe & Unterstützung",
+            "target": "URL",
+            "url": "https://example.com/",
+            "kategorie": "HILFE_UND_UNTERSTUETZUNG",
+            "providedOnSchulstrukturknoten": 0,
+            "requires2fa": false,
+            "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
         }
     ]
 }

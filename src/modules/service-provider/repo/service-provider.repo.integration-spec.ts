@@ -228,6 +228,29 @@ describe('ServiceProviderRepo', () => {
             expect(unterrichtCount).toEqual(1);
         });
 
+        it.each([
+            ServiceProviderKategorie.UNTERRICHT_UND_LERNEN,
+            ServiceProviderKategorie.KOMMUNIKATION_UND_ZUSAMMENARBEIT,
+            ServiceProviderKategorie.SCHULORGANISATION_UND_VERWALTUNG,
+            ServiceProviderKategorie.FORTBILDUNG_UND_QUALIFIZIERUNG,
+            ServiceProviderKategorie.INFORMATIONEN_UND_PORTALE,
+            ServiceProviderKategorie.HILFE_UND_UNTERSTUETZUNG,
+        ])('should persist and filter by new kategorie %s', async (kategorie: ServiceProviderKategorie) => {
+            const [serviceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
+                createAndPersistServiceProvider(em, { kategorie }),
+                createAndPersistServiceProvider(em, { kategorie: ServiceProviderKategorie.EMAIL }),
+            ]);
+
+            const [result, count]: Counted<ServiceProvider<true>> = await sut.findByOrganisationsWithMerkmale('all', {
+                kategorien: [kategorie],
+            });
+
+            expect(result).toHaveLength(1);
+            expect(result[0]!.id).toEqual(serviceProvider.id);
+            expect(result[0]!.kategorie).toBe(kategorie);
+            expect(count).toEqual(1);
+        });
+
         describe('when searchFilter is provided', () => {
             it('should filter by searchFilter matching the name case-insensitively', async () => {
                 const [matchingServiceProvider]: [ServiceProvider<true>, ServiceProvider<true>] = await Promise.all([
