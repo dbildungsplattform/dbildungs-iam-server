@@ -38,7 +38,7 @@ import { ScopeOrder } from '../../../shared/persistence/scope.enums.js';
 import { type PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { type OXUserID } from '../../../shared/types/ox-ids.types.js';
 import { type PermittedOrgas, type PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
 import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';

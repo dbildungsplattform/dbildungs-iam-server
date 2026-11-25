@@ -13,7 +13,7 @@ import { Person } from '../../../person/domain/person.js';
 import { PersonID } from '../../../../shared/types/index.js';
 import { SchulconnexRepo } from '../../persistence/schulconnex.repo.js';
 import { IPersonPermissions } from '../../../../shared/permissions/person-permissions.interface.js';
-import { EmailResolverService } from '../../../email-microservice-client/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../email-resolver/domain/email-resolver.service.js';
 import { DomainError } from '../../../../shared/error/index.js';
 import { Ok } from '../../../../shared/util/result.js';
 import { type PersonenInfoData } from './personeninfo-data.js';

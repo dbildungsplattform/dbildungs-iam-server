@@ -27,7 +27,7 @@ import { GlobalValidationPipe } from '../../../../shared/validation/global-valid
 import { AuthenticationExceptionFilter } from '../../../authentication/api/authentication-exception-filter.js';
 import { PersonPermissionsRepo } from '../../../authentication/domain/person-permission.repo.js';
 import { type PersonPermissions } from '../../../authentication/domain/person-permissions.js';
-import { EmailMicroserviceClientModule } from '../../../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../../../email-resolver/email-resolver.module.js';
 import { KeycloakUserService } from '../../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
@@ -80,7 +80,7 @@ describe('Personenuebersicht API', () => {
                 PersonApiModule,
                 DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
                 ServiceProviderModule,
-                EmailMicroserviceClientModule,
+                EmailResolverModule,
             ],
             providers: [
                 {

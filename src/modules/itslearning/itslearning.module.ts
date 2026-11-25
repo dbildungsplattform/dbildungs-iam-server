@@ -2,7 +2,7 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 
 import { LoggerModule } from '../../core/logging/logger.module.js';
-import { EmailMicroserviceClientModule } from '../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonModule } from '../person/person.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
@@ -26,7 +26,7 @@ import { ItsLearningSyncEventHandler } from './event-handlers/itslearning-sync.e
         OrganisationModule,
         PersonenKontextModule,
         ServiceProviderModule,
-        EmailMicroserviceClientModule,
+        EmailResolverModule,
     ],
     providers: [
         ItsLearningIMSESApiService,

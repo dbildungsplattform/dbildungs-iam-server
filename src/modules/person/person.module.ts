@@ -10,14 +10,14 @@ import { EventModule } from '../../core/eventbus/event.module.js';
 import { OxUserBlacklistRepo } from './persistence/ox-user-blacklist.repo.js';
 import PersonTimeLimitService from './domain/person-time-limit-info.service.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
-import { EmailMicroserviceClientModule } from '../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 
 @Module({
     imports: [
         KeycloakAdministrationModule,
         LoggerModule.register(PersonModule.name),
         EventModule,
-        EmailMicroserviceClientModule,
+        EmailResolverModule,
         forwardRef(() => PersonenKontextModule),
     ],
     providers: [

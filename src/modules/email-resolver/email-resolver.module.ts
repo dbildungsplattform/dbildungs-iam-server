@@ -4,8 +4,8 @@ import { LoggerModule } from '../../core/logging/logger.module.js';
 import { EmailResolverService } from './domain/email-resolver.service.js';
 
 @Module({
-    imports: [HttpModule, LoggerModule.register(EmailMicroserviceClientModule.name)],
+    imports: [HttpModule, LoggerModule.register(EmailResolverModule.name)],
     providers: [EmailResolverService],
     exports: [EmailResolverService],
 })
-export class EmailMicroserviceClientModule {}
+export class EmailResolverModule {}

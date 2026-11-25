@@ -15,7 +15,7 @@ import { MikroORM } from '@mikro-orm/core';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
-import { EmailMicroserviceClientModule } from '../../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../../email-resolver/email-resolver.module.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
@@ -75,7 +75,7 @@ describe('PersonenkontextSpecifications Integration', () => {
                 DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
                 KeycloakAdministrationModule,
                 LoggingTestModule,
-                EmailMicroserviceClientModule,
+                EmailResolverModule,
             ],
             providers: [
                 PersonRepository,

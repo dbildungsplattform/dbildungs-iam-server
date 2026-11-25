@@ -27,7 +27,7 @@ import { type StatusInfo } from '../adapter/technical/actions/base-mass-action.j
 import { rollenartToIMSESInstitutionRole } from '../adapter/domain/role-utils.js';
 import { ItsLearningSyncEventHandler } from './itslearning-sync.event-handler.js';
 import { Err, Ok } from '../../../shared/util/result.js';
-import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 
 describe('ItsLearning Persons Event Handler', () => {
     let module: TestingModule;

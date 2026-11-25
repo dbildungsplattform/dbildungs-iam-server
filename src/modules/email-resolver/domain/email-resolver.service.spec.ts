@@ -25,7 +25,7 @@ import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { PersonEmailResponse } from '../../person/api/person-email-response.js';
 import { Person } from '../../person/domain/person.js';
-import { EmailMicroserviceClientModule } from '../email-microservice-client.module.js';
+import { EmailResolverModule } from '../email-resolver.module.js';
 import { EmailResolverService, type PersonIdWithEmailResponse } from './email-resolver.service.js';
 
 type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;
@@ -38,7 +38,7 @@ describe('EmailResolverService', () => {
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
-            imports: [EmailMicroserviceClientModule, CommonTestModule],
+            imports: [EmailResolverModule, CommonTestModule],
             providers: [],
         })
             .overrideProvider(ClassLogger)

@@ -13,7 +13,7 @@ import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { EmailMicroserviceClientModule } from '../../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../../email-resolver/email-resolver.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
@@ -49,7 +49,7 @@ describe('ImportVorgangRepository', () => {
                 RolleModule,
                 OrganisationModule,
                 ConfigTestModule,
-                EmailMicroserviceClientModule,
+                EmailResolverModule,
                 DatabaseTestModule.forRoot({ isDatabaseRequired: true }),
             ],
             providers: [

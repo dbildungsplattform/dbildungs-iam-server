@@ -32,7 +32,7 @@ import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-
 import { type DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
 import { CheckDuplicateKlassenkontextSpecification } from '../specification/check-duplicate-klassenkontext.js';
 import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
-import { type EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
+import { type EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 
 export class PersonenkontexteUpdate {
     private constructor(

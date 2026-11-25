@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { EventModule } from '../../core/eventbus/index.js';
 import { LoggerModule } from '../../core/logging/logger.module.js';
-import { EmailMicroserviceClientModule } from '../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PermissionModule } from '../permission/permission.module.js';
 import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.js';
@@ -20,7 +20,7 @@ import { DBiamPersonenkontextRepoInternal } from './persistence/internal-dbiam-p
 @Module({
     imports: [
         EventModule,
-        EmailMicroserviceClientModule,
+        EmailResolverModule,
         forwardRef(() => PersonModule),
         forwardRef(() => RolleModule),
         OrganisationModule,

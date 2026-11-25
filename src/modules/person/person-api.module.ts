@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from '../../core/logging/logger.module.js';
 
 import { LdapModule } from '../../core/ldap/ldap.module.js';
-import { EmailMicroserviceClientModule } from '../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonenKontextModule } from '../personenkontext/personenkontext.module.js';
@@ -24,7 +24,7 @@ import { PersonModule } from './person.module.js';
         PersonDeleteModule,
         PersonLandesbediensteterSearchModule,
         KeycloakAdministrationModule,
-        EmailMicroserviceClientModule,
+        EmailResolverModule,
         LoggerModule.register(PersonApiModule.name),
     ],
     providers: [PersonApiMapper],

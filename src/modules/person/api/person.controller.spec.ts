@@ -25,7 +25,7 @@ import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafk
 import { PersonExternalSystemsSyncEvent } from '../../../shared/events/person-external-systems-sync.event.js';
 import { type Paged, type PagedResponse } from '../../../shared/paging/index.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
 import { PersonenkontextQueryParams } from '../../personenkontext/api/param/personenkontext-query.params.js';

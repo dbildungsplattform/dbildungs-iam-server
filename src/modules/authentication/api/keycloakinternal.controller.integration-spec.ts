@@ -14,8 +14,8 @@ import { EntityNotFoundError, MissingPermissionsError, MultipleRollenartenError 
 import { SharedExceptionFilter } from '../../../shared/filter/shared-exception-filter.js';
 import { ValidationExceptionFilter } from '../../../shared/filter/validation-exception-filter.js';
 import { Ok } from '../../../shared/util/result.js';
-import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
-import { EmailMicroserviceClientModule } from '../../email-microservice-client/email-microservice-client.module.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
+import { EmailResolverModule } from '../../email-resolver/email-resolver.module.js';
 import { type Person } from '../../person/domain/person.js';
 import { PersonRepository } from '../../person/persistence/person.repository.js';
 import { PersonModule } from '../../person/person.module.js';
@@ -49,7 +49,7 @@ describe('KeycloakInternalController', () => {
                 PersonModule,
                 PersonenKontextModule,
                 RolleModule,
-                EmailMicroserviceClientModule,
+                EmailResolverModule,
             ],
             providers: [
                 KeycloakInternalController,

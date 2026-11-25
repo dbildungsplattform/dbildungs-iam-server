@@ -35,7 +35,7 @@ import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.j
 import { KafkaEventHandler } from '../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
 import { KafkaPersonExternalSystemsSyncEvent } from '../../../shared/events/kafka-person-external-systems-sync.event.js';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
-import { EmailResolverService } from '../../email-microservice-client/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { EntityManager } from '@mikro-orm/core';
 
 export type UpsertSyncTarget = {
