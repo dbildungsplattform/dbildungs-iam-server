@@ -1,7 +1,7 @@
 import { type MockedObject } from 'vitest';
 import { type EventRoutingLegacyKafkaService } from '../../src/core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { type ClassLogger } from '../../src/core/logging/class-logger.js';
-import { type EmailResolverService } from '../../src/modules/email-microservice/domain/email-resolver.service.js';
+import { type EmailResolverService } from '../../src/modules/email-resolver/domain/email-resolver.service.js';
 import { type OrganisationRepository } from '../../src/modules/organisation/persistence/organisation.repository.js';
 import { type PersonRepository } from '../../src/modules/person/persistence/person.repository.js';
 import { type DbiamPersonenkontextBodyParams } from '../../src/modules/personenkontext/api/param/dbiam-personenkontext.body.params.js';

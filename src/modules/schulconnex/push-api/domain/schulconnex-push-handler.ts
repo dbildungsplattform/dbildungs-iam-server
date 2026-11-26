@@ -18,7 +18,7 @@ import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenk
 import { PersonenkontextID, PersonID, RolleID } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { EmailAddressStatus } from '../../../email/domain/email-address.js';
-import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../email-resolver/domain/email-resolver.service.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';

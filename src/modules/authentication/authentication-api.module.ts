@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from '../../core/logging/logger.module.js';
 import { ExternalDataCacheInterceptor } from '../../shared/cache/external-data-cache-interceptor.js';
-import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonModule } from '../person/person.module.js';
@@ -31,7 +31,7 @@ import { SessionAccessTokenMiddleware } from './services/session-access-token.mi
         OrganisationModule,
         RolleModule,
         KeycloakAdministrationModule,
-        EmailMicroserviceModule,
+        EmailResolverModule,
         AuthenticationModule,
     ],
     providers: [

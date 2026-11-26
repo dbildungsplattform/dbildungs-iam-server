@@ -1,6 +1,6 @@
-import { HttpModule } from '@nestjs/axios';
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { LoggerModule } from '../../core/logging/logger.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { KeycloakAdministrationModule } from '../keycloak-administration/keycloak-administration.module.js';
 import { OrganisationModule } from '../organisation/organisation.module.js';
 import { PersonModule } from '../person/person.module.js';
@@ -8,20 +8,18 @@ import { PersonenKontextModule } from '../personenkontext/personenkontext.module
 import { RolleModule } from '../rolle/rolle.module.js';
 import { EmailWebhookController } from './api/email-microservice-webhook.controller.js';
 import { EmailMicroserviceEventHandler } from './domain/email-microservice-event-handler.js';
-import { EmailResolverService } from './domain/email-resolver.service.js';
 
 @Module({
     imports: [
-        HttpModule,
+        EmailResolverModule,
         OrganisationModule,
         KeycloakAdministrationModule,
-        forwardRef(() => RolleModule),
-        forwardRef(() => PersonenKontextModule),
-        forwardRef(() => PersonModule),
+        RolleModule,
+        PersonenKontextModule,
+        PersonModule,
         LoggerModule.register(EmailMicroserviceModule.name),
     ],
     controllers: [EmailWebhookController],
-    providers: [EmailResolverService, EmailMicroserviceEventHandler],
-    exports: [EmailResolverService],
+    providers: [EmailMicroserviceEventHandler],
 })
 export class EmailMicroserviceModule {}

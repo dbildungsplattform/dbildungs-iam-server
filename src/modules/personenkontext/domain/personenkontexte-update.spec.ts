@@ -14,7 +14,7 @@ import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-pe
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
 import { type PersonID } from '../../../shared/types/index.js';
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { EmailRepo } from '../../email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';

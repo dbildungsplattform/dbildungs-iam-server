@@ -42,7 +42,7 @@ import { toDIN91379SearchForm } from '../../../shared/util/din-91379-validation.
 import { mapDefinedObjectProperties } from '../../../shared/util/object-utils.js';
 import { NameValidator } from '../../../shared/validation/name-validator.js';
 import { PermittedOrgas } from '../../authentication/domain/person-permissions.js';
-import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { EmailAddressEntity } from '../../email/persistence/email-address.entity.js';
 import { compareEmailAddressesByUpdatedAtDesc } from '../../email/persistence/email.repo.js';

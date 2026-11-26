@@ -6,7 +6,7 @@ import { DoFactory } from '../../../../test/utils/do-factory.js';
 import {
     EmailResolverService,
     type PersonIdWithEmailResponse,
-} from '../../email-microservice/domain/email-resolver.service.js';
+} from '../../email-resolver/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../email/domain/email-address.js';
 import { type UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';

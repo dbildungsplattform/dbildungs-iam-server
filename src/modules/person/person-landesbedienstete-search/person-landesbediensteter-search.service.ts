@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { PersonID } from '../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../shared/util/result.js';
-import {
-    EmailResolverService,
-    PersonIdWithEmailResponse,
-} from '../../email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService, PersonIdWithEmailResponse } from '../../email-resolver/domain/email-resolver.service.js';
 import { UserLock } from '../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import {

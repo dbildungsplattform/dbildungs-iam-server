@@ -2,6 +2,8 @@ import { type MiddlewareConsumer } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { type RedisClientType } from 'redis';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../test/utils/index.js';
+import { EmailWebhookController } from '../modules/email-microservice/api/email-microservice-webhook.controller.js';
+import { EmailMicroserviceEventHandler } from '../modules/email-microservice/domain/email-microservice-event-handler.js';
 import { ServerModule } from './server.module.js';
 
 function createRedisClientMock(overrides?: Partial<RedisClientType>): RedisClientType {
@@ -48,5 +50,10 @@ describe('ServerModule', () => {
         await module.get(ServerModule).configure(consumer);
 
         expect(consumer.apply).toHaveBeenCalled();
+    });
+
+    it('should register the email microservice webhook controller and event handler', () => {
+        expect(module.get(EmailWebhookController)).toBeInstanceOf(EmailWebhookController);
+        expect(module.get(EmailMicroserviceEventHandler)).toBeInstanceOf(EmailMicroserviceEventHandler);
     });
 });

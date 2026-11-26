@@ -11,7 +11,7 @@ import { PersonenInfoService } from './domain/personeninfo/personeninfo.service.
 import { SchulconnexRepo } from './persistence/schulconnex.repo.js';
 import { SchulconnexPushRegistryRepo } from './push-api/persistence/schulconnex-push-registry.repo.js';
 import { EntityAggregateMapper } from '../person/mapper/entity-aggregate.mapper.js';
-import { EmailMicroserviceModule } from '../email-microservice/email-microservice.module.js';
+import { EmailResolverModule } from '../email-resolver/email-resolver.module.js';
 import { SchulconnexPushAdapter } from './push-api/adapter/domain/schulconnex-push.adapter.js';
 import { SchulconnexPushApiClient } from './push-api/adapter/technical/schulconnex-push-api.client.js';
 import { SchulconnexPushHandler } from './push-api/domain/schulconnex-push-handler.js';
@@ -23,7 +23,7 @@ import { SchulconnexPushHandler } from './push-api/domain/schulconnex-push-handl
         RolleModule,
         PersonenKontextModule,
         KeycloakAdministrationModule,
-        EmailMicroserviceModule,
+        EmailResolverModule,
         LoggerModule.register(SchulconnexModule.name),
     ],
     providers: [

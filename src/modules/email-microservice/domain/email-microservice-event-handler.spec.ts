@@ -33,7 +33,7 @@ import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { ServiceProviderSystem } from '../../service-provider/domain/service-provider.enum.js';
 import { EmailMicroserviceModule } from '../email-microservice.module.js';
 import { EmailMicroserviceEventHandler } from './email-microservice-event-handler.js';
-import { EmailResolverService } from './email-resolver.service.js';
+import { EmailResolverService } from '../../email-resolver/domain/email-resolver.service.js';
 import { PersonHasNoUsernameError } from './error/person-has-no-username.error.js';
 
 type SetEmailParams = Omit<Parameters<EmailResolverService['setEmailForSpshPerson']>[0], 'spshPersonId'>;

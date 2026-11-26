@@ -20,6 +20,7 @@ import { AuthenticationApiModule } from '../modules/authentication/authenticatio
 import { PermissionsInterceptor } from '../modules/authentication/services/permissions.interceptor.js';
 import { SessionAccessTokenMiddleware } from '../modules/authentication/services/session-access-token.middleware.js';
 import { CronModule } from '../modules/cron/cron.module.js';
+import { EmailMicroserviceModule } from '../modules/email-microservice/email-microservice.module.js';
 import { EmailModule } from '../modules/email/email.module.js';
 import { HealthModule } from '../modules/health/health.module.js';
 import { ImportApiModule } from '../modules/import/import-api.module.js';
@@ -160,6 +161,7 @@ import { ErrorModule } from '../shared/error/error.module.js';
         ItsLearningModule,
         LdapModule,
         EmailModule,
+        EmailMicroserviceModule,
         OxModule,
         PrivacyIdeaAdministrationModule,
         KeycloakHandlerModule,

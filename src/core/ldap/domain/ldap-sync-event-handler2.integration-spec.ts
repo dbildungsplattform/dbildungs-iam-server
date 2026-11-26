@@ -38,7 +38,7 @@ import { LdapModule } from '../ldap.module.js';
 import { LdapSyncEventHandler } from './ldap-sync-event-handler.js';
 import { type Mock } from 'vitest';
 import { type OrganisationKennung, type PersonUsername } from '../../../shared/types/aggregate-ids.types.js';
-import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../modules/email-resolver/domain/email-resolver.service.js';
 import { EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { PersonEmailResponse } from '../../../modules/person/api/person-email-response.js';
 

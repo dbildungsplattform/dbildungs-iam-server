@@ -9,7 +9,7 @@ import { faker } from '@faker-js/faker';
 import assert from 'node:assert';
 import { CommonTestModule } from '../../../../test/utils/common-test.module.js';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
-import { EmailResolverService } from '../../../modules/email-microservice/domain/email-resolver.service.js';
+import { EmailResolverService } from '../../../modules/email-resolver/domain/email-resolver.service.js';
 import { type EmailAddress, EmailAddressStatus } from '../../../modules/email/domain/email-address.js';
 import { EmailRepo } from '../../../modules/email/persistence/email.repo.js';
 import { OrganisationsTyp } from '../../../modules/organisation/domain/organisation.enums.js';

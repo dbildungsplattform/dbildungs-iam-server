@@ -5,7 +5,7 @@ import { createMock, type DeepMocked } from '../../../../test/utils/createMock.j
 import { ConfigTestModule, DatabaseTestModule, DoFactory, LoggingTestModule } from '../../../../test/utils/index.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { generatePassword } from '../../../shared/util/password-generator.js';
-import { EmailMicroserviceModule } from '../../email-microservice/email-microservice.module.js';
+import { EmailResolverModule } from '../../email-resolver/email-resolver.module.js';
 import { KeycloakUserService } from '../../keycloak-administration/index.js';
 import { UserLockRepository } from '../../keycloak-administration/repository/user-lock.repository.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
@@ -78,7 +78,7 @@ describe('dbiam Personenkontext Repo', () => {
                 OrganisationModule,
                 LoggingTestModule,
                 ServiceProviderModule,
-                EmailMicroserviceModule,
+                EmailResolverModule,
             ],
             providers: [
                 DBiamPersonenkontextRepoInternal,
