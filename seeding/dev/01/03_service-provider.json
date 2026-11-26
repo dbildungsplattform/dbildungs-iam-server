@@ -565,20 +565,20 @@
         },
         {
             "id": 47,
-            "name": "Testangebot Unterricht und Lernen",
+            "name": "Testangebot Kommunikation und Zusammenarbeit",
             "target": "URL",
             "url": "https://example.com/",
-            "kategorie": "UNTERRICHT_UND_LERNEN",
+            "kategorie": "KOMMUNIKATION_UND_ZUSAMMENARBEIT",
             "providedOnSchulstrukturknoten": 0,
             "requires2fa": false,
             "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
         },
         {
             "id": 48,
-            "name": "Testangebot Kommunikation und Zusammenarbeit",
+            "name": "Testangebot Unterricht und Lernen",
             "target": "URL",
             "url": "https://example.com/",
-            "kategorie": "KOMMUNIKATION_UND_ZUSAMMENARBEIT",
+            "kategorie": "UNTERRICHT_UND_LERNEN",
             "providedOnSchulstrukturknoten": 0,
             "requires2fa": false,
             "merkmale": ["NACHTRAEGLICH_ZUWEISBAR"]
@@ -615,7 +615,7 @@
         },
         {
             "id": 52,
-            "name": "Testangebot Hilfe & Unterstützung",
+            "name": "Testangebot Hilfe und Unterstützung",
             "target": "URL",
             "url": "https://example.com/",
             "kategorie": "HILFE_UND_UNTERSTUETZUNG",

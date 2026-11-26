@@ -229,8 +229,8 @@ describe('ServiceProviderRepo', () => {
         });
 
         it.each([
-            ServiceProviderKategorie.UNTERRICHT_UND_LERNEN,
             ServiceProviderKategorie.KOMMUNIKATION_UND_ZUSAMMENARBEIT,
+            ServiceProviderKategorie.UNTERRICHT_UND_LERNEN,
             ServiceProviderKategorie.SCHULORGANISATION_UND_VERWALTUNG,
             ServiceProviderKategorie.FORTBILDUNG_UND_QUALIFIZIERUNG,
             ServiceProviderKategorie.INFORMATIONEN_UND_PORTALE,
