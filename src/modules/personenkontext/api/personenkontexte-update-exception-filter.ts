@@ -1,24 +1,26 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import { Response } from 'express';
-import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
+import { DbiamPersonError, PersonErrorI18nTypes } from '../../person/api/dbiam-person.error.js';
+import { LandesbediensteterSearchNoPersonFoundError } from '../../person/domain/landesbediensteter-search-no-person-found.error.js';
+import { PersonenkontextBefristungRequiredError } from '../domain/error/personenkontext-befristung-required.error.js';
+import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
+import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { UpdateCountError } from '../domain/error/update-count.error.js';
+import { DuplicateKlassenkontextError } from '../domain/error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
+import { UpdateInvalidLastModifiedError } from '../domain/error/update-invalid-last-modified.error.js';
+import { UpdateInvalidRollenartForLernError } from '../domain/error/update-invalid-rollenart-for-lern.error.js';
+import { UpdateLernNotAtSchuleAndKlasseError } from '../domain/error/update-lern-not-at-schule-and-klasse.error.js';
 import { UpdateNotFoundError } from '../domain/error/update-not-found.error.js';
 import { UpdateOutdatedError } from '../domain/error/update-outdated.error.js';
 import { UpdatePersonIdMismatchError } from '../domain/error/update-person-id-mismatch.error.js';
+import { UpdatePersonNotFoundError } from '../domain/error/update-person-not-found.error.js';
+import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
 import {
     DbiamPersonenkontexteUpdateError,
     PersonenkontexteUpdateErrorI18nTypes,
 } from './dbiam-personenkontexte-update.error.js';
-import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
-import { UpdateInvalidLastModifiedError } from '../domain/error/update-invalid-last-modified.error.js';
-import { UpdatePersonNotFoundError } from '../domain/error/update-person-not-found.error.js';
-import { UpdateInvalidRollenartForLernError } from '../domain/error/update-invalid-rollenart-for-lern.error.js';
-import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
-import { PersonenkontextBefristungRequiredError } from '../domain/error/personenkontext-befristung-required.error.js';
-import { DuplicateKlassenkontextError } from '../domain/error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
-import { UpdateLernNotAtSchuleAndKlasseError } from '../domain/error/update-lern-not-at-schule-and-klasse.error.js';
 
-@Catch(PersonenkontexteUpdateError)
+@Catch(PersonenkontexteUpdateError, LandesbediensteterSearchNoPersonFoundError)
 export class PersonenkontexteUpdateExceptionFilter implements ExceptionFilter<PersonenkontexteUpdateError> {
     private ERROR_MAPPINGS: Map<string, DbiamPersonenkontextError> = new Map([
         [
@@ -96,6 +98,13 @@ export class PersonenkontexteUpdateExceptionFilter implements ExceptionFilter<Pe
             new DbiamPersonenkontexteUpdateError({
                 code: 400,
                 i18nKey: PersonenkontexteUpdateErrorI18nTypes.LERN_NOT_AT_SCHULE_AND_KLASSE,
+            }),
+        ],
+        [
+            LandesbediensteterSearchNoPersonFoundError.name,
+            new DbiamPersonError({
+                code: 400,
+                i18nKey: PersonErrorI18nTypes.LANDESBEDIENSTETER_SEARCH_NO_PERSON_FOUND,
             }),
         ],
     ]);

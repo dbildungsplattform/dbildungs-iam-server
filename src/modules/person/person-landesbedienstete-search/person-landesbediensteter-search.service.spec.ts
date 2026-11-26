@@ -251,6 +251,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -287,6 +288,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(undefined);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -326,6 +328,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -369,6 +372,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 personId: person.id,
                 personEmailResponse: email,
             } satisfies PersonIdWithEmailResponse);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -414,6 +418,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findById.mockResolvedValueOnce(person);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
 
@@ -458,6 +463,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByPersonalnummer.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -499,6 +505,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByUsername.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -541,6 +548,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByFullName.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
@@ -672,6 +680,7 @@ describe('PersonLandesbediensteterSearchService', () => {
                 } satisfies KontextWithOrgaAndRolle,
             ];
             personRepositoryMock.findByFullName.mockResolvedValueOnce([person]);
+            personRepositoryMock.findById.mockResolvedValueOnce(person);
             userLockRepositoryMock.findByPersonId.mockResolvedValueOnce([]);
             emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValueOnce(email);
             personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValueOnce(kontexte);
