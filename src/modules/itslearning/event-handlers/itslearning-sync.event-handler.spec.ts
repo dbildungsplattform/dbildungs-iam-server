@@ -605,5 +605,41 @@ describe('ItsLearning Persons Event Handler', () => {
             );
             expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
         });
+
+        it('should stop before determining the sync targets if the signal is aborted', async () => {
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            controller.abort(abortReason);
+
+            await expect(
+                sut.personExternalSystemSyncBatch([faker.string.uuid()], eventId, keepAlive, controller.signal),
+            ).rejects.toThrowError(abortReason);
+
+            expect(personRepoMock.findById).not.toHaveBeenCalled();
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).not.toHaveBeenCalled();
+        });
+
+        it('should stop setting memberships if the signal is aborted in the meantime', async () => {
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            const personA: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            const personB: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(personA);
+            mockRelevantPerson(personB);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Ok({ status: [successStatus, successStatus], value: undefined }),
+            );
+            itslearningMembershipAdapterMock.setMemberships.mockImplementation(() => {
+                controller.abort(abortReason);
+                return Promise.resolve({ ok: true, value: { deleted: 0, updated: 1 } });
+            });
+
+            await expect(
+                sut.personExternalSystemSyncBatch([personA.id, personB.id], eventId, keepAlive, controller.signal),
+            ).rejects.toThrowError(abortReason);
+
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
+            expect(itslearningPersonAdapterMock.deletePersons).not.toHaveBeenCalled();
+        });
     });
 });

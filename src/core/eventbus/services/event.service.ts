@@ -14,6 +14,8 @@ type EventInfo<Event> = {
 export class EventService {
     private readonly eventInfoMap: Map<Constructor<BaseEvent>, EventInfo<unknown>> = new Map();
 
+    private readonly neverAbortedSignal: AbortSignal = new AbortController().signal;
+
     public constructor(private readonly logger: ClassLogger) {}
 
     public subscribe<Event extends BaseEvent>(eventType: Constructor<Event>, handler: EventHandlerType<Event>): void {
@@ -31,9 +33,13 @@ export class EventService {
             subject.subscribe({
                 next: (event: Event) => {
                     try {
-                        const result: MaybePromise<void | Result<unknown, Error>> = handler(event, () => {
-                            this.logger.warning('Calling Keep Alive for Legacy Event System is not supported');
-                        });
+                        const result: MaybePromise<void | Result<unknown, Error>> = handler(
+                            event,
+                            () => {
+                                this.logger.warning('Calling Keep Alive for Legacy Event System is not supported');
+                            },
+                            this.neverAbortedSignal,
+                        );
                         if (result instanceof Promise) {
                             result.catch((err: unknown) => this.logHandlerError(err));
                         }

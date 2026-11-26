@@ -309,6 +309,9 @@ kafka:
   initEnabled: true
   sessionTimeout: 8000
   heartbeatInterval: 1000
+  maxPollInterval: 300000
+  handlerTimeout: 60000
+  handlerCancelGrace: 5000
   topicPartitions: 3
   topicReplications: 3
   initImage:

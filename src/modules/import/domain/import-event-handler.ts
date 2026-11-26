@@ -50,7 +50,11 @@ export class ImportEventHandler {
     @KafkaEventHandler(KafkaImportExecutedEvent)
     @EventHandler(ImportExecutedEvent)
     @EnsureRequestContext()
-    public async handleExecuteImport(event: ImportExecutedEvent, keepAlive: () => void): Promise<void> {
+    public async handleExecuteImport(
+        event: ImportExecutedEvent,
+        keepAlive: () => void,
+        signal?: AbortSignal,
+    ): Promise<void> {
         this.selectedOrganisationId = event.organisationId;
         this.selectedRolleId = event.rolleId;
 
@@ -98,6 +102,14 @@ export class ImportEventHandler {
         );
 
         for (const dataItem of importDataItems) {
+            if (signal?.aborted) {
+                importVorgang.fail();
+                // eslint-disable-next-line no-await-in-loop
+                await this.importVorgangRepository.save(importVorgang);
+                this.logger.error(`ImportVorgang ${importvorgangId} was aborted before all items were imported`);
+                signal.throwIfAborted();
+            }
+
             // Make sure to call keepAlive for larger imports
             keepAlive();
 

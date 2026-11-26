@@ -135,9 +135,11 @@ export class ItsLearningSyncEventHandler {
         personIds: PersonID[],
         eventId: string,
         keepAlive: () => void,
+        signal?: AbortSignal,
     ): Promise<void> {
         const targets: PersonSyncTarget[] = [];
         for (const personId of personIds) {
+            signal?.throwIfAborted();
             try {
                 // eslint-disable-next-line no-await-in-loop
                 const target: Option<PersonSyncTarget> = await this.determineSyncTarget(personId, eventId);
@@ -161,6 +163,7 @@ export class ItsLearningSyncEventHandler {
 
         const persistedUpserts: UpsertSyncTarget[] = await this.createOrUpdatePersonsMass(upserts, eventId);
         for (const target of persistedUpserts) {
+            signal?.throwIfAborted();
             // eslint-disable-next-line no-await-in-loop
             await this.setMembershipsForPerson(target, eventId);
             keepAlive();

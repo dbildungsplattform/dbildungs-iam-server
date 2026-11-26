@@ -362,6 +362,41 @@ describe('ImportEventHandler', () => {
             expect(keepAlive).toHaveBeenCalledTimes(1);
         });
 
+        it('should fail the ImportVorgang and stop importing if the signal is aborted', async () => {
+            const klasse: Organisation<true> = DoFactory.createOrganisation(true, {
+                typ: OrganisationsTyp.KLASSE,
+                name: '1A',
+            });
+            organisationRepoMock.findChildOrgasForIds.mockResolvedValueOnce([klasse]);
+
+            const importvorgang: ImportVorgang<true> = DoFactory.createImportVorgang(true, {
+                status: ImportStatus.VALID,
+            });
+            importVorgangRepositoryMock.findById.mockResolvedValueOnce(importvorgang);
+            importVorgangRepositoryMock.save.mockResolvedValue(importvorgang);
+            const importDataItem: ImportDataItem<true> = DoFactory.createImportDataItem(true, {
+                importvorgangId: importvorgang.id,
+                klasse: '1A',
+            });
+            importDataRepositoryMock.findByImportVorgangId.mockResolvedValueOnce([[importDataItem], 1]);
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            controller.abort(abortReason);
+            const keepAlive: () => void = vi.fn();
+
+            await expect(sut.handleExecuteImport(event, keepAlive, controller.signal)).rejects.toThrowError(
+                abortReason,
+            );
+
+            expect(importvorgang.status).toBe(ImportStatus.FAILED);
+            expect(importVorgangRepositoryMock.save).toHaveBeenCalledTimes(2);
+            expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).not.toHaveBeenCalled();
+            expect(keepAlive).not.toHaveBeenCalled();
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `ImportVorgang ${importvorgangId} was aborted before all items were imported`,
+            );
+        });
+
         it('should handle an unexpected error during savePersonWithPersonenkontext and log it', async () => {
             const klassen: Organisation<true>[] = [
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.KLASSE, name: '1A' }),

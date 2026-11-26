@@ -59,8 +59,9 @@ export class ItsLearningRollenerweiterungEventHandler {
     public async rollenerweiterungCreatedEventHandler(
         event: RollenerweiterungCreatedEvent,
         keepAlive: () => void,
+        signal?: AbortSignal,
     ): Promise<void> {
-        await this.syncAffectedPersons(event, keepAlive);
+        await this.syncAffectedPersons(event, keepAlive, signal);
     }
 
     @KafkaEventHandler(KafkaRollenerweiterungDeletedEvent)
@@ -69,13 +70,15 @@ export class ItsLearningRollenerweiterungEventHandler {
     public async rollenerweiterungDeletedEventHandler(
         event: RollenerweiterungDeletedEvent,
         keepAlive: () => void,
+        signal?: AbortSignal,
     ): Promise<void> {
-        await this.syncAffectedPersons(event, keepAlive);
+        await this.syncAffectedPersons(event, keepAlive, signal);
     }
 
     private async syncAffectedPersons(
         event: RollenerweiterungCreatedEvent | RollenerweiterungDeletedEvent,
         keepAlive: () => void,
+        signal?: AbortSignal,
     ): Promise<void> {
         const eventName: string = event.constructor.name;
         this.logger.info(
@@ -108,8 +111,15 @@ export class ItsLearningRollenerweiterungEventHandler {
 
                 if (personIds.length > 0) {
                     try {
-                        await this.syncEventHandler.personExternalSystemSyncBatch(personIds, event.eventID, keepAlive);
+                        await this.syncEventHandler.personExternalSystemSyncBatch(
+                            personIds,
+                            event.eventID,
+                            keepAlive,
+                            signal,
+                        );
                     } catch (err: unknown) {
+                        // A cancellation must not be swallowed, otherwise the next batch would be started
+                        signal?.throwIfAborted();
                         this.logger.error(
                             `[EventID: ${event.eventID}] Sync of persons failed: ${err instanceof Error ? err.message : String(err)}`,
                         );
