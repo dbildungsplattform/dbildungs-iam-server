@@ -108,6 +108,27 @@ describe('ImportEventHandler', () => {
             );
         });
 
+        // Mocks an import with one item, whose processing aborts the signal with the given reason
+        const mockSingleItemImport = (controller: AbortController, reason: Error): ImportVorgang<true> => {
+            organisationRepoMock.findChildOrgasForIds.mockResolvedValueOnce([
+                DoFactory.createOrganisation(true, { typ: OrganisationsTyp.KLASSE, name: '1A' }),
+            ]);
+            const importvorgang: ImportVorgang<true> = DoFactory.createImportVorgang(true, {
+                status: ImportStatus.VALID,
+            });
+            importVorgangRepositoryMock.findById.mockResolvedValueOnce(importvorgang);
+            importVorgangRepositoryMock.save.mockResolvedValue(importvorgang);
+            importDataRepositoryMock.findByImportVorgangId.mockResolvedValueOnce([
+                [DoFactory.createImportDataItem(true, { importvorgangId: importvorgang.id, klasse: '1A' })],
+                1,
+            ]);
+            personenkontextCreationServiceMock.createPersonWithPersonenkontexte.mockImplementationOnce(() => {
+                controller.abort(reason);
+                return Promise.resolve({ ok: false, error: new RolleNurAnPassendeOrganisationError() });
+            });
+            return importvorgang;
+        };
+
         it('should return EntityNotFoundError if a ImportVorgang does not exist', async () => {
             organisationRepoMock.findChildOrgasForIds.mockResolvedValueOnce([
                 DoFactory.createOrganisation(true, { typ: OrganisationsTyp.KLASSE, name: '1A' }),
@@ -394,7 +415,7 @@ describe('ImportEventHandler', () => {
             expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).not.toHaveBeenCalled();
             expect(keepAlive).not.toHaveBeenCalled();
             expect(loggerMock.error).toHaveBeenCalledWith(
-                `ImportVorgang ${importvorgangId} was aborted before all items were imported`,
+                `ImportVorgang ${importvorgang.id} was aborted before the import was finished`,
             );
         });
 
@@ -423,9 +444,40 @@ describe('ImportEventHandler', () => {
             expect(importVorgangRepositoryMock.save).toHaveBeenCalledTimes(1);
             expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).not.toHaveBeenCalled();
             expect(loggerMock.warning).toHaveBeenCalledWith(
-                `ImportVorgang ${importvorgangId} was interrupted by shutdown and will be resumed on redelivery`,
+                `ImportVorgang ${importvorgang.id} was interrupted by shutdown and will be resumed on redelivery`,
             );
             expect(loggerMock.error).not.toHaveBeenCalled();
+        });
+
+        it('should fail the ImportVorgang instead of finishing it if a timeout aborts the last item', async () => {
+            const abortReason: Error = new Error('timed out');
+            const controller: AbortController = new AbortController();
+            const importvorgang: ImportVorgang<true> = mockSingleItemImport(controller, abortReason);
+
+            await expect(sut.handleExecuteImport(event, vi.fn(), controller.signal)).rejects.toThrowError(
+                abortReason,
+            );
+
+            expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).toHaveBeenCalledTimes(1);
+            expect(importvorgang.status).toBe(ImportStatus.FAILED);
+            expect(importVorgangRepositoryMock.save).toHaveBeenCalledTimes(2);
+            expect(loggerMock.error).toHaveBeenCalledWith(
+                `ImportVorgang ${importvorgang.id} was aborted before the import was finished`,
+            );
+        });
+
+        it('should keep the ImportVorgang INPROGRESS instead of finishing it if a shutdown aborts the last item', async () => {
+            const shutdownError: EventHandlerShutdownError = new EventHandlerShutdownError('ImportExecutedEvent');
+            const controller: AbortController = new AbortController();
+            const importvorgang: ImportVorgang<true> = mockSingleItemImport(controller, shutdownError);
+
+            await expect(sut.handleExecuteImport(event, vi.fn(), controller.signal)).rejects.toThrowError(
+                shutdownError,
+            );
+
+            expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).toHaveBeenCalledTimes(1);
+            expect(importvorgang.status).toBe(ImportStatus.INPROGRESS);
+            expect(importVorgangRepositoryMock.save).toHaveBeenCalledTimes(1);
         });
 
         it('should resume an INPROGRESS ImportVorgang and skip items that were already processed', async () => {

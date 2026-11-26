@@ -112,20 +112,8 @@ export class ImportEventHandler {
         );
 
         for (const dataItem of pendingItems) {
-            if (signal?.aborted) {
-                if (signal.reason instanceof EventHandlerShutdownError) {
-                    // The message is redelivered after the shutdown, so the import stays INPROGRESS and is resumed
-                    this.logger.warning(
-                        `ImportVorgang ${importvorgangId} was interrupted by shutdown and will be resumed on redelivery`,
-                    );
-                } else {
-                    importVorgang.fail();
-                    // eslint-disable-next-line no-await-in-loop
-                    await this.importVorgangRepository.save(importVorgang);
-                    this.logger.error(`ImportVorgang ${importvorgangId} was aborted before all items were imported`);
-                }
-                signal.throwIfAborted();
-            }
+            // eslint-disable-next-line no-await-in-loop
+            await this.handleAbort(importVorgang, signal);
 
             // Make sure to call keepAlive for larger imports
             keepAlive();
@@ -138,6 +126,9 @@ export class ImportEventHandler {
             }
         }
 
+        // The last item could have been aborted in the meantime, there is no next iteration that would notice it
+        await this.handleAbort(importVorgang, signal);
+
         // Finalize the import process depending on the status on the items. If all items failed to be imported then we mark the whole import as failed. Otherwise it's finished.
         if (allItemsFailed) {
             importVorgang.fail();
@@ -145,6 +136,27 @@ export class ImportEventHandler {
             importVorgang.finish();
         }
         await this.importVorgangRepository.save(importVorgang);
+    }
+
+    /**
+     * Throws if the signal was aborted. A shutdown keeps the ImportVorgang INPROGRESS, because the message is
+     * redelivered and the import is resumed. Any other abort (timeout) is final, the event goes to the DLQ.
+     */
+    private async handleAbort(importVorgang: ImportVorgang<true>, signal?: AbortSignal): Promise<void> {
+        if (!signal?.aborted) {
+            return;
+        }
+
+        if (signal.reason instanceof EventHandlerShutdownError) {
+            this.logger.warning(
+                `ImportVorgang ${importVorgang.id} was interrupted by shutdown and will be resumed on redelivery`,
+            );
+        } else {
+            importVorgang.fail();
+            await this.importVorgangRepository.save(importVorgang);
+            this.logger.error(`ImportVorgang ${importVorgang.id} was aborted before the import was finished`);
+        }
+        signal.throwIfAborted();
     }
 
     private async savePersonWithPersonenkontext(
