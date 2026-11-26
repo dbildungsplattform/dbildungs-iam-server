@@ -7,7 +7,7 @@ import { ServiceProviderEntity } from './service-provider.entity.js';
 export class ServiceProviderRollenartWhitelistEntity extends BaseEntity {
     @ManyToOne({ primary: true, entity: () => ServiceProviderEntity, deleteRule: 'no action', updateRule: 'cascade' })
     @Index({
-        name: 'service_provider_rollenarten_whitelist_service_provider_id_index',
+        name: 'sp_rollenarten_whitelist_sp_id_index',
     })
     public serviceProvider!: Rel<ServiceProviderEntity>;
 

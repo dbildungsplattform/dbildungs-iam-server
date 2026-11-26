@@ -171,7 +171,7 @@ describe('DbSeedService', () => {
     });
 
     describe('seedOrganisation', () => {
-        describe('without administriertVon and zugehoerigZu', () => {
+        describe('without administriertVon', () => {
             it('should insert one entity in database', async () => {
                 const fileContentAsStr: string = fs.readFileSync(
                     `./seeding/seeding-integration-test/all/01/01_organisation.json`,
@@ -226,27 +226,8 @@ describe('DbSeedService', () => {
                 );
                 const parent: Organisation<true> = DoFactory.createOrganisation(true);
                 organisationRepositoryMock.saveSeedData.mockResolvedValueOnce(parent);
-                //USE MockResolved instead of MockRecolvedOnce because it's called for administriert and zugehoerigZu
                 dbSeedReferenceRepoMock.findUUID.mockResolvedValue(faker.string.uuid()); //mock UUID of referenced parent
                 organisationRepositoryMock.findById.mockResolvedValue(parent);
-
-                await expect(dbSeedService.seedOrganisation(fileContentAsStr)).resolves.not.toThrow(
-                    EntityNotFoundError,
-                );
-            });
-        });
-
-        describe('with existing zugehoerigZu', () => {
-            it('should not throw EntityNotFoundError', async () => {
-                const fileContentAsStr: string = fs.readFileSync(
-                    `./seeding/seeding-integration-test/organisation/02_organisation.json`,
-                    'utf-8',
-                );
-                const parent: Organisation<true> = DoFactory.createOrganisation(true);
-                organisationRepositoryMock.saveSeedData.mockResolvedValueOnce(parent);
-                //USE MockResolved instead of MockRecolvedOnce because it's called for administriert and zugehoerigZu
-                dbSeedReferenceRepoMock.findUUID.mockResolvedValue(faker.string.uuid()); //mock UUID of referenced parent
-                organisationRepositoryMock.findById.mockResolvedValue(parent); // mock get-SSK
 
                 await expect(dbSeedService.seedOrganisation(fileContentAsStr)).resolves.not.toThrow(
                     EntityNotFoundError,
@@ -267,18 +248,6 @@ describe('DbSeedService', () => {
             });
         });
 
-        describe('with non existing zugehoerigZu', () => {
-            it('should throw EntityNotFoundError', async () => {
-                const fileContentAsStr: string = fs.readFileSync(
-                    `./seeding/seeding-integration-test/organisation/05_missing_zugehoerig-zu.json`,
-                    'utf-8',
-                );
-                const persistedOrganisation: Organisation<true> = DoFactory.createOrganisationAggregate(true);
-
-                organisationRepositoryMock.save.mockResolvedValueOnce(persistedOrganisation);
-                await expect(dbSeedService.seedOrganisation(fileContentAsStr)).rejects.toThrow(EntityNotFoundError);
-            });
-        });
         describe('typ = ROOT', () => {
             it('should assign ROOT_ORGANISATION_ID when typ is ROOT even if kuerzel is not Root', async () => {
                 const fileContentAsStr: string = fs.readFileSync(
@@ -308,7 +277,6 @@ describe('DbSeedService', () => {
                 const persistedOrganisation: Organisation<true> = DoFactory.createOrganisationAggregate(true);
                 const parent: Organisation<true> = DoFactory.createOrganisation(true);
                 organisationRepositoryMock.save.mockResolvedValueOnce(parent);
-                //USE MockResolved instead of MockRecolvedOnce because it's called for administriert and zugehoerigZu
                 dbSeedReferenceRepoMock.findUUID.mockResolvedValue(faker.string.uuid()); //mock UUID of referenced parent
                 organisationRepositoryMock.findById.mockResolvedValue(parent);
 

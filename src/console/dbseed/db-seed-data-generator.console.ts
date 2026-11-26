@@ -278,7 +278,6 @@ export class DbSeedDataGeneratorConsole extends CommandRunner {
                 kuerzel: schulname,
                 typ: OrganisationsTyp.SCHULE,
                 administriertVon: 1,
-                zugehoerigZu: 1,
             });
         }
 
@@ -306,7 +305,6 @@ export class DbSeedDataGeneratorConsole extends CommandRunner {
                     namensergaenzung: 'Keine',
                     typ: OrganisationsTyp.KLASSE,
                     administriertVon: school.id,
-                    zugehoerigZu: school.id,
                 });
 
                 classIndex++;

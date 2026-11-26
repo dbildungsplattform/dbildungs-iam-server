@@ -14,8 +14,7 @@ import { NameRequiredForKlasseError } from '../specification/error/name-required
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { CreateOrganisationBodyParams } from './create-organisation.body.params.js';
 import { type FindOrganisationQueryParams } from './find-organisation-query.param.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
-import { OrganisationByIdParams } from './organisation-by-id.params.js';
+import { type OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationController } from './organisation.controller.js';
 import { OrganisationResponse } from './organisation.response.js';
@@ -45,18 +44,6 @@ import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbez
 import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
 import { type PagedResponse } from '../../../shared/paging/paged.response.js';
 import { ParentOrganisationsByIdsBodyParams } from './parent-organisations-by-ids.body.params.js';
-
-function getFakeParamsAndBody(): [OrganisationByIdParams, OrganisationByIdBodyParams] {
-    const params: OrganisationByIdParams = new OrganisationByIdParams();
-    Object.assign(params, {
-        organisationId: faker.string.uuid(),
-    });
-    const body: OrganisationByIdBodyParams = new OrganisationByIdBodyParams();
-    Object.assign(body, {
-        organisationId: faker.string.uuid(),
-    });
-    return [params, body];
-}
 
 describe('OrganisationController', () => {
     let module: TestingModule;
@@ -125,7 +112,6 @@ describe('OrganisationController', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     traegerschaft: Traegerschaft.SONSTIGE,
                     administriertVon: faker.string.uuid(),
-                    zugehoerigZu: faker.string.uuid(),
                 });
                 const returnedValue: Organisation<true> = DoFactory.createOrganisation(true);
 
@@ -139,7 +125,6 @@ describe('OrganisationController', () => {
             const params: CreateOrganisationBodyParams = new CreateOrganisationBodyParams();
             Object.assign(params, {
                 administriertVon: faker.string.uuid(),
-                zugehoerigZu: faker.string.uuid(),
                 kennung: ' Test', // This should trigger the error
                 name: faker.lorem.word(),
                 namensergaenzung: faker.lorem.word(),
@@ -157,7 +142,6 @@ describe('OrganisationController', () => {
                 OrganisationsTyp.ROOT,
                 undefined,
                 faker.string.uuid(),
-                faker.string.uuid(),
                 faker.string.numeric(),
                 faker.lorem.word(),
                 faker.string.uuid(),
@@ -171,7 +155,6 @@ describe('OrganisationController', () => {
                 'Ersatzschulen Land Schleswig-Holstein',
                 OrganisationsTyp.SCHULE,
                 undefined,
-                faker.string.uuid(),
                 faker.string.uuid(),
                 faker.string.numeric(),
                 faker.lorem.word(),
@@ -205,7 +188,6 @@ describe('OrganisationController', () => {
                     OrganisationsTyp.ROOT,
                     undefined,
                     faker.string.uuid(),
-                    faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
                     faker.string.uuid(),
@@ -219,7 +201,6 @@ describe('OrganisationController', () => {
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
@@ -254,7 +235,6 @@ describe('OrganisationController', () => {
                     OrganisationsTyp.ROOT,
                     undefined,
                     faker.string.uuid(),
-                    faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
                     faker.string.uuid(),
@@ -268,7 +248,6 @@ describe('OrganisationController', () => {
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
@@ -301,7 +280,6 @@ describe('OrganisationController', () => {
                 typ: OrganisationsTyp.KLASSE,
                 traegerschaft: Traegerschaft.SONSTIGE,
                 administriertVon: faker.string.uuid(),
-                zugehoerigZu: faker.string.uuid(),
             };
 
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(false);
@@ -320,7 +298,6 @@ describe('OrganisationController', () => {
                 typ: OrganisationsTyp.SCHULE,
                 traegerschaft: Traegerschaft.SONSTIGE,
                 administriertVon: faker.string.uuid(),
-                zugehoerigZu: faker.string.uuid(),
             };
             permissionsMock.hasOrgVerwaltenRechtAtOrga.mockResolvedValueOnce(false);
 
@@ -346,7 +323,6 @@ describe('OrganisationController', () => {
                     typ: OrganisationsTyp.SONSTIGE,
                     traegerschaft: Traegerschaft.SONSTIGE,
                     administriertVon: faker.lorem.word(),
-                    zugehoerigZu: faker.lorem.word(),
                     emailAdress: faker.internet.email(),
                 });
                 const returnedValue: Organisation<true> = DoFactory.createOrganisation(true);
@@ -360,7 +336,6 @@ describe('OrganisationController', () => {
                     {
                         id: params.organisationId,
                         administriertVon: body.administriertVon,
-                        zugehoerigZu: body.zugehoerigZu,
                         name: body.name,
                         namensergaenzung: body.namensergaenzung,
                         kuerzel: body.kuerzel,
@@ -438,7 +413,6 @@ describe('OrganisationController', () => {
                 typ: OrganisationsTyp.KLASSE,
                 traegerschaft: Traegerschaft.SONSTIGE,
                 administriertVon: faker.lorem.word(),
-                zugehoerigZu: faker.lorem.word(),
             });
             organisationServiceMock.updateOrganisation.mockResolvedValueOnce({
                 ok: false,
@@ -463,7 +437,6 @@ describe('OrganisationController', () => {
                 typ: OrganisationsTyp.SCHULE,
                 traegerschaft: Traegerschaft.SONSTIGE,
                 administriertVon: faker.lorem.word(),
-                zugehoerigZu: faker.lorem.word(),
             };
             organisationServiceMock.updateOrganisation.mockResolvedValueOnce({
                 ok: false,
@@ -522,7 +495,6 @@ describe('OrganisationController', () => {
                             createdAt: faker.date.recent(),
                             updatedAt: faker.date.recent(),
                             administriertVon: faker.string.uuid(),
-                            zugehoerigZu: faker.string.uuid(),
                             kennung: faker.lorem.word(),
                             name: faker.lorem.word(),
                             namensergaenzung: faker.lorem.word(),
@@ -606,7 +578,6 @@ describe('OrganisationController', () => {
                     OrganisationsTyp.ROOT,
                     undefined,
                     faker.string.uuid(),
-                    faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
                     faker.string.uuid(),
@@ -620,7 +591,6 @@ describe('OrganisationController', () => {
                     'Ersatzschulen Land Schleswig-Holstein',
                     OrganisationsTyp.SCHULE,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
@@ -671,7 +641,6 @@ describe('OrganisationController', () => {
                     faker.lorem.word(),
                     OrganisationsTyp.ROOT,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
@@ -759,98 +728,6 @@ describe('OrganisationController', () => {
         });
     });
 
-    describe('getZugehoerigeOrganisationen', () => {
-        const params: OrganisationByIdParams = {
-            organisationId: faker.string.uuid(),
-        };
-
-        describe('when usecase returns a OrganisationResponse', () => {
-            it('should return all organizations that match', async () => {
-                const organisations: Paged<Organisation<true>> = {
-                    items: [DoFactory.createOrganisation(true), DoFactory.createOrganisation(true)],
-                    limit: 10,
-                    offset: 0,
-                    total: 2,
-                    pageTotal: 2,
-                };
-                const organisatonResponse: OrganisationResponse[] = organisations.items.map(
-                    (item: Organisation<true>) => new OrganisationResponse(item),
-                );
-                organisationServiceMock.findOrganisationById.mockResolvedValue({
-                    ok: true,
-                    value: DoFactory.createOrganisation(true),
-                });
-                organisationServiceMock.findAllZugehoerigZu.mockResolvedValue(organisations);
-
-                const result: Paged<OrganisationResponseLegacy> =
-                    await organisationController.getZugehoerigeOrganisationen(params);
-
-                expect(result.items).toEqual(organisatonResponse);
-                expect(organisationServiceMock.findAllZugehoerigZu).toHaveBeenCalledTimes(1);
-                expect(result.items.length).toEqual(2);
-            });
-        });
-
-        describe('when usecase returns a domain error', () => {
-            it('should throw a HttpException if parent organisation is not found', async () => {
-                organisationServiceMock.findOrganisationById.mockResolvedValueOnce({
-                    ok: false,
-                    error: new EntityNotFoundError(),
-                });
-                await expect(organisationController.getZugehoerigeOrganisationen(params)).rejects.toBeInstanceOf(
-                    EntityNotFoundError,
-                );
-            });
-        });
-    });
-
-    describe('addZugehoerigeOrganisation', () => {
-        describe('when usecase succeeds', () => {
-            it('should not throw an error', async () => {
-                const [params, body]: [OrganisationByIdParams, OrganisationByIdBodyParams] = getFakeParamsAndBody();
-
-                organisationServiceMock.setZugehoerigZu.mockResolvedValue({ ok: true, value: undefined });
-
-                await expect(
-                    organisationController.addZugehoerigeOrganisation(params, body, permissionsMock),
-                ).resolves.not.toThrow();
-                expect(organisationServiceMock.setZugehoerigZu).toHaveBeenCalledTimes(1);
-            });
-        });
-
-        describe('when usecase returns a OrganisationSpecificationError', () => {
-            it('should throw a HttpException', async () => {
-                const [params, body]: [OrganisationByIdParams, OrganisationByIdBodyParams] = getFakeParamsAndBody();
-
-                organisationServiceMock.setZugehoerigZu.mockResolvedValue({
-                    ok: false,
-                    error: new OrganisationSpecificationError('error', undefined),
-                });
-                await expect(
-                    organisationController.addZugehoerigeOrganisation(params, body, permissionsMock),
-                ).rejects.toThrow(OrganisationSpecificationError);
-
-                expect(organisationServiceMock.setZugehoerigZu).toHaveBeenCalledTimes(1);
-            });
-        });
-
-        describe('when usecase returns a domain error', () => {
-            it('should throw a domain error', async () => {
-                const [params, body]: [OrganisationByIdParams, OrganisationByIdBodyParams] = getFakeParamsAndBody();
-
-                organisationServiceMock.setZugehoerigZu.mockResolvedValue({
-                    ok: false,
-                    error: new EntityNotFoundError('Organisation', undefined),
-                });
-                await expect(
-                    organisationController.addZugehoerigeOrganisation(params, body, permissionsMock),
-                ).rejects.toBeInstanceOf(EntityNotFoundError);
-
-                expect(organisationServiceMock.setZugehoerigZu).toHaveBeenCalledTimes(1);
-            });
-        });
-    });
-
     describe('updateOrganisationName', () => {
         describe('when usecase succeeds', () => {
             it('should not throw an error', async () => {
@@ -862,7 +739,6 @@ describe('OrganisationController', () => {
                     'Öffentliche Schulen Land Schleswig-Holstein',
                     OrganisationsTyp.ROOT,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
@@ -959,7 +835,6 @@ describe('OrganisationController', () => {
                     OrganisationsTyp.ROOT,
                     undefined,
                     faker.string.uuid(),
-                    faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),
                     faker.string.uuid(),
@@ -1044,7 +919,6 @@ describe('OrganisationController', () => {
                     'Schule',
                     OrganisationsTyp.SCHULE,
                     undefined,
-                    faker.string.uuid(),
                     faker.string.uuid(),
                     faker.string.numeric(),
                     faker.lorem.word(),

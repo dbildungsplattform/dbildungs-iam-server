@@ -13,7 +13,6 @@ describe('SchuleUpdatedEvent', () => {
         organisation.name = faker.company.name();
         organisation.itslearningEnabled = true;
         organisation.administriertVon = faker.string.uuid();
-        organisation.zugehoerigZu = faker.string.uuid();
 
         const event: SchuleUpdatedEvent = SchuleUpdatedEvent.fromOrganisations(organisation, oldOrganisation);
 
@@ -26,7 +25,5 @@ describe('SchuleUpdatedEvent', () => {
         expect(event.itslearningEnabled).toEqual(organisation.itslearningEnabled);
         expect(event.administriertVon).toEqual(organisation.administriertVon);
         expect(event.oldAdministriertVon).toEqual(oldOrganisation.administriertVon);
-        expect(event.zugehoerigZu).toEqual(organisation.zugehoerigZu);
-        expect(event.oldZugehoerigZu).toEqual(oldOrganisation.zugehoerigZu);
     });
 });

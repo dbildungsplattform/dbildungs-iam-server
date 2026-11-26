@@ -126,7 +126,6 @@ describe('VidisSyncService', () => {
             OrganisationsTyp.SCHULE,
             undefined,
             undefined,
-            undefined,
             kennung,
         );
 

@@ -21,7 +21,6 @@ import { OrganisationHasPersonenkontexteError } from './errors/organisation-has-
 import { OrganisationHasRollenError } from './errors/organisation-has-rollen.error.js';
 import { OrganisationHasRollenerweiterungError } from './errors/organisation-has-rollenerweiterung.error.js';
 import { OrganisationHasServiceProvidersError } from './errors/organisation-has-service-provider.error.js';
-import { OrganisationHasZugehoerigeError } from './errors/organisation-has-zugehoerige.error.js';
 
 @Injectable()
 export class OrganisationDeleteService {
@@ -51,13 +50,6 @@ export class OrganisationDeleteService {
         );
         if (childOrganisationCount) {
             return Err(new OrganisationHasChildrenError());
-        }
-
-        const [, zugehoerigeOrganisationCount]: Counted<Organisation<true>> = await this.organisationRepo.findBy(
-            new OrganisationScope().findZugehoerigeZu(organisationId).paged(0, 1),
-        );
-        if (zugehoerigeOrganisationCount) {
-            return Err(new OrganisationHasZugehoerigeError());
         }
 
         if (await this.organisationRepo.hasOrganisationsbeziehung(organisationId)) {

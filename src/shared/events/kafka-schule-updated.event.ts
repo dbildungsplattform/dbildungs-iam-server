@@ -17,11 +17,9 @@ export class KafkaSchuleUpdatedEvent extends SchuleUpdatedEvent implements Kafka
             newOrganisation.name,
             newOrganisation.itslearningEnabled,
             newOrganisation.administriertVon,
-            newOrganisation.zugehoerigZu,
             oldOrganisation.kennung,
             oldOrganisation.name,
             oldOrganisation.administriertVon,
-            oldOrganisation.zugehoerigZu,
         );
     }
 }

@@ -2,14 +2,12 @@ import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import { Response } from 'express';
 import { OrganisationUpdateOutdatedError } from '../domain/orga-update-outdated.error.js';
 import { OrganisationIstBereitsZugewiesenError } from '../domain/organisation-ist-bereits-zugewiesen.error.js';
-import { OrganisationZuordnungVerschiebenError } from '../domain/organisation-zuordnung-verschieben.error.js';
 import { OrganisationHasChildrenError } from '../organisation-delete/errors/organisation-has-children.error.js';
 import { OrganisationHasOrganisationsbeziehungenError } from '../organisation-delete/errors/organisation-has-organisationsbeziehungen.error.js';
 import { OrganisationHasPersonenkontexteError } from '../organisation-delete/errors/organisation-has-personenkontexte.error.js';
 import { OrganisationHasRollenError } from '../organisation-delete/errors/organisation-has-rollen.error.js';
 import { OrganisationHasRollenerweiterungError } from '../organisation-delete/errors/organisation-has-rollenerweiterung.error.js';
 import { OrganisationHasServiceProvidersError } from '../organisation-delete/errors/organisation-has-service-provider.error.js';
-import { OrganisationHasZugehoerigeError } from '../organisation-delete/errors/organisation-has-zugehoerige.error.js';
 import { BehoerdeAdministriertVonError } from '../specification/error/behoerde-administriert-von.error.js';
 import { BehoerdeNameEindeutigError } from '../specification/error/behoerde-name-eindeutig.error.js';
 import { EmailAdressOnOrganisationTypError } from '../specification/error/email-adress-on-organisation-typ-error.js';
@@ -24,7 +22,6 @@ import { NameForOrganisationWithTrailingSpaceError } from '../specification/erro
 import { NurKlasseKursUnterSchuleError } from '../specification/error/nur-klasse-kurs-unter-schule.error.js';
 import { OrganisationSpecificationError } from '../specification/error/organisation-specification.error.js';
 import { RelationshipSearchUnsupportedOrganisationTypeError } from '../specification/error/relationship-search-unsupported-organisation-type.error.js';
-import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
 import { RootOrganisationImmutableError } from '../specification/error/root-organisation-immutable.error.js';
 import { SchuleKennungEindeutigError } from '../specification/error/schule-kennung-eindeutig.error.js';
 import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
@@ -175,20 +172,6 @@ export class OrganisationExceptionFilter implements ExceptionFilter<Organisation
             }),
         ],
         [
-            OrganisationZuordnungVerschiebenError.name,
-            new DbiamOrganisationError({
-                code: 400,
-                i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_ZUWEISUNG_FEHLER,
-            }),
-        ],
-        [
-            OrganisationsOnDifferentSubtreesError.name,
-            new DbiamOrganisationError({
-                code: 400,
-                i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_WECHSELT_TEILBAUM,
-            }),
-        ],
-        [
             SchultraegerNameEindeutigError.name,
             new DbiamOrganisationError({
                 code: 400,
@@ -200,13 +183,6 @@ export class OrganisationExceptionFilter implements ExceptionFilter<Organisation
             new DbiamOrganisationError({
                 code: 400,
                 i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_HAT_KINDER,
-            }),
-        ],
-        [
-            OrganisationHasZugehoerigeError.name,
-            new DbiamOrganisationError({
-                code: 400,
-                i18nKey: OrganisationSpecificationErrorI18nTypes.ORGANISATION_HAT_ZUGEHOERIGE,
             }),
         ],
         [

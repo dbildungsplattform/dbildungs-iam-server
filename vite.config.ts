@@ -4,7 +4,7 @@ import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 try {
-    readFileSync(resolve(__dirname, './.env'), 'utf-8')
+    readFileSync(resolve(import.meta.dirname, './.env'), 'utf-8')
         .split('\n')
         .forEach((line: string) => {
             const [key, value]: string[] = line.split('=');
@@ -97,7 +97,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            src: resolve(__dirname, './src'),
+            src: resolve(import.meta.dirname, './src'),
         },
     },
 });

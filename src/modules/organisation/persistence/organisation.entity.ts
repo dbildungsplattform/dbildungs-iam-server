@@ -13,13 +13,10 @@ export class OrganisationEntity extends TimestampedEntity {
     @Property({ columnType: 'uuid', nullable: true })
     public administriertVon?: string;
 
-    @Property({ columnType: 'uuid', nullable: true })
-    public zugehoerigZu?: string;
-
-    @Property({ nullable: true })
+    @Property({ nullable: true, collation: 'alphanumeric' })
     public kennung?: string;
 
-    @Property({ nullable: false })
+    @Property({ nullable: false, collation: 'alphanumeric' })
     public name!: string;
 
     @Property({ nullable: true })

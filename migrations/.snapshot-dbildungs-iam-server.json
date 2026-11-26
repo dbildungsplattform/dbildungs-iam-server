@@ -1698,23 +1698,6 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "bigint"
-        },
-        "zugehoerig_zu": {
-          "name": "zugehoerig_zu",
-          "type": "uuid",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "collation": null,
-          "enumItems": [],
-          "mappedType": "uuid"
         }
       },
       "indexes": [
@@ -4316,7 +4299,7 @@
           ],
           "composite": false,
           "constraint": false,
-          "keyName": "service_provider_rollenarten_whitelist_service_provider_id_inde",
+          "keyName": "sp_rollenarten_whitelist_sp_id_index",
           "primary": false,
           "unique": false
         }

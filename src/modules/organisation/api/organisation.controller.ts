@@ -17,7 +17,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
-    ApiBody,
     ApiCreatedResponse,
     ApiForbiddenResponse,
     ApiInternalServerErrorResponse,
@@ -26,7 +25,6 @@ import {
     ApiOAuth2,
     ApiOkResponse,
     ApiOperation,
-    ApiParam,
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -53,7 +51,6 @@ import { DbiamOrganisationError } from './dbiam-organisation.error.js';
 import { FindOrganisationQueryParams } from './find-organisation-query.param.js';
 import { FindOrganisationsbeziehungenQueryParams } from './find-organisationsbeziehungen-query.params.js';
 import { SearchOrganisationsForRelationshipsQueryParams } from './search-organisations-for-relationships-query.params.js';
-import { OrganisationByIdBodyParams } from './organisation-by-id.body.params.js';
 import { OrganisationByIdParams } from './organisation-by-id.params.js';
 import { OrganisationByNameBodyParams } from './organisation-by-name.body.params.js';
 import { OrganisationByNameQueryParams } from './organisation-by-name.query.js';
@@ -106,7 +103,6 @@ export class OrganisationController {
             params.name,
             params.typ,
             params.administriertVon,
-            params.zugehoerigZu,
             params.kennung,
             params.namensergaenzung,
             params.kuerzel,
@@ -147,7 +143,6 @@ export class OrganisationController {
             {
                 id: params.organisationId,
                 administriertVon: body.administriertVon,
-                zugehoerigZu: body.zugehoerigZu,
                 name: body.name,
                 namensergaenzung: body.namensergaenzung,
                 kuerzel: body.kuerzel,
@@ -333,78 +328,6 @@ export class OrganisationController {
             items: result.items.map((item: Organisation<true>) => new OrganisationResponse(item)),
             pageTotal: result.items.length,
         });
-    }
-
-    // This endpoint will be added again in the future, but for now it is not needed and needs to be rewritten anyways
-    // @Post(':organisationId/administriert')
-    // public addAdministrierteOrganisation(): void
-
-    @Get(':organisationId/zugehoerig')
-    @ApiOkResponsePaginated(OrganisationResponse, {
-        description: 'The organizations were successfully returned.',
-    })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to get organizations.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permissions to get organizations.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting all organizations.' })
-    public async getZugehoerigeOrganisationen(
-        @Param() params: OrganisationByIdParams,
-    ): Promise<PagedResponse<OrganisationResponse>> {
-        const parentOrg: Result<Organisation<true>, DomainError> = await this.organisationService.findOrganisationById(
-            params.organisationId,
-        );
-        if (!parentOrg.ok) {
-            throw parentOrg.error;
-        }
-
-        const result: Paged<Organisation<true>> = await this.organisationService.findAllZugehoerigZu(
-            params.organisationId,
-        );
-
-        const organisations: OrganisationResponse[] = result.items.map(
-            (item: Organisation<true>) => new OrganisationResponse(item),
-        );
-
-        const response: PagedResponse<OrganisationResponse> = new PagedResponse({
-            total: result.total,
-            offset: result.offset,
-            limit: result.limit,
-            items: organisations,
-            pageTotal: organisations.length,
-        });
-
-        return response;
-    }
-
-    @Post(':organisationId/zugehoerig')
-    @UseGuards(StepUpGuard)
-    @ApiParam({
-        name: 'organisationId',
-        description: 'The ID of the parent organisation to which another organisation will be added as a subordinate.',
-        type: String,
-    })
-    @ApiBody({
-        description: 'The ID of the child organisation that will be assigned to the parent organisation.',
-        type: OrganisationByIdBodyParams,
-    })
-    @ApiCreatedResponse({ description: 'The organisation was successfully updated.' })
-    @ApiBadRequestResponse({ description: 'The organisation could not be modified.', type: DbiamOrganisationError })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to modify the organisation.' })
-    @ApiForbiddenResponse({ description: 'Not permitted to modify the organisation.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while modifying the organisation.' })
-    public async addZugehoerigeOrganisation(
-        @Param() params: OrganisationByIdParams,
-        @Body() body: OrganisationByIdBodyParams,
-        @Permissions() permissions: IPersonPermissions,
-    ): Promise<void> {
-        const res: Result<void, DomainError> = await this.organisationService.setZugehoerigZu(
-            params.organisationId,
-            body.organisationId,
-            permissions,
-        );
-
-        if (!res.ok) {
-            throw res.error;
-        }
     }
 
     @Get(':organisationId/beziehungen')

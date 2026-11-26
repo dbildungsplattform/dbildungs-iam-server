@@ -70,6 +70,10 @@ export class DatabaseTestModule implements OnModuleDestroy {
 
     public static async setupDatabase(orm: MikroORM): Promise<void> {
         await orm.em.getConnection().execute('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+        // Normally created by Migration20241121153325, but tests build the schema from entities
+        await orm.em
+            .getConnection()
+            .execute(`CREATE COLLATION IF NOT EXISTS alphanumeric (provider = icu, locale = 'de-u-kn-true')`);
         await orm.schema.create();
     }
 

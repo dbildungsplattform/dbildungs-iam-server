@@ -12,10 +12,6 @@ export class CommonCreateUpdateOrganisationBodyParams {
     @ApiProperty({ required: true })
     public readonly administriertVon!: string;
 
-    @IsUUID()
-    @ApiProperty({ required: true })
-    public readonly zugehoerigZu!: string;
-
     @IsOptional()
     @IsString()
     @ApiPropertyOptional({ description: 'Only allowed for SCHULE. Required when creating a SCHULE.' })

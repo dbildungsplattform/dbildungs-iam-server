@@ -10,15 +10,11 @@ import { EventModule } from '../../../core/eventbus/index.js';
 import { type DataConfig } from '../../../shared/config/data.config.js';
 import { type ServerConfig } from '../../../shared/config/server.config.js';
 import { type DomainError } from '../../../shared/error/index.js';
-import { type IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { OrganisationEntity } from '../persistence/organisation.entity.js';
 import { mapOrgaAggregateToData, OrganisationRepository } from '../persistence/organisation.repository.js';
 import { KlasseNurVonSchuleAdministriertError } from '../specification/error/klasse-nur-von-schule-administriert.error.js';
 import { KlassenNameAnSchuleEindeutigError } from '../specification/error/klassen-name-an-schule-eindeutig.error.js';
-import { OrganisationsOnDifferentSubtreesError } from '../specification/error/organisations-on-different-subtrees.error.js';
-import { SchuleUnterTraegerError } from '../specification/error/schule-unter-traeger.error.js';
-import { ZyklusInOrganisationenError } from '../specification/error/zyklus-in-organisationen.error.js';
 import { OrganisationsTyp } from './organisation.enums.js';
 import { type Organisation } from './organisation.js';
 import { OrganisationService } from './organisation.service.js';
@@ -30,7 +26,6 @@ describe('OrganisationServiceSpecificationTest', () => {
     let orm: MikroORM;
     let root: Organisation<true>;
     let oeffentlich: Organisation<true>;
-    let ersatz: Organisation<true>;
     let traeger1: Organisation<true>;
 
     let ROOT_ORGANISATION_ID: string;
@@ -67,7 +62,6 @@ describe('OrganisationServiceSpecificationTest', () => {
             name: 'Root',
             id: ROOT_ORGANISATION_ID,
             administriertVon: undefined,
-            zugehoerigZu: undefined,
             typ: OrganisationsTyp.ROOT,
         });
         await orm.em.persist(orm.em.create(OrganisationEntity, mapOrgaAggregateToData(root))).flush();
@@ -75,22 +69,19 @@ describe('OrganisationServiceSpecificationTest', () => {
             DoFactory.createOrganisation(false, {
                 name: 'Öffentliche Schulen',
                 administriertVon: root.id,
-                zugehoerigZu: root.id,
                 typ: OrganisationsTyp.LAND,
             }),
         );
-        ersatz = await organisationRepository.save(
+        await organisationRepository.save(
             DoFactory.createOrganisation(false, {
                 name: 'Ersatz',
                 administriertVon: root.id,
-                zugehoerigZu: root.id,
                 typ: OrganisationsTyp.LAND,
             }),
         );
         const traeger1Do: Organisation<boolean> = DoFactory.createOrganisation(false, {
             name: 'Träger1',
             administriertVon: oeffentlich.id,
-            zugehoerigZu: oeffentlich.id,
             typ: OrganisationsTyp.TRAEGER,
         });
         traeger1 = await organisationRepository.save(traeger1Do);
@@ -108,7 +99,6 @@ describe('OrganisationServiceSpecificationTest', () => {
                 kennung: undefined,
                 emailAdress: undefined,
                 administriertVon: traeger1.id,
-                zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.KLASSE,
             });
 
@@ -127,7 +117,6 @@ describe('OrganisationServiceSpecificationTest', () => {
             const schuleDo: Organisation<boolean> = DoFactory.createOrganisation(false, {
                 name: 'Schule',
                 administriertVon: oeffentlich.id,
-                zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.SCHULE,
             });
             const schule: Organisation<true> = await organisationRepository.save(schuleDo);
@@ -135,7 +124,6 @@ describe('OrganisationServiceSpecificationTest', () => {
                 name: 'Klasse',
                 emailAdress: undefined,
                 administriertVon: schule.id,
-                zugehoerigZu: schule.id,
                 typ: OrganisationsTyp.KLASSE,
             });
             await organisationRepository.save(klasseDo);
@@ -144,7 +132,6 @@ describe('OrganisationServiceSpecificationTest', () => {
                 kennung: undefined,
                 emailAdress: undefined,
                 administriertVon: schule.id,
-                zugehoerigZu: schule.id,
                 typ: OrganisationsTyp.KLASSE,
             });
             const result: Result<Organisation<true>> = await organisationService.createOrganisation(
@@ -166,7 +153,6 @@ describe('OrganisationServiceSpecificationTest', () => {
                 name: 'klasse',
                 emailAdress: undefined,
                 administriertVon: traeger1.id,
-                zugehoerigZu: traeger1.id,
                 typ: OrganisationsTyp.KLASSE,
             });
             const klassePersisted: Organisation<true> = await organisationRepository.save(klasse);
@@ -181,108 +167,6 @@ describe('OrganisationServiceSpecificationTest', () => {
             expect(result).toEqual<Result<Organisation<true>>>({
                 ok: false,
                 error: new KlasseNurVonSchuleAdministriertError(klassePersisted.id),
-            });
-        });
-    });
-
-    describe('setZugehoerigZu', () => {
-        it('should update the organisation', async () => {
-            const school: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const traeger: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.TRAEGER,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const permissions: IPersonPermissions = createPersonPermissionsMock();
-
-            const result: Result<void> = await organisationService.setZugehoerigZu(traeger.id, school.id, permissions);
-
-            expect(result).toEqual<Result<void>>({
-                ok: true,
-                value: undefined,
-            });
-        });
-
-        it('should return a domain error if the organisation would switch subtrees', async () => {
-            const school: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const traeger: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.TRAEGER,
-                    administriertVon: ersatz.id,
-                    zugehoerigZu: ersatz.id,
-                }),
-            );
-            const permissions: IPersonPermissions = createPersonPermissionsMock();
-
-            const result: Result<void> = await organisationService.setZugehoerigZu(traeger.id, school.id, permissions);
-
-            expect(result).toEqual<Result<void>>({
-                ok: false,
-                error: new OrganisationsOnDifferentSubtreesError(),
-            });
-        });
-
-        it('should return a domain error if the SchuleUnterTraeger specification is not met', async () => {
-            const school: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const school2: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const permissions: IPersonPermissions = createPersonPermissionsMock();
-
-            const result: Result<void> = await organisationService.setZugehoerigZu(school2.id, school.id, permissions);
-
-            expect(result).toEqual<Result<void>>({
-                ok: false,
-                error: new SchuleUnterTraegerError(school.id),
-            });
-        });
-
-        it('should return a domain error if the ZyklusInZugehoerigZu specification is not met', async () => {
-            const school: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.SCHULE,
-                    administriertVon: oeffentlich.id,
-                    zugehoerigZu: oeffentlich.id,
-                }),
-            );
-            const traeger: Organisation<true> = await organisationRepository.save(
-                DoFactory.createOrganisation(false, {
-                    typ: OrganisationsTyp.TRAEGER,
-                    administriertVon: school.id,
-                    zugehoerigZu: school.id,
-                }),
-            );
-            const permissions: IPersonPermissions = createPersonPermissionsMock();
-
-            const result: Result<void> = await organisationService.setZugehoerigZu(traeger.id, school.id, permissions);
-
-            expect(result).toEqual<Result<void>>({
-                ok: false,
-                error: new ZyklusInOrganisationenError(school.id),
             });
         });
     });

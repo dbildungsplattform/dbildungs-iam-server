@@ -53,7 +53,6 @@ describe('Organisation', () => {
                 OrganisationsTyp.SCHULE,
                 undefined,
                 faker.string.uuid(),
-                faker.string.uuid(),
                 faker.lorem.word(),
                 faker.lorem.word(),
                 faker.string.uuid(),
@@ -74,7 +73,6 @@ describe('Organisation', () => {
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
-                faker.string.uuid(),
                 faker.lorem.word(),
                 faker.lorem.word(),
                 faker.string.uuid(),
@@ -89,7 +87,6 @@ describe('Organisation', () => {
             const organisation: Organisation<false, false> | DomainError = Organisation.createNew(
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
-                faker.string.uuid(),
                 faker.string.uuid(),
                 'kennung',
                 'name',
@@ -107,7 +104,6 @@ describe('Organisation', () => {
                 'name ',
                 OrganisationsTyp.SCHULE,
                 faker.string.uuid(),
-                faker.string.uuid(),
                 'kennung',
                 ' Test',
                 faker.string.uuid(),
@@ -121,7 +117,6 @@ describe('Organisation', () => {
             const result: DomainError | Organisation<false, false> = Organisation.createNew(
                 faker.lorem.word(),
                 OrganisationsTyp.SCHULE,
-                faker.string.uuid(),
                 faker.string.uuid(),
                 ' Test',
                 'name',
@@ -313,7 +308,7 @@ describe('Organisation', () => {
                 it('should return TraegerUnterRootChildError', async () => {
                     const traeger: Organisation<true, false> = DoFactory.createOrganisationAggregate(true, {
                         name: 'Schultraeger without proper parent',
-                        zugehoerigZu: faker.string.uuid(),
+                        administriertVon: faker.string.uuid(),
                         typ: OrganisationsTyp.TRAEGER,
                     });
                     const result: OrganisationSpecificationError | undefined =
@@ -325,7 +320,6 @@ describe('Organisation', () => {
                 it('should not return an error if the traeger has no id', async () => {
                     const traeger: Organisation<false, false> = DoFactory.createOrganisationAggregate(false, {
                         name: 'Schultraeger without id',
-                        zugehoerigZu: faker.string.uuid(),
                         typ: OrganisationsTyp.TRAEGER,
                     });
                     organisationRepositoryMock.findBy.mockResolvedValueOnce([[], 0]);
@@ -343,7 +337,7 @@ describe('Organisation', () => {
                 vi.restoreAllMocks();
                 // Setup a unique Schultraeger
                 traeger = DoFactory.createOrganisationAggregate(true, {
-                    zugehoerigZu: oeffentlich.id,
+                    administriertVon: oeffentlich.id,
                     typ: OrganisationsTyp.TRAEGER,
                 });
             });
@@ -366,7 +360,7 @@ describe('Organisation', () => {
                         DoFactory.createOrganisationAggregate(true, {
                             name: traeger.name,
                             typ: OrganisationsTyp.TRAEGER,
-                            zugehoerigZu: traeger.zugehoerigZu,
+                            administriertVon: traeger.administriertVon,
                         }),
                     ],
                     2,
@@ -395,7 +389,6 @@ describe('Organisation', () => {
                 const traegerWithoutNameAndId: Organisation<false, false> = DoFactory.createOrganisationAggregate(
                     false,
                     {
-                        zugehoerigZu: oeffentlich.id,
                         typ: OrganisationsTyp.TRAEGER,
                         name: undefined,
                     },
