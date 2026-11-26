@@ -132,12 +132,13 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         );
     }, 10000000);
 
-    async function createPerson(): Promise<Person<true>> {
+    async function createPerson(personalnummer?: string): Promise<Person<true>> {
         const personResult: Person<false> | DomainError = await personFactory.createNew({
             vorname: faker.person.firstName(),
             familienname: faker.person.lastName(),
             username: faker.internet.username(),
             password: generatePassword(),
+            personalnummer,
         });
         if (personResult instanceof DomainError) {
             throw personResult;
@@ -1069,6 +1070,123 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     i18nKey: 'MISSING_PERMISSIONS',
                 });
             });
+        });
+    });
+
+    describe('PersonenkontextController /personenkontexte/person/:personId', () => {
+        let person: Person<true>;
+        let existing: Personenkontext<true>;
+        let newRole: Rolle<true>;
+        let url: string;
+        let landesbedienstetenzuordnungenUrl: string;
+
+        beforeEach(async () => {
+            person = await createPerson('1234567');
+            const organisation: Organisation<true> = await organisationRepo.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE }),
+            );
+            const existingRole: Rolle<true> = await rolleRepo.create(
+                DoFactory.createRolle(false, { rollenart: RollenArt.LEHR, merkmale: [] }),
+            );
+            newRole = await rolleRepo.create(DoFactory.createRolle(false, { rollenart: RollenArt.LEHR, merkmale: [] }));
+            existing = await personenkontextRepoInternal.save(
+                DoFactory.createPersonenkontext(false, {
+                    personId: person.id,
+                    organisationId: organisation.id,
+                    rolleId: existingRole.id,
+                    befristung: undefined,
+                }),
+            );
+            url = `/personenkontexte/person/${person.id}`;
+            landesbedienstetenzuordnungenUrl = `${url}/landesbedienstetenzuordnungen`;
+        });
+
+        it('replaces the full assignment set on PUT, including removal of the final assignment', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(url)
+                .send({ count: 1, lastModified: existing.updatedAt, personenkontexte: [] });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual({ dBiamPersonenkontextResponses: [] });
+            expect(await app.get(DBiamPersonenkontextRepo).findByPerson(person.id)).toEqual([]);
+        });
+
+        it('adds a regular assignment via PUT and saves the supplied personalnummer', async () => {
+            const personalnummer: string = '7654321';
+            const response: Response = await request(app.getHttpServer() as App)
+                .put(url)
+                .query({ personalnummer })
+                .send({
+                    count: 1,
+                    lastModified: existing.updatedAt,
+                    personenkontexte: [
+                        { organisationId: existing.organisationId, rolleId: existing.rolleId },
+                        { organisationId: existing.organisationId, rolleId: newRole.id },
+                    ],
+                });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toHaveProperty(
+                'dBiamPersonenkontextResponses',
+                expect.arrayContaining([
+                    expect.objectContaining({ personId: person.id, rolleId: existing.rolleId }),
+                    expect.objectContaining({ personId: person.id, rolleId: newRole.id }),
+                ]),
+            );
+            expect((await personRepo.findById(person.id))?.personalnummer).toBe(personalnummer);
+        });
+
+        it('preserves existing assignments when adding via the Landesbedienstete POST', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(landesbedienstetenzuordnungenUrl)
+                .send({
+                    count: 1,
+                    lastModified: existing.updatedAt,
+                    personenkontexte: [{ organisationId: existing.organisationId, rolleId: newRole.id }],
+                });
+
+            expect(response.status).toBe(201);
+            const persisted: Personenkontext<true>[] = await app.get(DBiamPersonenkontextRepo).findByPerson(person.id);
+            expect(persisted.map((pk: Personenkontext<true>) => pk.rolleId).sort()).toEqual(
+                [existing.rolleId, newRole.id].sort(),
+            );
+            expect(persisted.find((pk: Personenkontext<true>) => pk.id === existing.id)?.updatedAt).toEqual(
+                existing.updatedAt,
+            );
+        });
+
+        it('rejects additions based on an outdated assignment count', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(landesbedienstetenzuordnungenUrl)
+                .send({
+                    count: 0,
+                    personenkontexte: [{ organisationId: existing.organisationId, rolleId: newRole.id }],
+                });
+
+            expect(response.status).toBe(400);
+            expect(response.body).toEqual({ code: 400, i18nKey: 'COUNT_MISMATCHING' });
+        });
+
+        it('rejects the Landesbedienstete POST without its dedicated permission', async () => {
+            personPermissionsMock.hasSystemrechteAtOrganisation.mockResolvedValueOnce(false);
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(landesbedienstetenzuordnungenUrl)
+                .send({
+                    count: 1,
+                    lastModified: existing.updatedAt,
+                    personenkontexte: [{ organisationId: existing.organisationId, rolleId: newRole.id }],
+                });
+
+            expect(response.status).toBe(404);
+            expect(response.body).toEqual({ code: 404, i18nKey: 'MISSING_PERMISSIONS' });
+        });
+
+        it('rejects an empty POST instead of treating it as a replacement', async () => {
+            const response: Response = await request(app.getHttpServer() as App)
+                .post(landesbedienstetenzuordnungenUrl)
+                .send({ count: 1, lastModified: existing.updatedAt, personenkontexte: [] });
+
+            expect(response.status).toBe(400);
         });
     });
 
