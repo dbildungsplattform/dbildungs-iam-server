@@ -161,6 +161,7 @@ export class ItsLearningSyncEventHandler {
             (target: PersonSyncTarget): target is DeleteSyncTarget => target.action === 'delete',
         );
 
+        signal?.throwIfAborted();
         const persistedUpserts: UpsertSyncTarget[] = await this.createOrUpdatePersonsMass(upserts, eventId);
         for (const target of persistedUpserts) {
             signal?.throwIfAborted();
@@ -169,6 +170,7 @@ export class ItsLearningSyncEventHandler {
             keepAlive();
         }
 
+        signal?.throwIfAborted();
         await this.deletePersonsMass(deletions, eventId);
     }
 

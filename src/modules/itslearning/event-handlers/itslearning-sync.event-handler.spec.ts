@@ -641,5 +641,77 @@ describe('ItsLearning Persons Event Handler', () => {
             expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
             expect(itslearningPersonAdapterMock.deletePersons).not.toHaveBeenCalled();
         });
+
+        it('should not start the mass upsert if the signal is aborted after the last target lookup', async () => {
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            const person: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(person);
+
+            await expect(
+                sut.personExternalSystemSyncBatch(
+                    [person.id],
+                    eventId,
+                    () => controller.abort(abortReason),
+                    controller.signal,
+                ),
+            ).rejects.toThrowError(abortReason);
+
+            expect(itslearningPersonAdapterMock.createOrUpdatePersons).not.toHaveBeenCalled();
+            expect(itslearningPersonAdapterMock.deletePersons).not.toHaveBeenCalled();
+        });
+
+        it('should not start the mass delete if the signal is aborted during the last membership update', async () => {
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            const upsertPerson: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            const deletePerson: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(upsertPerson);
+            mockPersonWithoutKontext(deletePerson);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockResolvedValueOnce(
+                Ok({ status: [successStatus], value: undefined }),
+            );
+            itslearningMembershipAdapterMock.setMemberships.mockImplementation(() => {
+                controller.abort(abortReason);
+                return Promise.resolve({ ok: true, value: { deleted: 0, updated: 1 } });
+            });
+
+            await expect(
+                sut.personExternalSystemSyncBatch(
+                    [upsertPerson.id, deletePerson.id],
+                    eventId,
+                    keepAlive,
+                    controller.signal,
+                ),
+            ).rejects.toThrowError(abortReason);
+
+            expect(itslearningMembershipAdapterMock.setMemberships).toHaveBeenCalledTimes(1);
+            expect(itslearningPersonAdapterMock.deletePersons).not.toHaveBeenCalled();
+        });
+
+        it('should not start the mass delete if the signal is aborted and the mass upsert returned no targets', async () => {
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            const upsertPerson: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            const deletePerson: Person<true> = DoFactory.createPerson(true, { username: faker.internet.username() });
+            mockRelevantPerson(upsertPerson);
+            mockPersonWithoutKontext(deletePerson);
+            itslearningPersonAdapterMock.createOrUpdatePersons.mockImplementationOnce(() => {
+                controller.abort(abortReason);
+                return Promise.resolve(Err(new ItsLearningError('Error Test')));
+            });
+
+            await expect(
+                sut.personExternalSystemSyncBatch(
+                    [upsertPerson.id, deletePerson.id],
+                    eventId,
+                    keepAlive,
+                    controller.signal,
+                ),
+            ).rejects.toThrowError(abortReason);
+
+            expect(itslearningMembershipAdapterMock.setMemberships).not.toHaveBeenCalled();
+            expect(itslearningPersonAdapterMock.deletePersons).not.toHaveBeenCalled();
+        });
     });
 });
