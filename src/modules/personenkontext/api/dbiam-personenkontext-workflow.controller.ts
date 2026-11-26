@@ -1,21 +1,7 @@
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Post,
-    Put,
-    Query,
-    UseFilters,
-    UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, UseFilters, UseGuards } from '@nestjs/common';
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
-    ApiConflictResponse,
     ApiCreatedResponse,
     ApiForbiddenResponse,
     ApiInternalServerErrorResponse,
@@ -35,7 +21,6 @@ import { PersonPermissions } from '../../authentication/domain/person-permission
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
-import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { LandesbediensteteKontextWorkflowService } from '../domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
@@ -44,18 +29,13 @@ import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
-import { DbiamPersonenkontexteUpdateError } from './dbiam-personenkontexte-update.error.js';
 import { DbiamCreatePersonWithPersonenkontexteBodyParams } from './param/dbiam-create-person-with-personenkontexte.body.params.js';
 import { DbiamCreatePersonenkontextBodyParams } from './param/dbiam-create-personenkontext.body.params.js';
-import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
 import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
-import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
-import { DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
 import { PersonenkontextExceptionFilter } from './personenkontext-exception-filter.js';
 import { PersonenkontexteUpdateExceptionFilter } from './personenkontexte-update-exception-filter.js';
 import { DBiamPersonResponse } from './response/dbiam-person.response.js';
 import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
-import { PersonenkontexteUpdateResponse } from './response/personenkontexte-update.response.js';
 
 @UseFilters(new PersonenkontextExceptionFilter(), new PersonenkontexteUpdateExceptionFilter())
 @ApiTags('personenkontext')
@@ -119,64 +99,6 @@ export class DbiamPersonenkontextWorkflowController {
         }
 
         return new PersonenkontextWorkflowResponse(canCommit, params.organisationId, params.rollenIds);
-    }
-
-    @Put(':personId')
-    @UseGuards(StepUpGuard)
-    @HttpCode(HttpStatus.OK)
-    @ApiOkResponse({
-        description:
-            'Add or remove personenkontexte as one operation. Returns the Personenkontexte existing after update.',
-        type: PersonenkontexteUpdateResponse,
-    })
-    @ApiBadRequestResponse({
-        description: 'The personenkontexte could not be updated, may due to unsatisfied specifications.',
-        type: DbiamPersonenkontexteUpdateError,
-    })
-    @ApiConflictResponse({ description: 'Changes are conflicting with current state of personenkontexte.' })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to update personenkontexte.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permission to update personenkontexte.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while updating personenkontexte.' })
-    public async commit(
-        @Param() params: DBiamFindPersonenkontexteByPersonIdParams,
-        @Query() queryParams: DbiamUpdatePersonenkontexteQueryParams,
-        @Body() bodyParams: DbiamUpdatePersonenkontexteBodyParams,
-        @Permissions() permissions: IPersonPermissions,
-    ): Promise<PersonenkontexteUpdateResponse> {
-        let updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError;
-
-        switch (bodyParams.operationContext) {
-            case OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN:
-                updateResult = await this.landesbediensteteKontextWorkflowService.commit(
-                    params.personId,
-                    bodyParams.lastModified,
-                    bodyParams.count,
-                    bodyParams.personenkontexte,
-                    permissions,
-                    queryParams.personalnummer || undefined,
-                );
-                break;
-            case OperationContext.PERSON_ANLEGEN:
-            case OperationContext.PERSON_BEARBEITEN:
-                updateResult = await this.personenkontextWorkflowFactory
-                    .createNew()
-                    .commit(
-                        params.personId,
-                        bodyParams.lastModified,
-                        bodyParams.count,
-                        bodyParams.personenkontexte,
-                        permissions,
-                        queryParams.personalnummer || undefined,
-                    );
-                break;
-            default:
-                throw new BadRequestException('Unsupported operation context for updating personenkontexte');
-        }
-
-        if (updateResult instanceof DomainError) {
-            throw updateResult;
-        }
-        return new PersonenkontexteUpdateResponse(updateResult);
     }
 
     @Post()

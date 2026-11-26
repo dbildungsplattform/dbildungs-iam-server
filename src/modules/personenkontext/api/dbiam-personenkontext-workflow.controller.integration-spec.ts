@@ -43,15 +43,13 @@ import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
 import { RolleRepo } from '../../rolle/repo/rolle.repo.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
 import { PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
-import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
 import { OperationContext } from '../domain/personenkontext.enums.js';
 import { type Personenkontext } from '../domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
 import { PersonenKontextApiModule } from '../personenkontext-api.module.js';
 import { type FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
-import { type DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
+import { type PersonenzuordnungenBearbeitenBodyParams } from './param/personenzuordnungen-bearbeiten.body.params.js';
 import { type PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
 type SetupResult = {
     organisation: Organisation<true>;
@@ -70,7 +68,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
     let personenkontextRepoInternal: DBiamPersonenkontextRepoInternal;
     let personFactory: PersonFactory;
     let personenkontextService: PersonenkontextCreationService;
-    let personenkontextWorkflowFactoryMock: DeepMocked<PersonenkontextWorkflowFactory>;
     let escalatedPersonPermissionsFactoryMock: DeepMocked<EscalatedPersonPermissionsFactory>;
 
     beforeAll(async () => {
@@ -98,10 +95,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     useValue: createMock(PersonPermissionsRepo),
                 },
                 {
-                    provide: PersonenkontextWorkflowFactory,
-                    useValue: createMock(PersonenkontextWorkflowFactory),
-                },
-                {
                     provide: APP_INTERCEPTOR,
                     useValue: createAuthInterceptorMock(personPermissionsMock),
                 },
@@ -123,7 +116,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         personenkontextRepoInternal = module.get(DBiamPersonenkontextRepoInternal);
         personFactory = module.get(PersonFactory);
         personenkontextService = module.get(PersonenkontextCreationService);
-        personenkontextWorkflowFactoryMock = module.get(PersonenkontextWorkflowFactory);
         await DatabaseTestModule.setupDatabase(orm);
         app = module.createNestApplication();
         await app.init();
@@ -1190,7 +1182,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         });
     });
 
-    describe('/PUT commit', () => {
+    describe('PUT /personenkontexte/person/:personId', () => {
         describe('MPT permissions', () => {
             afterEach(() => {
                 personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
@@ -1246,15 +1238,13 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         lastModified = mptPK.updatedAt;
                     }
                     const sentRollen: Rolle<true>[] = operation === 'add' ? [regularRolle, mptRolle] : [regularRolle];
-                    const body: DbiamUpdatePersonenkontexteBodyParams = {
+                    const body: PersonenzuordnungenBearbeitenBodyParams = {
                         count: operation === 'add' ? 1 : 2,
                         lastModified,
                         personenkontexte: sentRollen.map((rolle: Rolle<true>) => ({
-                            personId: person.id,
                             organisationId: organisation.id,
                             rolleId: rolle.id,
                         })),
-                        operationContext: OperationContext.PERSON_BEARBEITEN,
                     };
                     personPermissionsMock.canModifyPerson.mockResolvedValue(true);
                     personPermissionsMock.getPermittedMerkmaleForOrga.mockImplementation(
@@ -1272,7 +1262,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     );
 
                     const response: Response = await request(app.getHttpServer() as App)
-                        .put(`/personenkontext-workflow/${person.id}`)
+                        .put(`/personenkontexte/person/${person.id}`)
                         .send(body);
 
                     expect(response.status).toBe(allowed ? 200 : 404);
@@ -1294,43 +1284,6 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
             );
         });
 
-        describe('when sending no PKs', () => {
-            it('should delete and therefore return 200', async () => {
-                const person: Person<true> = await createPerson();
-                const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
-                const rolle: Rolle<true> | DomainError = await rolleRepo.save(
-                    DoFactory.createRolle(false, { systemrechte: [RollenSystemRecht.PERSONEN_VERWALTEN] }),
-                );
-                if (rolle instanceof DomainError) {
-                    throw Error();
-                }
-
-                const savedPK: Personenkontext<true> = await personenkontextRepoInternal.save(
-                    DoFactory.createPersonenkontext(false, {
-                        personId: person.id,
-                        rolleId: rolle.id,
-                        organisationId: orga.id,
-                        updatedAt: new Date(),
-                    }),
-                );
-                const updatePKsRequest: DbiamUpdatePersonenkontexteBodyParams = {
-                    count: 1,
-                    lastModified: savedPK.updatedAt,
-                    personenkontexte: [],
-                    operationContext: OperationContext.PERSON_BEARBEITEN,
-                };
-
-                personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
-                personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
-
-                const response: Response = await request(app.getHttpServer() as App)
-                    .put(`/personenkontext-workflow/${person.id}`)
-                    .send(updatePKsRequest);
-
-                expect(response.status).toBe(200);
-            });
-        });
-
         describe('when errors occur', () => {
             it('should return error because the count is not matching', async () => {
                 const person: Person<true> = await createPerson();
@@ -1349,15 +1302,14 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                         updatedAt: new Date(),
                     }),
                 );
-                const updatePKsRequest: DbiamUpdatePersonenkontexteBodyParams = {
+                const updatePKsRequest: PersonenzuordnungenBearbeitenBodyParams = {
                     count: 0,
                     lastModified: savedPK.updatedAt,
                     personenkontexte: [],
-                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .put(`/personenkontext-workflow/${person.id}`)
+                    .put(`/personenkontexte/person/${person.id}`)
                     .send(updatePKsRequest);
 
                 expect(response.status).toBe(400);
@@ -1396,29 +1348,26 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     throw Error();
                 }
 
-                const updatePKsRequest: DbiamUpdatePersonenkontexteBodyParams = {
-                    count: 2,
+                const updatePKsRequest: PersonenzuordnungenBearbeitenBodyParams = {
+                    count: 1,
                     lastModified: savedPK.updatedAt,
                     personenkontexte: [
                         {
-                            personId: schueler.id,
                             rolleId: lernRolle.id,
                             organisationId: schule.id,
                         },
                         {
-                            personId: schueler.id,
                             rolleId: lehrerRolle.id,
                             organisationId: schule.id,
                         },
                     ],
-                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
                 personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
                 const response: Response = await request(app.getHttpServer() as App)
-                    .put(`/personenkontext-workflow/${schueler.id}`)
+                    .put(`/personenkontexte/person/${schueler.id}`)
                     .send(updatePKsRequest);
 
                 expect(response.status).toBe(400);
@@ -1431,6 +1380,8 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
 
         describe('when duplicate personalnummer error occurs', () => {
             it('should return error with status-code 400 for duplicate personalnummer', async () => {
+                const personalnummer: string = '1234567';
+                await createPerson(personalnummer);
                 const person: Person<true> = await createPerson();
                 const orga: Organisation<true> = await organisationRepo.save(DoFactory.createOrganisation(false));
                 const rolle: Rolle<true> | DomainError = await rolleRepo.save(
@@ -1449,32 +1400,23 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     }),
                 );
 
-                const updatePKsRequest: DbiamUpdatePersonenkontexteBodyParams = {
+                const updatePKsRequest: PersonenzuordnungenBearbeitenBodyParams = {
                     count: 1,
                     lastModified: savedPK.updatedAt,
                     personenkontexte: [
                         {
-                            personId: person.id,
                             rolleId: rolle.id,
                             organisationId: orga.id,
                         },
                     ],
-                    operationContext: OperationContext.PERSON_BEARBEITEN,
                 };
 
                 personPermissionsMock.canModifyPerson.mockResolvedValueOnce(true);
                 personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 
-                const mockWorkflow: DeepMocked<PersonenkontextWorkflowAggregate> = createMock(
-                    PersonenkontextWorkflowAggregate,
-                );
-                mockWorkflow.commit.mockResolvedValueOnce(new DuplicatePersonalnummerError('12345'));
-
-                vi.spyOn(personenkontextWorkflowFactoryMock, 'createNew').mockReturnValueOnce(mockWorkflow);
-
                 const response: Response = await request(app.getHttpServer() as App)
-                    .put(`/personenkontext-workflow/${person.id}`)
-                    .query({ personalnummer: '12345' })
+                    .put(`/personenkontexte/person/${person.id}`)
+                    .query({ personalnummer })
                     .send(updatePKsRequest);
 
                 expect(response.status).toBe(400);
@@ -1484,5 +1426,13 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 });
             });
         });
+    });
+
+    it('does not expose the legacy PUT route', async () => {
+        const response: Response = await request(app.getHttpServer() as App)
+            .put(`/personenkontext-workflow/${faker.string.uuid()}`)
+            .send({ count: 0, personenkontexte: [], operationContext: OperationContext.PERSON_BEARBEITEN });
+
+        expect(response.status).toBe(404);
     });
 });
