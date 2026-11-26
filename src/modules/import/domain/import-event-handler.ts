@@ -26,6 +26,7 @@ import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
 import { ImportStatus } from './import.enums.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { EventHandlerShutdownError } from '../../../core/eventbus/error/handler-shutdown.error.js';
 
 @Injectable()
 export class ImportEventHandler {
@@ -77,11 +78,15 @@ export class ImportEventHandler {
             throw new EntityNotFoundError('ImportVorgang', importvorgangId);
         }
 
-        if (importVorgang.status !== ImportStatus.VALID) {
+        // INPROGRESS means that a previous run was interrupted (e.g. by a shutdown) and is resumed here
+        if (importVorgang.status !== ImportStatus.VALID && importVorgang.status !== ImportStatus.INPROGRESS) {
             return this.logger.logUnknownAsError(
                 'Could not start ImportVorgang, because it did not have a valid state',
                 { id: importvorgangId, status: importVorgang.status },
             );
+        }
+        if (importVorgang.status === ImportStatus.INPROGRESS) {
+            this.logger.info(`Resuming interrupted ImportVorgang ${importvorgangId}`);
         }
 
         importVorgang.execute();
@@ -94,19 +99,31 @@ export class ImportEventHandler {
             return this.logger.error(`No import data items found for Importvorgang:${importvorgangId}`);
         }
 
-        let allItemsFailed: boolean = true;
+        const pendingItems: ImportDataItem<true>[] = importDataItems.filter(
+            (item: ImportDataItem<true>) => item.status === ImportDataItemStatus.PENDING,
+        );
+        let allItemsFailed: boolean = !importDataItems.some(
+            (item: ImportDataItem<true>) => item.status === ImportDataItemStatus.SUCCESS,
+        );
 
         // Load fresh permissions because we can't serialize the permissions object when using kafka
         const permissions: IPersonPermissions = await this.permissionsRepo.loadPersonPermissions(
             event.importerKeycloakId,
         );
 
-        for (const dataItem of importDataItems) {
+        for (const dataItem of pendingItems) {
             if (signal?.aborted) {
-                importVorgang.fail();
-                // eslint-disable-next-line no-await-in-loop
-                await this.importVorgangRepository.save(importVorgang);
-                this.logger.error(`ImportVorgang ${importvorgangId} was aborted before all items were imported`);
+                if (signal.reason instanceof EventHandlerShutdownError) {
+                    // The message is redelivered after the shutdown, so the import stays INPROGRESS and is resumed
+                    this.logger.warning(
+                        `ImportVorgang ${importvorgangId} was interrupted by shutdown and will be resumed on redelivery`,
+                    );
+                } else {
+                    importVorgang.fail();
+                    // eslint-disable-next-line no-await-in-loop
+                    await this.importVorgangRepository.save(importVorgang);
+                    this.logger.error(`ImportVorgang ${importvorgangId} was aborted before all items were imported`);
+                }
                 signal.throwIfAborted();
             }
 
