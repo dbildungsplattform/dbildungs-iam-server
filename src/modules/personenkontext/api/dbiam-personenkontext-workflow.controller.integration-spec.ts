@@ -28,7 +28,6 @@ import { PersonPermissionsRepo } from '../../authentication/domain/person-permis
 import { type PersonPermissions } from '../../authentication/domain/person-permissions.js';
 import { KeycloakAdministrationModule } from '../../keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../../keycloak-administration/keycloak-config.module.js';
-import { type OrganisationResponse } from '../../organisation/api/organisation.response.js';
 import { OrganisationsTyp } from '../../organisation/domain/organisation.enums.js';
 import { type Organisation } from '../../organisation/domain/organisation.js';
 import { OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
@@ -208,39 +207,23 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
         });
 
         describe(`when context is ${OperationContext.PERSON_ANLEGEN}`, () => {
-            it('should return organisations', async () => {
-                const traeger: Organisation<true> = await organisationRepo.save(
-                    DoFactory.createOrganisation(false, { name: 'Orga A', typ: OrganisationsTyp.TRAEGER }),
-                );
-                const schule: Organisation<true> = await organisationRepo.save(
-                    DoFactory.createOrganisation(false, {
-                        name: 'Orga B',
-                        typ: OrganisationsTyp.SCHULE,
-                        administriertVon: traeger.id,
-                    }),
-                );
-                personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({ all: true });
-                personPermissionsMock.hasSystemrechtAtOrganisation.mockResolvedValue(true);
-
+            it('should accept legacy list parameters without returning an organisation list', async () => {
                 const response: Response = await request(app.getHttpServer() as App)
                     .get(`/personenkontext-workflow/step`)
                     .query({
                         operationContext: OperationContext.PERSON_ANLEGEN,
-                    } as FindDbiamPersonenkontextWorkflowQueryParams)
+                        organisationName: 'Orga',
+                        limit: 25,
+                    })
                     .send();
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                expect(body.organisations).toEqual(
-                    expect.arrayContaining([
-                        expect.objectContaining({ id: traeger.id }) as OrganisationResponse,
-                        expect.objectContaining({ id: schule.id }) as OrganisationResponse,
-                    ]),
-                );
+                expect(body).toEqual({ canCommit: false });
             });
 
             describe(`when user has ${RollenSystemRecht.MPT_ROLLEN_ZUORDNEN.name}`, () => {
-                it('should return organisation and rollen matching the selected organisation', async () => {
+                it('should disallow commit without selected roles despite MPT permissions', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
                     );
@@ -273,12 +256,10 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                    expect(body.organisations).toEqual([
-                        expect.objectContaining({ id: schule.id }) as OrganisationResponse,
-                    ]);
+                    expect(body).toEqual({ selectedOrganisation: schule.id, canCommit: false });
                 });
 
-                it(`should return rollen matching the selected organisation and restricted-creation allowlist, if user has ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name}`, async () => {
+                it('should disallow commit without selected roles with restricted creation permissions', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
                     );
@@ -311,9 +292,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                    expect(body.organisations).toEqual([
-                        expect.objectContaining({ id: schule.id }) as OrganisationResponse,
-                    ]);
+                    expect(body).toEqual({ selectedOrganisation: schule.id, canCommit: false });
                 });
 
                 describe(`when user has only ${RollenSystemRecht.EINGESCHRAENKT_NEUE_BENUTZER_ERSTELLEN.name} for account creation`, () => {
@@ -366,7 +345,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     personPermissionsMock.getPermittedMerkmaleForOrga.mockResolvedValue([]);
                 });
 
-                it('should return organisation and rollen matching the selected organisation', async () => {
+                it('should disallow commit without selected roles and without MPT permissions', async () => {
                     const traeger: Organisation<true> = await organisationRepo.save(
                         DoFactory.createOrganisation(false, { typ: OrganisationsTyp.TRAEGER }),
                     );
@@ -402,9 +381,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                     expect(response.status).toBe(200);
                     const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                    expect(body.organisations).toEqual([
-                        expect.objectContaining({ id: schule.id }) as OrganisationResponse,
-                    ]);
+                    expect(body).toEqual({ selectedOrganisation: schule.id, canCommit: false });
                 });
 
                 it('should not allow commit, if selected rollen are MPT', async () => {
@@ -485,7 +462,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 );
             });
 
-            it('should return organisation and rollen matching the selected user', async () => {
+            it('should disallow commit without selected roles for an existing person', async () => {
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
                     orgaIds: [organisation.id],
@@ -510,12 +487,10 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                expect(body.organisations).toEqual([
-                    expect.objectContaining({ id: organisation.id }) as OrganisationResponse,
-                ]);
+                expect(body).toEqual({ selectedOrganisation: organisation.id, canCommit: false });
             });
 
-            it('should return organisation and rollen for a user without personenkontexte', async () => {
+            it('should disallow commit without selected roles for a person without personenkontexte', async () => {
                 await personenkontextRepoInternal.delete(personenkontext);
                 personPermissionsMock.getOrgIdsWithSystemrecht.mockResolvedValue({
                     all: false,
@@ -541,9 +516,7 @@ describe('DbiamPersonenkontextWorkflowController Integration Test', () => {
                 expect(response.status).toBe(200);
                 const body: PersonenkontextWorkflowResponse = response.body as PersonenkontextWorkflowResponse;
 
-                expect(body.organisations).toEqual([
-                    expect.objectContaining({ id: organisation.id }) as OrganisationResponse,
-                ]);
+                expect(body).toEqual({ selectedOrganisation: organisation.id, canCommit: false });
             });
 
             it('should return canCommit=true for a valid combination', async () => {

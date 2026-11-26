@@ -1,13 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { OrganisationResponseLegacy } from '../../../organisation/api/organisation.response.legacy.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 export class PersonenkontextWorkflowResponse {
-    @ApiProperty({
-        description: 'List of available organisations.',
-        type: [OrganisationResponseLegacy],
-    })
-    public readonly organisations: OrganisationResponseLegacy[];
-
     @ApiProperty({
         description: 'Selected organisation.',
         type: String,
@@ -29,13 +22,7 @@ export class PersonenkontextWorkflowResponse {
     })
     public readonly canCommit: boolean;
 
-    public constructor(
-        organisations: OrganisationResponseLegacy[],
-        canCommit: boolean,
-        selectedOrganisation?: string,
-        selectedRollen?: string[],
-    ) {
-        this.organisations = organisations;
+    public constructor(canCommit: boolean, selectedOrganisation?: string, selectedRollen?: string[]) {
         this.selectedOrganisation = selectedOrganisation;
         this.selectedRollen = selectedRollen;
         this.canCommit = canCommit;

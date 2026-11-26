@@ -32,7 +32,6 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { OrganisationResponseLegacy } from '../../organisation/api/organisation.response.legacy.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
@@ -75,10 +74,7 @@ export class DbiamPersonenkontextWorkflowController {
     @Get('step')
     @UseGuards(StepUpGuard)
     @ApiOkResponse({
-        description: `Initialize or process data from the person creation form.
-                      Valid combinations:
-                      - Both organisationId and rollenIds are undefined: Fetch all possible organisations.
-                      - Both organisationId and rollenIds are provided: Check if the Rollen can be committed for the organisation.`,
+        description: 'Check whether the selected roles can be committed for the selected organisation.',
         type: PersonenkontextWorkflowResponse,
     })
     @ApiUnauthorizedResponse({ description: 'Not authorized to get available data for personenkontext.' })
@@ -98,18 +94,9 @@ export class DbiamPersonenkontextWorkflowController {
             const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
                 await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
             if (!findByPersonResult.ok) {
-                return new PersonenkontextWorkflowResponse([], false, params.organisationId, params.rollenIds);
+                return new PersonenkontextWorkflowResponse(false, params.organisationId, params.rollenIds);
             }
         }
-
-        const organisations: Organisation<true>[] = await anlage.findAllSchulstrukturknoten(
-            permissions,
-            params.organisationName,
-            params.limit,
-        );
-        const organisationsResponse: OrganisationResponseLegacy[] = organisations.map(
-            (org: Organisation<true>) => new OrganisationResponseLegacy(org),
-        );
 
         // Determine canCommit status, by default it's always false unless both the rolle and orga are selected
         let canCommit: boolean = false;
@@ -131,14 +118,7 @@ export class DbiamPersonenkontextWorkflowController {
             }
         }
 
-        const response: PersonenkontextWorkflowResponse = new PersonenkontextWorkflowResponse(
-            organisationsResponse,
-            canCommit,
-            params.organisationId,
-            params.rollenIds,
-        );
-
-        return response;
+        return new PersonenkontextWorkflowResponse(canCommit, params.organisationId, params.rollenIds);
     }
 
     @Put(':personId')

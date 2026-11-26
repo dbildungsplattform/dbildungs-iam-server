@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayUnique, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayUnique, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { PersonID } from '../../../../shared/types/aggregate-ids.types.js';
 import { TransformToArray } from '../../../../shared/util/array-transform.validator.js';
 import { OperationContext } from '../../domain/personenkontext.enums.js';
@@ -43,23 +43,4 @@ export class FindDbiamPersonenkontextWorkflowQueryParams {
         isArray: true,
     })
     public readonly rollenIds?: string[];
-
-    @IsString()
-    @IsOptional()
-    @ApiProperty({
-        description: 'Organisation/SSK name used to filter for schulstrukturknoten in personenkontext.',
-        required: false,
-        nullable: true,
-    })
-    public readonly organisationName?: string;
-
-    @IsNotEmpty()
-    @IsNumber()
-    @IsOptional()
-    @ApiProperty({
-        description: 'The limit for the returned organisations.',
-        required: false,
-        nullable: false,
-    })
-    public readonly limit?: number;
 }
