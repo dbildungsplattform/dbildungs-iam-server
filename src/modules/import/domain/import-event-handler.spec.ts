@@ -454,9 +454,7 @@ describe('ImportEventHandler', () => {
             const controller: AbortController = new AbortController();
             const importvorgang: ImportVorgang<true> = mockSingleItemImport(controller, abortReason);
 
-            await expect(sut.handleExecuteImport(event, vi.fn(), controller.signal)).rejects.toThrowError(
-                abortReason,
-            );
+            await expect(sut.handleExecuteImport(event, vi.fn(), controller.signal)).rejects.toThrowError(abortReason);
 
             expect(personenkontextCreationServiceMock.createPersonWithPersonenkontexte).toHaveBeenCalledTimes(1);
             expect(importvorgang.status).toBe(ImportStatus.FAILED);
