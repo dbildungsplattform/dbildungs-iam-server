@@ -94,26 +94,38 @@ export class LdapUndiClientAdapter {
     //** BELOW ONLY PUBLIC FUNCTIONS - MUST USE THE 'executeWithRetry' WRAPPER TO HAVE STRONG FAULT TOLERANCE*/
 
     public async upsertPerson(person: PersonDataUndi, groups: GroupDataUndi[]): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.upsertPersonInternal(person, groups));
+        return this.executeWithRetry(
+            () => this.upsertPersonInternal(person, groups),
+            'upsertPerson',
+            `spshPersonId=${person.uid}`,
+        );
     }
 
     public async deletePerson(personID: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deletePersonInternal(personID));
+        return this.executeWithRetry(
+            () => this.deletePersonInternal(personID),
+            'deletePerson',
+            `spshPersonId=${personID}`,
+        );
     }
 
     public async setPersonSuspendedById(personID: string, gesperrt: boolean): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.setPersonSuspendedByIdInternal(personID, gesperrt));
+        return this.executeWithRetry(
+            () => this.setPersonSuspendedByIdInternal(personID, gesperrt),
+            'setPersonSuspendedById',
+            `spshPersonId=${personID}`,
+        );
     }
 
     /**
      * Updates the group *IF* it exists
      */
     public async updateGroup(id: string, name: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.updateGroupInternal(id, name));
+        return this.executeWithRetry(() => this.updateGroupInternal(id, name), 'updateGroup', `organisationId=${id}`);
     }
 
     public async deleteGroup(id: string): Promise<Result<void>> {
-        return this.executeWithRetry(() => this.deleteGroupInternal(id));
+        return this.executeWithRetry(() => this.deleteGroupInternal(id), 'deleteGroup', `organisationId=${id}`);
     }
 
     public useLdap(): boolean {
@@ -614,7 +626,13 @@ export class LdapUndiClientAdapter {
         return this.getEntryAttributeAsStringArray(entry, attribute).includes(value);
     }
 
-    private async executeWithRetry<T>(func: () => Promise<Result<T>>): Promise<Result<T>> {
+    private async executeWithRetry<T>(
+        func: () => Promise<Result<T>>,
+        operationName: string,
+        identifier: string,
+    ): Promise<Result<T>> {
+        this.logger.info(`LDAP UNDI: Started ${operationName} - ${identifier}`);
+
         const retries: number = this.ldapInstanceConfig.RETRY_WRAPPER_NUMBER_OF_RETRIES;
         const delay: number = this.ldapInstanceConfig.RETRY_WRAPPER_DELAY_IN_MS;
         let currentAttempt: number = 1;
@@ -628,6 +646,7 @@ export class LdapUndiClientAdapter {
                 // eslint-disable-next-line no-await-in-loop
                 result = await func();
                 if (result.ok) {
+                    this.logger.info(`LDAP UNDI: Successfully completed ${operationName} - ${identifier}`);
                     return result;
                 } else {
                     throw result.error;
