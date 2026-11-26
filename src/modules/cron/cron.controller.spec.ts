@@ -1,39 +1,39 @@
-import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
+import { type ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { createPersonPermissionsMock } from '../../../test/utils/auth.mock.js';
 import { ConfigTestModule } from '../../../test/utils/config-test.module.js';
+import { createMock, type DeepMocked } from '../../../test/utils/createMock.js';
 import { DoFactory } from '../../../test/utils/do-factory.js';
 import { LoggingTestModule } from '../../../test/utils/logging-test.module.js';
 import { DomainError } from '../../shared/error/domain.error.js';
 import { EntityNotFoundError } from '../../shared/error/entity-not-found.error.js';
 import { KeycloakClientError } from '../../shared/error/keycloak-client.error.js';
 import { MissingPermissionsError } from '../../shared/error/missing-permissions.error.js';
+import { type IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
 import { type PersonID } from '../../shared/types/aggregate-ids.types.js';
 import { type PersonPermissions } from '../authentication/domain/person-permissions.js';
 import { EmailAddressDeletionService } from '../email/email-address-deletion/email-address-deletion.service.js';
 import { KeycloakUserService } from '../keycloak-administration/domain/keycloak-user.service.js';
 import { type UserLock } from '../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../keycloak-administration/repository/user-lock.repository.js';
+import { type OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
+import { EscalatedPersonPermissionsFactory } from '../permission/escalated-person-permissions.factory.js';
 import { PersonLockOccasion } from '../person/domain/person.enums.js';
 import { type Person } from '../person/domain/person.js';
 import { PersonRepository } from '../person/persistence/person.repository.js';
 import { PersonDeleteService } from '../person/person-deletion/person-delete.service.js';
+import { type DbiamPersonenkontextFactory } from '../personenkontext/domain/dbiam-personenkontext.factory.js';
 import { PersonenkontexteUpdateError } from '../personenkontext/domain/error/personenkontexte-update.error.js';
 import { PersonenkontextWorkflowFactory } from '../personenkontext/domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../personenkontext/domain/personenkontext-workflow.js';
 import { type Personenkontext } from '../personenkontext/domain/personenkontext.js';
+import { type RoleOrganisationAssignmentValidator } from '../personenkontext/domain/role-organisation-assignment.validator.js';
 import { DBiamPersonenkontextRepo } from '../personenkontext/persistence/dbiam-personenkontext.repo.js';
-import { ServiceProviderService } from '../service-provider/domain/service-provider.service.js';
-import { CronController } from './cron.controller.js';
-import { type RolleRepo } from '../rolle/repo/rolle.repo.js';
-import { type PersonenkontextWorkflowSharedKernel } from '../personenkontext/domain/personenkontext-workflow-shared-kernel.js';
-import { type OrganisationRepository } from '../organisation/persistence/organisation.repository.js';
-import { type DbiamPersonenkontextFactory } from '../personenkontext/domain/dbiam-personenkontext.factory.js';
-import { type ConfigService } from '@nestjs/config';
-import { createPersonPermissionsMock } from '../../../test/utils/auth.mock.js';
-import { type IPersonPermissions } from '../../shared/permissions/person-permissions.interface.js';
-import { EscalatedPersonPermissionsFactory } from '../permission/escalated-person-permissions.factory.js';
 import { RollenSystemRecht } from '../rolle/domain/systemrecht.js';
+import { type RolleRepo } from '../rolle/repo/rolle.repo.js';
+import { ServiceProviderService } from '../service-provider/domain/service-provider.service.js';
 import { VidisSyncService } from '../vidis/core/vidis.sync-service.js';
+import { CronController } from './cron.controller.js';
 
 class UnknownError extends DomainError {
     public constructor(message: string) {
@@ -95,7 +95,7 @@ describe('CronController', () => {
                             null as unknown as OrganisationRepository,
                             null as unknown as DbiamPersonenkontextFactory,
                             null as unknown as ConfigService,
-                            null as unknown as PersonenkontextWorkflowSharedKernel,
+                            null as unknown as RoleOrganisationAssignmentValidator,
                         ),
                     ),
                 },
