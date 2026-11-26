@@ -8,10 +8,10 @@ export class Migration20261125195500 extends Migration {
                 'UNTERRICHT',
                 'VERWALTUNG',
                 'HINWEISE',
-                'SCHULISCH',
                 'KOMMUNIKATION_UND_ZUSAMMENARBEIT',
                 'UNTERRICHT_UND_LERNEN',
                 'SCHULORGANISATION_UND_VERWALTUNG',
+                'SCHULISCH',
                 'FORTBILDUNG_UND_QUALIFIZIERUNG',
                 'INFORMATIONEN_UND_PORTALE',
                 'HILFE_UND_UNTERSTUETZUNG'
