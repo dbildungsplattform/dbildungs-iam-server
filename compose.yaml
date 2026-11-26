@@ -92,23 +92,58 @@ services:
     image: redis:7.2.2
     container_name: redis
     healthcheck:
-      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      test: ['CMD-SHELL', 'REDISCLI_AUTH=password redis-cli --raw PING | grep -qx PONG']
+      interval: 2s
     ports:
       - 6379:6379
     command: redis-server --requirepass password
+    networks:
+      default:
+        aliases:
+          - redis-sentinel-primary
+
+  redis-sentinel:
+    image: redis:7.2.2
+    profiles:
+      - sentinel
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:26379:26379'
+    user: redis
+    command:
+      - sh
+      - -ec
+      - |
+        printf '%s\n' \
+          'port 26379' \
+          'requirepass password' \
+          'sentinel resolve-hostnames yes' \
+          'sentinel announce-hostnames yes' \
+          'sentinel monitor valkeyha redis-sentinel-primary 6379 1' \
+          'sentinel auth-pass valkeyha password' \
+          > /tmp/sentinel.conf
+        exec redis-server /tmp/sentinel.conf --sentinel
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH=password redis-cli -p 26379 --raw SENTINEL get-master-addr-by-name valkeyha | grep -qx redis-sentinel-primary
+      interval: 2s
 
   backend:
     profiles:
       - backend
-    image: ghcr.io/dbildungsplattform/dbildungs-iam-server
+    build: .
     container_name: spsh-backend
-    # build:
-    #   context: .
     depends_on:
       db:
         condition: service_started
       redis:
         condition: service_healthy
+      redis-sentinel:
+        condition: service_healthy
+        required: false
       # kafka:
       #   condition: service_healthy
       # kafka-init:
@@ -116,6 +151,11 @@ services:
     environment:
       NODE_ENV: dev
       DEPLOY_STAGE: dev
+      REDIS_PASSWORD:
+      REDIS_SENTINEL_ENABLED:
+      REDIS_SENTINEL_MASTER_NAME:
+      REDIS_SENTINEL_NODES:
+      REDIS_SENTINEL_USE_TLS:
     restart: unless-stopped
     ports:
       - 9090:9090

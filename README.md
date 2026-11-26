@@ -87,6 +87,36 @@ Authentication and other Keycloak operations still require a reachable Keycloak 
 For new local Keycloak instances, the `SPSH` realm and its clients are provided by
 the import from `config/local-spsh.json`.
 
+### Redis Sentinel
+
+Local development uses standalone Redis by default. Neither `backend` nor `third-party` starts
+Sentinel. To opt in, enable the `sentinel` Compose profile and set `REDIS_SENTINEL_ENABLED=true`
+for the backend. The local Sentinel provides primary discovery only, with no replicas, failover, or TLS.
+
+**Backend on your machine:** After starting the `third-party` profile from [Local Setup](#local-setup),
+start Sentinel with `docker compose --profile sentinel up -d --wait redis-sentinel`. Sentinel returns
+`redis-sentinel-primary` as the Redis hostname, so add the hosts entry if it is missing:
+
+- **Windows (PowerShell as Administrator):** `Add-Content -LiteralPath "$env:SystemRoot\System32\drivers\etc\hosts" -Encoding ascii -Value '', '127.0.0.1 redis-sentinel-primary'`
+- **WSL (inside your distro):** `printf '\n127.0.0.1 redis-sentinel-primary\n' | sudo tee -a /etc/hosts` (WSL may regenerate the file on restart.)
+- **Linux/macOS:** `printf '\n127.0.0.1 redis-sentinel-primary\n' | sudo tee -a /etc/hosts`
+
+Then run `REDIS_SENTINEL_ENABLED=true npm run start`.
+
+**Backend in Docker Compose:** No hosts file change is needed. The backend waits for Sentinel to
+be healthy when both profiles are active:
+
+```sh
+REDIS_SENTINEL_ENABLED=true docker compose --profile backend --profile sentinel up
+```
+
+In PowerShell, run `$env:REDIS_SENTINEL_ENABLED = 'true'` first and omit the inline
+`REDIS_SENTINEL_ENABLED=true` prefix.
+
+Check `http://localhost:9090/health` after the backend starts. To return to standalone Redis, unset
+`REDIS_SENTINEL_ENABLED` and start the backend without the `sentinel` profile. To stop an existing
+Sentinel container, run `docker compose --profile sentinel stop redis-sentinel`.
+
 ### Available profiles
 
 | Name        | Description                                                         |
@@ -94,6 +124,7 @@ the import from `config/local-spsh.json`.
 | backend     | backend with required depencies                                     |
 | frontend    | frontend + ingress (requires containerized instance of the backend) |
 | third-party | any third-party systems that are not required for startup           |
+| sentinel    | optional Redis Sentinel for local primary discovery                 |
 | db-init     | initialise the database                                             |
 | db-migrate  | run necessary schema migrations against the database                |
 | db-seed     | seed the database                                                   |

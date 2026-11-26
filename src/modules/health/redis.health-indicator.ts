@@ -2,7 +2,10 @@ import { HealthIndicatorResult, HealthIndicatorService } from '@nestjs/terminus'
 import { Injectable } from '@nestjs/common';
 import { RedisConfig, ServerConfig } from '../../shared/config/index.js';
 import { createClient, RedisClientType } from 'redis';
+import { createSentinel, type RedisSentinelType } from '@keyv/redis';
 import { ConfigService } from '@nestjs/config';
+import { createRedisSentinelOptions } from '../../core/redis/redis-client.js';
+import { ClassLogger } from '../../core/logging/class-logger.js';
 
 @Injectable()
 export class RedisHealthIndicator {
@@ -11,6 +14,7 @@ export class RedisHealthIndicator {
     public constructor(
         configService: ConfigService<ServerConfig>,
         private readonly healthIndicatorService: HealthIndicatorService,
+        private readonly logger: ClassLogger,
     ) {
         this.redisConfig = configService.getOrThrow<RedisConfig>('REDIS');
     }
@@ -21,30 +25,50 @@ export class RedisHealthIndicator {
         type RedisState = { available: boolean; message: string };
         let currentState: RedisState = { available: false, message: 'Check has not yet run' };
 
-        const redisClient: RedisClientType = createClient({
-            username: this.redisConfig.USERNAME,
-            password: this.redisConfig.PASSWORD,
-            socket: {
-                host: this.redisConfig.HOST,
-                port: this.redisConfig.PORT,
-                tls: this.redisConfig.USE_TLS || undefined,
-                key: this.redisConfig.PRIVATE_KEY,
-                cert: this.redisConfig.CERTIFICATE_AUTHORITIES,
-                connectTimeout: 1000,
-                reconnectStrategy: false,
-            },
-        });
+        const redisClient: RedisClientType | RedisSentinelType = this.redisConfig.SENTINEL_ENABLED
+            ? createSentinel({
+                  ...createRedisSentinelOptions(this.redisConfig, {
+                      connectTimeout: 1000,
+                      reconnectStrategy: false,
+                  }),
+                  maxCommandRediscovers: 0,
+              })
+            : createClient({
+                  username: this.redisConfig.USERNAME,
+                  password: this.redisConfig.PASSWORD,
+                  socket: {
+                      host: this.redisConfig.HOST,
+                      port: this.redisConfig.PORT,
+                      tls: this.redisConfig.USE_TLS || undefined,
+                      key: this.redisConfig.PRIVATE_KEY,
+                      cert: this.redisConfig.CERTIFICATE_AUTHORITIES,
+                      connectTimeout: 1000,
+                      reconnectStrategy: false,
+                  },
+              });
+        const mode: string = this.redisConfig.SENTINEL_ENABLED ? 'sentinel' : 'standalone';
+        this.logger.debug(`Redis health check connecting: mode=${mode}`);
         try {
-            await redisClient
-                .on('error', (error: Error) => {
-                    currentState = { available: false, message: `Redis does not seem to be up: ${error.message}` };
-                })
-                .on('ready', () => {
-                    currentState = { available: true, message: '' };
-                })
-                .connect();
+            try {
+                await redisClient
+                    .on('error', (error: Error) => {
+                        currentState = { available: false, message: `Redis does not seem to be up: ${error.message}` };
+                    })
+                    .on('ready', () => {
+                        currentState = { available: true, message: '' };
+                    })
+                    .connect();
 
-            await redisClient.disconnect();
+                if ('getSentinelNode' in redisClient) {
+                    currentState = { available: true, message: '' };
+                } else {
+                    await redisClient.disconnect();
+                }
+            } finally {
+                if ('getSentinelNode' in redisClient) {
+                    await redisClient.close();
+                }
+            }
         } catch (reason) {
             currentState = {
                 available: false,
@@ -52,6 +76,7 @@ export class RedisHealthIndicator {
             };
         }
 
+        this.logger.debug(`Redis health check completed: mode=${mode}, available=${currentState.available}`);
         return currentState.available
             ? this.healthIndicatorService.check(HealthCheckKey).up({
                   message: currentState.message,

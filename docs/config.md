@@ -14,7 +14,7 @@ There are multiple 'base'-configurations, that are used for local development an
 
 - Used when starting the backend locally [config/config.json](../config/config.json)
 - Used when starting the email microservice locally [config/email-config.json](../config/email-config.json)
-- Used when starting the backend using docker-compose [config/docker-config.json](../config/email-config.json)
+- Used when starting the backend using docker-compose [config/docker-config.json](../config/docker-config.json)
 
 There are effectively three layers to the configuration
 
@@ -25,6 +25,19 @@ There are effectively three layers to the configuration
 Please always **remember** that anything that can be overridden in the environment also has an equivalent in the config files.
 
 The environment variables can be found in [src/shared/config/config.env.ts](../src/shared/config/config.env.ts)
+
+### Redis Sentinel
+
+Sentinel is disabled by default in both local backend configurations and enabled by default in the
+Helm chart. See the [local Sentinel setup](../README.md#redis-sentinel) to opt in locally.
+
+Sentinel always uses the same `REDIS.USERNAME` and `REDIS.PASSWORD` as the Redis data connections.
+Separate Sentinel credentials cannot be configured. In Helm deployments, the existing
+`redis-password` Secret key supplies the shared password; the username comes from `REDIS.USERNAME`
+in the JSON configuration.
+
+Discovery and TLS remain configurable through `REDIS_SENTINEL_ENABLED`, `REDIS_SENTINEL_MASTER_NAME`,
+`REDIS_SENTINEL_NODES`, and `REDIS_SENTINEL_USE_TLS`, or the corresponding `redis.sentinel` Helm values.
 
 ### Secrets Configuration
 

@@ -49,9 +49,20 @@ import { MapperModule } from '../modules/person/mapper/mapper.module.js';
 import { LandesbediensteterModule } from '../modules/landesbediensteter/landesbediensteter.module.js';
 import { SchulconnexModule } from '../modules/schulconnex/schulconnex.module.js';
 import { CacheModule } from '@nestjs/cache-manager';
-import KeyvRedis, { RedisClientOptions, RedisClusterOptions } from '@keyv/redis';
+import KeyvRedis, {
+    createSentinel,
+    type RedisClientOptions,
+    type RedisClusterOptions,
+    type RedisSentinelType,
+} from '@keyv/redis';
 import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { PermissionModule } from '../modules/permission/permission.module.js';
+import {
+    createRedisSentinelOptions,
+    createSentinelSessionStoreClient,
+    describeRedisConnection,
+    type SentinelConnectionOptions,
+} from '../core/redis/redis-client.js';
 
 @Module({
     imports: [
@@ -89,15 +100,17 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
         }),
         CacheModule.registerAsync({
             isGlobal: true,
-            inject: [JsonConfig],
-            useFactory: (config: JsonConfig) => {
+            imports: [LoggerModule.register(ServerModule.name)],
+            inject: [JsonConfig, ClassLogger],
+            useFactory: (config: JsonConfig, logger: ClassLogger) => {
                 const redisConfig: RedisConfig = config.REDIS;
                 const defaultTtlMs: number = 10_000;
 
-                let clientOptions: RedisClientOptions | RedisClusterOptions;
+                let clientOptions: RedisClientOptions | RedisClusterOptions | SentinelConnectionOptions;
 
-                /* istanbul ignore next */
-                if (redisConfig.CLUSTERED) {
+                if (redisConfig.SENTINEL_ENABLED) {
+                    clientOptions = createRedisSentinelOptions(redisConfig);
+                } else if (redisConfig.CLUSTERED) {
                     clientOptions = {
                         defaults: {
                             username: redisConfig.USERNAME,
@@ -137,6 +150,7 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
                 }
 
                 const store: KeyvRedis<unknown> = new KeyvRedis(clientOptions);
+                logger.debug(`Redis application cache configured: ${describeRedisConnection(redisConfig)}`);
 
                 return {
                     stores: [store],
@@ -194,9 +208,10 @@ export class ServerModule implements NestModule {
 
     public async configure(consumer: MiddlewareConsumer): Promise<void> {
         const redisConfig: RedisConfig = this.configService.getOrThrow<RedisConfig>('REDIS');
-        let redisClient: RedisClientType | RedisClusterType;
-        /* istanbul ignore next */
-        if (redisConfig.CLUSTERED) {
+        let redisClient: RedisClientType | RedisClusterType | RedisSentinelType;
+        if (redisConfig.SENTINEL_ENABLED) {
+            redisClient = createSentinel(createRedisSentinelOptions(redisConfig));
+        } else if (redisConfig.CLUSTERED) {
             redisClient = createCluster({
                 defaults: {
                     username: redisConfig.USERNAME,
@@ -235,14 +250,17 @@ export class ServerModule implements NestModule {
             Also the documentation expressly requires listening to on('error')
              */
 
+        const connectionDescription: string = describeRedisConnection(redisConfig);
+        this.logger.info(`Redis session store connecting: ${connectionDescription}`);
+
         /* istanbul ignore next */
         await redisClient
             .on('error', (error: Error) => this.logger.error(`Redis connection failed: ${error.message}`))
             .connect();
-        this.logger.info('Redis-connection made');
+        this.logger.info(`Redis session store connected: ${connectionDescription}`);
 
         const redisStore: RedisStore = new RedisStore({
-            client: redisClient,
+            client: 'getSentinelNode' in redisClient ? createSentinelSessionStoreClient(redisClient) : redisClient,
         });
 
         consumer

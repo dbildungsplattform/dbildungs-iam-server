@@ -1,10 +1,84 @@
+import 'reflect-metadata';
 import { RollenArt } from '../../modules/rolle/domain/rolle.enums.js';
 import configEnv, { type Config } from './config.env.js';
 
 describe('Config Loader', () => {
+    const originalEnv: NodeJS.ProcessEnv = process.env;
+
     beforeEach(() => {
         vi.resetModules();
         process.env = {};
+    });
+
+    afterAll(() => {
+        process.env = originalEnv;
+    });
+
+    describe('Redis Config', () => {
+        it('should load Sentinel configuration from the environment', () => {
+            process.env['REDIS_SENTINEL_ENABLED'] = 'true';
+            process.env['REDIS_SENTINEL_MASTER_NAME'] = 'test-master';
+            process.env['REDIS_SENTINEL_NODES'] = '[{"HOST":"sentinel.example","PORT":26379}]';
+            process.env['REDIS_SENTINEL_USE_TLS'] = 'true';
+
+            const config: Config = configEnv();
+
+            expect(config.REDIS).toMatchObject({
+                SENTINEL_ENABLED: true,
+                SENTINEL_MASTER_NAME: 'test-master',
+                SENTINEL_NODES: [{ HOST: 'sentinel.example', PORT: 26379 }],
+                SENTINEL_USE_TLS: true,
+            });
+        });
+
+        it('should allow explicitly disabling Sentinel', () => {
+            process.env['REDIS_SENTINEL_ENABLED'] = 'false';
+
+            const config: Config = configEnv();
+
+            expect(config.REDIS.SENTINEL_ENABLED).toBe(false);
+        });
+
+        it('should preserve file configuration when Sentinel environment variables are absent', () => {
+            const config: Config = configEnv();
+
+            expect(config.REDIS).toMatchObject({
+                SENTINEL_ENABLED: undefined,
+                SENTINEL_MASTER_NAME: undefined,
+                SENTINEL_NODES: undefined,
+                SENTINEL_USE_TLS: undefined,
+            });
+        });
+
+        it('should ignore an empty endpoint environment variable', () => {
+            process.env['REDIS_SENTINEL_NODES'] = '';
+
+            const config: Config = configEnv();
+
+            expect(config.REDIS.SENTINEL_NODES).toBeUndefined();
+        });
+
+        it('should ignore separate Sentinel credentials from the environment', () => {
+            process.env['REDIS_SENTINEL_USERNAME'] = 'unused-user';
+            process.env['REDIS_SENTINEL_PASSWORD'] = 'unused-password';
+
+            const config: Config = configEnv();
+
+            expect(config.REDIS).not.toHaveProperty('SENTINEL_USERNAME');
+            expect(config.REDIS).not.toHaveProperty('SENTINEL_PASSWORD');
+        });
+
+        it('should reject malformed endpoint JSON', () => {
+            process.env['REDIS_SENTINEL_NODES'] = 'not-json';
+
+            expect(() => configEnv()).toThrow();
+        });
+
+        it('should reject an endpoint JSON value that is not an array', () => {
+            process.env['REDIS_SENTINEL_NODES'] = '{"HOST":"sentinel.example","PORT":26379}';
+
+            expect(() => configEnv()).toThrow('REDIS_SENTINEL_NODES must be a JSON array');
+        });
     });
 
     describe('System Config', () => {

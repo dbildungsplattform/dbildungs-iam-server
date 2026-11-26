@@ -28,7 +28,11 @@
         "PORT": 6379,
         "USERNAME": "default",
         "PASSWORD": "",
-        "USE_TLS": false
+        "USE_TLS": false,
+        "SENTINEL_ENABLED": true,
+        "SENTINEL_MASTER_NAME": "valkeyha",
+        "SENTINEL_NODES": [{"HOST":"dbildungs-iam-valkey.spsh.svc.cluster.local","PORT":26379}],
+        "SENTINEL_USE_TLS": false
     },
     "LDAP": {
         "URL": "ldap://spsh-xxx.svc.cluster.local",
