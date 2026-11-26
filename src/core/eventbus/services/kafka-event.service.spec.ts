@@ -525,7 +525,7 @@ describe('KafkaEventService', () => {
             vi.useRealTimers();
         });
 
-        it('should throw if handler timeout and cancel grace do not fit into max.poll.interval.ms', () => {
+        it('should throw if handler timeout, cancel grace and reserve do not fit into max.poll.interval.ms', () => {
             configService.getOrThrow.mockReturnValue({
                 ...defaultKafkaConfig,
                 MAX_POLL_INTERVAL: 10000,
@@ -535,7 +535,7 @@ describe('KafkaEventService', () => {
 
             expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(InvalidKafkaConfigError);
             expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(
-                'HANDLER_TIMEOUT (8000ms) + HANDLER_CANCEL_GRACE (2000ms) must be smaller than MAX_POLL_INTERVAL (10000ms)',
+                'HANDLER_TIMEOUT (8000ms) + HANDLER_CANCEL_GRACE (2000ms) + reserve (10000ms) must be smaller than MAX_POLL_INTERVAL (10000ms)',
             );
         });
 
@@ -716,6 +716,44 @@ describe('KafkaEventService', () => {
                     /^Handler for event KafkaPersonDeletedEvent with EventID: .+ is still running and called keepAlive, resetting timeout$/,
                 ),
             );
+        });
+
+        it('should abort a handler at the maximum processing time even if it keeps calling keepAlive', async () => {
+            let receivedSignal: AbortSignal | undefined;
+            const handler: Mock = vi.fn((_event: BaseEvent, keepAlive: () => void, signal: AbortSignal) => {
+                receivedSignal = signal;
+                const interval: NodeJS.Timeout = setInterval(keepAlive, 50000);
+                return new Promise((_resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+                    signal.addEventListener('abort', () => {
+                        clearInterval(interval);
+                        reject(signal.reason as Error);
+                    });
+                });
+            });
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(284999);
+
+            expect(receivedSignal?.aborted).toBe(false);
+
+            await vi.advanceTimersByTimeAsync(1);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(receivedSignal?.aborted).toBe(true);
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('exceeded the maximum processing time of 285000ms'),
+            );
+        });
+
+        it('should not trigger the maximum processing time after the handler finished', async () => {
+            const handler: Mock = vi.fn().mockResolvedValue({ ok: true, value: null });
+
+            const result: Result<unknown, Error> = await sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(300000);
+
+            expect(result).toEqual({ ok: true, value: null });
+            expect(logger.error).not.toHaveBeenCalled();
         });
 
         it('should ignore keepAlive calls after the handler was aborted', async () => {

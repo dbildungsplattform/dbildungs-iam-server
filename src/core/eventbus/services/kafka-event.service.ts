@@ -25,6 +25,8 @@ import { InvalidKafkaConfigError } from '../error/invalid-kafka-config.error.js'
 const MAX_POLL_INTERVAL_DEFAULT: number = 300000;
 const HANDLER_TIMEOUT_DEFAULT: number = 60000;
 const HANDLER_CANCEL_GRACE_DEFAULT: number = 5000;
+// Time within max.poll.interval.ms that is kept free for DLQ publication and offset handling after the handlers are done
+const POST_PROCESSING_RESERVE: number = 10000;
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
@@ -51,6 +53,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
 
     private readonly handlerCancelGraceMs: number;
 
+    private readonly handlerDeadlineMs: number;
     private readonly runningHandlers: Map<symbol, () => void> = new Map();
 
     public constructor(
@@ -62,13 +65,14 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         this.maxPollIntervalMs = this.kafkaConfig.MAX_POLL_INTERVAL ?? MAX_POLL_INTERVAL_DEFAULT;
         this.handlerTimeoutMs = this.kafkaConfig.HANDLER_TIMEOUT ?? HANDLER_TIMEOUT_DEFAULT;
         this.handlerCancelGraceMs = this.kafkaConfig.HANDLER_CANCEL_GRACE ?? HANDLER_CANCEL_GRACE_DEFAULT;
+        this.handlerDeadlineMs = this.maxPollIntervalMs - this.handlerCancelGraceMs - POST_PROCESSING_RESERVE;
         if (this.kafkaConfig.ENABLED !== true) {
             this.logger.info('Kafka is disabled');
             return;
         }
-        if (this.handlerTimeoutMs + this.handlerCancelGraceMs >= this.maxPollIntervalMs) {
+        if (this.handlerTimeoutMs >= this.handlerDeadlineMs) {
             throw new InvalidKafkaConfigError(
-                `HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) + HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) must be smaller than MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms)`,
+                `HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) + HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) + reserve (${POST_PROCESSING_RESERVE}ms) must be smaller than MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms)`,
             );
         }
         this.consumer = this.kafka.consumer({
@@ -299,10 +303,12 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
             const controller: AbortController = new AbortController();
             const handlerToken: symbol = Symbol(description);
             let timeoutTimer: NodeJS.Timeout | undefined;
+            let deadlineTimer: NodeJS.Timeout | undefined;
             let abandonTimer: NodeJS.Timeout | undefined;
 
             const finish = (result: Result<unknown, Error>): void => {
                 clearTimeout(timeoutTimer);
+                clearTimeout(deadlineTimer);
                 clearTimeout(abandonTimer);
                 this.runningHandlers.delete(handlerToken);
                 resolve(result);
@@ -313,6 +319,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                     return;
                 }
                 clearTimeout(timeoutTimer);
+                clearTimeout(deadlineTimer);
                 controller.abort(reason);
                 abandonTimer = setTimeout(() => {
                     this.logger.crit(
@@ -364,8 +371,18 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
                 return { ok: false, error: controller.signal.reason as Error };
             };
 
+            const startDeadline = (): void => {
+                deadlineTimer = setTimeout(() => {
+                    this.logger.error(
+                        `${description} exceeded the maximum processing time of ${this.handlerDeadlineMs}ms, aborting it`,
+                    );
+                    abort(new EventHandlerTimeoutError<Event>(event, this.handlerDeadlineMs));
+                }, this.handlerDeadlineMs);
+            };
+
             this.runningHandlers.set(handlerToken, abortOnShutdown);
             startTimeout();
+            startDeadline();
             void execute().then(finish);
         });
     }
