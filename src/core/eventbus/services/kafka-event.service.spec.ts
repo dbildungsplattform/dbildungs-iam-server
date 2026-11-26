@@ -606,7 +606,9 @@ describe('KafkaEventService', () => {
             expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('timed out after 60000ms'));
             expect(logger.crit).not.toHaveBeenCalled();
             expect(logger.logUnknownAsError).toHaveBeenCalledWith(
-                expect.stringMatching(/^Handler for event KafkaPersonDeletedEvent with EventID: .+ failed after being aborted$/),
+                expect.stringMatching(
+                    /^Handler for event KafkaPersonDeletedEvent with EventID: .+ failed after being aborted$/,
+                ),
                 expect.any(EventHandlerTimeoutError),
             );
             expect(producer.send).toHaveBeenCalledWith(
