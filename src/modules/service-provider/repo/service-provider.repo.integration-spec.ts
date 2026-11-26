@@ -94,8 +94,6 @@ describe('ServiceProviderRepo', () => {
     describe('createUnsafe', () => {
         it('should save new service-provider', async () => {
             const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                keycloakGroup: faker.string.alphanumeric(),
-                keycloakRole: faker.string.alphanumeric(),
                 merkmale: [ServiceProviderMerkmal.NACHTRAEGLICH_ZUWEISBAR],
                 rollenartenWhitelist: [RollenArt.LEHR],
             });
@@ -861,22 +859,6 @@ describe('ServiceProviderRepo', () => {
             const result: ServiceProvider<true>[] = await sut.findNonSchoolProvidedVidisAngebote();
 
             expect(result).toEqual([expectedServiceProvider]);
-        });
-    });
-
-    describe('findByKeycloakGroup', () => {
-        it('should find a ServiceProvider by its Keycloak groupname', async () => {
-            const expectedPersistedServiceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em, {
-                keycloakGroup: 'keycloak-group-1',
-            });
-            await createAndPersistServiceProvider(em, { keycloakGroup: 'keycloak-group-2' });
-
-            let result: ServiceProvider<true>[] = [];
-            if (expectedPersistedServiceProvider.keycloakGroup) {
-                result = await sut.findByKeycloakGroup(expectedPersistedServiceProvider.keycloakGroup);
-            }
-
-            expect(result).toEqual([expectedPersistedServiceProvider]);
         });
     });
 

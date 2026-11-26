@@ -146,8 +146,6 @@ describe('VidisSyncService', () => {
             undefined,
             undefined,
             undefined,
-            undefined,
-            undefined,
             ServiceProviderSystem.NONE,
             false,
             vidisAngebotId,
@@ -823,8 +821,6 @@ describe('VidisSyncService', () => {
             expect(createdServiceProvider.logoId).toBeUndefined();
             expect(createdServiceProvider.logo).toEqual(Buffer.from(tinyPngBase64, 'base64'));
             expect(createdServiceProvider.logoMimeType).toBe('image/png');
-            expect(createdServiceProvider.keycloakGroup).toBeUndefined();
-            expect(createdServiceProvider.keycloakRole).toBeUndefined();
             expect(createdServiceProvider.externalSystem).toBe(ServiceProviderSystem.NONE);
             expect(createdServiceProvider.requires2fa).toBe(false);
             expect(createdServiceProvider.vidisAngebotId).toBe('2');
@@ -856,8 +852,6 @@ describe('VidisSyncService', () => {
                     'https://example.org/1',
                     ServiceProviderKategorie.SCHULISCH,
                     faker.string.uuid(),
-                    undefined,
-                    undefined,
                     undefined,
                     undefined,
                     undefined,

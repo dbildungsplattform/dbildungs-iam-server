@@ -79,10 +79,7 @@ describe('ServiceProviderModificationService', () => {
 
     describe('create', () => {
         it('should save new service-provider', async () => {
-            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {
-                keycloakGroup: faker.string.alphanumeric(),
-                keycloakRole: faker.string.alphanumeric(),
-            });
+            const serviceProvider: ServiceProvider<false> = DoFactory.createServiceProvider(false, {});
             const permissionsMock: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
             permissionsMock.hasSystemrechtAtOrganisation.mockResolvedValueOnce(true);
 

@@ -2,8 +2,6 @@ user-topic
 user-dlq-topic
 import-topic
 import-dlq-topic
-group-role-topic
-group-role-dlq-topic
 rolle-topic
 rolle-dlq-topic
 organisation-topic

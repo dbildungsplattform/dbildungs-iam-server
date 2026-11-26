@@ -295,8 +295,6 @@ export class DbSeedService {
                 file.logoId,
                 file.logoBase64 ? Buffer.from(file.logoBase64, 'base64') : undefined,
                 file.logoMimeType,
-                file.keycloakGroup,
-                file.keycloakRole,
                 file.externalSystem ?? ServiceProviderSystem.NONE,
                 file.requires2fa,
                 file.vidisAngebotId,

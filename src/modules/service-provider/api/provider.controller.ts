@@ -492,8 +492,6 @@ export class ProviderController {
             body.logoId,
             logoBuffer,
             body.logoMimeType,
-            undefined, // keycloakGroup
-            undefined, // keycloakRole
             ServiceProviderSystem.NONE,
             body.requires2fa,
             undefined, // vidisAngebotId

@@ -26,7 +26,6 @@ import { ImportApiModule } from '../modules/import/import-api.module.js';
 import { ItsLearningModule } from '../modules/itslearning/itslearning.module.js';
 import { KeycloakAdministrationModule } from '../modules/keycloak-administration/keycloak-administration.module.js';
 import { KeycloakConfigModule } from '../modules/keycloak-administration/keycloak-config.module.js';
-import { KeycloakHandlerModule } from '../modules/keycloak-handler/keycloak-handler.module.js';
 import { MeldungModule } from '../modules/meldung/meldung.module.js';
 import { ReporterModule } from '../modules/metrics/reporter/reporter.module.js';
 import { OrganisationApiModule } from '../modules/organisation/organisation-api.module.js';
@@ -162,7 +161,6 @@ import { ErrorModule } from '../shared/error/error.module.js';
         EmailModule,
         OxModule,
         PrivacyIdeaAdministrationModule,
-        KeycloakHandlerModule,
         CronModule,
         ImportApiModule,
         ReporterModule,
