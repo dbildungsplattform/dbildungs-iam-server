@@ -30,6 +30,13 @@ function errorOf(result: Result<unknown, Error>): Error | undefined {
     return result.ok ? undefined : result.error;
 }
 
+type KafkaTimingTestCase = {
+    name: string;
+    MAX_POLL_INTERVAL: number;
+    HANDLER_TIMEOUT: number;
+    HANDLER_CANCEL_GRACE: number;
+};
+
 class TestEvent extends BaseEvent implements KafkaEvent {
     public constructor() {
         super();
@@ -538,6 +545,54 @@ describe('KafkaEventService', () => {
                 'HANDLER_TIMEOUT (8000ms) + HANDLER_CANCEL_GRACE (2000ms) + reserve (10000ms) must be smaller than MAX_POLL_INTERVAL (10000ms)',
             );
         });
+
+        it.each([
+            {
+                name: 'a negative cancel grace',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: -60000,
+            },
+            {
+                name: 'a zero handler timeout',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: 0,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a negative handler timeout',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: -1,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a zero max poll interval',
+                MAX_POLL_INTERVAL: 0,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a negative max poll interval',
+                MAX_POLL_INTERVAL: -300000,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+        ])(
+            'should throw for $name',
+            ({ MAX_POLL_INTERVAL, HANDLER_TIMEOUT, HANDLER_CANCEL_GRACE }: KafkaTimingTestCase) => {
+                configService.getOrThrow.mockReturnValue({
+                    ...defaultKafkaConfig,
+                    MAX_POLL_INTERVAL,
+                    HANDLER_TIMEOUT,
+                    HANDLER_CANCEL_GRACE,
+                } satisfies KafkaConfig);
+
+                expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(InvalidKafkaConfigError);
+                expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(
+                    'must be positive and HANDLER_CANCEL_GRACE',
+                );
+            },
+        );
 
         it('should not validate the timing values if kafka is disabled', () => {
             configService.getOrThrow.mockReturnValue({

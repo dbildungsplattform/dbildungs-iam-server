@@ -70,6 +70,11 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
             this.logger.info('Kafka is disabled');
             return;
         }
+        if (this.maxPollIntervalMs <= 0 || this.handlerTimeoutMs <= 0 || this.handlerCancelGraceMs < 0) {
+            throw new InvalidKafkaConfigError(
+                `MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms) and HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) must be positive and HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) must not be negative`,
+            );
+        }
         if (this.handlerTimeoutMs >= this.handlerDeadlineMs) {
             throw new InvalidKafkaConfigError(
                 `HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) + HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) + reserve (${POST_PROCESSING_RESERVE}ms) must be smaller than MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms)`,

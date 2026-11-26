@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min, ValidateIf } from 'class-validator';
 
 type Required<T, IsRequired extends boolean> = Persisted<T, IsRequired>;
 
@@ -29,7 +29,8 @@ export class KafkaConfig<SslEnabled extends boolean = boolean> {
      * This is the real upper limit for the processing time of a single message.
      */
     @IsOptional()
-    @IsNumber()
+    @IsInt()
+    @Min(1)
     public readonly MAX_POLL_INTERVAL?: number;
 
     /**
@@ -37,15 +38,17 @@ export class KafkaConfig<SslEnabled extends boolean = boolean> {
      * The timer is restarted whenever the handler calls keepAlive.
      */
     @IsOptional()
-    @IsNumber()
+    @IsInt()
+    @Min(1)
     public readonly HANDLER_TIMEOUT?: number;
 
     /**
      * Time (ms) an aborted handler gets to stop. After that, it is abandoned and the event is treated as failed.
-     * HANDLER_TIMEOUT + HANDLER_CANCEL_GRACE must be smaller than MAX_POLL_INTERVAL.
+     * Must not be negative. HANDLER_TIMEOUT + HANDLER_CANCEL_GRACE must be smaller than MAX_POLL_INTERVAL.
      */
     @IsOptional()
-    @IsNumber()
+    @IsInt()
+    @Min(0)
     public readonly HANDLER_CANCEL_GRACE?: number;
 
     @IsBoolean()
