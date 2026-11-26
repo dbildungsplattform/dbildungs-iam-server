@@ -44,8 +44,14 @@ export class ServiceProviderEntity extends TimestampedEntity {
             ServiceProviderKategorie.EMAIL,
             ServiceProviderKategorie.UNTERRICHT,
             ServiceProviderKategorie.VERWALTUNG,
-            ServiceProviderKategorie.SCHULISCH,
             ServiceProviderKategorie.HINWEISE,
+            ServiceProviderKategorie.KOMMUNIKATION_UND_ZUSAMMENARBEIT,
+            ServiceProviderKategorie.UNTERRICHT_UND_LERNEN,
+            ServiceProviderKategorie.SCHULORGANISATION_UND_VERWALTUNG,
+            ServiceProviderKategorie.SCHULISCH,
+            ServiceProviderKategorie.FORTBILDUNG_UND_QUALIFIZIERUNG,
+            ServiceProviderKategorie.INFORMATIONEN_UND_PORTALE,
+            ServiceProviderKategorie.HILFE_UND_UNTERSTUETZUNG,
         ],
     })
     public kategorie!: ServiceProviderKategorie;
