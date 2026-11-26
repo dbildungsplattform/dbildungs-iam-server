@@ -1,7 +1,47 @@
+import KeyvRedis, { RedisClientOptions, RedisClusterOptions } from '@keyv/redis';
+import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { defineConfig, PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { CacheModule } from '@nestjs/cache-manager';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { PassportModule } from '@nestjs/passport';
+import { RedisStore } from 'connect-redis';
+import session from 'express-session';
+import passport from 'passport';
+import { createClient, createCluster, RedisClientType, RedisClusterType } from 'redis';
+import { EventModule } from '../core/eventbus/index.js';
+import { LdapModule } from '../core/ldap/ldap.module.js';
+import { ClassLogger } from '../core/logging/class-logger.js';
+import { LoggerModule } from '../core/logging/logger.module.js';
+import { AccessGuard } from '../modules/authentication/api/access.guard.js';
+import { AuthenticationApiModule } from '../modules/authentication/authentication-api.module.js';
+import { PermissionsInterceptor } from '../modules/authentication/services/permissions.interceptor.js';
+import { SessionAccessTokenMiddleware } from '../modules/authentication/services/session-access-token.middleware.js';
+import { CronModule } from '../modules/cron/cron.module.js';
+import { EmailModule } from '../modules/email/email.module.js';
+import { HealthModule } from '../modules/health/health.module.js';
+import { ImportApiModule } from '../modules/import/import-api.module.js';
+import { ItsLearningModule } from '../modules/itslearning/itslearning.module.js';
+import { KeycloakAdministrationModule } from '../modules/keycloak-administration/keycloak-administration.module.js';
+import { KeycloakConfigModule } from '../modules/keycloak-administration/keycloak-config.module.js';
+import { KeycloakHandlerModule } from '../modules/keycloak-handler/keycloak-handler.module.js';
+import { MeldungModule } from '../modules/meldung/meldung.module.js';
+import { ReporterModule } from '../modules/metrics/reporter/reporter.module.js';
+import { OrganisationApiModule } from '../modules/organisation/organisation-api.module.js';
+import { OxModule } from '../modules/ox/ox.module.js';
+import { PermissionModule } from '../modules/permission/permission.module.js';
+import { MapperModule } from '../modules/person/mapper/mapper.module.js';
+import { PersonApiModule } from '../modules/person/person-api.module.js';
+import { PersonenKontextApiModule } from '../modules/personenkontext/personenkontext-api.module.js';
+import { PrivacyIdeaAdministrationModule } from '../modules/privacy-idea-administration/privacy-idea-administration.module.js';
+import { RolleApiModule } from '../modules/rolle/rolle-api.module.js';
+import { SchulconnexModule } from '../modules/schulconnex/schulconnex.module.js';
+import { ServiceProviderApiModule } from '../modules/service-provider/service-provider-api.module.js';
+import { SpshConfigModule } from '../modules/spshconfig/spshconfig.module.js';
+import { StatusModule } from '../modules/status/status.module.js';
+import { VidisModule } from '../modules/vidis/vidis.module.js';
 import {
     DbConfig,
     FrontendConfig,
@@ -10,48 +50,7 @@ import {
     RedisConfig,
     ServerConfigModule,
 } from '../shared/config/index.js';
-import { PersonApiModule } from '../modules/person/person-api.module.js';
-import { KeycloakAdministrationModule } from '../modules/keycloak-administration/keycloak-administration.module.js';
-import { OrganisationApiModule } from '../modules/organisation/organisation-api.module.js';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { HealthModule } from '../modules/health/health.module.js';
-import { PrivacyIdeaAdministrationModule } from '../modules/privacy-idea-administration/privacy-idea-administration.module.js';
-import { RolleApiModule } from '../modules/rolle/rolle-api.module.js';
-import { LoggerModule } from '../core/logging/logger.module.js';
 import { ErrorModule } from '../shared/error/error.module.js';
-import { KeycloakConfigModule } from '../modules/keycloak-administration/keycloak-config.module.js';
-import { AuthenticationApiModule } from '../modules/authentication/authentication-api.module.js';
-import { PersonenKontextApiModule } from '../modules/personenkontext/personenkontext-api.module.js';
-import { ServiceProviderApiModule } from '../modules/service-provider/service-provider-api.module.js';
-import { SessionAccessTokenMiddleware } from '../modules/authentication/services/session-access-token.middleware.js';
-import { createClient, createCluster, RedisClientType, RedisClusterType } from 'redis';
-import { RedisStore } from 'connect-redis';
-import session from 'express-session';
-import passport from 'passport';
-import { ClassLogger } from '../core/logging/class-logger.js';
-import { AccessGuard } from '../modules/authentication/api/access.guard.js';
-import { PermissionsInterceptor } from '../modules/authentication/services/permissions.interceptor.js';
-import { PassportModule } from '@nestjs/passport';
-import { EventModule } from '../core/eventbus/index.js';
-import { ItsLearningModule } from '../modules/itslearning/itslearning.module.js';
-import { LdapModule } from '../core/ldap/ldap.module.js';
-import { EmailModule } from '../modules/email/email.module.js';
-import { OxModule } from '../modules/ox/ox.module.js';
-import { KeycloakHandlerModule } from '../modules/keycloak-handler/keycloak-handler.module.js';
-import { CronModule } from '../modules/cron/cron.module.js';
-import { ImportApiModule } from '../modules/import/import-api.module.js';
-import { ReporterModule } from '../modules/metrics/reporter/reporter.module.js';
-import { StatusModule } from '../modules/status/status.module.js';
-import { SpshConfigModule } from '../modules/spshconfig/spshconfig.module.js';
-import { VidisModule } from '../modules/vidis/vidis.module.js';
-import { MeldungModule } from '../modules/meldung/meldung.module.js';
-import { MapperModule } from '../modules/person/mapper/mapper.module.js';
-import { LandesbediensteterModule } from '../modules/landesbediensteter/landesbediensteter.module.js';
-import { SchulconnexModule } from '../modules/schulconnex/schulconnex.module.js';
-import { CacheModule } from '@nestjs/cache-manager';
-import KeyvRedis, { RedisClientOptions, RedisClusterOptions } from '@keyv/redis';
-import { ReflectMetadataProvider } from '@mikro-orm/decorators/legacy';
-import { PermissionModule } from '../modules/permission/permission.module.js';
 
 @Module({
     imports: [
@@ -172,7 +171,6 @@ import { PermissionModule } from '../modules/permission/permission.module.js';
         VidisModule,
         MeldungModule,
         MapperModule,
-        LandesbediensteterModule,
         SchulconnexModule,
     ],
     providers: [

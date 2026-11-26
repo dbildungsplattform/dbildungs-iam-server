@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Get,
@@ -36,9 +37,11 @@ import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
 import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
+import { LandesbediensteteKontextWorkflowService } from '../domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
 import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
 import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
+import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
@@ -63,6 +66,7 @@ import { PersonenkontexteUpdateResponse } from './response/personenkontexte-upda
 export class DbiamPersonenkontextWorkflowController {
     public constructor(
         private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
+        private readonly landesbediensteteKontextWorkflowService: LandesbediensteteKontextWorkflowService,
         private readonly personenkontextCreationService: PersonenkontextCreationService,
         private readonly logger: ClassLogger,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
@@ -110,10 +114,18 @@ export class DbiamPersonenkontextWorkflowController {
         // Determine canCommit status, by default it's always false unless both the rolle and orga are selected
         let canCommit: boolean = false;
         if (params.organisationId && params.rollenIds) {
-            const commitResult: Result<void, DomainError> = await anlage.canCommit(
-                permissions,
-                params.operationContext,
-            );
+            let commitResult: Result<void, DomainError>;
+            if (params.operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
+                // Additional logic for this operation context can be added here
+                commitResult = await this.landesbediensteteKontextWorkflowService.canCommit(
+                    params.rollenIds,
+                    params.organisationId,
+                    permissions,
+                );
+            } else {
+                commitResult = await anlage.canCommit(permissions, params.operationContext);
+            }
+
             if (commitResult.ok) {
                 canCommit = true;
             }
@@ -151,10 +163,11 @@ export class DbiamPersonenkontextWorkflowController {
         @Body() bodyParams: DbiamUpdatePersonenkontexteBodyParams,
         @Permissions() permissions: IPersonPermissions,
     ): Promise<PersonenkontexteUpdateResponse> {
-        const updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError =
-            await this.personenkontextWorkflowFactory
-                .createNew()
-                .commit(
+        let updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError;
+
+        switch (bodyParams.operationContext) {
+            case OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN:
+                updateResult = await this.landesbediensteteKontextWorkflowService.commit(
                     params.personId,
                     bodyParams.lastModified,
                     bodyParams.count,
@@ -162,12 +175,25 @@ export class DbiamPersonenkontextWorkflowController {
                     permissions,
                     queryParams.personalnummer || undefined,
                 );
-
-        if (updateResult instanceof PersonenkontexteUpdateError || updateResult instanceof MissingPermissionsError) {
-            throw updateResult;
+                break;
+            case OperationContext.PERSON_ANLEGEN:
+            case OperationContext.PERSON_BEARBEITEN:
+                updateResult = await this.personenkontextWorkflowFactory
+                    .createNew()
+                    .commit(
+                        params.personId,
+                        bodyParams.lastModified,
+                        bodyParams.count,
+                        bodyParams.personenkontexte,
+                        permissions,
+                        queryParams.personalnummer || undefined,
+                    );
+                break;
+            default:
+                throw new BadRequestException('Unsupported operation context for updating personenkontexte');
         }
 
-        if (updateResult instanceof DuplicatePersonalnummerError) {
+        if (updateResult instanceof DomainError) {
             throw updateResult;
         }
         return new PersonenkontexteUpdateResponse(updateResult);
