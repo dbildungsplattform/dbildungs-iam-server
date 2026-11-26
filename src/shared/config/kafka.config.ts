@@ -2,15 +2,6 @@ import { IsBoolean, IsNumber, IsOptional, IsString, ValidateIf } from 'class-val
 
 type Required<T, IsRequired extends boolean> = Persisted<T, IsRequired>;
 
-/** librdkafka default for `max.poll.interval.ms` */
-export const DEFAULT_KAFKA_MAX_POLL_INTERVAL: number = 300000;
-
-/** Default time an event handler may run (without calling keepAlive) before it is cancelled */
-export const DEFAULT_KAFKA_HANDLER_TIMEOUT: number = 60000;
-
-/** Default time a handler gets to stop after it was cancelled before it is abandoned */
-export const DEFAULT_KAFKA_HANDLER_CANCEL_GRACE: number = 5000;
-
 export class KafkaConfig<SslEnabled extends boolean = boolean> {
     @IsString()
     public readonly BROKER!: string;

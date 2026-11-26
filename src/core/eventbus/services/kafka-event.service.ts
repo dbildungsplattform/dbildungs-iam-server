@@ -15,17 +15,16 @@ import util from 'util';
 import { KafkaEvent } from '../../../shared/events/kafka-event.js';
 import { ConfigService } from '@nestjs/config';
 import { ServerConfig } from '../../../shared/config/server.config.js';
-import {
-    DEFAULT_KAFKA_HANDLER_CANCEL_GRACE,
-    DEFAULT_KAFKA_HANDLER_TIMEOUT,
-    DEFAULT_KAFKA_MAX_POLL_INTERVAL,
-    KafkaConfig,
-} from '../../../shared/config/kafka.config.js';
+import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
 import { EventHandlerFailedError } from '../error/handler-failed.error.js';
 import { EventHandlerTimeoutError } from '../error/handler-timeout.error.js';
 import { EventHandlerShutdownError } from '../error/handler-shutdown.error.js';
 import { InvalidKafkaConfigError } from '../error/invalid-kafka-config.error.js';
+
+const MAX_POLL_INTERVAL_DEFAULT: number = 300000;
+const HANDLER_TIMEOUT_DEFAULT: number = 60000;
+const HANDLER_CANCEL_GRACE_DEFAULT: number = 5000;
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
@@ -60,9 +59,9 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         configService: ConfigService<ServerConfig>,
     ) {
         this.kafkaConfig = configService.getOrThrow<KafkaConfig>('KAFKA');
-        this.maxPollIntervalMs = this.kafkaConfig.MAX_POLL_INTERVAL ?? DEFAULT_KAFKA_MAX_POLL_INTERVAL;
-        this.handlerTimeoutMs = this.kafkaConfig.HANDLER_TIMEOUT ?? DEFAULT_KAFKA_HANDLER_TIMEOUT;
-        this.handlerCancelGraceMs = this.kafkaConfig.HANDLER_CANCEL_GRACE ?? DEFAULT_KAFKA_HANDLER_CANCEL_GRACE;
+        this.maxPollIntervalMs = this.kafkaConfig.MAX_POLL_INTERVAL ?? MAX_POLL_INTERVAL_DEFAULT;
+        this.handlerTimeoutMs = this.kafkaConfig.HANDLER_TIMEOUT ?? HANDLER_TIMEOUT_DEFAULT;
+        this.handlerCancelGraceMs = this.kafkaConfig.HANDLER_CANCEL_GRACE ?? HANDLER_CANCEL_GRACE_DEFAULT;
         if (this.kafkaConfig.ENABLED !== true) {
             this.logger.info('Kafka is disabled');
             return;
