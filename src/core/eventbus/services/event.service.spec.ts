@@ -116,7 +116,21 @@ describe('EventService', () => {
 
             sut.publish(event);
 
-            expect(handler).toHaveBeenCalledWith(event, expect.any(Function));
+            expect(handler).toHaveBeenCalledWith(event, expect.any(Function), expect.any(AbortSignal));
+        });
+
+        it('should pass a signal that is never aborted', () => {
+            let receivedSignal: AbortSignal | undefined;
+            const handler: EventHandlerType<BaseEvent> = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) => {
+                    receivedSignal = signal;
+                },
+            );
+            sut.subscribe(TestEvent, handler);
+
+            sut.publish(new TestEvent());
+
+            expect(receivedSignal?.aborted).toBe(false);
         });
 
         it('should call multiple handlers', () => {
@@ -129,8 +143,8 @@ describe('EventService', () => {
 
             sut.publish(event);
 
-            expect(handler1).toHaveBeenCalledWith(event, expect.any(Function));
-            expect(handler2).toHaveBeenCalledWith(event, expect.any(Function));
+            expect(handler1).toHaveBeenCalledWith(event, expect.any(Function), expect.any(AbortSignal));
+            expect(handler2).toHaveBeenCalledWith(event, expect.any(Function), expect.any(AbortSignal));
         });
 
         it('should work when no handler is registered', () => {

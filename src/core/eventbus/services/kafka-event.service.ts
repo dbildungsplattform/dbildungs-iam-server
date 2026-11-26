@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { BaseEvent } from '../../../shared/events/index.js';
-import { Constructor, EventHandlerType, MaybePromise } from '../types/util.types.js';
+import { Constructor, EventHandlerType } from '../types/util.types.js';
 import { ClassLogger } from '../../logging/class-logger.js';
 import {
     isKafkaEventKey,
@@ -19,12 +19,19 @@ import { KafkaConfig } from '../../../shared/config/kafka.config.js';
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
 import { EventHandlerFailedError } from '../error/handler-failed.error.js';
 import { EventHandlerTimeoutError } from '../error/handler-timeout.error.js';
+import { EventHandlerShutdownError } from '../error/handler-shutdown.error.js';
+import { InvalidKafkaConfigError } from '../error/invalid-kafka-config.error.js';
+
+const MAX_POLL_INTERVAL_DEFAULT: number = 300000;
+const HANDLER_TIMEOUT_DEFAULT: number = 60000;
+const HANDLER_CANCEL_GRACE_DEFAULT: number = 5000;
+// Time within max.poll.interval.ms that is kept free for DLQ publication and offset handling after the handlers are done
+const POST_PROCESSING_RESERVE: number = 10000;
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
 type Producer = KafkaJS.Producer;
 type KafkaMessage = KafkaJS.KafkaMessage;
-type EachMessagePayload = KafkaJS.EachMessagePayload;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -40,20 +47,44 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
 
     private readonly kafkaConfig: KafkaConfig;
 
+    private readonly maxPollIntervalMs: number;
+
+    private readonly handlerTimeoutMs: number;
+
+    private readonly handlerCancelGraceMs: number;
+
+    private readonly handlerDeadlineMs: number;
+    private readonly runningHandlers: Map<symbol, () => void> = new Map();
+
     public constructor(
         private readonly logger: ClassLogger,
         @Inject(KAFKA_INSTANCE) private readonly kafka: Kafka,
         configService: ConfigService<ServerConfig>,
     ) {
         this.kafkaConfig = configService.getOrThrow<KafkaConfig>('KAFKA');
+        this.maxPollIntervalMs = this.kafkaConfig.MAX_POLL_INTERVAL ?? MAX_POLL_INTERVAL_DEFAULT;
+        this.handlerTimeoutMs = this.kafkaConfig.HANDLER_TIMEOUT ?? HANDLER_TIMEOUT_DEFAULT;
+        this.handlerCancelGraceMs = this.kafkaConfig.HANDLER_CANCEL_GRACE ?? HANDLER_CANCEL_GRACE_DEFAULT;
+        this.handlerDeadlineMs = this.maxPollIntervalMs - this.handlerCancelGraceMs - POST_PROCESSING_RESERVE;
         if (this.kafkaConfig.ENABLED !== true) {
             this.logger.info('Kafka is disabled');
             return;
+        }
+        if (this.maxPollIntervalMs <= 0 || this.handlerTimeoutMs <= 0 || this.handlerCancelGraceMs < 0) {
+            throw new InvalidKafkaConfigError(
+                `MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms) and HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) must be positive and HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) must not be negative`,
+            );
+        }
+        if (this.handlerTimeoutMs >= this.handlerDeadlineMs) {
+            throw new InvalidKafkaConfigError(
+                `HANDLER_TIMEOUT (${this.handlerTimeoutMs}ms) + HANDLER_CANCEL_GRACE (${this.handlerCancelGraceMs}ms) + reserve (${POST_PROCESSING_RESERVE}ms) must be smaller than MAX_POLL_INTERVAL (${this.maxPollIntervalMs}ms)`,
+            );
         }
         this.consumer = this.kafka.consumer({
             'group.id': this.kafkaConfig.GROUP_ID,
             'session.timeout.ms': this.kafkaConfig.SESSION_TIMEOUT,
             'heartbeat.interval.ms': this.kafkaConfig.HEARTBEAT_INTERVAL,
+            'max.poll.interval.ms': this.maxPollIntervalMs,
             'allow.auto.create.topics': false,
             // The server is very strict about open connections and will disconnect the producers after 5000ms of inactivity
             'log.connection.close': false,
@@ -79,19 +110,11 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
             await this.consumer?.subscribe({ topics: Array.from(topics) });
 
             await this.consumer?.run({
-                eachMessage: async ({
-                    topic,
-                    partition,
-                    message,
-                    heartbeat,
-                }: Omit<EachMessagePayload, 'heartbeat'> & { heartbeat: () => Promise<void> }) => {
+                eachMessage: async ({ topic, partition, message }: KafkaJS.EachMessagePayload) => {
                     this.logger.info(
                         `Consuming message from topic: ${topic}, partition: ${partition}, offset: ${message.offset}, key: ${message.key?.toString()}`,
                     );
-                    // Call heartbeat before and after processing, and optionally during long processing
-                    await heartbeat();
-                    await this.handleMessage(message, heartbeat);
-                    await heartbeat();
+                    await this.handleMessage(message);
                 },
             });
 
@@ -102,6 +125,9 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
     }
 
     public async onModuleDestroy(): Promise<void> {
+        for (const abortHandler of this.runningHandlers.values()) {
+            abortHandler();
+        }
         await this.consumer?.disconnect();
         await this.producer?.disconnect();
     }
@@ -112,7 +138,7 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         this.handlerMap.set(eventType, handlers);
     }
 
-    public async handleMessage(message: KafkaMessage, heartbeat: () => Promise<void>): Promise<void> {
+    public async handleMessage(message: KafkaMessage): Promise<void> {
         const eventKey: string | undefined = message.headers?.['eventKey']?.toString();
 
         if (!eventKey) {
@@ -151,43 +177,28 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
 
         if (handlers?.length) {
             this.logger.info(`Handling event: ${eventClass.name} with ${handlers.length} handlers`);
-            const handlerPromises: Promise<Result<unknown>>[] = handlers.map(
-                async (handler: EventHandlerType<BaseEvent>) => {
-                    try {
-                        const res: Result<unknown, Error> = await this.runWithTimoutAndKeepAlive(
-                            handler,
-                            kafkaEvent,
-                            heartbeat,
-                        );
-
-                        return res;
-                    } catch (err) {
-                        this.logger.logUnknownAsError(`Handler failed for event ${eventClass.name}`, err);
-                        return {
-                            ok: false,
-                            error: new EventHandlerFailedError(eventClass.name),
-                        } satisfies Result<Error>;
-                    }
-                },
+            const results: Result<unknown, Error>[] = await Promise.all(
+                handlers.map((handler: EventHandlerType<BaseEvent>) => this.runHandler(handler, kafkaEvent)),
             );
+            const failures: Error[] = results.flatMap((res: Result<unknown, Error>) => (res.ok ? [] : [res.error]));
+            await this.handleHandlerFailures(kafkaEvent, failures);
+        }
+    }
 
-            const results: PromiseSettledResult<Result<unknown>>[] = await Promise.allSettled(handlerPromises);
-
-            const firstFailure:
-                | PromiseFulfilledResult<{
-                      ok: false;
-                      error: Error;
-                  }>
-                | undefined = results.find(
-                (
-                    res: PromiseSettledResult<Result<unknown, Error>>,
-                ): res is PromiseFulfilledResult<{ ok: false; error: Error }> =>
-                    res.status === 'fulfilled' && !res.value.ok && res.value.error instanceof Error,
+    private async handleHandlerFailures(event: BaseEvent & KafkaEvent, failures: Error[]): Promise<void> {
+        const shutdownError: Error | undefined = failures.find(
+            (error: Error) => error instanceof EventHandlerShutdownError,
+        );
+        if (shutdownError) {
+            this.logger.warning(
+                `Handling of event ${event.constructor.name} with EventID: ${event.eventID} was aborted because of shutdown`,
             );
+            throw shutdownError;
+        }
 
-            if (firstFailure) {
-                await this.publishToDLQ(kafkaEvent, firstFailure.value.error);
-            }
+        const firstFailure: Error | undefined = failures[0];
+        if (firstFailure) {
+            await this.publishToDLQ(event, firstFailure);
         }
     }
 
@@ -287,70 +298,97 @@ export class KafkaEventService implements OnModuleInit, OnModuleDestroy {
         return topics;
     }
 
-    /*
-    Must be public because otherwise writing tests that cover 100% are very hard and not worth the effort
-    */
-    public runWithTimoutAndKeepAlive<Event extends BaseEvent>(
+    public runHandler<Event extends BaseEvent>(
         handler: EventHandlerType<BaseEvent>,
         event: Event,
-        heartbeat: () => Promise<void>,
     ): Promise<Result<unknown, Error>> {
-        return new Promise((resolve: (value: Result<unknown, Error> | PromiseLike<Result<unknown, Error>>) => void) => {
-            const timeoutMs: number = this.kafkaConfig.SESSION_TIMEOUT - this.kafkaConfig.HEARTBEAT_INTERVAL - 2500; // To allow processing of offset commit after message before client times out
-            let completed: boolean = false;
+        return new Promise((resolve: (value: Result<unknown, Error>) => void) => {
+            const eventName: string = event.constructor.name;
+            const description: string = `Handler for event ${eventName} with EventID: ${event.eventID}`;
+            const controller: AbortController = new AbortController();
+            const handlerToken: symbol = Symbol(description);
+            let timeoutTimer: NodeJS.Timeout | undefined;
+            let deadlineTimer: NodeJS.Timeout | undefined;
+            let abandonTimer: NodeJS.Timeout | undefined;
 
-            const onTimeout = (): void => {
-                if (!completed) {
-                    completed = true;
-                    this.logger.crit(
-                        `Handler for event ${event.constructor.name} with EventID: ${event.eventID} timed out after ${timeoutMs}ms`,
-                    );
-                    resolve({
-                        ok: false,
-                        error: new EventHandlerTimeoutError<Event>(event, timeoutMs),
-                    } satisfies Result<Error>);
-                }
+            const finish = (result: Result<unknown, Error>): void => {
+                clearTimeout(timeoutTimer);
+                clearTimeout(deadlineTimer);
+                clearTimeout(abandonTimer);
+                this.runningHandlers.delete(handlerToken);
+                resolve(result);
             };
 
-            let timeout: NodeJS.Timeout = setTimeout(onTimeout, timeoutMs);
+            const abort = (reason: Error): void => {
+                if (controller.signal.aborted) {
+                    return;
+                }
+                clearTimeout(timeoutTimer);
+                clearTimeout(deadlineTimer);
+                controller.abort(reason);
+                abandonTimer = setTimeout(() => {
+                    this.logger.crit(
+                        `${description} did not stop within ${this.handlerCancelGraceMs}ms after being aborted and is abandoned`,
+                    );
+                    finish({ ok: false, error: reason });
+                }, this.handlerCancelGraceMs);
+            };
+
+            const abortOnShutdown = (): void => abort(new EventHandlerShutdownError(eventName));
+
+            const startTimeout = (): void => {
+                clearTimeout(timeoutTimer);
+                timeoutTimer = setTimeout(() => {
+                    this.logger.error(`${description} timed out after ${this.handlerTimeoutMs}ms, aborting it`);
+                    abort(new EventHandlerTimeoutError<Event>(event, this.handlerTimeoutMs));
+                }, this.handlerTimeoutMs);
+            };
 
             const keepAlive = (): void => {
-                if (!completed) {
-                    this.logger.info(
-                        `Handler for event ${event.constructor.name} with EventID: ${event.eventID} is still running and called keepAlive, resetting timeout`,
-                    );
-                    void heartbeat();
-                    clearTimeout(timeout);
-                    timeout = setTimeout(onTimeout, timeoutMs);
+                if (!controller.signal.aborted) {
+                    this.logger.info(`${description} is still running and called keepAlive, resetting timeout`);
+                    startTimeout();
                 }
             };
 
-            const maybePromise: MaybePromise<void | Result<unknown, Error>> = handler(event, keepAlive);
-            Promise.resolve(maybePromise)
-                .then((result: Result<unknown> | void) => {
-                    if (!completed) {
-                        this.logger.info(
-                            `Handler for event ${event.constructor.name} with EventID: ${event.eventID} completed successfully`,
-                        );
-                        clearTimeout(timeout);
-                        completed = true;
-                        resolve(result ?? ({ ok: true, value: null } satisfies Result<unknown>));
+            const execute = async (): Promise<Result<unknown, Error>> => {
+                try {
+                    const result: Result<unknown> | void = await handler(event, keepAlive, controller.signal);
+                    if (!controller.signal.aborted) {
+                        this.logger.info(`${description} completed successfully`);
+                        return result ?? ({ ok: true, value: null } satisfies Result<unknown>);
                     }
-                })
-                .catch((error: Error) => {
-                    if (!completed) {
-                        this.logger.logUnknownAsError(
-                            `Handler for event ${event.constructor.name} with EventID: ${event.eventID} failed`,
-                            error,
-                        );
-                        clearTimeout(timeout);
-                        completed = true;
-                        resolve({
+                    this.logger.warning(`${description} returned after being aborted, treating it as failed`);
+                } catch (error) {
+                    const aborted: boolean = controller.signal.aborted;
+                    this.logger.logUnknownAsError(
+                        aborted ? `${description} failed after being aborted` : `${description} failed`,
+                        error,
+                    );
+                    if (!aborted) {
+                        return {
                             ok: false,
-                            error,
-                        } satisfies Result<unknown>);
+                            error: error instanceof Error ? error : new EventHandlerFailedError(eventName),
+                        };
                     }
-                });
+                }
+                // Reached only if aborted: the event was not (reliably) processed completely, whatever the handler returned
+                return { ok: false, error: controller.signal.reason as Error };
+            };
+
+            const startDeadline = (): void => {
+                deadlineTimer = setTimeout(() => {
+                    this.logger.error(
+                        `${description} exceeded the maximum processing time of ${this.handlerDeadlineMs}ms, aborting it`,
+                    );
+                    abort(new EventHandlerTimeoutError<Event>(event, this.handlerDeadlineMs));
+                }, this.handlerDeadlineMs);
+            };
+
+            this.runningHandlers.set(handlerToken, abortOnShutdown);
+            startTimeout();
+            startDeadline();
+            void execute().then(finish);
         });
     }
 }

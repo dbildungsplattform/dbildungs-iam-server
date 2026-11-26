@@ -13,6 +13,10 @@ import { KafkaImportExecutedEvent } from '../../../shared/events/kafka-import-ex
 import { KAFKA_INSTANCE } from '../kafka-client-provider.js';
 import { inspect } from 'util';
 import { createMock, type DeepMocked } from '../../../../test/utils/createMock.js';
+import { EventHandlerFailedError } from '../error/handler-failed.error.js';
+import { EventHandlerShutdownError } from '../error/handler-shutdown.error.js';
+import { EventHandlerTimeoutError } from '../error/handler-timeout.error.js';
+import { InvalidKafkaConfigError } from '../error/invalid-kafka-config.error.js';
 
 type Kafka = KafkaJS.Kafka;
 type Consumer = KafkaJS.Consumer;
@@ -21,6 +25,17 @@ type KafkaMessage = KafkaJS.KafkaMessage;
 type EachMessageHandler = KafkaJS.EachMessageHandler;
 type ConsumerRunConfig = KafkaJS.ConsumerRunConfig;
 type EachMessagePayload = KafkaJS.EachMessagePayload;
+
+function errorOf(result: Result<unknown, Error>): Error | undefined {
+    return result.ok ? undefined : result.error;
+}
+
+type KafkaTimingTestCase = {
+    name: string;
+    MAX_POLL_INTERVAL: number;
+    HANDLER_TIMEOUT: number;
+    HANDLER_CANCEL_GRACE: number;
+};
 
 class TestEvent extends BaseEvent implements KafkaEvent {
     public constructor() {
@@ -121,24 +136,14 @@ describe('KafkaEventService', () => {
         expect(producer.disconnect).toHaveBeenCalled();
     });
 
-    it('should log crit and resolve with timeout error if handler times out', async () => {
-        vi.useFakeTimers();
-        const message: DeepMocked<KafkaMessage> = vi.mockObject<KafkaMessage>({
-            key: Buffer.from('test'),
-            value: Buffer.from(JSON.stringify(new TestEvent())),
-            headers: { eventKey: 'user.deleted' },
-        } as unknown as KafkaMessage);
-        const handler: Mock = vi.fn(() => new Promise(() => {}));
-        sut.subscribe(KafkaPersonDeletedEvent, handler);
-
-        const handlePromise: Promise<void> = sut.handleMessage(message, () => Promise.resolve());
-        vi.runOnlyPendingTimers();
-        await Promise.resolve();
-
-        expect(handlePromise).toBeDefined();
-        expect(logger.crit).toHaveBeenCalledTimes(1);
-
-        vi.useRealTimers();
+    it('should configure the consumer with the default max.poll.interval.ms', () => {
+        expect(kafka.consumer).toHaveBeenCalledWith(
+            expect.objectContaining({
+                'max.poll.interval.ms': 300000,
+                'session.timeout.ms': 300000,
+                'heartbeat.interval.ms': 3000,
+            }),
+        );
     });
 
     it('should handle message correctly', async () => {
@@ -151,7 +156,7 @@ describe('KafkaEventService', () => {
         const handler: Mock = vi.fn();
         sut.subscribe(KafkaPersonDeletedEvent, handler);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(handler).toHaveBeenCalled();
         expect(logger.info).toHaveBeenNthCalledWith(1, 'Handling event: KafkaPersonDeletedEvent with 1 handlers');
@@ -170,7 +175,7 @@ describe('KafkaEventService', () => {
             headers: { eventKey: 'schule.created' },
         } as unknown as KafkaMessage);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.info).not.toHaveBeenCalledWith(
             expect.stringContaining('Handling event: KafkaSchuleCreatedEvent'),
@@ -184,7 +189,7 @@ describe('KafkaEventService', () => {
             headers: {},
         } as unknown as KafkaMessage);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.error).toHaveBeenCalledWith('Event type header is missing');
     });
@@ -196,7 +201,7 @@ describe('KafkaEventService', () => {
             headers: { eventKey: 'UnknownEvent' },
         } as unknown as KafkaMessage);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.error).toHaveBeenCalledWith('Event type in header: UnknownEvent is not a valid KafkaEventKey');
     });
@@ -208,7 +213,7 @@ describe('KafkaEventService', () => {
             headers: { eventKey: 'user.deleted' },
         } as unknown as KafkaMessage);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.error).toHaveBeenCalledWith('Parsed Kafka message is not a valid object');
     });
@@ -219,7 +224,7 @@ describe('KafkaEventService', () => {
             value: Buffer.from('{ invalidJson: '),
             headers: { eventKey: 'user.deleted' },
         } as unknown as KafkaMessage);
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.logUnknownAsError).toHaveBeenCalledWith('Failed to parse Kafka message', expect.any(SyntaxError));
     });
@@ -233,7 +238,7 @@ describe('KafkaEventService', () => {
         const handler: Mock = vi.fn().mockRejectedValue(new Error('Handler error'));
         sut.subscribe(KafkaPersonDeletedEvent, handler);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.logUnknownAsError).toHaveBeenCalled();
     });
@@ -248,9 +253,9 @@ describe('KafkaEventService', () => {
             throw new Error('Handler error');
         });
         sut.subscribe(KafkaPersonDeletedEvent, handler);
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
         expect(logger.logUnknownAsError).toHaveBeenCalledWith(
-            'Handler failed for event KafkaPersonDeletedEvent',
+            expect.stringMatching(/^Handler for event KafkaPersonDeletedEvent with EventID: .+ failed$/),
             expect.any(Error),
         );
     });
@@ -264,7 +269,7 @@ describe('KafkaEventService', () => {
         const handler: Mock = vi.fn();
         sut.subscribe(KafkaPersonDeletedEvent, handler);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
 
         expect(logger.error).toHaveBeenCalledWith('Message value is empty or undefined');
     });
@@ -281,7 +286,7 @@ describe('KafkaEventService', () => {
         const handler: Mock = vi.fn().mockReturnValue({ ok: false, error: error });
         sut.subscribe(KafkaPersonDeletedEvent, handler);
 
-        await sut.handleMessage(message, () => Promise.resolve());
+        await sut.handleMessage(message);
         expect(producer.send).toHaveBeenCalledWith({
             topic: 'prefix.user-dlq-topic',
             messages: [
@@ -436,7 +441,6 @@ describe('KafkaEventService', () => {
         });
 
         const payload: DeepMocked<EachMessagePayload> = {
-            heartbeat: vi.fn(),
             message: {
                 key: Buffer.from('test'),
                 value: Buffer.from(JSON.stringify(new TestEvent())),
@@ -455,7 +459,7 @@ describe('KafkaEventService', () => {
             await consumerCb(payload);
         }
 
-        expect(handleMessageSpy).toHaveBeenCalled();
+        expect(handleMessageSpy).toHaveBeenCalledWith(payload.message);
     });
 
     it('should log error in onModuleInit if Kafka consumer fails to connect', async () => {
@@ -499,34 +503,407 @@ describe('KafkaEventService', () => {
         expect(producer.connect).not.toHaveBeenCalled();
     });
 
-    it('should call logger.info when keepAlive is invoked in handler', async () => {
-        vi.useFakeTimers();
-        const event: KafkaPersonDeletedEvent = new KafkaPersonDeletedEvent('test', 'test');
+    describe('configuration', () => {
+        it('should use the configured timing values', async () => {
+            vi.useFakeTimers();
+            configService.getOrThrow.mockReturnValue({
+                ...defaultKafkaConfig,
+                MAX_POLL_INTERVAL: 120000,
+                HANDLER_TIMEOUT: 1000,
+                HANDLER_CANCEL_GRACE: 500,
+            } satisfies KafkaConfig);
+            const service: KafkaEventService = new KafkaEventService(logger, kafka, configService);
+            const handler: Mock = vi.fn(() => new Promise(() => {}));
 
-        // eslint-disable-next-line @typescript-eslint/typedef
-        const handler: Mock = vi.fn((_, keepAlive: () => void) => {
-            setTimeout(() => {
-                keepAlive();
-            }, 1000);
+            const promise: Promise<Result<unknown, Error>> = service.runHandler(
+                handler,
+                new KafkaPersonDeletedEvent('test', 'test'),
+            );
+            await vi.advanceTimersByTimeAsync(1500);
+            const result: Result<unknown, Error> = await promise;
 
-            return new Promise((resolve: (value: unknown) => void) => {
-                setTimeout(() => {
-                    resolve({ ok: true, value: null });
-                }, 2000);
-            });
+            expect(kafka.consumer).toHaveBeenLastCalledWith(
+                expect.objectContaining({ 'max.poll.interval.ms': 120000 }),
+            );
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('timed out after 1000ms'));
+            expect(logger.crit).toHaveBeenCalledWith(expect.stringContaining('did not stop within 500ms'));
+
+            vi.useRealTimers();
         });
 
-        const promise: Promise<Result<unknown, Error>> = sut.runWithTimoutAndKeepAlive(handler, event, () =>
-            Promise.resolve(),
+        it('should throw if handler timeout, cancel grace and reserve do not fit into max.poll.interval.ms', () => {
+            configService.getOrThrow.mockReturnValue({
+                ...defaultKafkaConfig,
+                MAX_POLL_INTERVAL: 10000,
+                HANDLER_TIMEOUT: 8000,
+                HANDLER_CANCEL_GRACE: 2000,
+            } satisfies KafkaConfig);
+
+            expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(InvalidKafkaConfigError);
+            expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(
+                'HANDLER_TIMEOUT (8000ms) + HANDLER_CANCEL_GRACE (2000ms) + reserve (10000ms) must be smaller than MAX_POLL_INTERVAL (10000ms)',
+            );
+        });
+
+        it.each([
+            {
+                name: 'a negative cancel grace',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: -60000,
+            },
+            {
+                name: 'a zero handler timeout',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: 0,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a negative handler timeout',
+                MAX_POLL_INTERVAL: 300000,
+                HANDLER_TIMEOUT: -1,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a zero max poll interval',
+                MAX_POLL_INTERVAL: 0,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+            {
+                name: 'a negative max poll interval',
+                MAX_POLL_INTERVAL: -300000,
+                HANDLER_TIMEOUT: 60000,
+                HANDLER_CANCEL_GRACE: 5000,
+            },
+        ])(
+            'should throw for $name',
+            ({ MAX_POLL_INTERVAL, HANDLER_TIMEOUT, HANDLER_CANCEL_GRACE }: KafkaTimingTestCase) => {
+                configService.getOrThrow.mockReturnValue({
+                    ...defaultKafkaConfig,
+                    MAX_POLL_INTERVAL,
+                    HANDLER_TIMEOUT,
+                    HANDLER_CANCEL_GRACE,
+                } satisfies KafkaConfig);
+
+                expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(InvalidKafkaConfigError);
+                expect(() => new KafkaEventService(logger, kafka, configService)).toThrow(
+                    'must be positive and HANDLER_CANCEL_GRACE',
+                );
+            },
         );
 
-        vi.advanceTimersByTime(2000);
-        await promise;
-        expect(logger.info).toHaveBeenCalledWith(
-            expect.stringMatching(
-                /^Handler for event KafkaPersonDeletedEvent with EventID: .+ is still running and called keepAlive, resetting timeout$/,
-            ),
-        );
-        vi.useRealTimers();
+        it('should not validate the timing values if kafka is disabled', () => {
+            configService.getOrThrow.mockReturnValue({
+                ...defaultKafkaConfig,
+                ENABLED: false,
+                MAX_POLL_INTERVAL: 10000,
+                HANDLER_TIMEOUT: 8000,
+                HANDLER_CANCEL_GRACE: 2000,
+            } satisfies KafkaConfig);
+
+            expect(() => new KafkaEventService(logger, kafka, configService)).not.toThrow();
+        });
+    });
+
+    describe('handler execution', () => {
+        const event: KafkaPersonDeletedEvent = new KafkaPersonDeletedEvent('test', 'test');
+
+        function createMessage(): KafkaMessage {
+            return {
+                key: Buffer.from('test'),
+                value: Buffer.from(JSON.stringify(event)),
+                headers: { eventKey: 'user.deleted' },
+            } as unknown as KafkaMessage;
+        }
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('should abort a cooperating handler on timeout and wait until it has stopped before returning', async () => {
+            let receivedSignal: AbortSignal | undefined;
+            let handlerStopped: boolean = false;
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) =>
+                    new Promise((_resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+                        receivedSignal = signal;
+                        signal.addEventListener('abort', () => {
+                            setTimeout(() => {
+                                handlerStopped = true;
+                                reject(signal.reason as Error);
+                            }, 100);
+                        });
+                    }),
+            );
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+            let handled: boolean = false;
+
+            const handlePromise: Promise<void> = sut.handleMessage(createMessage()).then(() => {
+                handled = true;
+            });
+            await vi.advanceTimersByTimeAsync(60000);
+
+            expect(receivedSignal?.aborted).toBe(true);
+            expect(handlerStopped).toBe(false);
+            expect(handled).toBe(false);
+
+            await vi.advanceTimersByTimeAsync(100);
+            await handlePromise;
+
+            expect(handlerStopped).toBe(true);
+            expect(logger.error).toHaveBeenCalledTimes(1);
+            expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('timed out after 60000ms'));
+            expect(logger.crit).not.toHaveBeenCalled();
+            expect(logger.logUnknownAsError).toHaveBeenCalledWith(
+                expect.stringMatching(
+                    /^Handler for event KafkaPersonDeletedEvent with EventID: .+ failed after being aborted$/,
+                ),
+                expect.any(EventHandlerTimeoutError),
+            );
+            expect(producer.send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    topic: 'prefix.user-dlq-topic',
+                    messages: [
+                        expect.objectContaining({
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            headers: expect.objectContaining({ eventKey: 'user.deleted' }),
+                        }),
+                    ],
+                }),
+            );
+        });
+
+        it('should abandon a handler that ignores the signal after the cancel grace period', async () => {
+            const handler: Mock = vi.fn(() => new Promise(() => {}));
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+
+            const handlePromise: Promise<void> = sut.handleMessage(createMessage());
+            await vi.advanceTimersByTimeAsync(60000);
+            expect(logger.crit).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(5000);
+            await handlePromise;
+
+            expect(logger.crit).toHaveBeenCalledTimes(1);
+            expect(logger.crit).toHaveBeenCalledWith(expect.stringContaining('did not stop within 5000ms'));
+            expect(producer.send).toHaveBeenCalledWith(expect.objectContaining({ topic: 'prefix.user-dlq-topic' }));
+        });
+
+        it('should return a timeout error as result if the handler is abandoned', async () => {
+            const handler: Mock = vi.fn(() => new Promise(() => {}));
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(65000);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+        });
+
+        it('should treat a handler that returns after being aborted as failed', async () => {
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) =>
+                    new Promise((resolve: (value: unknown) => void) => {
+                        signal.addEventListener('abort', () => {
+                            resolve({ ok: true, value: null });
+                        });
+                    }),
+            );
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(60000);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+            expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('completed successfully'));
+            expect(logger.warning).toHaveBeenCalledWith(
+                expect.stringContaining('returned after being aborted, treating it as failed'),
+            );
+        });
+
+        it('should not abort a handler that finishes in time', async () => {
+            let receivedSignal: AbortSignal | undefined;
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) =>
+                    new Promise((resolve: (value: unknown) => void) => {
+                        receivedSignal = signal;
+                        setTimeout(() => {
+                            resolve({ ok: true, value: null });
+                        }, 59000);
+                    }),
+            );
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(59000);
+            const result: Result<unknown, Error> = await promise;
+            await vi.advanceTimersByTimeAsync(70000);
+
+            expect(result).toEqual({ ok: true, value: null });
+            expect(receivedSignal?.aborted).toBe(false);
+            expect(logger.error).not.toHaveBeenCalled();
+            expect(logger.crit).not.toHaveBeenCalled();
+        });
+
+        it('should restart the timeout when the handler calls keepAlive', async () => {
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, keepAlive: () => void) =>
+                    new Promise((resolve: (value: unknown) => void) => {
+                        setTimeout(keepAlive, 50000);
+                        setTimeout(() => {
+                            resolve({ ok: true, value: null });
+                        }, 100000);
+                    }),
+            );
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(100000);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(result).toEqual({ ok: true, value: null });
+            expect(logger.error).not.toHaveBeenCalled();
+            expect(logger.crit).not.toHaveBeenCalled();
+            expect(logger.info).toHaveBeenCalledWith(
+                expect.stringMatching(
+                    /^Handler for event KafkaPersonDeletedEvent with EventID: .+ is still running and called keepAlive, resetting timeout$/,
+                ),
+            );
+        });
+
+        it('should abort a handler at the maximum processing time even if it keeps calling keepAlive', async () => {
+            let receivedSignal: AbortSignal | undefined;
+            const handler: Mock = vi.fn((_event: BaseEvent, keepAlive: () => void, signal: AbortSignal) => {
+                receivedSignal = signal;
+                const interval: NodeJS.Timeout = setInterval(keepAlive, 50000);
+                return new Promise((_resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+                    signal.addEventListener('abort', () => {
+                        clearInterval(interval);
+                        reject(signal.reason as Error);
+                    });
+                });
+            });
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(284999);
+
+            expect(receivedSignal?.aborted).toBe(false);
+
+            await vi.advanceTimersByTimeAsync(1);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(receivedSignal?.aborted).toBe(true);
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+            expect(logger.error).toHaveBeenCalledWith(
+                expect.stringContaining('exceeded the maximum processing time of 285000ms'),
+            );
+        });
+
+        it('should not trigger the maximum processing time after the handler finished', async () => {
+            const handler: Mock = vi.fn().mockResolvedValue({ ok: true, value: null });
+
+            const result: Result<unknown, Error> = await sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(300000);
+
+            expect(result).toEqual({ ok: true, value: null });
+            expect(logger.error).not.toHaveBeenCalled();
+        });
+
+        it('should ignore keepAlive calls after the handler was aborted', async () => {
+            let keepAliveFn: (() => void) | undefined;
+            const handler: Mock = vi.fn((_event: BaseEvent, keepAlive: () => void) => {
+                keepAliveFn = keepAlive;
+                return new Promise(() => {});
+            });
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(60000);
+            keepAliveFn?.();
+            await vi.advanceTimersByTimeAsync(5000);
+            await promise;
+
+            expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('called keepAlive'));
+            expect(logger.error).toHaveBeenCalledTimes(1);
+            expect(logger.crit).toHaveBeenCalledTimes(1);
+        });
+
+        it('should return a failure with an EventHandlerFailedError if the handler throws a non-error', async () => {
+            const handler: Mock = vi.fn().mockRejectedValue('not an error');
+
+            const result: Result<unknown, Error> = await sut.runHandler(handler, event);
+
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerFailedError);
+        });
+
+        it('should abort running handlers on shutdown and not publish them to the DLQ', async () => {
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) =>
+                    new Promise((_resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+                        signal.addEventListener('abort', () => {
+                            reject(signal.reason as Error);
+                        });
+                    }),
+            );
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+
+            const handled: Promise<unknown> = sut.handleMessage(createMessage()).catch((error: unknown) => error);
+            await sut.onModuleDestroy();
+            const error: unknown = await handled;
+
+            expect(error).toBeInstanceOf(EventHandlerShutdownError);
+            expect(producer.send).not.toHaveBeenCalled();
+            expect(logger.crit).not.toHaveBeenCalled();
+            expect(logger.warning).toHaveBeenCalledWith(expect.stringContaining('aborted because of shutdown'));
+            expect(consumer.disconnect).toHaveBeenCalled();
+        });
+
+        it('should not abort a handler twice if the shutdown happens after the timeout', async () => {
+            const handler: Mock = vi.fn(() => new Promise(() => {}));
+
+            const promise: Promise<Result<unknown, Error>> = sut.runHandler(handler, event);
+            await vi.advanceTimersByTimeAsync(60000);
+            await sut.onModuleDestroy();
+            await vi.advanceTimersByTimeAsync(5000);
+            const result: Result<unknown, Error> = await promise;
+
+            expect(errorOf(result)).toBeInstanceOf(EventHandlerTimeoutError);
+        });
+
+        it('should not abort handlers that already finished when shutting down', async () => {
+            const handler: Mock = vi.fn();
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+            await sut.handleMessage(createMessage());
+
+            await sut.onModuleDestroy();
+
+            expect(logger.warning).not.toHaveBeenCalled();
+            expect(producer.send).not.toHaveBeenCalled();
+        });
+
+        it('should not start the next message while a handler is still running', async () => {
+            const order: string[] = [];
+            const handler: Mock = vi.fn(
+                (_event: BaseEvent, _keepAlive: () => void, signal: AbortSignal) =>
+                    new Promise((_resolve: (value: unknown) => void, reject: (reason: unknown) => void) => {
+                        signal.addEventListener('abort', () => {
+                            setTimeout(() => {
+                                order.push('handler stopped');
+                                reject(signal.reason as Error);
+                            }, 10);
+                        });
+                    }),
+            );
+            sut.subscribe(KafkaPersonDeletedEvent, handler);
+
+            const first: Promise<void> = sut.handleMessage(createMessage()).then(() => {
+                order.push('first message done');
+            });
+            await vi.advanceTimersByTimeAsync(60010);
+            await first;
+
+            expect(order).toEqual(['handler stopped', 'first message done']);
+        });
     });
 });

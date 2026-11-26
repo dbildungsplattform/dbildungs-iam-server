@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ template "common.names.name" . }}
   namespace: {{ template "common.names.namespace" . }}
-  labels: 
+  labels:
     {{- include "common.labels" . | nindent 4 }}
 data:
   config-json: |-
@@ -61,6 +61,9 @@ data:
   KAFKA_GROUP_ID: '{{ .Release.Namespace }}-group'
   KAFKA_SESSION_TIMEOUT: '{{ .Values.kafka.sessionTimeout }}'
   KAFKA_HEARTBEAT_INTERVAL: '{{ .Values.kafka.heartbeatInterval }}'
+  KAFKA_MAX_POLL_INTERVAL: '{{ .Values.kafka.maxPollInterval }}'
+  KAFKA_HANDLER_TIMEOUT: '{{ .Values.kafka.handlerTimeout }}'
+  KAFKA_HANDLER_CANCEL_GRACE: '{{ .Values.kafka.handlerCancelGrace }}'
   REDIS_HOST: '{{ .Values.redis.host }}'
   CRON_PERSON_WITHOUT_ORG_LIMIT: '{{ .Values.cron.personWithoutOrgLimit }}'
   CRON_EMAIL_ADDRESSES_DELETE_LIMIT: '{{ .Values.cron.emailAddressesDeleteLimit }}'

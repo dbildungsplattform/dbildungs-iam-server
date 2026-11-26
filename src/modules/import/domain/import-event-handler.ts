@@ -26,6 +26,7 @@ import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { PersonPermissionsRepo } from '../../authentication/domain/person-permission.repo.js';
 import { ImportStatus } from './import.enums.js';
 import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { EventHandlerShutdownError } from '../../../core/eventbus/error/handler-shutdown.error.js';
 
 @Injectable()
 export class ImportEventHandler {
@@ -50,7 +51,11 @@ export class ImportEventHandler {
     @KafkaEventHandler(KafkaImportExecutedEvent)
     @EventHandler(ImportExecutedEvent)
     @EnsureRequestContext()
-    public async handleExecuteImport(event: ImportExecutedEvent, keepAlive: () => void): Promise<void> {
+    public async handleExecuteImport(
+        event: ImportExecutedEvent,
+        keepAlive: () => void,
+        signal?: AbortSignal,
+    ): Promise<void> {
         this.selectedOrganisationId = event.organisationId;
         this.selectedRolleId = event.rolleId;
 
@@ -73,11 +78,15 @@ export class ImportEventHandler {
             throw new EntityNotFoundError('ImportVorgang', importvorgangId);
         }
 
-        if (importVorgang.status !== ImportStatus.VALID) {
+        // INPROGRESS means that a previous run was interrupted (e.g. by a shutdown) and is resumed here
+        if (importVorgang.status !== ImportStatus.VALID && importVorgang.status !== ImportStatus.INPROGRESS) {
             return this.logger.logUnknownAsError(
                 'Could not start ImportVorgang, because it did not have a valid state',
                 { id: importvorgangId, status: importVorgang.status },
             );
+        }
+        if (importVorgang.status === ImportStatus.INPROGRESS) {
+            this.logger.info(`Resuming interrupted ImportVorgang ${importvorgangId}`);
         }
 
         importVorgang.execute();
@@ -90,14 +99,22 @@ export class ImportEventHandler {
             return this.logger.error(`No import data items found for Importvorgang:${importvorgangId}`);
         }
 
-        let allItemsFailed: boolean = true;
+        const pendingItems: ImportDataItem<true>[] = importDataItems.filter(
+            (item: ImportDataItem<true>) => item.status === ImportDataItemStatus.PENDING,
+        );
+        let allItemsFailed: boolean = !importDataItems.some(
+            (item: ImportDataItem<true>) => item.status === ImportDataItemStatus.SUCCESS,
+        );
 
         // Load fresh permissions because we can't serialize the permissions object when using kafka
         const permissions: IPersonPermissions = await this.permissionsRepo.loadPersonPermissions(
             event.importerKeycloakId,
         );
 
-        for (const dataItem of importDataItems) {
+        for (const dataItem of pendingItems) {
+            // eslint-disable-next-line no-await-in-loop
+            await this.handleAbort(importVorgang, signal);
+
             // Make sure to call keepAlive for larger imports
             keepAlive();
 
@@ -109,6 +126,9 @@ export class ImportEventHandler {
             }
         }
 
+        // The last item could have been aborted in the meantime, there is no next iteration that would notice it
+        await this.handleAbort(importVorgang, signal);
+
         // Finalize the import process depending on the status on the items. If all items failed to be imported then we mark the whole import as failed. Otherwise it's finished.
         if (allItemsFailed) {
             importVorgang.fail();
@@ -116,6 +136,27 @@ export class ImportEventHandler {
             importVorgang.finish();
         }
         await this.importVorgangRepository.save(importVorgang);
+    }
+
+    /**
+     * Throws if the signal was aborted. A shutdown keeps the ImportVorgang INPROGRESS, because the message is
+     * redelivered and the import is resumed. Any other abort (timeout) is final, the event goes to the DLQ.
+     */
+    private async handleAbort(importVorgang: ImportVorgang<true>, signal?: AbortSignal): Promise<void> {
+        if (!signal?.aborted) {
+            return;
+        }
+
+        if (signal.reason instanceof EventHandlerShutdownError) {
+            this.logger.warning(
+                `ImportVorgang ${importVorgang.id} was interrupted by shutdown and will be resumed on redelivery`,
+            );
+        } else {
+            importVorgang.fail();
+            await this.importVorgangRepository.save(importVorgang);
+            this.logger.error(`ImportVorgang ${importVorgang.id} was aborted before the import was finished`);
+        }
+        signal.throwIfAborted();
     }
 
     private async savePersonWithPersonenkontext(

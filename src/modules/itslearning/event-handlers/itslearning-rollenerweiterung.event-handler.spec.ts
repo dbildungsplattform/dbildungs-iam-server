@@ -85,7 +85,48 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
                 ['p1', 'p2'],
                 event.eventID,
                 keepAlive,
+                undefined,
             );
+        });
+
+        it('should pass the signal to the batch sync', async () => {
+            const event: RollenerweiterungCreatedEvent = new RollenerweiterungCreatedEvent(
+                'orga-id',
+                'rolle-id',
+                itslearningProvider.id,
+            );
+            const signal: AbortSignal = new AbortController().signal;
+            serviceProviderRepoMock.findById.mockResolvedValueOnce(itslearningProvider);
+            personenkontextRepoMock.findPersonIdsWithRolleInOrganisationSubtree.mockResolvedValueOnce(['p1']);
+
+            await sut.rollenerweiterungCreatedEventHandler(event, keepAlive, signal);
+
+            expect(syncEventHandlerMock.personExternalSystemSyncBatch).toHaveBeenCalledWith(
+                ['p1'],
+                event.eventID,
+                keepAlive,
+                signal,
+            );
+        });
+
+        it('should not swallow the cancellation of the batch sync', async () => {
+            const event: RollenerweiterungCreatedEvent = new RollenerweiterungCreatedEvent(
+                'orga-id',
+                'rolle-id',
+                itslearningProvider.id,
+            );
+            const abortReason: Error = new Error('aborted');
+            const controller: AbortController = new AbortController();
+            controller.abort(abortReason);
+            serviceProviderRepoMock.findById.mockResolvedValueOnce(itslearningProvider);
+            personenkontextRepoMock.findPersonIdsWithRolleInOrganisationSubtree.mockResolvedValueOnce(['p1']);
+            syncEventHandlerMock.personExternalSystemSyncBatch.mockRejectedValueOnce(abortReason);
+
+            await expect(
+                sut.rollenerweiterungCreatedEventHandler(event, keepAlive, controller.signal),
+            ).rejects.toThrowError(abortReason);
+
+            expect(loggerMock.error).not.toHaveBeenCalledWith(expect.stringContaining('Sync of persons failed'));
         });
 
         it('should ignore the event if the service provider is not itslearning', async () => {
@@ -164,6 +205,7 @@ describe('ItsLearningRollenerweiterungEventHandler', () => {
                 ['p1'],
                 event.eventID,
                 keepAlive,
+                undefined,
             );
         });
     });
