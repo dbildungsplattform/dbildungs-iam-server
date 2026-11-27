@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -6,6 +7,8 @@ import { DoFactory } from '../../../../../test/utils/do-factory.js';
 import { DomainErrorMock } from '../../../../../test/utils/error.mock.js';
 import { ConfigTestModule, DatabaseTestModule, LoggingTestModule } from '../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
+import { type ServerConfig } from '../../../../shared/config/index.js';
+import { type SchulconnexConfig } from '../../../../shared/config/schulconnex.config.js';
 import { type DomainError, SchulconnexPushError } from '../../../../shared/error/index.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../../shared/events/kafka-personenkontext-updated.event.js';
@@ -134,6 +137,7 @@ describe('SchulconnexPushHandler', () => {
     let userLockRepoMock: DeepMocked<UserLockRepository>;
     let emailResolverServiceMock: DeepMocked<EmailResolverService>;
     let adapterMock: DeepMocked<SchulconnexPushAdapter>;
+    let maxBatchSize: number;
 
     let registry: SchulconnexPushRegistry<true>;
     let person: Person<true>;
@@ -169,6 +173,9 @@ describe('SchulconnexPushHandler', () => {
         userLockRepoMock = module.get(UserLockRepository);
         emailResolverServiceMock = module.get(EmailResolverService);
         adapterMock = module.get(SchulconnexPushAdapter);
+        maxBatchSize = module
+            .get<ConfigService<ServerConfig>>(ConfigService)
+            .getOrThrow<SchulconnexConfig>('SCHULCONNEX').PUSH_MAX_BATCH_SIZE;
     });
 
     afterAll(async () => {
@@ -1276,11 +1283,14 @@ describe('SchulconnexPushHandler', () => {
             },
         );
 
-        it('should page through affected persons until a batch is not full', async () => {
-            const firstBatch: PersonWithPersonenkontextIds[] = Array.from({ length: 100 }, (_: unknown, i: number) => ({
-                personId: `person-${String(i).padStart(3, '0')}`,
-                personenkontextIds: [`kontext-${i}`],
-            }));
+        it('should page through affected persons with the configured batch size until a batch is not full', async () => {
+            const firstBatch: PersonWithPersonenkontextIds[] = Array.from(
+                { length: maxBatchSize },
+                (_: unknown, i: number) => ({
+                    personId: `person-${String(i).padStart(6, '0')}`,
+                    personenkontextIds: [`kontext-${i}`],
+                }),
+            );
             mockAffected(...firstBatch);
             mockAffected();
             personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([]);
@@ -1293,15 +1303,15 @@ describe('SchulconnexPushHandler', () => {
                 1,
                 organisationId,
                 rolle.id,
-                100,
+                maxBatchSize,
                 undefined,
             );
             expect(personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree).toHaveBeenNthCalledWith(
                 2,
                 organisationId,
                 rolle.id,
-                100,
-                'person-099',
+                maxBatchSize,
+                firstBatch.at(-1)!.personId,
             );
         });
 

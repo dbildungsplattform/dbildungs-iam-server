@@ -21,4 +21,9 @@ export class SchulconnexConfig {
     @IsInt()
     @IsPositive()
     public readonly PUSH_MAX_REQUESTS_PER_SECOND!: number;
+
+    /** Number of persons loaded at once when a Rollenerweiterung event affects many persons */
+    @IsInt()
+    @IsPositive()
+    public readonly PUSH_MAX_BATCH_SIZE!: number;
 }

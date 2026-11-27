@@ -329,6 +329,7 @@ describe('SchulconnexPushApiClient', () => {
                 PUSH_RETRY_DELAY_MS: 1,
                 PUSH_REQUEST_TIMEOUT_MS: 200,
                 PUSH_MAX_REQUESTS_PER_SECOND: maxRequestsPerSecond,
+                PUSH_MAX_BATCH_SIZE: 1,
             };
             throttledSut = new SchulconnexPushApiClient(httpService, loggerMock, {
                 getOrThrow: () => config,

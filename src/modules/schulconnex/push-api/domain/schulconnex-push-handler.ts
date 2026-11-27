@@ -1,11 +1,14 @@
 import { EntityManager } from '@mikro-orm/core';
 import { EnsureRequestContext } from '@mikro-orm/decorators/legacy';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Mutex } from 'async-mutex';
 
 import { EventHandler } from '../../../../core/eventbus/decorators/event-handler.decorator.js';
 import { KafkaEventHandler } from '../../../../core/eventbus/decorators/kafka-event-handler.decorator.js';
 import { ClassLogger } from '../../../../core/logging/class-logger.js';
+import { ServerConfig } from '../../../../shared/config/index.js';
+import { SchulconnexConfig } from '../../../../shared/config/schulconnex.config.js';
 import { DomainError } from '../../../../shared/error/domain.error.js';
 import { SchulconnexPushError } from '../../../../shared/error/schulconnex-push.error.js';
 import { EmailMicroserviceAddressChangedEvent } from '../../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
@@ -70,11 +73,11 @@ function grantKey(organisationId: OrganisationID, rolleId: RolleID, serviceProvi
     return `${organisationId}|${rolleId}|${serviceProviderId}`;
 }
 
-const ROLLENERWEITERUNG_PERSON_BATCH_SIZE: number = 100;
-
 @Injectable()
 export class SchulconnexPushHandler {
     private readonly personUpdateMutexes: Map<PersonID, Mutex> = new Map();
+
+    private readonly maxBatchSize: number;
 
     public constructor(
         private readonly logger: ClassLogger,
@@ -86,7 +89,10 @@ export class SchulconnexPushHandler {
         private readonly emailResolverService: EmailResolverService,
         private readonly adapter: SchulconnexPushAdapter,
         private readonly em: EntityManager,
-    ) {}
+        configService: ConfigService<ServerConfig>,
+    ) {
+        this.maxBatchSize = configService.getOrThrow<SchulconnexConfig>('SCHULCONNEX').PUSH_MAX_BATCH_SIZE;
+    }
 
     @EventHandler(PersonenkontextUpdatedEvent)
     @KafkaEventHandler(KafkaPersonenkontextUpdatedEvent)
@@ -209,7 +215,7 @@ export class SchulconnexPushHandler {
             batch = await this.personenkontextRepo.findNonKlassenKontexteWithRolleInOrganisationTree(
                 event.organisationId,
                 event.rolleId,
-                ROLLENERWEITERUNG_PERSON_BATCH_SIZE,
+                this.maxBatchSize,
                 afterPersonId,
             );
 
@@ -230,7 +236,7 @@ export class SchulconnexPushHandler {
             }
 
             afterPersonId = batch.at(-1)?.personId;
-        } while (batch.length >= ROLLENERWEITERUNG_PERSON_BATCH_SIZE);
+        } while (batch.length >= this.maxBatchSize);
 
         this.logger.info(`${logPrefix}: Processed event`);
 
