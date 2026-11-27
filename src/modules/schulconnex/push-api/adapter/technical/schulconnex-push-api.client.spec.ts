@@ -25,7 +25,16 @@ import {
 import { SchulconnexPushApiClient } from './schulconnex-push-api.client.js';
 
 function createRegistry(baseUrl: string): SchulconnexPushRegistry<true> {
-    return SchulconnexPushRegistry.construct('registry-1', new Date(), new Date(), 'service-provider-1', baseUrl);
+    return SchulconnexPushRegistry.construct(
+        'registry-1',
+        new Date(),
+        new Date(),
+        'service-provider-1',
+        baseUrl,
+        null,
+        null,
+        null,
+    );
 }
 
 function createKontext(overrides: Partial<PersonInfoKontextDtoV2> = {}): PersonInfoKontextDtoV2 {

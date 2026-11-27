@@ -112,3 +112,10 @@
         name: {{ default .Values.kafka.existingSecret "" }}
         key: kafka_broker
 {{- end}}
+
+{{- define "dbildungs-iam-server-backend-env-from" }}
+- prefix: SCHULCONNEX_PUSH_OIDC_SECRET_
+  secretRef:
+    name: schulconnex-push-oidc-secrets
+    optional: true
+{{- end }}

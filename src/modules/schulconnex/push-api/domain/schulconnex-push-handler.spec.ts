@@ -42,6 +42,9 @@ function createRegistry(id: string, serviceProviderId: string = 'service-provide
         new Date('2024-01-01T00:00:00.000Z'),
         serviceProviderId,
         `https://${id}.example.de`,
+        null,
+        null,
+        null,
     );
 }
 

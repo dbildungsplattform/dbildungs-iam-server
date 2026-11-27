@@ -10,6 +10,9 @@ function mapEntityToAggregate(entity: SchulconnexPushRegistryEntity): Schulconne
         entity.updatedAt,
         entity.serviceProvider.id,
         entity.baseUrl,
+        entity.oidcTokenEndpoint,
+        entity.oidcClientId,
+        entity.oidcClientSecretRef,
     );
 }
 

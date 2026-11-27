@@ -69,6 +69,18 @@ The template files for this are
 - [charts/dbildungs-iam-server/templates/_dbildungs-iam-server-envs.tpl](../charts/dbildungs-iam-server/templates/_dbildungs-iam-server-envs.tpl)
 - [charts/dbildungs-iam-server/templates/_dbildungs-iam-email-server-envs.tpl](../charts/dbildungs-iam-server/templates/_dbildungs-iam-email-server-envs.tpl)
 
+##### Schulconnex Push OIDC
+
+Use one 1Password item per stage, synced as the Kubernetes Secret `schulconnex-push-oidc-secrets`.
+Give each client secret its own key using only `A-Z`, `0-9`, and `_`, for example `EXAMPLE_PROVIDER`.
+The backend chart exposes that key as `SCHULCONNEX_PUSH_OIDC_SECRET_EXAMPLE_PROVIDER`.
+Store only `EXAMPLE_PROVIDER` in the corresponding registry's `oidc_client_secret_ref`, alongside
+`oidc_token_endpoint` and `oidc_client_id`. Adding a provider does not require a chart change.
+Restart the backend pods after secret changes so they pick up the new environment variables.
+
+The Secret is optional for deployments without OIDC configuration. Existing registry rows can
+leave the new fields unset until OIDC authentication is enabled.
+
 ## Developer Guide
 
 > [!CAUTION]

@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { isAxiosError } from 'axios';
+import { isAxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { lastValueFrom } from 'rxjs';
 
@@ -36,9 +36,13 @@ type HttpMethod = 'PUT' | 'DELETE';
 
 const HTTP_STATUS_REQUEST_TIMEOUT: number = 408;
 const HTTP_STATUS_TOO_MANY_REQUESTS: number = 429;
+const OIDC_TOKEN_MAX_RETRIES: number = 3;
 
 @Injectable()
 export class SchulconnexPushApiClient {
+
+    public static readonly PUSH_OIDC_SECRET_PREFIX: string = 'SCHULCONNEX_PUSH_OIDC_SECRET_';
+
     private readonly maxAttempts: number;
 
     private readonly retryDelayMs: number;
@@ -146,45 +150,110 @@ export class SchulconnexPushApiClient {
         path: string,
         data?: object,
     ): Promise<Result<void, DomainError>> {
+        const { oidcTokenEndpoint, oidcClientId, oidcClientSecretRef }: SchulconnexPushRegistry<true> = registry;
+        if (!oidcTokenEndpoint?.trim() || !oidcClientId?.trim() || !oidcClientSecretRef?.trim()) {
+            return Err(new SchulconnexPushError(`Missing OIDC configuration for registry ${registry.id}`));
+        }
+        if (!this.isValidClientSecretReference(oidcClientSecretRef)) {
+            return Err(new SchulconnexPushError(`Invalid OIDC client secret reference for registry ${registry.id}`));
+        }
+        const clientSecret: string | undefined = process.env[this.constructClientSecretReference(oidcClientSecretRef)];
+        if (!clientSecret?.trim()) {
+            return Err(new SchulconnexPushError(`OIDC client secret not configured for registry ${registry.id}`));
+        }
+
+        const tokenResult: Result<string, DomainError> = await this.fetchAccessToken(
+            oidcTokenEndpoint,
+            oidcClientId,
+            clientSecret,
+        );
+        if (!tokenResult.ok) {
+            return tokenResult;
+        }
+
         const url: string = this.buildUrl(registry, path);
+        const result: Result<unknown, DomainError> = await this.sendWithRetry(
+            { method, url, data, headers: { Authorization: `Bearer ${tokenResult.value}` } },
+            `Push request ${method} ${url}`,
+        );
 
-        const result: Result<void, DomainError> = await this.sendWithRetry(method, url, data);
-
-        return result;
+        return result.ok ? Ok() : result;
     }
 
-    private async sendWithRetry(
-        method: HttpMethod,
-        url: string,
-        data: object | undefined,
-        attempt: number = 1,
-    ): Promise<Result<void, DomainError>> {
-        try {
-            await lastValueFrom(this.httpService.request({ method, url, data, timeout: this.requestTimeoutMs }));
+    private async fetchAccessToken(
+        tokenEndpoint: string,
+        clientId: string,
+        clientSecret: string,
+    ): Promise<Result<string, DomainError>> {
+        const data: URLSearchParams = new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            grant_type: 'client_credentials',
+        });
+        const result: Result<{ access_token?: unknown }, DomainError> = await this.sendWithRetry(
+            {
+                method: 'POST',
+                url: tokenEndpoint,
+                data: data.toString(),
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            },
+            'OIDC token request',
+            Math.min(this.maxAttempts, OIDC_TOKEN_MAX_RETRIES + 1),
+        );
+        if (!result.ok) {
+            return result;
+        }
 
-            return Ok();
+        const accessToken: unknown = result.value?.access_token;
+        if (typeof accessToken !== 'string' || !/^[A-Za-z0-9._~+/-]+=*$/.test(accessToken)) {
+            return Err(new SchulconnexPushError('OIDC token response did not contain a valid access token'));
+        }
+
+        return Ok(accessToken);
+    }
+
+    private async sendWithRetry<T>(
+        request: AxiosRequestConfig,
+        description: string,
+        maxAttempts: number = this.maxAttempts,
+        attempt: number = 1,
+    ): Promise<Result<T, DomainError>> {
+        try {
+            const response: AxiosResponse<T> = await lastValueFrom(
+                this.httpService.request<T>({ ...request, timeout: this.requestTimeoutMs, maxRedirects: 0 }),
+            );
+
+            return Ok(response.data);
         } catch (err: unknown) {
-            if (this.isRetryable(err) && attempt < this.maxAttempts) {
-                this.logger.logUnknownAsWarning(
-                    `Push request ${method} ${url} failed (attempt ${attempt}/${this.maxAttempts}), retrying in ${this.retryDelayMs}ms`,
-                    err,
+            // Axios errors can contain the client secret or bearer token in the request config.
+            const status: number | undefined = isAxiosError(err) ? err.response?.status : undefined;
+            const failure: string = `${description} failed${status === undefined ? '' : ` (HTTP ${status})`}`;
+            if (this.isRetryable(status) && attempt < maxAttempts) {
+                this.logger.warning(
+                    `${failure} (attempt ${attempt}/${maxAttempts}), retrying in ${this.retryDelayMs}ms`,
                 );
 
                 await sleep(this.retryDelayMs);
 
-                return this.sendWithRetry(method, url, data, attempt + 1);
+                return this.sendWithRetry(request, description, maxAttempts, attempt + 1);
             }
 
-            this.logger.logUnknownAsError(`Push request ${method} ${url} failed, aborting`, err);
+            this.logger.error(`${failure}, aborting`);
 
-            return Err(new SchulconnexPushError(`Push request ${method} ${url} failed`, [err]));
+            return Err(new SchulconnexPushError(failure));
         }
     }
 
-    /** Client errors (4xx) won't succeed by repeating the same request, except for timeouts and rate limiting. */
-    private isRetryable(err: unknown): boolean {
-        const status: number | undefined = isAxiosError(err) ? err.response?.status : undefined;
+    private isValidClientSecretReference(oidcClientSecretRef: string): boolean {
+        return /^[A-Z0-9_]+$/.test(oidcClientSecretRef);
+    }
 
+    private constructClientSecretReference(oidcClientSecretRef: string): string {
+        return `${SchulconnexPushApiClient.PUSH_OIDC_SECRET_PREFIX}${oidcClientSecretRef}`;
+    }
+
+    /** Client errors (4xx) won't succeed by repeating the same request, except for timeouts and rate limiting. */
+    private isRetryable(status: number | undefined): boolean {
         if (status === undefined || status >= 500) {
             return true;
         }

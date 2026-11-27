@@ -18,4 +18,13 @@ export class SchulconnexPushRegistryEntity extends TimestampedEntity {
 
     @Property({ type: 'text', nullable: false })
     public baseUrl!: string;
+
+    @Property({ type: 'text', nullable: true })
+    public oidcTokenEndpoint: Option<string> = null;
+
+    @Property({ type: 'text', nullable: true })
+    public oidcClientId: Option<string> = null;
+
+    @Property({ type: 'text', nullable: true })
+    public oidcClientSecretRef: Option<string> = null;
 }

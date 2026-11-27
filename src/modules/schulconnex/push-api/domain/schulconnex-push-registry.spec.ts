@@ -12,6 +12,9 @@ describe('SchulconnexPushRegistry', () => {
                 updatedAt,
                 'service-provider-1',
                 'http://localhost',
+                'https://identity.example/token',
+                'push-client',
+                'EXAMPLE_PROVIDER',
             );
 
             expect(result).toBeInstanceOf(SchulconnexPushRegistry);
@@ -20,6 +23,9 @@ describe('SchulconnexPushRegistry', () => {
             expect(result.updatedAt).toBe(updatedAt);
             expect(result.serviceProviderId).toBe('service-provider-1');
             expect(result.baseUrl).toBe('http://localhost');
+            expect(result.oidcTokenEndpoint).toBe('https://identity.example/token');
+            expect(result.oidcClientId).toBe('push-client');
+            expect(result.oidcClientSecretRef).toBe('EXAMPLE_PROVIDER');
         });
     });
 
@@ -28,6 +34,9 @@ describe('SchulconnexPushRegistry', () => {
             const result: SchulconnexPushRegistry<false> = SchulconnexPushRegistry.createNew(
                 'service-provider-1',
                 'http://localhost',
+                'https://identity.example/token',
+                'push-client',
+                'EXAMPLE_PROVIDER',
             );
 
             expect(result).toBeInstanceOf(SchulconnexPushRegistry);
@@ -36,6 +45,9 @@ describe('SchulconnexPushRegistry', () => {
             expect(result.updatedAt).toBeUndefined();
             expect(result.serviceProviderId).toBe('service-provider-1');
             expect(result.baseUrl).toBe('http://localhost');
+            expect(result.oidcTokenEndpoint).toBe('https://identity.example/token');
+            expect(result.oidcClientId).toBe('push-client');
+            expect(result.oidcClientSecretRef).toBe('EXAMPLE_PROVIDER');
         });
     });
 });

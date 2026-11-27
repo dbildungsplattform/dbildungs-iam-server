@@ -40,11 +40,16 @@ describe('SchulconnexPushRegistryRepo', () => {
         await em.nativeDelete(SchulconnexPushRegistryEntity, {});
     });
 
-    async function createAndPersistPushRegistry(baseUrl?: string): Promise<SchulconnexPushRegistryEntity> {
+    async function createAndPersistPushRegistry(
+        oidcClientSecretRef: string = 'EXAMPLE_PROVIDER',
+    ): Promise<SchulconnexPushRegistryEntity> {
         const serviceProvider: ServiceProvider<true> = await createAndPersistServiceProvider(em);
         const entity: SchulconnexPushRegistryEntity = em.create(SchulconnexPushRegistryEntity, {
             serviceProvider: em.getReference(ServiceProviderEntity, serviceProvider.id),
-            baseUrl: baseUrl ?? faker.internet.url(),
+            baseUrl: faker.internet.url(),
+            oidcTokenEndpoint: 'https://identity.example/token',
+            oidcClientId: 'push-client',
+            oidcClientSecretRef,
         });
         await em.persist(entity).flush();
 
@@ -63,6 +68,9 @@ describe('SchulconnexPushRegistryRepo', () => {
                 updatedAt: entity.updatedAt,
                 serviceProviderId: entity.serviceProvider.id,
                 baseUrl: entity.baseUrl,
+                oidcTokenEndpoint: 'https://identity.example/token',
+                oidcClientId: 'push-client',
+                oidcClientSecretRef: 'EXAMPLE_PROVIDER',
             });
         });
 
@@ -76,13 +84,16 @@ describe('SchulconnexPushRegistryRepo', () => {
     describe('findAll', () => {
         it('should return all registries', async () => {
             const entity1: SchulconnexPushRegistryEntity = await createAndPersistPushRegistry();
-            const entity2: SchulconnexPushRegistryEntity = await createAndPersistPushRegistry();
+            const entity2: SchulconnexPushRegistryEntity = await createAndPersistPushRegistry('ANOTHER_PROVIDER');
 
             const result: SchulconnexPushRegistry<true>[] = await sut.findAll();
 
             expect(result).toHaveLength(2);
-            expect(result.map((r: SchulconnexPushRegistry<true>) => r.id)).toEqual(
-                expect.arrayContaining([entity1.id, entity2.id]),
+            expect(result).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ id: entity1.id, oidcClientSecretRef: 'EXAMPLE_PROVIDER' }),
+                    expect.objectContaining({ id: entity2.id, oidcClientSecretRef: 'ANOTHER_PROVIDER' }),
+                ]),
             );
         });
 

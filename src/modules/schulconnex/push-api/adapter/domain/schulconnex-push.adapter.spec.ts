@@ -24,6 +24,9 @@ describe('SchulconnexPushAdapter', () => {
         new Date(),
         'service-provider-1',
         'http://localhost',
+        null,
+        null,
+        null,
     );
 
     beforeAll(async () => {

@@ -100,6 +100,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ template "common.names.name" . }}
+            {{- include "dbildungs-iam-server-backend-env-from" . | nindent 12 }}
           volumeMounts:
             {{- toYaml .Values.backend.volumeMounts | nindent 12 }}
             {{- with .Values.backend.extraVolumeMounts }}
