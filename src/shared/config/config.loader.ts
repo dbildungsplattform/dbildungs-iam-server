@@ -7,6 +7,8 @@ import { EmailAppConfig } from './email-app.config.js';
 import { getEmailConfig } from './email-config.env.js';
 import { ConfigLoaderValidationError } from './errors/config-loader-validation.error.js';
 import { JsonConfig } from './json.config.js';
+import { getKeycloakExternalDataAppConfig } from './keycloak-external-data-config.env.js';
+import { KeycloakExternalDataAppConfig } from './keycloak-external-data-app.config.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseFileToJSON(path: string): any {
@@ -87,3 +89,42 @@ export function loadEmailAppConfigFiles(): EmailAppConfig {
     }
     return mergedConfig;
 }
+
+export function loadKeycloakExternalDataAppConfigFiles(): KeycloakExternalDataAppConfig {
+    const secretFilePath: string = './config/keycloak-external-data-secrets.json';
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-assignment
+    const json: any = parseFileToJSON('./config/keycloak-external-data-config.json');
+    let secrets: unknown;
+    if (fs.existsSync(secretFilePath)) {
+        secrets = parseFileToJSON(secretFilePath);
+    } else {
+        secrets = null;
+    }
+    // Environmental override
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env: any = getKeycloakExternalDataAppConfig();
+    let merged: unknown;
+    if (secrets != null) {
+        merged = merge(json, secrets, env);
+    } else {
+        merged = merge(json, env);
+    }
+
+    const mergedConfig: KeycloakExternalDataAppConfig = plainToInstance(KeycloakExternalDataAppConfig, merged, {
+        enableImplicitConversion: false,
+        exposeDefaultValues: true,
+    });
+
+    const errors: ValidationError[] = validateSync(mergedConfig, {
+        skipMissingProperties: false,
+        whitelist: true,
+        forbidUnknownValues: true,
+    });
+    if (errors.length !== 0) {
+        throw new ConfigLoaderValidationError(errors);
+    }
+    return mergedConfig;
+}
+
+

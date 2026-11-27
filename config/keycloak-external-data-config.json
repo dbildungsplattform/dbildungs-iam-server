@@ -1,0 +1,29 @@
+{
+    "HOST": {
+        "PORT": 9091
+    },
+    "LOGGING": {
+        "DEFAULT_LOG_LEVEL": "info"
+    },
+    "DB": {
+        "CLIENT_URL": "postgres://localhost:5432",
+        "DB_NAME": "dbildungs-iam-server",
+        "USERNAME": "admin",
+        "SECRET": "password",
+        "USE_SSL": false
+    },
+    "REDIS": {
+        "HOST": "localhost",
+        "PORT": 6379,
+        "USERNAME": "default",
+        "PASSWORD": "password",
+        "USE_TLS": false,
+        "CLUSTERED": false
+    },
+    "HEADER_API_KEY": {
+        "INTERNAL_COMMUNICATION_API_KEY": "api-key"
+    },
+    "EMAIL_MICROSERVICE": {
+        "ENDPOINT": "http://localhost:9091/"
+    }
+}

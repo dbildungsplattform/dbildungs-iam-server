@@ -17,3 +17,4 @@ export * from './vidis.config.js';
 
 export * from './email-config.module.js';
 export * from './server-config.module.js';
+export * from './keycloak-external-data-app.config.js';
