@@ -12,6 +12,7 @@ import { IPersonPermissions } from '../../../shared/permissions/person-permissio
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 @Injectable()
 export class DbiamPersonenkontextFactory {
@@ -25,6 +26,7 @@ export class DbiamPersonenkontextFactory {
         private readonly rolleRepo: RolleRepo,
         private readonly organisationRepo: OrganisationRepository,
         private readonly emailResolverService: EmailResolverService,
+        private readonly roleOrganisationValidator: RoleOrganisationAssignmentValidator,
     ) {}
 
     public createNewPersonenkontexteUpdate(
@@ -50,6 +52,7 @@ export class DbiamPersonenkontextFactory {
             dBiamPersonenkontextBodyParams,
             permissions,
             this.emailResolverService,
+            this.roleOrganisationValidator,
             personalnummer,
         );
     }

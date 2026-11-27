@@ -7,6 +7,7 @@ import { type PersonRepository } from '../../src/modules/person/persistence/pers
 import { type DbiamPersonenkontextBodyParams } from '../../src/modules/personenkontext/api/param/dbiam-personenkontext.body.params.js';
 import { type PersonenkontextFactory } from '../../src/modules/personenkontext/domain/personenkontext.factory.js';
 import { PersonenkontexteUpdate } from '../../src/modules/personenkontext/domain/personenkontexte-update.js';
+import { type RoleOrganisationAssignmentValidator } from '../../src/modules/personenkontext/domain/role-organisation-assignment.validator.js';
 import { type DBiamPersonenkontextRepo } from '../../src/modules/personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { type DBiamPersonenkontextRepoInternal } from '../../src/modules/personenkontext/persistence/internal-dbiam-personenkontext.repo.js';
 import { type RolleRepo } from '../../src/modules/rolle/repo/rolle.repo.js';
@@ -29,6 +30,7 @@ export function createPersonenkontexteUpdateMock(): MockedObject<Personenkontext
         null as unknown as DbiamPersonenkontextBodyParams[],
         null as unknown as IPersonPermissions,
         null as unknown as EmailResolverService,
+        null as unknown as RoleOrganisationAssignmentValidator,
     );
     return vi.mockObject(personenkontexteUpdate);
 }
