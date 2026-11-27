@@ -13,7 +13,6 @@ import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js'
 import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
 import { type Personenkontext } from './personenkontext.js';
 import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 @Injectable()
 export class LandesbediensteteKontextWorkflowService {
@@ -22,37 +21,7 @@ export class LandesbediensteteKontextWorkflowService {
         private readonly escalatedPersonPermissionsFactory: EscalatedPersonPermissionsFactory,
         private readonly personenkontextRepo: DBiamPersonenkontextRepo,
         private readonly dbiamPersonenkontextFactory: DbiamPersonenkontextFactory,
-        private readonly roleOrganisationValidator: RoleOrganisationAssignmentValidator,
     ) {}
-
-    public async canCommit(
-        rollenIds: string[],
-        organisationId: string,
-        permissions: IPersonPermissions,
-    ): Promise<Result<void, DomainError>> {
-        const referenceChecks: Result<void, DomainError>[] = await Promise.all(
-            rollenIds.map((rolleId: string) => this.roleOrganisationValidator.checkReferences(organisationId, rolleId)),
-        );
-
-        const firstFailedCheck: Result<void, DomainError> | undefined = referenceChecks.find(
-            (result: Result<void, DomainError>) => !result.ok,
-        );
-        if (firstFailedCheck) {
-            return firstFailedCheck;
-        }
-
-        // Check permissions after verifying references
-        const permissionCheckError: Result<void, DomainError> = await this.checkPermissions(
-            permissions,
-            organisationId,
-        );
-
-        if (!permissionCheckError.ok) {
-            return permissionCheckError;
-        }
-
-        return Ok(undefined);
-    }
 
     public async commit(
         personId: string,
