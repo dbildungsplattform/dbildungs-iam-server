@@ -11,18 +11,21 @@ import { SchulconnexPushError } from '../../../../shared/error/schulconnex-push.
 import { EmailMicroserviceAddressChangedEvent } from '../../../../shared/events/email-microservice/email-microservice-address-changed.event.js';
 import { KafkaEmailMicroserviceAddressChangedEvent } from '../../../../shared/events/email-microservice/kafka-email-microservice-address-changed.event.js';
 import { KafkaLocksForPersonChangedEvent } from '../../../../shared/events/kafka-locks-for-person-changed.event.js';
+import { KafkaPersonRenamedEvent } from '../../../../shared/events/kafka-person-renamed-event.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../../shared/events/kafka-personenkontext-updated.event.js';
 import { LocksForPersonChangedEvent } from '../../../../shared/events/locks-for-person-changed.event.js';
+import { PersonRenamedEvent } from '../../../../shared/events/person-renamed-event.js';
 import { PersonenkontextEventKontextData } from '../../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenkontext-updated.event.js';
 import { PersonenkontextID, PersonID, RolleID } from '../../../../shared/types/aggregate-ids.types.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
-import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
+import { EmailAddressStatus } from '../../../email/domain/email-address.js';
 import { UserLock } from '../../../keycloak-administration/domain/user-lock.js';
 import { UserLockRepository } from '../../../keycloak-administration/repository/user-lock.repository.js';
 import { OrganisationsTyp } from '../../../organisation/domain/organisation.enums.js';
 import { PersonEmailResponse } from '../../../person/api/person-email-response.js';
+import { Person } from '../../../person/domain/person.js';
 import { PersonRepository } from '../../../person/persistence/person.repository.js';
 import {
     DBiamPersonenkontextRepo,
@@ -61,6 +64,22 @@ export class SchulconnexPushHandler {
         private readonly adapter: SchulconnexPushAdapter,
         private readonly em: EntityManager,
     ) {}
+
+    @EventHandler(PersonRenamedEvent)
+    @KafkaEventHandler(KafkaPersonRenamedEvent)
+    @EnsureRequestContext((handler: SchulconnexPushHandler) => handler.em)
+    public async handlePersonRenamedEvent(
+        event: PersonRenamedEvent,
+        keepAlive?: KeepAliveFn,
+    ): Promise<Result<void, DomainError>> {
+        const logPrefix: string = `[EventID: ${event.eventID}] ` + `Schulconnex push for person ${event.personId}`;
+
+        this.logger.info(`${logPrefix}: Received PersonRenamedEvent`);
+
+        return this.runExclusiveForPerson(event.personId, () =>
+            this.updatePersonExclusive(event.personId, event.eventID, keepAlive),
+        );
+    }
 
     @EventHandler(PersonenkontextUpdatedEvent)
     @KafkaEventHandler(KafkaPersonenkontextUpdatedEvent)
@@ -381,6 +400,54 @@ export class SchulconnexPushHandler {
             userLocks,
             email: emails.value.get(personId),
         });
+    }
+
+    private async updatePersonExclusive(
+        personId: PersonID,
+        eventId: string,
+        keepAlive?: KeepAliveFn,
+    ): Promise<Result<void, DomainError>> {
+        const [registries, person]: [SchulconnexPushRegistry<true>[], Option<Person<true>>] = await Promise.all([
+            this.registryRepo.findAll(),
+            this.personRepo.findById(personId),
+        ]);
+
+        if (!person) {
+            return Err(new SchulconnexPushError(`Person ${personId} not found`));
+        }
+
+        const errors: DomainError[] = [];
+
+        for (const registry of registries) {
+            const kontexte: KontextWithOrgaAndRolle[] =
+                // eslint-disable-next-line no-await-in-loop
+                await this.personenkontextRepo.findByPersonAndServiceProviderWithOrgaAndRolle(
+                    personId,
+                    registry.serviceProviderId,
+                );
+
+            if (kontexte.length > 0) {
+                // eslint-disable-next-line no-await-in-loop
+                const result: Result<void, DomainError> = await this.adapter.upsertPerson(registry, person);
+
+                keepAlive?.();
+
+                if (!result.ok) {
+                    errors.push(result.error);
+
+                    this.logger.logUnknownAsError(
+                        `[EventID: ${eventId}] Could not update Person ${personId}`,
+                        result.error,
+                    );
+                }
+            }
+        }
+
+        if (errors.length > 0) {
+            return Err(new SchulconnexPushError(`Could not update Person ${personId}`, errors));
+        }
+
+        return Ok();
     }
 
     private async updatePersonenkontexte(
