@@ -16,7 +16,6 @@ import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js'
 import { LandesbediensteteKontextWorkflowService } from './landesbedienstete-kontext-workflow.service.js';
 import { type Personenkontext } from './personenkontext.js';
 import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
-import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 describe('LandesbediensteteKontextWorkflowService', () => {
     let module: TestingModule;
@@ -26,7 +25,6 @@ describe('LandesbediensteteKontextWorkflowService', () => {
     let escalatedPermissionsFactoryMock: DeepMocked<EscalatedPersonPermissionsFactory>;
     let personenkontextRepoMock: DeepMocked<DBiamPersonenkontextRepo>;
     let personenkontextFactoryMock: DeepMocked<DbiamPersonenkontextFactory>;
-    let roleOrganisationValidatorMock: DeepMocked<RoleOrganisationAssignmentValidator>;
 
     beforeAll(async () => {
         module = await Test.createTestingModule({
@@ -39,10 +37,6 @@ describe('LandesbediensteteKontextWorkflowService', () => {
                 { provide: EscalatedPersonPermissionsFactory, useValue: createMock(EscalatedPersonPermissionsFactory) },
                 { provide: DBiamPersonenkontextRepo, useValue: createMock(DBiamPersonenkontextRepo) },
                 { provide: DbiamPersonenkontextFactory, useValue: createMock(DbiamPersonenkontextFactory) },
-                {
-                    provide: RoleOrganisationAssignmentValidator,
-                    useValue: createMock(RoleOrganisationAssignmentValidator),
-                },
             ],
         }).compile();
 
@@ -51,7 +45,6 @@ describe('LandesbediensteteKontextWorkflowService', () => {
         escalatedPermissionsFactoryMock = module.get(EscalatedPersonPermissionsFactory);
         personenkontextRepoMock = module.get(DBiamPersonenkontextRepo);
         personenkontextFactoryMock = module.get(DbiamPersonenkontextFactory);
-        roleOrganisationValidatorMock = module.get(RoleOrganisationAssignmentValidator);
     });
 
     afterAll(async () => {
@@ -64,77 +57,6 @@ describe('LandesbediensteteKontextWorkflowService', () => {
 
     it('should be defined', () => {
         expect(sut).toBeDefined();
-    });
-
-    describe('canCommit', () => {
-        it('should return Ok if all role-organisation references are valid and permissions are sufficient', async () => {
-            const rollenIds: string[] = [faker.string.uuid(), faker.string.uuid()];
-            const organisationId: string = faker.string.uuid();
-            const permissionsMock: DeepMocked<IPersonPermissions> = {
-                hasSystemrechteAtOrganisation: vi.fn().mockResolvedValueOnce(true),
-            } as DeepMocked<IPersonPermissions>;
-
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Ok(undefined));
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Ok(undefined));
-
-            const result: Result<void, DomainError> = await sut.canCommit(rollenIds, organisationId, permissionsMock);
-
-            expectOkResult(result);
-            expect(roleOrganisationValidatorMock.checkReferences).toHaveBeenCalledTimes(2);
-            expect(permissionsMock.hasSystemrechteAtOrganisation).toHaveBeenCalledWith(
-                organisationId,
-                expect.arrayContaining([RollenSystemRecht.LANDESBEDIENSTETE_SUCHEN_UND_HINZUFUEGEN]),
-            );
-        });
-
-        it('should return Err if role-organisation reference check fails', async () => {
-            const rollenIds: string[] = [faker.string.uuid()];
-            const organisationId: string = faker.string.uuid();
-            const permissionsMock: DeepMocked<IPersonPermissions> = {
-                hasSystemrechteAtOrganisation: vi.fn(),
-            } as DeepMocked<IPersonPermissions>;
-            const error: DomainError = new MissingPermissionsError('Invalid reference');
-
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Err(error));
-
-            const result: Result<void, DomainError> = await sut.canCommit(rollenIds, organisationId, permissionsMock);
-
-            expectErrResult(result);
-            expect(result.error).toEqual(error);
-            expect(permissionsMock.hasSystemrechteAtOrganisation).not.toHaveBeenCalled();
-        });
-
-        it('should return Err if permissions check fails', async () => {
-            const rollenIds: string[] = [faker.string.uuid()];
-            const organisationId: string = faker.string.uuid();
-            const permissionsMock: DeepMocked<IPersonPermissions> = {
-                hasSystemrechteAtOrganisation: vi.fn().mockResolvedValueOnce(false),
-            } as DeepMocked<IPersonPermissions>;
-
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Ok(undefined));
-
-            const result: Result<void, DomainError> = await sut.canCommit(rollenIds, organisationId, permissionsMock);
-
-            expectErrResult(result);
-            expect(result.error).toBeInstanceOf(MissingPermissionsError);
-        });
-
-        it('should return Err on first failed reference check', async () => {
-            const rollenIds: string[] = [faker.string.uuid(), faker.string.uuid()];
-            const organisationId: string = faker.string.uuid();
-            const permissionsMock: DeepMocked<IPersonPermissions> = {
-                hasSystemrechteAtOrganisation: vi.fn(),
-            } as DeepMocked<IPersonPermissions>;
-            const error: DomainError = new MissingPermissionsError('First reference failed');
-
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Err(error));
-            roleOrganisationValidatorMock.checkReferences.mockResolvedValueOnce(Ok(undefined));
-
-            const result: Result<void, DomainError> = await sut.canCommit(rollenIds, organisationId, permissionsMock);
-
-            expectErrResult(result);
-            expect(result.error).toEqual(error);
-        });
     });
 
     describe('commit', () => {

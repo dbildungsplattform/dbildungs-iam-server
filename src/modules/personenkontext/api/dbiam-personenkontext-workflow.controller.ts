@@ -1,62 +1,31 @@
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Param,
-    Post,
-    Put,
-    Query,
-    UseFilters,
-    UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseFilters, UseGuards } from '@nestjs/common';
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
-    ApiConflictResponse,
     ApiCreatedResponse,
     ApiForbiddenResponse,
     ApiInternalServerErrorResponse,
     ApiOAuth2,
-    ApiOkResponse,
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
-import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
 import { Permissions } from '../../authentication/api/permissions.decorator.js';
 import { StepUpGuard } from '../../authentication/api/steup-up.guard.js';
 import { PersonPermissions } from '../../authentication/domain/person-permissions.js';
-import { OrganisationResponseLegacy } from '../../organisation/api/organisation.response.legacy.js';
 import { Organisation } from '../../organisation/domain/organisation.js';
 import { Rolle } from '../../rolle/domain/rolle.js';
 import { PersonenkontextCommitError } from '../domain/error/personenkontext-commit.error.js';
-import { PersonenkontexteUpdateError } from '../domain/error/personenkontexte-update.error.js';
-import { LandesbediensteteKontextWorkflowService } from '../domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonPersonenkontext, PersonenkontextCreationService } from '../domain/personenkontext-creation.service.js';
-import { PersonenkontextWorkflowFactory } from '../domain/personenkontext-workflow.factory.js';
-import { PersonenkontextWorkflowAggregate } from '../domain/personenkontext-workflow.js';
-import { OperationContext } from '../domain/personenkontext.enums.js';
 import { Personenkontext } from '../domain/personenkontext.js';
-import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DbiamPersonenkontextError } from './dbiam-personenkontext.error.js';
-import { DbiamPersonenkontexteUpdateError } from './dbiam-personenkontexte-update.error.js';
 import { DbiamCreatePersonWithPersonenkontexteBodyParams } from './param/dbiam-create-person-with-personenkontexte.body.params.js';
 import { DbiamCreatePersonenkontextBodyParams } from './param/dbiam-create-personenkontext.body.params.js';
-import { DBiamFindPersonenkontexteByPersonIdParams } from './param/dbiam-find-personenkontext-by-personid.params.js';
-import { FindDbiamPersonenkontextWorkflowQueryParams } from './param/dbiam-find-personenkontextworkflow-query.params.js';
-import { DbiamUpdatePersonenkontexteBodyParams } from './param/dbiam-update-personenkontexte.body.params.js';
-import { DbiamUpdatePersonenkontexteQueryParams } from './param/dbiam-update-personenkontexte.query.params.js';
 import { PersonenkontextExceptionFilter } from './personenkontext-exception-filter.js';
 import { PersonenkontexteUpdateExceptionFilter } from './personenkontexte-update-exception-filter.js';
 import { DBiamPersonResponse } from './response/dbiam-person.response.js';
-import { PersonenkontextWorkflowResponse } from './response/dbiam-personenkontext-workflow-response.js';
-import { PersonenkontexteUpdateResponse } from './response/personenkontexte-update.response.js';
 
 @UseFilters(new PersonenkontextExceptionFilter(), new PersonenkontexteUpdateExceptionFilter())
 @ApiTags('personenkontext')
@@ -65,139 +34,9 @@ import { PersonenkontexteUpdateResponse } from './response/personenkontexte-upda
 @Controller({ path: 'personenkontext-workflow' })
 export class DbiamPersonenkontextWorkflowController {
     public constructor(
-        private readonly personenkontextWorkflowFactory: PersonenkontextWorkflowFactory,
-        private readonly landesbediensteteKontextWorkflowService: LandesbediensteteKontextWorkflowService,
         private readonly personenkontextCreationService: PersonenkontextCreationService,
         private readonly logger: ClassLogger,
-        private readonly personenkontextRepo: DBiamPersonenkontextRepo,
     ) {}
-
-    @Get('step')
-    @UseGuards(StepUpGuard)
-    @ApiOkResponse({
-        description: `Initialize or process data from the person creation form.
-                      Valid combinations:
-                      - Both organisationId and rollenIds are undefined: Fetch all possible organisations.
-                      - Both organisationId and rollenIds are provided: Check if the Rollen can be committed for the organisation.`,
-        type: PersonenkontextWorkflowResponse,
-    })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to get available data for personenkontext.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permission to get data for personenkontext.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while getting data for personenkontext.' })
-    public async processStep(
-        @Query() params: FindDbiamPersonenkontextWorkflowQueryParams,
-        @Permissions() permissions: IPersonPermissions,
-    ): Promise<PersonenkontextWorkflowResponse> {
-        // Creates a new instance of the workflow aggregate
-        const anlage: PersonenkontextWorkflowAggregate = this.personenkontextWorkflowFactory.createNew();
-
-        // Initializes the aggregate with the values of the person, the selected organisation and rolle through the UI
-        anlage.initialize(params.personId, params.organisationId, params.rollenIds);
-
-        if (params.personId) {
-            const findByPersonResult: Result<Personenkontext<true>[], MissingPermissionsError> =
-                await this.personenkontextRepo.findByPersonAuthorized(params.personId, permissions);
-            if (!findByPersonResult.ok) {
-                return new PersonenkontextWorkflowResponse([], false, params.organisationId, params.rollenIds);
-            }
-        }
-
-        const organisations: Organisation<true>[] = await anlage.findAllSchulstrukturknoten(
-            permissions,
-            params.organisationName,
-            params.limit,
-        );
-        const organisationsResponse: OrganisationResponseLegacy[] = organisations.map(
-            (org: Organisation<true>) => new OrganisationResponseLegacy(org),
-        );
-
-        // Determine canCommit status, by default it's always false unless both the rolle and orga are selected
-        let canCommit: boolean = false;
-        if (params.organisationId && params.rollenIds) {
-            let commitResult: Result<void, DomainError>;
-            if (params.operationContext === OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN) {
-                // Additional logic for this operation context can be added here
-                commitResult = await this.landesbediensteteKontextWorkflowService.canCommit(
-                    params.rollenIds,
-                    params.organisationId,
-                    permissions,
-                );
-            } else {
-                commitResult = await anlage.canCommit(permissions, params.operationContext);
-            }
-
-            if (commitResult.ok) {
-                canCommit = true;
-            }
-        }
-
-        const response: PersonenkontextWorkflowResponse = new PersonenkontextWorkflowResponse(
-            organisationsResponse,
-            canCommit,
-            params.organisationId,
-            params.rollenIds,
-        );
-
-        return response;
-    }
-
-    @Put(':personId')
-    @UseGuards(StepUpGuard)
-    @HttpCode(HttpStatus.OK)
-    @ApiOkResponse({
-        description:
-            'Add or remove personenkontexte as one operation. Returns the Personenkontexte existing after update.',
-        type: PersonenkontexteUpdateResponse,
-    })
-    @ApiBadRequestResponse({
-        description: 'The personenkontexte could not be updated, may due to unsatisfied specifications.',
-        type: DbiamPersonenkontexteUpdateError,
-    })
-    @ApiConflictResponse({ description: 'Changes are conflicting with current state of personenkontexte.' })
-    @ApiUnauthorizedResponse({ description: 'Not authorized to update personenkontexte.' })
-    @ApiForbiddenResponse({ description: 'Insufficient permission to update personenkontexte.' })
-    @ApiInternalServerErrorResponse({ description: 'Internal server error while updating personenkontexte.' })
-    public async commit(
-        @Param() params: DBiamFindPersonenkontexteByPersonIdParams,
-        @Query() queryParams: DbiamUpdatePersonenkontexteQueryParams,
-        @Body() bodyParams: DbiamUpdatePersonenkontexteBodyParams,
-        @Permissions() permissions: IPersonPermissions,
-    ): Promise<PersonenkontexteUpdateResponse> {
-        let updateResult: Personenkontext<true>[] | PersonenkontexteUpdateError;
-
-        switch (bodyParams.operationContext) {
-            case OperationContext.LANDESBEDIENSTETEN_KONTEXT_ERWEITERN:
-                updateResult = await this.landesbediensteteKontextWorkflowService.commit(
-                    params.personId,
-                    bodyParams.lastModified,
-                    bodyParams.count,
-                    bodyParams.personenkontexte,
-                    permissions,
-                    queryParams.personalnummer || undefined,
-                );
-                break;
-            case OperationContext.PERSON_ANLEGEN:
-            case OperationContext.PERSON_BEARBEITEN:
-                updateResult = await this.personenkontextWorkflowFactory
-                    .createNew()
-                    .commit(
-                        params.personId,
-                        bodyParams.lastModified,
-                        bodyParams.count,
-                        bodyParams.personenkontexte,
-                        permissions,
-                        queryParams.personalnummer || undefined,
-                    );
-                break;
-            default:
-                throw new BadRequestException('Unsupported operation context for updating personenkontexte');
-        }
-
-        if (updateResult instanceof DomainError) {
-            throw updateResult;
-        }
-        return new PersonenkontexteUpdateResponse(updateResult);
-    }
 
     @Post()
     @UseGuards(StepUpGuard)

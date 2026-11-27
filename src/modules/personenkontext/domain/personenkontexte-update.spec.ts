@@ -30,6 +30,7 @@ import { DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkonte
 import { DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
 import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
+import { RolleNurAnPassendeOrganisationError } from '../specification/error/rolle-nur-an-passende-organisation.js';
 import { DbiamPersonenkontextFactory } from './dbiam-personenkontext.factory.js';
 import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
 import { type PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
@@ -43,6 +44,8 @@ import { UpdatePersonNotFoundError } from './error/update-person-not-found.error
 import { PersonenkontextFactory } from './personenkontext.factory.js';
 import { type Personenkontext } from './personenkontext.js';
 import { type PersonenkontexteUpdate } from './personenkontexte-update.js';
+import { RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
+import { Err, Ok } from '../../../shared/util/result.js';
 
 function createPKBodyParams(personId: PersonID): DbiamPersonenkontextBodyParams[] {
     const firstCreatePKBodyParams: DbiamPersonenkontextBodyParams = createMock<DbiamPersonenkontextBodyParams>(
@@ -128,6 +131,10 @@ describe('PersonenkontexteUpdate', () => {
                 },
                 DbiamPersonenkontextFactory,
                 PersonenkontextFactory,
+                {
+                    provide: RoleOrganisationAssignmentValidator,
+                    useValue: createMock(RoleOrganisationAssignmentValidator),
+                },
             ],
         })
             .overrideProvider(ClassLogger)
@@ -197,6 +204,10 @@ describe('PersonenkontexteUpdate', () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
+        const roleOrganisationValidator: DeepMocked<RoleOrganisationAssignmentValidator> = module.get(
+            RoleOrganisationAssignmentValidator,
+        );
+        roleOrganisationValidator.checkReferences.mockResolvedValue(Ok(undefined));
     });
 
     it('should be defined', () => {
@@ -385,6 +396,58 @@ describe('PersonenkontexteUpdate', () => {
                 });
             },
         );
+
+        describe('when a new Zuordnung has a Rolle that does not match the Organisation', () => {
+            it('should return the reference error without writing any changes', async () => {
+                dBiamPersonenkontextRepoMock.find.mockResolvedValue(null);
+                dBiamPersonenkontextRepoMock.find.mockResolvedValueOnce(pk1);
+                dBiamPersonenkontextRepoMock.findByPerson.mockResolvedValue([pk1]);
+                personRepoMock.findById.mockResolvedValue(DoFactory.createPerson(true, { id: personId }));
+                organisationRepoMock.findByIds.mockResolvedValue(
+                    new Map(
+                        [bodyParam1.organisationId, bodyParam2.organisationId].map((id: string) => [
+                            id,
+                            DoFactory.createOrganisation(true, { id, typ: OrganisationsTyp.SCHULE }),
+                        ]),
+                    ),
+                );
+                rolleRepoMock.findByIds.mockResolvedValue(
+                    new Map([
+                        [pk1.rolleId, DoFactory.createRolle(true, { id: pk1.rolleId, rollenart: RollenArt.LEHR })],
+                        [
+                            bodyParam2.rolleId,
+                            DoFactory.createRolle(true, { id: bodyParam2.rolleId, rollenart: RollenArt.LEHR }),
+                        ],
+                    ]),
+                );
+                const permissions: DeepMocked<PersonPermissions> = createPersonPermissionsMock();
+                permissions.canModifyPerson.mockResolvedValue(true);
+                permissions.hasSystemrechtAtOrganisation.mockResolvedValue(true);
+                permissions.hasPermissionForRolleMerkmale.mockResolvedValue(true);
+                const validator: DeepMocked<RoleOrganisationAssignmentValidator> = module.get(
+                    RoleOrganisationAssignmentValidator,
+                );
+                const error: RolleNurAnPassendeOrganisationError = new RolleNurAnPassendeOrganisationError();
+                validator.checkReferences.mockResolvedValueOnce(Err(error));
+                const update: PersonenkontexteUpdate = dbiamPersonenkontextFactory.createNewPersonenkontexteUpdate(
+                    personId,
+                    lastModified,
+                    1,
+                    [bodyParam1, bodyParam2],
+                    permissions,
+                    '7654321',
+                );
+
+                await expect(update.update()).resolves.toBe(error);
+                expect(validator.checkReferences).toHaveBeenCalledExactlyOnceWith(
+                    bodyParam2.organisationId,
+                    bodyParam2.rolleId,
+                );
+                expect(personRepoMock.updatePersonMetadata).not.toHaveBeenCalled();
+                expect(dBiamPersonenkontextRepoInternalMock.save).not.toHaveBeenCalled();
+                expect(dBiamPersonenkontextRepoInternalMock.delete).not.toHaveBeenCalled();
+            });
+        });
 
         describe('when sent personenkontexte contain new personenkontext', () => {
             beforeAll(() => {

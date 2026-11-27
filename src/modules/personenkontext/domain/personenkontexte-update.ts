@@ -1,38 +1,38 @@
-import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
-import { type DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
-import { type Personenkontext } from './personenkontext.js';
-import { UpdateCountError } from './error/update-count.error.js';
-import { UpdateOutdatedError } from './error/update-outdated.error.js';
-import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/index.js';
-import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
-import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
-import { type PersonenkontextFactory } from './personenkontext.factory.js';
-import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
-import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
-import { type PersonRepository } from '../../person/persistence/person.repository.js';
-import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
-import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
-import { type Person } from '../../person/domain/person.js';
-import { type Rolle } from '../../rolle/domain/rolle.js';
-import { type Organisation } from '../../organisation/domain/organisation.js';
-import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { type EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
+import { type ClassLogger } from '../../../core/logging/class-logger.js';
 import { DomainError } from '../../../shared/error/domain.error.js';
 import { MissingPermissionsError } from '../../../shared/error/missing-permissions.error.js';
-import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
-import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
-import { CheckRollenartSpecification } from '../specification/nur-gleiche-rolle.js';
-import { type ClassLogger } from '../../../core/logging/class-logger.js';
-import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
-import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
-import { type DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
-import { type EventRoutingLegacyKafkaService } from '../../../core/eventbus/services/event-routing-legacy-kafka.service.js';
 import { KafkaPersonenkontextUpdatedEvent } from '../../../shared/events/kafka-personenkontext-updated.event.js';
-import { LernAnSchuleUndKlasse } from '../specification/lern-an-schule-und-klasse.js';
-import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-schule-and-klasse.error.js';
-import { type DuplicatePersonalnummerError } from '../../../shared/error/duplicate-personalnummer.error.js';
-import { CheckDuplicateKlassenkontextSpecification } from '../specification/check-duplicate-klassenkontext.js';
-import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
+import { PersonenkontextUpdatedEvent } from '../../../shared/events/personenkontext-updated.event.js';
+import type { IPersonPermissions } from '../../../shared/permissions/person-permissions.interface.js';
+import { type OrganisationID, type PersonID, type RolleID } from '../../../shared/types/index.js';
 import { type EmailResolverService } from '../../email-microservice/domain/email-resolver.service.js';
+import { type Organisation } from '../../organisation/domain/organisation.js';
+import { type OrganisationRepository } from '../../organisation/persistence/organisation.repository.js';
+import { type Person } from '../../person/domain/person.js';
+import { type PersonRepository } from '../../person/persistence/person.repository.js';
+import { type Rolle } from '../../rolle/domain/rolle.js';
+import { RollenSystemRecht } from '../../rolle/domain/systemrecht.js';
+import { type RolleRepo } from '../../rolle/repo/rolle.repo.js';
+import { type DbiamPersonenkontextBodyParams } from '../api/param/dbiam-personenkontext.body.params.js';
+import { type DBiamPersonenkontextRepo } from '../persistence/dbiam-personenkontext.repo.js';
+import { type DBiamPersonenkontextRepoInternal } from '../persistence/internal-dbiam-personenkontext.repo.js';
+import { CheckBefristungSpecification } from '../specification/befristung-required-bei-rolle-befristungspflicht.js';
+import { CheckDuplicateKlassenkontextSpecification } from '../specification/check-duplicate-klassenkontext.js';
+import { LernAnSchuleUndKlasse } from '../specification/lern-an-schule-und-klasse.js';
+import { CheckRollenartSpecification } from '../specification/nur-gleiche-rolle.js';
+import { PersonenkontextBefristungRequiredError } from './error/personenkontext-befristung-required.error.js';
+import { PersonenkontexteUpdateError } from './error/personenkontexte-update.error.js';
+import { UpdateCountError } from './error/update-count.error.js';
+import { DuplicateKlassenkontextError } from './error/update-invalid-duplicate-klassenkontext-for-same-rolle.js';
+import { UpdateInvalidRollenartForLernError } from './error/update-invalid-rollenart-for-lern.error.js';
+import { UpdateLernNotAtSchuleAndKlasseError } from './error/update-lern-not-at-schule-and-klasse.error.js';
+import { UpdateOutdatedError } from './error/update-outdated.error.js';
+import { UpdatePersonIdMismatchError } from './error/update-person-id-mismatch.error.js';
+import { UpdatePersonNotFoundError } from './error/update-person-not-found.error.js';
+import { type PersonenkontextFactory } from './personenkontext.factory.js';
+import { type Personenkontext } from './personenkontext.js';
+import { type RoleOrganisationAssignmentValidator } from './role-organisation-assignment.validator.js';
 
 export class PersonenkontexteUpdate {
     private constructor(
@@ -50,6 +50,7 @@ export class PersonenkontexteUpdate {
         private readonly dBiamPersonenkontextBodyParams: DbiamPersonenkontextBodyParams[],
         private readonly permissions: IPersonPermissions,
         private readonly emailResolverService: EmailResolverService,
+        private readonly roleOrganisationValidator: RoleOrganisationAssignmentValidator,
         private readonly personalnummer?: string,
     ) {}
 
@@ -68,6 +69,7 @@ export class PersonenkontexteUpdate {
         dBiamPersonenkontextBodyParams: DbiamPersonenkontextBodyParams[],
         permissions: IPersonPermissions,
         emailResolverService: EmailResolverService,
+        roleOrganisationValidator: RoleOrganisationAssignmentValidator,
         personalnummer?: string,
     ): PersonenkontexteUpdate {
         return new PersonenkontexteUpdate(
@@ -85,6 +87,7 @@ export class PersonenkontexteUpdate {
             dBiamPersonenkontextBodyParams,
             permissions,
             emailResolverService,
+            roleOrganisationValidator,
             personalnummer,
         );
     }
@@ -368,9 +371,38 @@ export class PersonenkontexteUpdate {
         return undefined;
     }
 
-    public async update(): Promise<
-        Personenkontext<true>[] | PersonenkontexteUpdateError | DuplicatePersonalnummerError
-    > {
+    private async checkNewZuordnungReferences(
+        existingZuordnungen: Personenkontext<true>[],
+        submittedZuordnungen: Personenkontext<boolean>[],
+    ): Promise<Option<DomainError>> {
+        const newZuordnungen: Personenkontext<boolean>[] = submittedZuordnungen.filter(
+            (zuordnung: Personenkontext<boolean>) => !this.hasZuordnung(existingZuordnungen, zuordnung),
+        );
+        const referenceChecksPromises: Promise<Result<void, DomainError>>[] = newZuordnungen.map(
+            ({ organisationId, rolleId }: Personenkontext<boolean>) =>
+                this.roleOrganisationValidator.checkReferences(organisationId, rolleId),
+        );
+        const referenceChecks: Result<void, DomainError>[] = await Promise.all(referenceChecksPromises);
+        const firstFailedCheck: Result<void, DomainError> | undefined = referenceChecks.find(
+            (check: Result<void, DomainError>) => !check.ok,
+        );
+
+        return firstFailedCheck?.error;
+    }
+
+    private hasZuordnung(
+        existingZuordnungen: Personenkontext<true>[],
+        { organisationId, rolleId }: Personenkontext<boolean>,
+    ): boolean {
+        const hasZuordnung: boolean = existingZuordnungen.some(
+            (existing: Personenkontext<true>) =>
+                existing.organisationId === organisationId && existing.rolleId === rolleId,
+        );
+
+        return hasZuordnung;
+    }
+
+    public async update(): Promise<Personenkontext<true>[] | DomainError> {
         const sentPKs: Personenkontext<true>[] | PersonenkontexteUpdateError = await this.getSentPersonenkontexte();
         if (sentPKs instanceof PersonenkontexteUpdateError) {
             return sentPKs;
@@ -410,6 +442,11 @@ export class PersonenkontexteUpdate {
         const permissionsError: Option<DomainError> = await this.checkPermissionsForChanged(existingPKs, sentPKs);
         if (permissionsError) {
             return permissionsError;
+        }
+
+        const referenceError: Option<DomainError> = await this.checkNewZuordnungReferences(existingPKs, sentPKs);
+        if (referenceError) {
+            return referenceError;
         }
 
         // Update the personalnummer if it is provided

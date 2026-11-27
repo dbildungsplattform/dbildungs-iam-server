@@ -7,6 +7,7 @@ import { PersonLandesbediensteterSearchModule } from '../person/person-landesbed
 import { PersonModule } from '../person/person.module.js';
 import { RolleModule } from '../rolle/rolle.module.js';
 import { DbiamPersonenkontextWorkflowController } from './api/dbiam-personenkontext-workflow.controller.js';
+import { PersonenkontextController } from './api/personenkontext.controller.js';
 import { LandesbediensteteKontextWorkflowService } from './domain/landesbedienstete-kontext-workflow.service.js';
 import { PersonenKontextModule } from './personenkontext.module.js';
 
@@ -21,6 +22,6 @@ import { PersonenKontextModule } from './personenkontext.module.js';
         PersonLandesbediensteterSearchModule,
     ],
     providers: [PersonApiMapper, LandesbediensteteKontextWorkflowService],
-    controllers: [DbiamPersonenkontextWorkflowController],
+    controllers: [DbiamPersonenkontextWorkflowController, PersonenkontextController],
 })
 export class PersonenKontextApiModule {}
