@@ -45,6 +45,11 @@ export class SchulconnexPushApiClient {
 
     private readonly requestTimeoutMs: number;
 
+    private readonly minRequestIntervalMs: number;
+
+    /** Earliest point in time (epoch ms) at which the next request to a registry may be sent */
+    private readonly nextRequestSlots: Map<string, number> = new Map();
+
     public constructor(
         private readonly httpService: HttpService,
         private readonly logger: ClassLogger,
@@ -55,6 +60,7 @@ export class SchulconnexPushApiClient {
         this.maxAttempts = config.PUSH_MAX_ATTEMPTS;
         this.retryDelayMs = config.PUSH_RETRY_DELAY_MS;
         this.requestTimeoutMs = config.PUSH_REQUEST_TIMEOUT_MS;
+        this.minRequestIntervalMs = 1000 / config.PUSH_MAX_REQUESTS_PER_SECOND;
     }
 
     /** PUT /v1/personen/{personId} */
@@ -148,17 +154,35 @@ export class SchulconnexPushApiClient {
     ): Promise<Result<void, DomainError>> {
         const url: string = this.buildUrl(registry, path);
 
-        const result: Result<void, DomainError> = await this.sendWithRetry(method, url, data);
+        const result: Result<void, DomainError> = await this.sendWithRetry(registry, method, url, data);
 
         return result;
     }
 
+    /**
+     * Spaces requests to the same registry evenly, so at most PUSH_MAX_REQUESTS_PER_SECOND are sent per registry.
+     * Slots are reserved synchronously, so concurrent callers queue up behind each other.
+     */
+    private async throttle(registry: SchulconnexPushRegistry<true>): Promise<void> {
+        const now: number = Date.now();
+        const slot: number = Math.max(now, this.nextRequestSlots.get(registry.id) ?? now);
+
+        this.nextRequestSlots.set(registry.id, slot + this.minRequestIntervalMs);
+
+        if (slot > now) {
+            await sleep(slot - now);
+        }
+    }
+
     private async sendWithRetry(
+        registry: SchulconnexPushRegistry<true>,
         method: HttpMethod,
         url: string,
         data: object | undefined,
         attempt: number = 1,
     ): Promise<Result<void, DomainError>> {
+        await this.throttle(registry);
+
         try {
             await lastValueFrom(this.httpService.request({ method, url, data, timeout: this.requestTimeoutMs }));
 
@@ -172,7 +196,7 @@ export class SchulconnexPushApiClient {
 
                 await sleep(this.retryDelayMs);
 
-                return this.sendWithRetry(method, url, data, attempt + 1);
+                return this.sendWithRetry(registry, method, url, data, attempt + 1);
             }
 
             this.logger.logUnknownAsError(`Push request ${method} ${url} failed, aborting`, err);

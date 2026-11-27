@@ -61,7 +61,9 @@ import {
     type ErweiterterServiceProviderForPK,
     type ExternalPkData,
     type KontextWithOrgaAndRolle,
+    type PersonWithPersonenkontextIds,
     type RollenCount,
+    type RollenerweiterungGrant,
 } from './dbiam-personenkontext.repo.js';
 import { DBiamPersonenkontextRepoInternal } from './internal-dbiam-personenkontext.repo.js';
 import { PersonenkontextEntity } from './personenkontext.entity.js';
@@ -1154,6 +1156,179 @@ describe('dbiam Personenkontext Repo', () => {
             const personIds: string[] = await sut.findPersonIdsWithRolleInOrganisationSubtree(school.id, rolle.id, 10);
 
             expect(personIds.sort()).toEqual([personAtSchool.id, personInKlasse.id].sort());
+        });
+    });
+
+    describe('findNonKlassenKontexteWithRolleInOrganisationTree', () => {
+        it('should return non-class kontexte with the rolle at the organisation and all organisations below it', async () => {
+            const rolle: Rolle<true> = await createRolle();
+            const otherRolle: Rolle<true> = await createRolle();
+            const land: OrganisationEntity = await createAndPersistOrganisation(em, undefined, OrganisationsTyp.LAND);
+            const school: OrganisationEntity = await createAndPersistOrganisation(em, land.id, OrganisationsTyp.SCHULE);
+            const klasse: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                school.id,
+                OrganisationsTyp.KLASSE,
+            );
+            const otherSchool: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                undefined,
+                OrganisationsTyp.SCHULE,
+            );
+            const person: Person<true> = await createPerson();
+            const personWithOtherRolle: Person<true> = await createPerson();
+            const personAtOtherSchool: Person<true> = await createPerson();
+            const personInKlasseOnly: Person<true> = await createPerson();
+
+            const landKontext: Personenkontext<true> = await personenkontextRepoInternal.save(
+                createPersonenkontext(false, { rolleId: rolle.id, personId: person.id, organisationId: land.id }),
+            );
+            const schoolKontext: Personenkontext<true> = await personenkontextRepoInternal.save(
+                createPersonenkontext(false, { rolleId: rolle.id, personId: person.id, organisationId: school.id }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, { rolleId: rolle.id, personId: person.id, organisationId: klasse.id }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: otherRolle.id,
+                    personId: personWithOtherRolle.id,
+                    organisationId: school.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personAtOtherSchool.id,
+                    organisationId: otherSchool.id,
+                }),
+            );
+            await personenkontextRepoInternal.save(
+                createPersonenkontext(false, {
+                    rolleId: rolle.id,
+                    personId: personInKlasseOnly.id,
+                    organisationId: klasse.id,
+                }),
+            );
+
+            const result: PersonWithPersonenkontextIds[] = await sut.findNonKlassenKontexteWithRolleInOrganisationTree(
+                land.id,
+                rolle.id,
+                10,
+            );
+
+            expect(result).toEqual([
+                { personId: person.id, personenkontextIds: [landKontext.id, schoolKontext.id].sort() },
+            ]);
+        });
+
+        it('should paginate over persons', async () => {
+            const rolle: Rolle<true> = await createRolle();
+            const school: OrganisationEntity = await createAndPersistOrganisation(
+                em,
+                undefined,
+                OrganisationsTyp.SCHULE,
+            );
+            const persons: Person<true>[] = await Promise.all([createPerson(), createPerson(), createPerson()]);
+            await Promise.all(
+                persons.map((p: Person<true>) =>
+                    personenkontextRepoInternal.save(
+                        createPersonenkontext(false, { rolleId: rolle.id, personId: p.id, organisationId: school.id }),
+                    ),
+                ),
+            );
+            const sortedPersonIds: string[] = persons.map((p: Person<true>) => p.id).sort();
+
+            const firstPage: PersonWithPersonenkontextIds[] =
+                await sut.findNonKlassenKontexteWithRolleInOrganisationTree(school.id, rolle.id, 2);
+            const secondPage: PersonWithPersonenkontextIds[] =
+                await sut.findNonKlassenKontexteWithRolleInOrganisationTree(
+                    school.id,
+                    rolle.id,
+                    2,
+                    firstPage.at(-1)?.personId,
+                );
+
+            expect(firstPage.map((entry: PersonWithPersonenkontextIds) => entry.personId)).toEqual(
+                sortedPersonIds.slice(0, 2),
+            );
+            expect(secondPage.map((entry: PersonWithPersonenkontextIds) => entry.personId)).toEqual(
+                sortedPersonIds.slice(2),
+            );
+        });
+    });
+
+    describe('findRollenerweiterungGrants', () => {
+        it('should return an empty array without querying for an empty query', async () => {
+            const result: RollenerweiterungGrant[] = await sut.findRollenerweiterungGrants([]);
+
+            expect(result).toEqual([]);
+        });
+
+        it('should return rollenerweiterungen at the organisation and above it for the requested rolle', async () => {
+            const sp: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const otherSp: ServiceProvider<true> = await createAndPersistServiceProvider(em);
+            const rolle: Rolle<true> = await createRolle();
+            const otherRolle: Rolle<true> = await createRolle();
+            const land: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.LAND }),
+            );
+            const school: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE, administriertVon: land.id }),
+            );
+            const otherSchool: Organisation<true> = await organisationRepository.save(
+                DoFactory.createOrganisation(false, { typ: OrganisationsTyp.SCHULE, administriertVon: land.id }),
+            );
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: rolle.id,
+                    organisationId: land.id,
+                    serviceProviderId: sp.id,
+                }),
+            );
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: rolle.id,
+                    organisationId: school.id,
+                    serviceProviderId: otherSp.id,
+                }),
+            );
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: otherRolle.id,
+                    organisationId: school.id,
+                    serviceProviderId: sp.id,
+                }),
+            );
+            await rollenerweiterungRepo.create(
+                DoFactory.createRollenerweiterung(false, {
+                    rolleId: rolle.id,
+                    organisationId: otherSchool.id,
+                    serviceProviderId: sp.id,
+                }),
+            );
+
+            const result: RollenerweiterungGrant[] = await sut.findRollenerweiterungGrants([
+                { organisationId: school.id, rolleId: rolle.id },
+            ]);
+
+            expect(result).toHaveLength(2);
+            expect(result).toEqual(
+                expect.arrayContaining([
+                    {
+                        organisationId: school.id,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: land.id,
+                        serviceProviderId: sp.id,
+                    },
+                    {
+                        organisationId: school.id,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: school.id,
+                        serviceProviderId: otherSp.id,
+                    },
+                ]),
+            );
         });
     });
 

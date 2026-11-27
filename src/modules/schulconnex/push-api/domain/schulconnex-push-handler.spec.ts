@@ -12,6 +12,9 @@ import { KafkaPersonenkontextUpdatedEvent } from '../../../../shared/events/kafk
 import { LocksForPersonChangedEvent } from '../../../../shared/events/locks-for-person-changed.event.js';
 import { type PersonenkontextEventKontextData } from '../../../../shared/events/personenkontext-event.types.js';
 import { PersonenkontextUpdatedEvent } from '../../../../shared/events/personenkontext-updated.event.js';
+import { KafkaRollenerweiterungCreatedEvent } from '../../../../shared/events/kafka-rollenerweiterung-created.event.js';
+import { RollenerweiterungCreatedEvent } from '../../../../shared/events/rollenerweiterung-created.event.js';
+import { RollenerweiterungDeletedEvent } from '../../../../shared/events/rollenerweiterung-deleted.event.js';
 import { type PersonID, type PersonenkontextID, type RolleID } from '../../../../shared/types/index.js';
 import { Err, Ok } from '../../../../shared/util/result.js';
 import { EmailResolverService } from '../../../email-microservice/domain/email-resolver.service.js';
@@ -26,6 +29,7 @@ import { PersonRepository } from '../../../person/persistence/person.repository.
 import {
     DBiamPersonenkontextRepo,
     type KontextWithOrgaAndRolle,
+    type PersonWithPersonenkontextIds,
 } from '../../../personenkontext/persistence/dbiam-personenkontext.repo.js';
 import { RollenArt } from '../../../rolle/domain/rolle.enums.js';
 import { type Rolle } from '../../../rolle/domain/rolle.js';
@@ -205,6 +209,8 @@ describe('SchulconnexPushHandler', () => {
         personRepoMock.findById.mockResolvedValue(person);
         personenkontextRepoMock.findByPersonWithOrgaAndRolle.mockResolvedValue([pushKontext]);
         personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([pushKontext]);
+        personenkontextRepoMock.findRollenerweiterungGrants.mockResolvedValue([]);
+        personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree.mockResolvedValue([]);
         userLockRepoMock.findByPersonId.mockResolvedValue(userLocks);
         emailResolverServiceMock.findEmailsBySpshPersons.mockResolvedValue(Ok(new Map([[person.id, email]])));
         emailResolverServiceMock.findEmailBySpshPerson.mockResolvedValue(undefined);
@@ -307,6 +313,61 @@ describe('SchulconnexPushHandler', () => {
                     expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
                 },
             );
+
+            it('should push contexts whose service provider is granted through a rollenerweiterung', async () => {
+                const event: PersonenkontextUpdatedEvent = createEvent(
+                    person,
+                    [newKontext, createKontext('new-class', { orgaTyp: OrganisationsTyp.KLASSE })],
+                    [],
+                    [newKontext, createKontext('new-class', { orgaTyp: OrganisationsTyp.KLASSE })],
+                );
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolle.id, DoFactory.createRolle(true, { id: rolle.id, serviceProviderIds: [] })]]),
+                );
+                personenkontextRepoMock.findRollenerweiterungGrants.mockResolvedValueOnce([
+                    {
+                        organisationId: newKontext.orgaId,
+                        rolleId: newKontext.rolleId,
+                        rollenerweiterungOrganisationId: 'land-1',
+                        serviceProviderId: registry.serviceProviderId,
+                    },
+                ]);
+
+                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
+
+                expect(result).toEqual(Ok());
+                expect(personenkontextRepoMock.findRollenerweiterungGrants).toHaveBeenCalledExactlyOnceWith([
+                    { organisationId: newKontext.orgaId, rolleId: newKontext.rolleId },
+                ]);
+                expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                    registry,
+                    pushKontext,
+                    userLocks,
+                    email,
+                );
+            });
+
+            it('should ignore rollenerweiterungen for other service providers', async () => {
+                const event: PersonenkontextUpdatedEvent = createEvent(person, [newKontext]);
+                rolleRepoMock.findByIds.mockResolvedValueOnce(
+                    new Map([[rolle.id, DoFactory.createRolle(true, { id: rolle.id, serviceProviderIds: [] })]]),
+                );
+                personenkontextRepoMock.findRollenerweiterungGrants.mockResolvedValueOnce([
+                    {
+                        organisationId: newKontext.orgaId,
+                        rolleId: newKontext.rolleId,
+                        rollenerweiterungOrganisationId: newKontext.orgaId,
+                        serviceProviderId: 'other-provider',
+                    },
+                ]);
+
+                const result: Result<void, DomainError> = await sut.handlePersonenkontextUpdatedEvent(event);
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
 
             it('should not repush unchanged relevant contexts', async () => {
                 const event: PersonenkontextUpdatedEvent = createEvent(person, [], [], [existingKontext]);
@@ -1160,6 +1221,410 @@ describe('SchulconnexPushHandler', () => {
                 [currentLock],
                 currentEmail,
             );
+        });
+    });
+
+    describe('rollenerweiterung events', () => {
+        const organisationId: string = 'schule-1';
+        let affectedKontext: KontextWithOrgaAndRolle;
+        let otherKontext: KontextWithOrgaAndRolle;
+
+        function createAffectedKontext(
+            id: PersonenkontextID,
+            serviceProviderIds: string[] = [],
+        ): KontextWithOrgaAndRolle {
+            const kontext: KontextWithOrgaAndRolle = createPushKontext(createKontext(id), person, registry);
+            kontext.rolle = DoFactory.createRolle(true, { id: rolle.id, serviceProviderIds });
+            return kontext;
+        }
+
+        function mockAffected(...entries: PersonWithPersonenkontextIds[]): void {
+            personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree.mockResolvedValueOnce(entries);
+        }
+
+        function createCreatedEvent(): RollenerweiterungCreatedEvent {
+            return new RollenerweiterungCreatedEvent(organisationId, rolle.id, registry.serviceProviderId);
+        }
+
+        function createDeletedEvent(): RollenerweiterungDeletedEvent {
+            return new RollenerweiterungDeletedEvent(organisationId, rolle.id, registry.serviceProviderId);
+        }
+
+        beforeEach(() => {
+            affectedKontext = createAffectedKontext('affected-kontext');
+            otherKontext = createPushKontext(createKontext('other-kontext', { orgaId: 'schule-2' }), person, registry);
+        });
+
+        it.each([
+            ['created', (): RollenerweiterungCreatedEvent | RollenerweiterungDeletedEvent => createCreatedEvent()],
+            ['deleted', (): RollenerweiterungCreatedEvent | RollenerweiterungDeletedEvent => createDeletedEvent()],
+        ])(
+            'should not look up persons when no registry exists for the service provider (%s)',
+            async (_: string, createTestEvent: () => RollenerweiterungCreatedEvent | RollenerweiterungDeletedEvent) => {
+                registryRepoMock.findAll.mockResolvedValueOnce([createRegistry('registry-2', 'other-provider')]);
+                const event: RollenerweiterungCreatedEvent | RollenerweiterungDeletedEvent = createTestEvent();
+
+                const result: Result<void, DomainError> =
+                    event instanceof RollenerweiterungCreatedEvent
+                        ? await sut.handleRollenerweiterungCreatedEvent(event)
+                        : await sut.handleRollenerweiterungDeletedEvent(event);
+
+                expect(result).toEqual(Ok());
+                expect(
+                    personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree,
+                ).not.toHaveBeenCalled();
+            },
+        );
+
+        it('should page through affected persons until a batch is not full', async () => {
+            const firstBatch: PersonWithPersonenkontextIds[] = Array.from({ length: 100 }, (_: unknown, i: number) => ({
+                personId: `person-${String(i).padStart(3, '0')}`,
+                personenkontextIds: [`kontext-${i}`],
+            }));
+            mockAffected(...firstBatch);
+            mockAffected();
+            personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValue([]);
+
+            const result: Result<void, DomainError> =
+                await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+            expect(result).toEqual(Ok());
+            expect(personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree).toHaveBeenNthCalledWith(
+                1,
+                organisationId,
+                rolle.id,
+                100,
+                undefined,
+            );
+            expect(personenkontextRepoMock.findNonKlassenKontexteWithRolleInOrganisationTree).toHaveBeenNthCalledWith(
+                2,
+                organisationId,
+                rolle.id,
+                100,
+                'person-099',
+            );
+        });
+
+        describe('handleRollenerweiterungCreatedEvent', () => {
+            it('should create the person before the contexts when the person gains first access', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                const keepAlive: Mock = vi.fn();
+
+                const result: Result<void, DomainError> = await sut.handleRollenerweiterungCreatedEvent(
+                    createCreatedEvent(),
+                    keepAlive,
+                );
+
+                expect(result).toEqual(Ok());
+                expect(personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle).toHaveBeenCalledWith(
+                    person.id,
+                    registry.serviceProviderId,
+                );
+                expect(adapterMock.upsertPerson).toHaveBeenCalledExactlyOnceWith(registry, person);
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                    registry,
+                    affectedKontext,
+                    userLocks,
+                    email,
+                );
+                expect(adapterMock.upsertPerson.mock.invocationCallOrder[0]).toBeLessThan(
+                    adapterMock.upsertPersonenkontext.mock.invocationCallOrder[0]!,
+                );
+                expect(keepAlive).toHaveBeenCalledTimes(3);
+            });
+
+            it('should only create the contexts when the person already has access through another context', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    otherKontext,
+                    affectedKontext,
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                    registry,
+                    affectedKontext,
+                    userLocks,
+                    email,
+                );
+            });
+
+            it('should not push contexts already granted by a direct assignment', async () => {
+                const directKontext: KontextWithOrgaAndRolle = createAffectedKontext('direct-kontext', [
+                    registry.serviceProviderId,
+                ]);
+                mockAffected({ personId: person.id, personenkontextIds: [directKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    directKontext,
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(personenkontextRepoMock.findRollenerweiterungGrants).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
+
+            it('should not push contexts already granted by another rollenerweiterung', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                personenkontextRepoMock.findRollenerweiterungGrants.mockResolvedValueOnce([
+                    {
+                        organisationId: affectedKontext.personenkontext.organisationId,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: organisationId,
+                        serviceProviderId: registry.serviceProviderId,
+                    },
+                    {
+                        organisationId: affectedKontext.personenkontext.organisationId,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: 'land-1',
+                        serviceProviderId: registry.serviceProviderId,
+                    },
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(personenkontextRepoMock.findRollenerweiterungGrants).toHaveBeenCalledExactlyOnceWith([
+                    { organisationId: affectedKontext.personenkontext.organisationId, rolleId: rolle.id },
+                ]);
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
+
+            it('should ignore the created rollenerweiterung and grants for other service providers', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                personenkontextRepoMock.findRollenerweiterungGrants.mockResolvedValueOnce([
+                    {
+                        organisationId: affectedKontext.personenkontext.organisationId,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: organisationId,
+                        serviceProviderId: registry.serviceProviderId,
+                    },
+                    {
+                        organisationId: affectedKontext.personenkontext.organisationId,
+                        rolleId: rolle.id,
+                        rollenerweiterungOrganisationId: 'land-1',
+                        serviceProviderId: 'other-provider',
+                    },
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            });
+
+            it('should not push when the affected contexts no longer grant access', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(personRepoMock.findById).not.toHaveBeenCalled();
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
+
+            it('should handle Kafka events through the same public handler', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                const event: KafkaRollenerweiterungCreatedEvent = new KafkaRollenerweiterungCreatedEvent(
+                    organisationId,
+                    rolle.id,
+                    registry.serviceProviderId,
+                );
+
+                const result: Result<void, DomainError> = await sut.handleRollenerweiterungCreatedEvent(event);
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            });
+
+            it('should only push to registries of the event service provider', async () => {
+                const secondRegistry: SchulconnexPushRegistry<true> = createRegistry('registry-2');
+                registryRepoMock.findAll.mockResolvedValueOnce([
+                    registry,
+                    createRegistry('registry-3', 'other-provider'),
+                    secondRegistry,
+                ]);
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.upsertPerson).toHaveBeenCalledTimes(2);
+                expect(adapterMock.upsertPerson).toHaveBeenCalledWith(registry, person);
+                expect(adapterMock.upsertPerson).toHaveBeenCalledWith(secondRegistry, person);
+            });
+
+            it('should fail for the person without pushing when loading push data fails', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                personRepoMock.findById.mockResolvedValueOnce(undefined);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toHaveProperty('ok', false);
+                expect(result).toHaveProperty('error', expect.any(SchulconnexPushError));
+                expect(adapterMock.upsertPerson).not.toHaveBeenCalled();
+            });
+
+            it('should stop pushing contexts when creating the person fails', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+                const error: DomainError = new DomainErrorMock('person failed');
+                adapterMock.upsertPerson.mockResolvedValueOnce(Err(error));
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toHaveProperty('ok', false);
+                expect(adapterMock.upsertPersonenkontext).not.toHaveBeenCalled();
+            });
+
+            it('should stop pushing remaining contexts when a context push fails', async () => {
+                const secondKontext: KontextWithOrgaAndRolle = createAffectedKontext('second-kontext');
+                mockAffected({
+                    personId: person.id,
+                    personenkontextIds: [affectedKontext.personenkontext.id, secondKontext.personenkontext.id],
+                });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                    secondKontext,
+                ]);
+                adapterMock.upsertPersonenkontext.mockResolvedValueOnce(Err(new DomainErrorMock('kontext failed')));
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungCreatedEvent(createCreatedEvent());
+
+                expect(result).toHaveProperty('ok', false);
+                expect(adapterMock.upsertPersonenkontext).toHaveBeenCalledOnce();
+            });
+
+            it('should continue with remaining persons and aggregate returned and thrown failures', async () => {
+                const returnedError: DomainError = new DomainErrorMock('push failed');
+                const thrownError: Error = new Error('lookup failed');
+                mockAffected(
+                    { personId: 'person-a', personenkontextIds: [affectedKontext.personenkontext.id] },
+                    { personId: 'person-b', personenkontextIds: [affectedKontext.personenkontext.id] },
+                    { personId: 'person-c', personenkontextIds: [affectedKontext.personenkontext.id] },
+                );
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle
+                    .mockResolvedValueOnce([affectedKontext])
+                    .mockRejectedValueOnce(thrownError)
+                    .mockResolvedValueOnce([affectedKontext]);
+                adapterMock.upsertPerson.mockResolvedValueOnce(Err(returnedError));
+                const event: RollenerweiterungCreatedEvent = createCreatedEvent();
+
+                const result: Result<void, DomainError> = await sut.handleRollenerweiterungCreatedEvent(event);
+
+                expect(result).toHaveProperty('ok', false);
+                expect(result).toHaveProperty(
+                    'error.message',
+                    `[EventID: ${event.eventID}] Schulconnex push for RollenerweiterungCreatedEvent ` +
+                        `(orga ${organisationId}, rolle ${rolle.id}, sp ${registry.serviceProviderId}) failed`,
+                );
+                expect(result).toHaveProperty('error.details', [expect.any(SchulconnexPushError), thrownError]);
+                expect(adapterMock.upsertPerson).toHaveBeenCalledTimes(2);
+                expect(loggerMock.logUnknownAsError).toHaveBeenCalledWith(
+                    expect.stringContaining('Push for person person-b failed'),
+                    thrownError,
+                );
+            });
+        });
+
+        describe('handleRollenerweiterungDeletedEvent', () => {
+            it('should delete the contexts and then the person when the person loses the last access', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([]);
+                const keepAlive: Mock = vi.fn();
+
+                const result: Result<void, DomainError> = await sut.handleRollenerweiterungDeletedEvent(
+                    createDeletedEvent(),
+                    keepAlive,
+                );
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledExactlyOnceWith(
+                    registry,
+                    person.id,
+                    affectedKontext.personenkontext.id,
+                );
+                expect(adapterMock.deletePerson).toHaveBeenCalledExactlyOnceWith(registry, person.id);
+                expect(adapterMock.deletePersonenkontext.mock.invocationCallOrder[0]).toBeLessThan(
+                    adapterMock.deletePerson.mock.invocationCallOrder[0]!,
+                );
+                expect(keepAlive).toHaveBeenCalledTimes(3);
+            });
+
+            it('should only delete the contexts when the person keeps access through another context', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    otherKontext,
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungDeletedEvent(createDeletedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.deletePersonenkontext).toHaveBeenCalledOnce();
+                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
+            });
+
+            it('should not delete contexts that are still granted otherwise', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([
+                    affectedKontext,
+                ]);
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungDeletedEvent(createDeletedEvent());
+
+                expect(result).toEqual(Ok());
+                expect(adapterMock.deletePersonenkontext).not.toHaveBeenCalled();
+                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
+            });
+
+            it('should not delete the person when deleting a context fails', async () => {
+                mockAffected({ personId: person.id, personenkontextIds: [affectedKontext.personenkontext.id] });
+                personenkontextRepoMock.findByPersonAndServiceProviderWithOrgaAndRolle.mockResolvedValueOnce([]);
+                adapterMock.deletePersonenkontext.mockResolvedValueOnce(Err(new DomainErrorMock('delete failed')));
+
+                const result: Result<void, DomainError> =
+                    await sut.handleRollenerweiterungDeletedEvent(createDeletedEvent());
+
+                expect(result).toHaveProperty('ok', false);
+                expect(adapterMock.deletePerson).not.toHaveBeenCalled();
+            });
         });
     });
 });

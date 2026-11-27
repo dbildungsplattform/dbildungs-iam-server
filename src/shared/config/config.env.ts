@@ -169,5 +169,6 @@ export default (): Config => ({
         PUSH_MAX_ATTEMPTS: envToOptionalInteger('SCHULCONNEX_PUSH_MAX_ATTEMPTS'),
         PUSH_RETRY_DELAY_MS: envToOptionalInteger('SCHULCONNEX_PUSH_RETRY_DELAY_MS'),
         PUSH_REQUEST_TIMEOUT_MS: envToOptionalInteger('SCHULCONNEX_PUSH_REQUEST_TIMEOUT_MS'),
+        PUSH_MAX_REQUESTS_PER_SECOND: envToOptionalInteger('SCHULCONNEX_PUSH_MAX_REQUESTS_PER_SECOND'),
     },
 });

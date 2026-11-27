@@ -1,4 +1,5 @@
 import { HttpModule, HttpService } from '@nestjs/axios';
+import { type ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
@@ -7,6 +8,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi, t
 
 import { ConfigTestModule, LoggingTestModule } from '../../../../../../test/utils/index.js';
 import { ClassLogger } from '../../../../../core/logging/class-logger.js';
+import { type ServerConfig } from '../../../../../shared/config/index.js';
+import { type SchulconnexConfig } from '../../../../../shared/config/schulconnex.config.js';
 import { SchulconnexPushError } from '../../../../../shared/error/index.js';
 import { PersonenInfoKontextOrganisationDtoV2 } from '../../../api/personinfo/v2/person-info-kontext-organisation.response.v2.js';
 import { PersonInfoKontextDtoV2 } from '../../../api/personinfo/v2/person-info-kontext.response.v2.js';
@@ -307,6 +310,78 @@ describe('SchulconnexPushApiClient', () => {
 
             expect(result.ok).toBe(true);
             expect(requestSpy).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('throttling', () => {
+        const maxRequestsPerSecond: number = 20;
+        const minIntervalMs: number = 1000 / maxRequestsPerSecond;
+        // Timers may fire a little early due to millisecond rounding
+        const toleranceMs: number = 5;
+
+        let throttledSut: SchulconnexPushApiClient;
+        let requestTimes: number[];
+
+        beforeEach(() => {
+            const config: SchulconnexConfig = {
+                LIMIT_PERSONENINFO: 1,
+                PUSH_MAX_ATTEMPTS: 2,
+                PUSH_RETRY_DELAY_MS: 1,
+                PUSH_REQUEST_TIMEOUT_MS: 200,
+                PUSH_MAX_REQUESTS_PER_SECOND: maxRequestsPerSecond,
+            };
+            throttledSut = new SchulconnexPushApiClient(httpService, loggerMock, {
+                getOrThrow: () => config,
+            } as unknown as ConfigService<ServerConfig>);
+            requestTimes = [];
+            vi.spyOn(httpService, 'request').mockImplementation(() => {
+                requestTimes.push(Date.now());
+                return of({} as AxiosResponse);
+            });
+        });
+
+        it('should space concurrent requests to the same registry by the configured rate', async () => {
+            const results: Result<void, unknown>[] = await Promise.all([
+                throttledSut.deletePerson(registry, 'person-1'),
+                throttledSut.deletePerson(registry, 'person-2'),
+                throttledSut.deletePerson(registry, 'person-3'),
+            ]);
+
+            expect(results.every((result: Result<void, unknown>) => result.ok)).toBe(true);
+            expect(requestTimes).toHaveLength(3);
+            expect(requestTimes[1]! - requestTimes[0]!).toBeGreaterThanOrEqual(minIntervalMs - toleranceMs);
+            expect(requestTimes[2]! - requestTimes[1]!).toBeGreaterThanOrEqual(minIntervalMs - toleranceMs);
+        });
+
+        it('should throttle retries like regular requests', async () => {
+            vi.mocked(httpService.request).mockImplementationOnce(() => {
+                requestTimes.push(Date.now());
+                return throwError(() => createAxiosError(503));
+            });
+
+            const result: Result<void, unknown> = await throttledSut.deletePerson(registry, 'person-1');
+
+            expect(result.ok).toBe(true);
+            expect(requestTimes).toHaveLength(2);
+            expect(requestTimes[1]! - requestTimes[0]!).toBeGreaterThanOrEqual(minIntervalMs - toleranceMs);
+        });
+
+        it('should throttle each registry independently', async () => {
+            const otherRegistry: SchulconnexPushRegistry<true> = SchulconnexPushRegistry.construct(
+                'registry-2',
+                new Date(),
+                new Date(),
+                'service-provider-2',
+                server.url,
+            );
+
+            await Promise.all([
+                throttledSut.deletePerson(registry, 'person-1'),
+                throttledSut.deletePerson(otherRegistry, 'person-1'),
+            ]);
+
+            expect(requestTimes).toHaveLength(2);
+            expect(requestTimes[1]! - requestTimes[0]!).toBeLessThan(minIntervalMs - toleranceMs);
         });
     });
 });

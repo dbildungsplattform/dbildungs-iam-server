@@ -16,4 +16,9 @@ export class SchulconnexConfig {
     @IsInt()
     @IsPositive()
     public readonly PUSH_REQUEST_TIMEOUT_MS!: number;
+
+    /** Applied per registry (external system) and per pod */
+    @IsInt()
+    @IsPositive()
+    public readonly PUSH_MAX_REQUESTS_PER_SECOND!: number;
 }

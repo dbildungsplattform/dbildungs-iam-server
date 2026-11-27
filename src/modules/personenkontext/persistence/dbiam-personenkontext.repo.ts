@@ -55,6 +55,22 @@ export type ExternalPkData = {
     serviceProvider?: ServiceProvider<true>[];
 };
 
+export type OrganisationAndRolle = {
+    organisationId: OrganisationID;
+    rolleId: RolleID;
+};
+
+/** A ServiceProvider granted to an organisation/rolle combination by a Rollenerweiterung at the organisation or above */
+export type RollenerweiterungGrant = OrganisationAndRolle & {
+    rollenerweiterungOrganisationId: OrganisationID;
+    serviceProviderId: ServiceProviderID;
+};
+
+export type PersonWithPersonenkontextIds = {
+    personId: PersonID;
+    personenkontextIds: PersonenkontextID[];
+};
+
 export type KontextWithOrgaAndRolle = {
     personenkontext: Personenkontext<true>;
     organisation: Organisation<true>;
@@ -721,7 +737,6 @@ export class DBiamPersonenkontextRepo {
         personId: PersonID,
         serviceProviderId: ServiceProviderID,
     ): Promise<KontextWithOrgaAndRolle[]> {
-        // this already uses rollenerweiterungen which will be important in next ticket
         const kontexteByPerson: Map<PersonID, KontextWithOrgaAndRolle[]> =
             await this.findByPersonIdsAndServiceprovidersWithOrgaAndRolle([personId], [serviceProviderId], {
                 all: true,
@@ -730,5 +745,107 @@ export class DBiamPersonenkontextRepo {
         return (kontexteByPerson.get(personId) ?? []).filter(
             (kontext: KontextWithOrgaAndRolle) => kontext.organisation.typ !== OrganisationsTyp.KLASSE,
         );
+    }
+
+    /**
+     * Resolves which Rollenerweiterungen apply to the given organisation/rolle combinations. A Rollenerweiterung
+     * applies to its organisation and to every organisation below it (administriert_von), like in
+     * PersonenkontextErweitertVirtualEntity. Works for deleted Personenkontexte, as only organisation and rolle are needed.
+     */
+    public async findRollenerweiterungGrants(query: OrganisationAndRolle[]): Promise<RollenerweiterungGrant[]> {
+        if (query.length === 0) {
+            return [];
+        }
+
+        const values: string = query.map(() => '(CAST(? AS uuid), CAST(? AS uuid))').join(', ');
+        const sqlQuery: string = `
+            WITH RECURSIVE
+            requested (organisation_id, rolle_id) AS (VALUES ${values}),
+            ancestors AS (
+                SELECT r.organisation_id, r.rolle_id, r.organisation_id AS ancestor_id
+                FROM requested r
+                UNION
+                SELECT a.organisation_id, a.rolle_id, o.administriert_von AS ancestor_id
+                FROM ancestors a
+                    INNER JOIN public.organisation o ON o.id = a.ancestor_id
+                WHERE o.administriert_von IS NOT NULL
+            )
+            SELECT DISTINCT
+                a.organisation_id AS organisation_id,
+                a.rolle_id AS rolle_id,
+                re.organisation_id AS rollenerweiterung_organisation_id,
+                re.service_provider_id AS service_provider_id
+            FROM ancestors a
+                INNER JOIN public.rollenerweiterung re
+                    ON re.organisation_id = a.ancestor_id AND re.rolle_id = a.rolle_id
+        `;
+
+        const rows: {
+            organisation_id: OrganisationID;
+            rolle_id: RolleID;
+            rollenerweiterung_organisation_id: OrganisationID;
+            service_provider_id: ServiceProviderID;
+        }[] = await this.em.execute(
+            sqlQuery,
+            query.flatMap(({ organisationId, rolleId }: OrganisationAndRolle) => [organisationId, rolleId]),
+        );
+
+        return rows.map(
+            (row: {
+                organisation_id: OrganisationID;
+                rolle_id: RolleID;
+                rollenerweiterung_organisation_id: OrganisationID;
+                service_provider_id: ServiceProviderID;
+            }) => ({
+                organisationId: row.organisation_id,
+                rolleId: row.rolle_id,
+                rollenerweiterungOrganisationId: row.rollenerweiterung_organisation_id,
+                serviceProviderId: row.service_provider_id,
+            }),
+        );
+    }
+
+    /**
+     * Persons with their non-Klasse Personenkontexte holding the rolle at the organisation or at any organisation
+     * below it (administriert_von), i.e. the Personenkontexte a Rollenerweiterung at this organisation applies to.
+     * Keyset pagination over person IDs; pass the last returned person ID as afterPersonId to get the next batch.
+     */
+    public async findNonKlassenKontexteWithRolleInOrganisationTree(
+        organisationId: OrganisationID,
+        rolleId: RolleID,
+        count: number,
+        afterPersonId?: PersonID,
+    ): Promise<PersonWithPersonenkontextIds[]> {
+        const cursorClause: string = afterPersonId ? 'AND pk.person_id > ?' : '';
+        const query: string = `
+            WITH RECURSIVE tree AS (
+                SELECT o.id, o.typ FROM public.organisation o WHERE o.id = ?
+                UNION
+                SELECT c.id, c.typ FROM public.organisation c INNER JOIN tree t ON c.administriert_von = t.id
+            )
+            SELECT pk.person_id AS person_id, array_agg(pk.id ORDER BY pk.id) AS personenkontext_ids
+            FROM public.personenkontext pk
+                INNER JOIN tree t ON t.id = pk.organisation_id
+            WHERE pk.rolle_id = ?
+                AND t.typ IS DISTINCT FROM '${OrganisationsTyp.KLASSE}'
+                ${cursorClause}
+            GROUP BY pk.person_id
+            ORDER BY pk.person_id
+            LIMIT ?
+        `;
+
+        const params: (string | number)[] = afterPersonId
+            ? [organisationId, rolleId, afterPersonId, count]
+            : [organisationId, rolleId, count];
+
+        const rows: { person_id: PersonID; personenkontext_ids: PersonenkontextID[] }[] = await this.em.execute(
+            query,
+            params,
+        );
+
+        return rows.map((row: { person_id: PersonID; personenkontext_ids: PersonenkontextID[] }) => ({
+            personId: row.person_id,
+            personenkontextIds: row.personenkontext_ids,
+        }));
     }
 }
